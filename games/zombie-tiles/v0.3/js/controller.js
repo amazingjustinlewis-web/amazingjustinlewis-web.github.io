@@ -121,7 +121,7 @@
     $('hearts').innerHTML = heartsHtml(y.hearts, y.maxHearts);
     var wc = $('weapIcon').getContext('2d'); wc.clearRect(0, 0, 64, 64); if (y.weapon !== 'none') window.ZTRender.drawItem(wc, y.weapon, 32, 32, 54);
     $('weapName').textContent = W[y.weapon].short;
-    var its = y.items || {}; $('ammo').textContent = 'AMMO ' + y.ammo + (its.trap ? ' \u00b7 TRAP\u00d7' + its.trap : '') + (its.dynamite ? ' \u00b7 TNT\u00d7' + its.dynamite : '');
+    $('ammo').textContent = 'AMMO ' + y.ammo;
     var s1 = '', s2 = s.msg || '', hot = false, crossOn = false, rollShow = false, rollOn = false, rollLabel = 'ROLL', execLabel = 'EXECUTE', placing = false, planRow = false;
     var extra = '';
     var curName = s.cur ? '<span style="color:' + s.cur.color + '">' + esc(s.cur.name) + '</span>' : '';
@@ -170,7 +170,6 @@
     }
     if (mode === 'zturn' && y.status === 'zombie') extra = '<button class="small" id="toSpectate">Stop and spectate instead</button>';
     if (coachOn && s.coach && s.coach.text && (mode === 'plan' || mode === 'roll' || mode === 'fight')) extra = '<div class="coach"><span class="ci">\uD83E\uDDE0 Coach:</span> ' + esc(s.coach.text) + (s.coach.arrows && mode === 'plan' ? '<div class="carr">' + esc(s.coach.arrows) + '</div>' : '') + '</div>' + extra;
-    if ((mode === 'roll' || mode === 'plan') && y.status === 'alive') extra += actionsHtml(y);
     if (['wait', 'roll', 'plan', 'fight', 'zturn'].indexOf(mode) !== -1 && y.status !== 'escaped') extra += coachBtn();
     if (mode === 'wait' && canVibrate) extra += buzzBtn();
     var nopad = ['lobby', 'over', 'dead', 'escaped', 'spectate'].indexOf(mode) !== -1;
@@ -249,30 +248,9 @@
       '<button class="small addai" id="aiAddP">+ ADD ' + esc(lv.label.toUpperCase()) + ' AI</button></div>';
   }
   function coachBtn() { return '<button class="small coachb' + (coachOn ? ' on' : '') + '" id="coachT">\uD83E\uDDE0 Coach hints: ' + (coachOn ? 'ON' : 'OFF') + '</button>'; }
-  // v0.4: drop items on your square, set off your dynamite, or stop here (unused moves are lost; tap twice so it can't happen by accident)
-  var endArm = 0;
-  function actionsHtml(y) {
-    var it = y.items || {}, h = '<div class="acts">';
-    if (it.trap) h += '<button class="small act" data-act="trap"' + (y.canTrap ? '' : ' disabled') + '>\uD83E\uDEA4 DROP TRAP (' + it.trap + ')</button>';
-    if (it.dynamite) h += '<button class="small act tnt" data-act="dynamite"' + (y.canTNT ? '' : ' disabled') + '>\uD83E\uDDE8 DROP TNT (' + it.dynamite + ')</button>';
-    if (y.myBombs) h += '<button class="small act boom" data-act="detonate">\uD83D\uDCA5 DETONATE</button>';
-    h += '<button class="small act end" data-act="end">' + (Date.now() < endArm ? 'TAP AGAIN TO END TURN' : '\u23F9 END TURN') + '</button>';
-    return h + '</div>';
-  }
   function buzzBtn() { return '<button class="small coachb' + (turnBuzzOn ? ' on' : '') + '" id="buzzT">\uD83D\uDCF3 Turn buzz: ' + (turnBuzzOn ? 'ON' : 'OFF') + '</button>'; }
   function wireExtra() {
     var b;
-    Array.prototype.forEach.call(document.querySelectorAll('#extra .act'), function (bt) {
-      press(bt, function () {
-        var a = bt.getAttribute('data-act');
-        if (a === 'trap' || a === 'dynamite') send({ t: 'drop', item: a });
-        else if (a === 'detonate') send({ t: 'detonate' });
-        else if (a === 'end') {
-          if (Date.now() < endArm) { endArm = 0; send({ t: 'endTurn' }); }
-          else { endArm = Date.now() + 2500; render(); setTimeout(function () { if (state) render(); }, 2600); }
-        }
-      });
-    });
     if ((b = $('buzzT'))) press(b, function () { turnBuzzOn = !turnBuzzOn; store.set('zt_turnbuzz', turnBuzzOn ? '1' : '0'); render(); });
     if ((b = $('coachT'))) press(b, function () { coachOn = !coachOn; store.set('zt_coach', coachOn ? '1' : '0'); send({ t: 'coach', on: coachOn }); render(); });
     if ((b = $('aiPer'))) press(b, function () { aiSel.p = (aiSel.p + 1) % AIC.order.length; render(); });

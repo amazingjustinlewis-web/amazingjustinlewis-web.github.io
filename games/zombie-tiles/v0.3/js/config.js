@@ -6,7 +6,7 @@
    ===================================================================== */
 (function (root) {
   root.ZT_CONFIG = {
-    version: '0.4',
+    version: '0.3.1',
 
     // ---- board ----
     tileSize: 8,                 // squares per tile side (data model keeps w/h per tile for later)
@@ -56,22 +56,11 @@
     gates: { minYes: 1, maxYes: 4 },
 
     // ---- pickups: weights when a tile sprinkles its pickups ----
-    pickupWeights: { heart: 3, pipe: 3, pistol: 2, mg: 1, ammo: 3, trap: 2, dynamite: 1 },
-
-    // ---- v0.4 items: picked up, then DROPPED on your square from the phone (or T / B keys in hot-seat) ----
-    items: {
-      // a zombie that steps on a trap box is caught in a rope snare and yanked up. 'remove' = gone, 'stun' = hangs there for stunTurns
-      trap: { label: 'Trap box', short: 'Trap', max: 2, wild: 'remove', playerZombie: 'stun', stunTurns: 2 },
-      // lit dynamite blows at the end of the round (or when its owner presses DETONATE): clears zombies within radius
-      // (squares, diagonals count) and hurts players there
-      dynamite: { label: 'Dynamite', short: 'TNT', max: 2, radius: 1, playerDamage: 1, wild: 'remove', playerZombie: 'stun', stunTurns: 2 }
-    },
+    pickupWeights: { heart: 3, pipe: 3, pistol: 2, mg: 1, ammo: 3 },
 
     // ---- display ----
     phone: { turnBuzzEveryMs: 3500, turnBuzzPattern: [40] },   // gentle 'your turn' reminder buzz on the phone until the player acts (phones can switch it off)
     escapeShow: { ms: 5200, fireworks: [0.9, 1.7, 2.3, 2.9, 3.5, 4.1], buzz: [90, 60, 90, 60, 90, 120, 400] },   // helicopter cinematic on the TV when someone escapes (the game waits for it)
-    // v0.4 character sprites: walk cycles + idle bobs. Drop in your own sheets (format: js/sprites.js / assets/sprites/README.md)
-    sprites: { enabled: true, frame: 32, player: '', zombie: '', walkFps: 12, idleMs: 520, stepSec: 0.22 },
     showHeartsOnTV: true,        // hearts on the TV player cards (ammo is ALWAYS phone-only)
 
     // ---- timing (ms) ----
@@ -107,7 +96,6 @@
       helipad: { color: '#ffc21a', bri: 0.8, ms: 1400 },               // the helipad tile is found
       gateNo: { color: '#ff2020', bri: 0.75, ms: 500 },                // the guard says NO
       lunge: { color: '#5cff2e', dip: 0.35, flickers: 2 },             // zombies lurch toward you
-      boom: { color: '#ff7a00', flash: '#fff1c4', bri: 1.0, ms: 900 },  // dynamite goes off: white-hot flash, then orange (needs Lights Helper v0.4)
       crunch: { color: '#ff0000', bri: 1.0, holdMs: 1500, fadeMs: 2500 },   // a player is taken out
       rise: { color: '#5cff2e', bri: 0.55, ms: 1200 },                 // a fallen player rises
       escape: { colors: ['#ffd23f', '#ff4fd8', '#3fd0ff', '#9dff6a', '#ffffff', '#ff7a1a'], bri: 1.0, steps: 8, stepMs: 500 },  // helicopter escape: multi-colour firework bursts

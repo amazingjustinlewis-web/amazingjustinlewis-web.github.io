@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Zombie Tiles (working title) - TV | Zero to Phi</title>
-<meta name="description" content="Zombie Tiles (working title): a zombie tile-laying board game for the TV. Up to 4 players use their phones as controllers. Prototype v0.4 by Zero to Phi.">
+<title>Zombie Tiles v0.3 (working title) - TV | Zero to Phi</title>
+<meta name="description" content="Zombie Tiles (working title): a zombie tile-laying board game for the TV. Up to 4 players use their phones as controllers. Prototype v0.3 by Zero to Phi.">
 <meta name="theme-color" content="#14121b">
 <meta name="robots" content="noindex">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
@@ -15,7 +15,7 @@
 
 <header id="top">
   <div class="brand"><img src="assets/logo.svg" alt="" width="49" height="40"><span>ZERO&nbsp;TO&nbsp;PHI</span></div>
-  <div class="title">ZOMBIE TILES <span class="wt">working title</span><span class="proto">PROTOTYPE v0.4</span></div>
+  <div class="title">ZOMBIE TILES <span class="wt">working title</span><span class="proto">PROTOTYPE v0.3.1</span></div>
   <div class="top-right"><span id="roundInfo"></span><span id="deckInfo"></span><span id="joinInfo"></span><span id="lightInfo"></span></div>
 </header>
 
@@ -31,7 +31,7 @@
       <button data-k="D" class="pd" aria-label="Down">&#9660;</button>
     </div>
     <div class="pad-row"><button data-k="roll" id="padRoll">ROLL</button><button data-k="undo">UNDO</button></div>
-    <div class="pad-keys">Keys: arrows, Enter = go/roll, Backspace = undo, Esc = reset moves, N = end turn, T = drop trap, B = drop dynamite, X = detonate, Q/E rotate, M mute, L lights</div>
+    <div class="pad-keys">Keys: arrows, Enter = go/roll, Backspace = undo, Q/E rotate, M mute, L lights</div>
   </div>
   <div id="log"></div>
 </aside>
@@ -54,7 +54,7 @@
 
 <section id="lobby" class="screen">
   <div class="lobby-left">
-    <div class="presents"><img src="assets/logo.svg" alt="" width="49" height="40"> ZERO TO PHI presents <a id="backLink" class="back" href="../zombie-tiles.html">&larr; game page</a></div>
+    <div class="presents"><img src="assets/logo.svg" alt="" width="49" height="40"> ZERO TO PHI presents <a id="backLink" class="back" href="../../zombie-tiles.html">&larr; game page</a></div>
     <div id="phoneHint" class="phone-hint" hidden>On a phone? This is the <b>TV screen</b>. Open it on the TV, then join with the <a href="controller.html">phone controller</a>.</div>
     <h1>ZOMBIE TILES <small>working title</small></h1>
     <p class="tagline">Explore the city tile by tile. Find the helipad. Hope the guard says <b>YES</b>.</p>
@@ -102,7 +102,6 @@
 <script src="js/sfx.js"></script>
 <script src="js/dice.js"></script>
 <script src="js/net.js"></script>
-<script src="js/sprites.js"></script>
 <script src="js/render.js"></script>
 <script src="js/host.js"></script>
 </body>

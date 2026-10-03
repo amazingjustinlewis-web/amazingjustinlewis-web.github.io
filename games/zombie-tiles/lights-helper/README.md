@@ -6,7 +6,8 @@ Optional. Your Hue lights react to the game:
 - flickers on dice rolls
 - red pulses during fights
 - a hard red "crunch" when a player is taken out
-- a gold flash when someone escapes by helicopter
+- a burst of colours when someone escapes by helicopter
+- a white-then-orange flash when dynamite goes off (v0.4; needs this helper version - restart the helper after updating)
 
 When the game ends, your lights go back exactly how they were. The same happens if Hue is switched off or the TV disconnects.
 

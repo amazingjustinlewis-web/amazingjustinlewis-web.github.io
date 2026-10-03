@@ -135,12 +135,6 @@
     var es = C.escapeShow || {};
     this.cine = { p: p, x: x + 0.5, y: y + 0.5, t: 0, dur: (es.ms || 5200) / 1000, fwAt: (es.fireworks || []).slice(), fw: [], conf: [], confDone: false, dir: Math.random() < 0.5 ? -1 : 1 };
   };
-  // v0.4 effects: a rope snare yanking a zombie up, and a dynamite blast
-  R.snare = function (x, y, color, removed) { (this.fx = this.fx || []).push({ k: 'snare', x: x, y: y, t: 0, dur: 1.1, removed: removed, color: color }); };
-  R.boom = function (x, y, r) {
-    var parts = []; for (var i = 0; i < 36; i++) { var a = Math.random() * 7, v = 1.5 + Math.random() * 3.5; parts.push({ vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.5, c: ['#ffd23f', '#ff7a1a', '#ff3b1a', '#6b5a4a'][i % 4], s: 0.08 + Math.random() * 0.1 }); }
-    (this.fx = this.fx || []).push({ k: 'boom', x: x, y: y, r: r || 1, t: 0, dur: 1.3, parts: parts });
-  };
   R.pop = function (text, x, y, color, big) { this.pops.push({ text: text, x: x, y: y, color: color || '#fff', t: 0, big: !!big }); };
   R.bounds = function (g) {
     var minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9;
@@ -226,22 +220,6 @@
       ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(p[0], p[1], sq * 0.36, 0, 7); ctx.fill();
       drawItem(ctx, it.kind, p[0], p[1] + bob, sq * 0.62);
     });
-    // v0.4: set traps (rope loop + crate) and lit dynamite (with its blast area)
-    (g.traps || []).forEach(function (t) {
-      var p = self.toScreen(t.x + 0.5, t.y + 0.5);
-      ctx.strokeStyle = '#c9a26a'; ctx.lineWidth = Math.max(2, sq * 0.06); ctx.setLineDash([sq * 0.08, sq * 0.05]);
-      ctx.beginPath(); ctx.ellipse(p[0], p[1] + sq * 0.12, sq * 0.4, sq * 0.22, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]);
-      drawItem(ctx, 'trap', p[0], p[1], sq * 0.5);
-      ctx.fillStyle = t.color || '#fff'; ctx.beginPath(); ctx.arc(p[0] + sq * 0.3, p[1] - sq * 0.28, sq * 0.08, 0, 7); ctx.fill();
-    });
-    (g.bombs || []).forEach(function (b) {
-      var r = C.items.dynamite.radius, p0 = self.toScreen(b.x - r, b.y - r), pulse = 0.5 + 0.5 * Math.sin(now / 160);
-      ctx.fillStyle = 'rgba(255,120,20,' + (0.08 + 0.1 * pulse) + ')'; ctx.fillRect(p0[0], p0[1], sq * (2 * r + 1), sq * (2 * r + 1));
-      ctx.strokeStyle = 'rgba(255,140,30,' + (0.5 + 0.4 * pulse) + ')'; ctx.lineWidth = 3; ctx.setLineDash([sq * 0.2, sq * 0.12]);
-      ctx.strokeRect(p0[0] + 2, p0[1] + 2, sq * (2 * r + 1) - 4, sq * (2 * r + 1) - 4); ctx.setLineDash([]);
-      var p = self.toScreen(b.x + 0.5, b.y + 0.5); drawItem(ctx, 'dynamite', p[0], p[1], sq * 0.62);
-      ctx.fillStyle = Math.random() < 0.5 ? '#fff6a0' : '#ff9a1a'; ctx.beginPath(); ctx.arc(p[0] + sq * 0.2, p[1] - sq * 0.3, sq * (0.05 + 0.05 * Math.random()), 0, 7); ctx.fill();
-    });
 
     // planned path
     var cur = g.curP && g.curP();
@@ -292,20 +270,12 @@
     });
     g.zombies.forEach(function (z) { ents.push({ k: 'z' + z.id, x: z.x, y: z.y, z: z }); });
     var live = {};
-    var stepSec = (C.sprites && C.sprites.stepSec) || 0.22;
-    ents.forEach(function (e) {       // v0.4: tokens walk square to square (with a facing) instead of sliding
-      var d = self.disp[e.k]; if (!d) d = self.disp[e.k] = { x: e.x, y: e.y, fx: e.x, fy: e.y, tx: e.x, ty: e.y, t: 1, dur: stepSec, dir: 0, walk: 0 };
-      if (e.x !== d.tx || e.y !== d.ty) {
-        var dist = Math.abs(e.x - d.x) + Math.abs(e.y - d.y);
-        if (dist > 6) { d.x = d.fx = d.tx = e.x; d.y = d.fy = d.ty = e.y; d.t = 1; }
-        else {
-          var ddx = e.x - d.x, ddy = e.y - d.y;
-          d.fx = d.x; d.fy = d.y; d.tx = e.x; d.ty = e.y; d.t = 0; d.dur = stepSec * Math.min(2.2, Math.max(1, dist));
-          d.dir = Math.abs(ddx) > Math.abs(ddy) ? (ddx > 0 ? 2 : 1) : (ddy > 0 ? 0 : 3);
-        }
-      }
-      if (d.t < 1) { d.t = Math.min(1, d.t + dt / d.dur); d.x = d.fx + (d.tx - d.fx) * d.t; d.y = d.fy + (d.ty - d.fy) * d.t; d.walk += dt; }
-      e.dx = d.x; e.dy = d.y; e.anim = { dir: d.dir, moving: d.t < 1, walkT: d.walk }; live[e.k] = 1;
+    ents.forEach(function (e) {
+      var d = self.disp[e.k]; if (!d) d = self.disp[e.k] = { x: e.x, y: e.y };
+      var kk = 1 - Math.pow(0.0005, dt);
+      d.x += (e.x - d.x) * kk; d.y += (e.y - d.y) * kk;
+      if (Math.abs(e.x - d.x) > 6 || Math.abs(e.y - d.y) > 6) { d.x = e.x; d.y = e.y; }
+      e.dx = d.x; e.dy = d.y; live[e.k] = 1;
     });
     for (var dk in this.disp) if (!live[dk]) delete this.disp[dk];
     // share squares nicely
@@ -316,9 +286,9 @@
     var fightZ = g.fight ? g.fight.zid : null, fightP = g.fight ? g.fight.pid : null;
     ents.forEach(function (e) {
       var p = self.toScreen(e.dx + 0.5 + (e.ox || 0), e.dy + 0.5 + (e.oy || 0));
-      if (e.z) drawZombie(ctx, p[0], p[1], sq, e.z, now, e.z.id === fightZ, e.anim);
+      if (e.z) drawZombie(ctx, p[0], p[1], sq, e.z, now, e.z.id === fightZ);
       else if (e.p.status === 'dead') drawBody(ctx, p[0], p[1], sq, e.p);
-      else drawPlayer(ctx, p[0], p[1], sq * (e.sc || 1), e.p, cur === e.p && g.phase !== 'over', now, e.p.id === fightP, e.anim);
+      else drawPlayer(ctx, p[0], p[1], sq * (e.sc || 1), e.p, cur === e.p && g.phase !== 'over', now, e.p.id === fightP);
     });
 
     // speech bubbles
@@ -341,37 +311,10 @@
       ctx.fillStyle = pp.color; ctx.fillText(pp.text, p[0], p[1] - pp.t * sq * 0.9);
       ctx.globalAlpha = 1;
     });
-    drawFx(this, ctx, dt, now, sq);
     if (this.cine) drawCinematic(this, ctx, dt, now, sq);
     ctx.restore();
   };
 
-  function drawFx(R, ctx, dt, now, sq) {
-    if (!R.fx || !R.fx.length) return;
-    R.fx = R.fx.filter(function (f) { return (f.t += dt) < f.dur; });
-    R.fx.forEach(function (f) {
-      var p = R.toScreen(f.x + 0.5, f.y + 0.5), k = f.t / f.dur;
-      if (f.k === 'snare') {
-        var lift = f.removed ? Math.pow(Math.min(1, k * 1.3), 2) * (p[1] - R.area.y + sq) : 0;
-        ctx.strokeStyle = '#c9a26a'; ctx.lineWidth = Math.max(2, sq * 0.06);
-        ctx.beginPath(); ctx.moveTo(p[0], R.area.y - 10); ctx.lineTo(p[0], p[1] - lift - sq * 0.3); ctx.stroke();
-        if (f.removed) {                     // the zombie dangles upside down and gets yanked out of view
-          ctx.save(); ctx.globalAlpha = Math.max(0, 1 - k * 0.6);
-          if (!window.ZTSprites || !window.ZTSprites.enabled || !window.ZTSprites.draw(ctx, 'zombie', null, 0, Math.floor(now / 120) % 2 + 2, p[0] + Math.sin(f.t * 12) * sq * 0.08, p[1] - lift, sq * 1.1, true)) drawZombie(ctx, p[0], p[1] - lift, sq, { id: 0, hp: 0 }, now, false);
-          ctx.restore();
-        }
-        if (k < 0.3) { ctx.strokeStyle = 'rgba(255,255,255,' + (1 - k / 0.3) + ')'; ctx.lineWidth = 3; for (var i = 0; i < 6; i++) { var a = i / 6 * 7; ctx.beginPath(); ctx.moveTo(p[0] + Math.cos(a) * sq * 0.3, p[1] + Math.sin(a) * sq * 0.3); ctx.lineTo(p[0] + Math.cos(a) * sq * (0.3 + k * 2), p[1] + Math.sin(a) * sq * (0.3 + k * 2)); ctx.stroke(); } }
-      } else if (f.k === 'boom') {
-        var rad = (f.r + 0.6) * sq * Math.min(1, k * 3.5);
-        var gr = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], Math.max(1, rad));
-        gr.addColorStop(0, 'rgba(255,250,210,' + (1 - k) + ')'); gr.addColorStop(0.45, 'rgba(255,170,40,' + (0.9 * (1 - k)) + ')'); gr.addColorStop(1, 'rgba(255,60,20,0)');
-        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(p[0], p[1], rad, 0, 7); ctx.fill();
-        ctx.strokeStyle = 'rgba(255,230,160,' + Math.max(0, 0.8 - k * 1.6) + ')'; ctx.lineWidth = sq * 0.12; ctx.beginPath(); ctx.arc(p[0], p[1], (f.r + 0.6) * sq * Math.min(1.4, k * 2.4), 0, 7); ctx.stroke();
-        f.parts.forEach(function (q) { var x = p[0] + q.vx * sq * f.t, y = p[1] + (q.vy * f.t + 3 * f.t * f.t) * sq; ctx.globalAlpha = Math.max(0, 1 - k); ctx.fillStyle = q.c; ctx.fillRect(x, y, q.s * sq, q.s * sq); });
-        ctx.globalAlpha = 1;
-      }
-    });
-  }
   function ease(t) { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }
   var PARTY = ['#ffd23f', '#ff4fd8', '#3fd0ff', '#9dff6a', '#ffffff', '#ff7a1a'];
   function drawCinematic(R, ctx, dt, now, sq) {
@@ -429,9 +372,8 @@
   }
 
   function hexA(hex, a) { var n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
-  function drawPlayer(ctx, x, y, sq, p, isCur, now, fighting, anim) {
-    var r = Math.max(sq * 0.38, 15), SP = window.ZTSprites;
-    if (SP && SP.enabled) return drawPlayerSprite(ctx, x, y, sq, p, isCur, now, fighting, anim || { dir: 0, moving: false, walkT: 0 }, r);
+  function drawPlayer(ctx, x, y, sq, p, isCur, now, fighting) {
+    var r = Math.max(sq * 0.38, 15);
     if (isCur) {
       var pr = r * (1.35 + 0.15 * Math.sin(now / 180));
       ctx.strokeStyle = p.color; ctx.lineWidth = 4; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.arc(x, y, pr, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
@@ -474,22 +416,8 @@
     var fs = Math.max(11, Math.round(sq * 0.26)); ctx.font = '700 ' + fs + 'px Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#ccc';
     ctx.fillText(p.name + ' (down)', x, y - r * 1.2);
   }
-  function drawZombie(ctx, x, y, sq, z, now, fighting, anim) {
-    var r = Math.max(sq * 0.34, 12), wob = Math.sin(now / 300 + z.id * 1.7) * r * 0.08, SP = window.ZTSprites;
-    if (SP && SP.enabled && anim) {
-      var size = Math.max(sq * 1.08, 32), hang = z.stunned ? sq * 0.32 : 0;
-      if (fighting) { ctx.fillStyle = 'rgba(255,40,60,0.35)'; ctx.beginPath(); ctx.arc(x, y, r * 1.7, 0, 7); ctx.fill(); }
-      if (z.owner) { ctx.strokeStyle = z.color || '#cfe'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, y + r * 0.6, r * 1.05, r * 0.45, 0, 0, 7); ctx.stroke(); }
-      if (z.stunned) {                       // caught in a rope snare: dangling upside down
-        var sw = Math.sin(now / 260 + z.id) * sq * 0.06;
-        ctx.strokeStyle = '#c9a26a'; ctx.lineWidth = Math.max(2, sq * 0.05); ctx.beginPath(); ctx.moveTo(x, y - sq * 1.2); ctx.lineTo(x + sw, y - hang - size * 0.3); ctx.stroke();
-        SP.draw(ctx, 'zombie', null, 0, 2 + Math.floor(now / 200) % 4, x + sw, y - hang, size, true);
-        ctx.font = '700 ' + Math.round(sq * 0.3) + 'px Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff6a0'; ctx.fillText('\u2605', x + sq * 0.35, y - hang - sq * 0.4 + Math.sin(now / 150) * 3);
-      } else SP.draw(ctx, 'zombie', null, anim.dir, SP.frameFor(anim.moving, anim.walkT, now, z.id * 0.53), x, y - size * 0.12, size);
-      for (var hi = 0; hi < C.zombie.hp; hi++) { ctx.fillStyle = hi < z.hp ? '#ff4a5a' : 'rgba(0,0,0,0.5)'; ctx.fillRect(x - r * 0.55 + hi * r * 0.6, y + size * 0.38, r * 0.5, r * 0.2); }
-      if (z.name) { var zf = Math.max(11, Math.round(sq * 0.27)); ctx.font = '700 ' + zf + 'px Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = z.owner ? (z.color || '#cfe') : '#b9c9a0'; ctx.fillText(z.name + (z.owner ? ' (zombie)' : ''), x, y - size * 0.62); }
-      return;
-    }
+  function drawZombie(ctx, x, y, sq, z, now, fighting) {
+    var r = Math.max(sq * 0.34, 12), wob = Math.sin(now / 300 + z.id * 1.7) * r * 0.08;
     ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(x + 2, y + r * 0.85, r * 0.95, r * 0.4, 0, 0, 7); ctx.fill();
     if (fighting) { ctx.fillStyle = 'rgba(255,40,60,0.35)'; ctx.beginPath(); ctx.arc(x, y, r * 1.7, 0, 7); ctx.fill(); }
     // arms reaching forward
@@ -565,29 +493,6 @@
   }
   function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
   // item icons (pickups and weapon badges)
-  function drawPlayerSprite(ctx, x, y, sq, p, isCur, now, fighting, anim, r) {
-    var SP = window.ZTSprites, size = Math.max(sq * 1.12, 34);
-    if (isCur) {
-      var pr = r * (1.35 + 0.15 * Math.sin(now / 180));
-      ctx.strokeStyle = p.color; ctx.lineWidth = 4; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.ellipse(x, y + r * 0.55, pr, pr * 0.5, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
-      ctx.fillStyle = '#fff'; ctx.beginPath(); var ay = y - size * 0.75 + Math.sin(now / 200) * 4; ctx.moveTo(x - r * 0.4, ay - r * 0.5); ctx.lineTo(x + r * 0.4, ay - r * 0.5); ctx.lineTo(x, ay); ctx.fill();
-    }
-    SP.draw(ctx, 'player', p.color, anim.dir, SP.frameFor(anim.moving, anim.walkT, now, p.id * 0.37), x, y - size * 0.12, size);
-    if (p.weapon !== 'none') {
-      var bx = x + size * 0.36, by = y + size * 0.18;
-      ctx.fillStyle = '#1a1420'; ctx.beginPath(); ctx.arc(bx, by, r * 0.55, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-      drawItem(ctx, p.weapon, bx, by, r * 0.95);
-    }
-    var fs = Math.max(15, Math.round(sq * 0.32));
-    ctx.font = '700 ' + fs + 'px Fredoka, sans-serif';
-    var label = p.name + (p.aiTakeover ? ' (AI)' : '');
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    var tw = ctx.measureText(label).width + fs * 0.8, ty = y - size * 0.58 - fs * 0.5;
-    ctx.fillStyle = 'rgba(15,12,22,0.85)'; roundRect(ctx, x - tw / 2, ty - fs * 0.62, tw, fs * 1.24, fs * 0.4); ctx.fill();
-    ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.fillText(label, x, ty + 1);
-    if (fighting) { ctx.strokeStyle = '#ff3b4e'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, 7); ctx.stroke(); }
-  }
   function drawItem(ctx, kind, x, y, s) {
     ctx.save(); ctx.translate(x, y); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     var u = s / 10;
@@ -613,16 +518,6 @@
       ctx.fillStyle = '#e1b44c'; for (var i = 0; i < 3; i++) { ctx.fillRect(-2.9 * u + i * 2.2 * u, -3.6 * u, 1.5 * u, 3 * u); }
       ctx.fillStyle = '#c0c0c0'; for (var j = 0; j < 3; j++) { ctx.beginPath(); ctx.arc(-2.15 * u + j * 2.2 * u, -3.6 * u, 0.75 * u, Math.PI, 0); ctx.fill(); }
       ctx.strokeStyle = '#fff'; ctx.lineWidth = u * 0.5; ctx.strokeRect(-3.6 * u, -1 * u, 7.2 * u, 4.4 * u);
-    } else if (kind === 'trap') {           // wooden trap box with a rope coil
-      ctx.fillStyle = '#8a5a2b'; ctx.fillRect(-3.8 * u, -3 * u, 7.6 * u, 6.4 * u);
-      ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = u * 0.6; ctx.strokeRect(-3.8 * u, -3 * u, 7.6 * u, 6.4 * u); ctx.beginPath(); ctx.moveTo(-3.8 * u, -3 * u); ctx.lineTo(3.8 * u, 3.4 * u); ctx.stroke();
-      ctx.strokeStyle = '#e6c88a'; ctx.lineWidth = u * 0.9; ctx.beginPath(); ctx.arc(0, -3.4 * u, 2 * u, Math.PI, 0); ctx.stroke(); ctx.beginPath(); ctx.arc(0, -3.4 * u, 1.1 * u, Math.PI, 0); ctx.stroke();
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = u * 0.4; ctx.strokeRect(-3.8 * u, -3 * u, 7.6 * u, 6.4 * u);
-    } else if (kind === 'dynamite') {       // three red sticks + fuse
-      for (var di = -1; di <= 1; di++) { ctx.fillStyle = '#d9342b'; ctx.fillRect(di * 2.3 * u - 1 * u, -3 * u, 2 * u, 6.6 * u); ctx.fillStyle = '#ff7a6a'; ctx.fillRect(di * 2.3 * u - 0.6 * u, -2.6 * u, 0.5 * u, 5.8 * u); }
-      ctx.fillStyle = '#2b2f36'; ctx.fillRect(-3.6 * u, -0.6 * u, 7.2 * u, 1.2 * u);
-      ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = u * 0.6; ctx.beginPath(); ctx.moveTo(0, -3 * u); ctx.quadraticCurveTo(1.5 * u, -5 * u, 2.6 * u, -4.4 * u); ctx.stroke();
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = u * 0.4; ctx.strokeRect(-3.4 * u, -3 * u, 6.8 * u, 6.6 * u);
     }
     ctx.restore();
   }

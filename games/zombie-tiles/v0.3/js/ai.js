@@ -62,7 +62,6 @@
   function itemValue(p, kind, w) {
     if (kind === 'heart') return p.hearts >= C.maxHearts ? 0 : ((C.maxHearts - p.hearts) * 1.6 + 1) * w.heart;
     if (kind === 'ammo') return p.ammo >= C.maxAmmo ? 0 : (W[p.weapon].gun ? (p.ammo < 6 ? 4.5 : 2) : 1.2) * w.loot;
-    if (C.items && C.items[kind]) return p.items && p.items[kind] < C.items[kind].max ? (kind === 'dynamite' ? 2.4 : 2) * w.loot : 0;   // v0.4 traps / dynamite
     var k = W[kind]; if (!k) return 0;
     if (k.rank > W[p.weapon].rank) return (2.5 + (k.rank - W[p.weapon].rank) * 2.5) * w.loot;
     if (kind === p.weapon && k.gun && p.ammo < C.maxAmmo) return 2 * w.loot;
@@ -129,35 +128,11 @@
     cands.sort(function (a, b2) { return b2.score - a.score; });
     var pickI = 0;
     if (L.slip && rng() < L.slip && cands.length > 1) pickI = 1 + Math.floor(rng() * Math.min(3, cands.length - 1));
-    var route = function (gl) {
-      var dirs = gl.d ? [gl.d] : [], k = gl.k;
-      while (prev[k]) { dirs.unshift(prev[k].d); k = prev[k].k; }
-      var reach = dirs.length <= budget;
-      if (!reach) dirs = dirs.slice(0, budget);
-      return { dirs: dirs, why: gl.why, item: gl.item, reach: reach, win: odds.win };
-    };
-    var out = route(cands[pickI]);
-    if (g.bombs && g.bombs.length && (L.care || 0) > 0.5) {      // v0.4: don't finish the move next to lit dynamite (Easy forgets)
-      var tries = [pickI].concat(cands.map(function (c2, i) { return i; }).filter(function (i) { return i !== pickI; })).slice(0, 8);
-      for (var ti = 0; ti < tries.length; ti++) { var rr = ti ? route(cands[tries[ti]]) : out; if (!inBlast(g, endOf(p, rr.dirs))) { out = rr; break; } }
-    }
-    return out;
-  }
-
-  function endOf(p, dirs) { var x = p.x, y = p.y; dirs.forEach(function (d) { x += DIRS[d][0]; y += DIRS[d][1]; }); return { x: x, y: y }; }
-  function inBlast(g, q) { var r = C.items.dynamite.radius; return (g.bombs || []).some(function (b) { return Math.abs(b.x - q.x) <= r && Math.abs(b.y - q.y) <= r; }); }
-  // v0.4 items: drop a trap when a zombie is close, light dynamite when zombies bunch up around you (then walk away)
-  function itemChoice(g, p, rng) {
-    if (!p.items || !C.items) return null;
-    var b = brain(p), L = b.L, r = C.items.dynamite.radius;
-    if (L.slip && rng() < L.slip) return null;
-    var threats = g.zombies.filter(function (z) { return z.owner !== p.id && !z.stunned; });
-    var cheb = function (z) { return Math.max(Math.abs(z.x - p.x), Math.abs(z.y - p.y)); };
-    var inB = threats.filter(function (z) { return cheb(z) <= r; }).length, near = threats.filter(function (z) { return cheb(z) <= r + 1; }).length;
-    if (g.canDrop(p, 'dynamite') && (inB >= 2 || (inB >= 1 && near >= 2) || (b.P.w.fight > 1 && inB >= 1))) return 'dynamite';
-    var t = g.tileAtSq(p.x, p.y);
-    if (g.canDrop(p, 'trap') && threats.some(function (z) { return g.tileAtSq(z.x, z.y) === t && Math.abs(z.x - p.x) + Math.abs(z.y - p.y) <= 3; })) return 'trap';
-    return null;
+    var gl = cands[pickI], dirs = gl.d ? [gl.d] : [], k = gl.k;
+    while (prev[k]) { dirs.unshift(prev[k].d); k = prev[k].k; }
+    var reach = dirs.length <= budget;
+    if (!reach) { dirs = dirs.slice(0, budget); if (gl.d) { /* explore / gate step only counts when actually reached */ } }
+    return { dirs: dirs, why: gl.why, item: gl.item, reach: reach, win: odds.win };
   }
 
   // ------------------------------------------------------------ tile placement: the explore spot, rotated for the most new exits.
@@ -191,10 +166,7 @@
     death: ['Tell my mum...', 'Bleh...'],
     rise: ['Braaains... I mean, hi!', 'Grrr!'],
     gateNo: ['Aww, come on!', 'Rude!'],
-    pickup: ['Nice!', 'Score!'],
-    drop: { trap: ['Trap set! Hehe.', 'Step right up, zombies!', 'Snare time!'], dynamite: ['Fire in the hole!', 'Everybody RUN!', 'Tick tick... BOOM!'] },
-    snare: ['Gotcha!', 'Hang in there, zombie!', 'Snared!'],
-    boom: ['KABOOM!', 'Whoa!', 'Did you see that?!']
+    pickup: ['Nice!', 'Score!']
   };
   var PERSONA_LINES = {
     fighter: { charge: ['CHAAARGE!', 'Smash time!', 'Come here, zombie!'], think: { fight: ['Who wants a punch?', 'Zombie! Yesss!'] }, kill: ['Next!', 'Too easy!'] },
@@ -213,7 +185,7 @@
   }
 
   // ------------------------------------------------------------ coach hints (a suggestion; the player still decides)
-  var ITEM = { heart: 'heart', ammo: 'ammo clip', pipe: 'lead pipe', pistol: 'pistol', mg: 'machine gun', trap: 'trap box', dynamite: 'dynamite' };
+  var ITEM = { heart: 'heart', ammo: 'ammo clip', pipe: 'lead pipe', pistol: 'pistol', mg: 'machine gun' };
   function coach(g, p) {
     if (g.phase === 'fight' && g.fight && g.fight.pid === p.id) {
       var o = fightOdds(p);
@@ -265,12 +237,7 @@
     function ok() { return self.pending === tok && g.actorId() === pid && g.phase === ph && self.controls(g.byId(pid)); }
     function later(ms, fn) { g.later(ms, function () { if (!ok()) { if (self.pending === tok) self.pending = null; self.poke(); return; } fn(); }); }
     function done() { if (self.pending === tok) self.pending = null; self.poke(); }
-    if (ph === 'roll') later(T.roll, function () {
-      self.maybeShare(p, rng);
-      var it = ok() && itemChoice(g, p, rng);
-      if (it && g.intent(pid, { t: 'drop', item: it })) { self.react(p, 'drop', { item: it }); later(T.think, function () { g.intent(pid, { t: 'roll' }); done(); }); return; }
-      if (ok()) g.intent(pid, { t: 'roll' }); done();
-    });
+    if (ph === 'roll') later(T.roll, function () { self.maybeShare(p, rng); if (ok()) g.intent(pid, { t: 'roll' }); done(); });
     else if (ph === 'fight' || ph === 'zturn') later(ph === 'fight' ? T.fight : T.roll, function () { g.intent(pid, { t: 'roll' }); done(); });
     else if (ph === 'place') {
       var target = placeChoice(g, p, rng), guard = 0;
@@ -302,5 +269,5 @@
     if (g.intent(p.id, { t: 'share', to: ally.id, n: n })) { p.lastShare = g.round; this.react(p, 'share', { ally: ally }); }
   };
 
-  root.ZTAI = { Driver: Driver, plan: plan, placeChoice: placeChoice, fightOdds: fightOdds, coach: coach, line: line, mulberry: mulberry, brain: brain, ARROW: ARROW, itemChoice: itemChoice };
+  root.ZTAI = { Driver: Driver, plan: plan, placeChoice: placeChoice, fightOdds: fightOdds, coach: coach, line: line, mulberry: mulberry, brain: brain, ARROW: ARROW };
 })(typeof window !== 'undefined' ? window : globalThis);

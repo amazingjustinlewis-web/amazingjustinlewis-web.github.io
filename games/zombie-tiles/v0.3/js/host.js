@@ -42,7 +42,7 @@
       case 'roll': rattle(); break;
       case 'step': tone(180 + Math.random() * 40, 0.05, 'triangle', 0.04); break;
       case 'bump': tone(90, 0.08, 'square', 0.04); break;
-      case 'pickup': if (p && p.ai && Math.random() < 0.35) say(p, 'pickup'); if (p) rnd.pop(d.kind === 'heart' ? '+1 \u2665' : d.kind === 'ammo' ? 'AMMO' : (W[d.kind] || C.items[d.kind]).short.toUpperCase() + '!', p.x, p.y, d.kind === 'heart' ? '#ff6b88' : '#ffd65a'); tone(880, 0.08, 'square', 0.05, 1320); break;
+      case 'pickup': if (p && p.ai && Math.random() < 0.35) say(p, 'pickup'); if (p) rnd.pop(d.kind === 'heart' ? '+1 \u2665' : d.kind === 'ammo' ? 'AMMO' : W[d.kind].short.toUpperCase() + '!', p.x, p.y, d.kind === 'heart' ? '#ff6b88' : '#ffd65a'); tone(880, 0.08, 'square', 0.05, 1320); break;
       case 'draw': big(d.tpl === 'helipad' ? 'THE HELIPAD!' : 'NEW TILE', d.tpl === 'helipad' ? 'Reach a gate. The guard says YES... or NO.' : 'Rotate it and attach it', d.tpl === 'helipad' ? '#ffd65a' : '#9ad8ff'); tone(330, 0.25, 'sine', 0.06, 660); break;
       case 'tile': break;
       case 'lunge': tone(120, 0.2, 'sawtooth', 0.05, 80); break;
@@ -85,20 +85,6 @@
       case 'death': big('LEFT FOR DEAD', p.name + ' will rise in ' + C.riseAfterRounds + ' full round' + (C.riseAfterRounds > 1 ? 's' : '') + '...', '#ff3b4e'); rnd.shake = 1.2; tone(70, 0.8, 'sawtooth', 0.08, 40); setTimeout(function () { sfx('scream', p); }, 60); if (p.ai) say(p, 'death'); break;
       case 'rise': big(p.name + ' RISES!', p.status === 'zombie' ? 'Now playing as a zombie' : 'A new zombie joins the horde', '#b6ff7a'); tone(60, 0.9, 'sawtooth', 0.08, 120); if (p.ai && p.status === 'zombie') say(p, 'rise'); break;
       case 'share': var to = game.byId(d.to); if (to) { rnd.pop('+' + d.n + ' AMMO', to.x, to.y, '#ffd65a', true); tone(880, 0.08, 'square', 0.05, 1320); } break;
-      case 'drop':
-        rnd.pop(d.kind === 'trap' ? 'TRAP SET' : 'LIT!', d.x, d.y, d.kind === 'trap' ? '#e0b070' : '#ff8a1a', true);
-        if (d.kind === 'trap') { tone(520, 0.06, 'square', 0.05); setTimeout(function () { tone(380, 0.08, 'square', 0.05); }, 70); } else SFX.play('fuse');
-        break;
-      case 'snare':
-        rnd.snare(d.x, d.y, d.owner ? (playerById(d.owner) || {}).color : null, d.removed); SFX.play('snare'); rnd.pop('SNARED!', d.x, d.y, '#9dff6a', true);
-        if (p && p.ai && p.status === 'alive' && Math.random() < 0.6) say(p, 'snare');
-        break;
-      case 'boom':
-        rnd.boom(d.x, d.y, d.r); rnd.shake = 2.2; SFX.play('boom'); flash('#ff8a1a', 0.75); setTimeout(function () { flash('#ffd23f', 0.35); }, 180);
-        if (d.zombies) rnd.pop(d.zombies > 1 ? d.zombies + ' ZOMBIES!' : 'BOOM!', d.x, d.y, '#ffd23f', true);
-        (d.hurt || []).forEach(function (pid) { var q = playerById(pid); if (q) { rnd.pop('-1 \u2665', q.x, q.y, '#ff6b88'); if (q.ai && q.hearts > 0) say(q, 'hit'); } });
-        if (p && p.ai && p.status === 'alive' && Math.random() < 0.6) setTimeout(function () { say(p, 'boom'); }, 500);
-        break;
       case 'round': if (d.round > 1) big('ROUND ' + d.round, d.moved ? 'The dead shuffle...' : '', '#c9b7ff'); break;
       case 'over': tone(392, 0.3, 'square', 0.05); break;
     }
@@ -119,13 +105,11 @@
     if (!vars.ally && p.allyPid) { var a = game.byId(p.allyPid); if (a) vars.ally = a.name; }
     rnd.bubble(p.id, window.ZTAI.line(p, kind, null, vars), p.color, kind === 'charge' || kind === 'scream');
   }
-  function itemsText(p) { var it = p.items || {}, s = ''; if (it.trap) s += ' \u00b7 Trap\u00d7' + it.trap; if (it.dynamite) s += ' \u00b7 TNT\u00d7' + it.dynamite; return s; }
   function aiReact(p, kind, info) {
     if (kind === 'think') {
       var vars = {}; if (p.allyPid) { var a = game.byId(p.allyPid); if (a) vars.ally = a.name; }
       rnd.bubble(p.id, window.ZTAI.line(p, 'think', info.why, vars), p.color, false);
     } else if (kind === 'share') say(p, 'share', { ally: info.ally.name });
-    else if (kind === 'drop') rnd.bubble(p.id, window.ZTAI.line(p, 'drop', info.item), p.color, info.item === 'dynamite');
   }
   function flash(color, a) {
     var el = $('flash'); if (!el) return;
@@ -194,7 +178,7 @@
         (p.status === 'alive' ? '<div class="crow">' + (C.showHeartsOnTV ? '<span class="hearts">' + heartsHtml(p.hearts) + '</span>' : '') + '<span class="weap"></span></div>' : '') + stat + rel;
       window.ZTRender.portrait(el.querySelector('.cport'), p);
       var wp = el.querySelector('.weap');
-      if (wp) { wp.appendChild(weaponCanvas(p.weapon)); wp.appendChild(document.createTextNode(W[p.weapon].short + itemsText(p))); }
+      if (wp) { wp.appendChild(weaponCanvas(p.weapon)); wp.appendChild(document.createTextNode(W[p.weapon].short)); }
       cards.appendChild(el);
     });
     $('log').innerHTML = g.messages.slice(-4).map(function (m) { return '<div>' + esc(m) + '</div>'; }).join('');
@@ -352,8 +336,7 @@
     }
     var map = { ArrowUp: { t: 'dir', d: 'U' }, ArrowDown: { t: 'dir', d: 'D' }, ArrowLeft: { t: 'dir', d: 'L' }, ArrowRight: { t: 'dir', d: 'R' },
       w: { t: 'dir', d: 'U' }, s: { t: 'dir', d: 'D' }, a: { t: 'dir', d: 'L' }, d: { t: 'dir', d: 'R' },
-      Enter: { t: 'exec' }, ' ': { t: 'exec' }, r: { t: 'roll' }, Backspace: { t: 'undo' }, z: { t: 'undo' }, Escape: { t: 'clear' }, q: { t: 'rot', v: -1 }, e: { t: 'rot', v: 1 },
-      t: { t: 'drop', item: 'trap' }, b: { t: 'drop', item: 'dynamite' }, x: { t: 'detonate' }, n: { t: 'endTurn' } };
+      Enter: { t: 'exec' }, ' ': { t: 'exec' }, r: { t: 'roll' }, Backspace: { t: 'undo' }, z: { t: 'undo' }, Escape: { t: 'clear' }, q: { t: 'rot', v: -1 }, e: { t: 'rot', v: 1 } };
     var m = map[k] || map[k.toLowerCase && k.toLowerCase()];
     if (!m) return;
     if (document.activeElement && document.activeElement.tagName === 'BUTTON' && (k === 'Enter' || k === ' ')) return;  // let focused buttons click
@@ -494,9 +477,7 @@
     var st = {
       t: 'state', phase: g.phase, mode: mode, round: g.round || 1,
       you: { id: p.id, name: p.name, color: p.color, dice: p.dice, hearts: p.hearts, maxHearts: C.maxHearts, ammo: p.ammo, weapon: p.weapon,
-        status: p.status, place: p.place, deadChoice: p.deadChoice, vip: vip() === p, coach: !!p.coach, aiCover: !!p.aiTakeover,
-        items: p.items || { trap: 0, dynamite: 0 }, canTrap: g.canDrop ? g.canDrop(p, 'trap') : false, canTNT: g.canDrop ? g.canDrop(p, 'dynamite') : false,
-        myBombs: (g.bombs || []).filter(function (b) { return b.owner === p.id; }).length },
+        status: p.status, place: p.place, deadChoice: p.deadChoice, vip: vip() === p, coach: !!p.coach, aiCover: !!p.aiTakeover },
       coach: p.coach && !p.aiTakeover && (mode === 'plan' || mode === 'fight' || mode === 'roll') ? coachFor(p) : null,
       full: g.players.length >= C.maxPlayers, vipName: vip() ? vip().name : '',
       cur: cur ? { id: cur.id, name: cur.name, color: cur.color, zombie: cur.status === 'zombie' } : null,
@@ -604,8 +585,6 @@
       case 'fightRoll': lightFx('fightRoll'); break;
       case 'fightResult': var f = game.fight || {}; lightFx('fightResult', { lost: f.lost || 0, zdead: !!f.zdead }); break;
       case 'death': lightFx('crunch'); break;
-      case 'snare': lightFx('fightResult', { zdead: true }); break;      // same bright burst as a zombie kill
-      case 'boom': lightFx('boom', { color: '#ff7a00' }); break;          // orange blast (Lights Helper v0.4+)
       case 'rise': lightFx('rise'); break;
       case 'escape': lightFx('escape', { color: p ? p.color : '#ffd65a' }); break;
       case 'pickup': lightFx('pickup', { color: d.kind === 'heart' ? '#ff6b88' : '#ffd65a' }); break;

@@ -32,6 +32,7 @@ DEFAULT_FX = {
     "helipad": {"color": "#ffc21a", "bri": 0.8, "ms": 1400},
     "gateNo": {"color": "#ff2020", "bri": 0.75, "ms": 500},
     "lunge": {"color": "#5cff2e", "dip": 0.35, "flickers": 2},
+    "boom": {"color": "#ff7a00", "flash": "#fff1c4", "bri": 1.0, "ms": 900},
     "crunch": {"color": "#ff0000", "bri": 1.0, "holdMs": 1500, "fadeMs": 2500},
     "rise": {"color": "#5cff2e", "bri": 0.55, "ms": 1200},
     "escape": {"colors": ["#ffc21a", "#fff0b8", "#ffa200"], "bri": 1.0, "steps": 6, "stepMs": 500},
@@ -574,6 +575,14 @@ class Engine:
             self.transient(gn.get("ms", 500) + 400)
             self.apply(gn.get("color", "#ff2020"), gn.get("bri", 0.75) * I, 0)
             self.after(gn.get("ms", 500), lambda: self.to_base(600))
+        elif k == "boom":                           # dynamite: white-hot flash, orange blast, then fade back
+            bm = fx.get("boom") or {}
+            ms = int(bm.get("ms", 900))
+            self.fighting = False
+            self.transient(ms + 1200)
+            self.apply(bm.get("flash", "#fff1c4"), bm.get("bri", 1.0) * I, 0)
+            self.after(160, lambda: self.apply(d.get("color") or bm.get("color", "#ff7a00"), bm.get("bri", 1.0) * I, 1))
+            self.after(ms, lambda: self.to_base(1000))
         elif k == "lunge":                          # zombies lurch: green-tinted dips on a few lights (skipped in room mode)
             lu = fx.get("lunge") or {}
             if self.per_light() and time.monotonic() >= self.busy_until:

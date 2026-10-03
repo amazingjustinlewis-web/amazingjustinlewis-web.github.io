@@ -60,7 +60,6 @@
   function freshStats(p) {
     p.hearts = C.startHearts; p.weapon = 'none'; p.ammo = 0;
     p.status = 'alive'; p.place = 0; p.deathRound = null; p.deadOrder = 0; p.zid = null; p.kills = 0;
-    p.items = { trap: 0, dynamite: 0 };
     if (!p.deadChoice) p.deadChoice = 'zombie';
   }
   G.addPlayer = function (o) {
@@ -104,7 +103,6 @@
     this.seed = seed == null ? Math.floor(Math.random() * 1e9) : seed;
     this.rand = mulberry(this.seed);
     this.tiles = []; this.tileMap = {}; this.zombies = []; this.pickups = []; this.gates = {}; this.gateSides = [];
-    this.traps = []; this.bombs = []; this.itemSeq = 0;
     this.zSeq = 0; this.puSeq = 0; this.tileSeq = 0; this.rollSeq = 0; this.fightSeq = 0;
     this.round = 1; this.escaped = 0; this.deadSeq = 0; this.messages = []; this.lastMsg = '';
     this.plan = []; this.roll = null; this.fight = null; this.lastFight = null; this.place = null; this.movesLeft = 0;
@@ -145,7 +143,7 @@
     var best = null;
     for (var i = 0; i < this.zombies.length; i++) {
       var z = this.zombies[i];
-      if (man(z, p) === 1 && z.owner !== p.id && !z.stunned) { if (!best || z.hp < best.hp) best = z; }
+      if (man(z, p) === 1 && z.owner !== p.id) { if (!best || z.hp < best.hp) best = z; }
     }
     return best;
   };
@@ -272,13 +270,6 @@
     if (this.checkOver()) return;
     var p = this.curP();
     this.plan = []; this.movesLeft = 0; this.roll = null; this.execSteps = 0; this.place = null; this.placedThisTurn = false;
-    var pz = p.status === 'zombie' && this.zombieById(p.zid);
-    if (pz && pz.stunned) {
-      pz.stunned--;
-      this.say(p.name + ' (zombie) is still dangling in a rope snare!');
-      this.event('turn', { pid: p.id }); this.event('snared', { pid: p.id, zid: pz.id });
-      this.endTurn(); return;
-    }
     if (p.status === 'zombie') {
       this.phase = 'zturn';
       this.say(p.name + ' (zombie) lurches...');
@@ -343,12 +334,10 @@
   };
   G.endRound = function () {
     var self = this, moved = 0;
-    this.bombs.slice().forEach(function (b) { self.detonate(b); });      // lit dynamite goes off at the end of the round
     var occupied = {};
     this.players.forEach(function (p) { if (p.status === 'alive') { var t = self.tileAtSq(p.x, p.y); if (t) occupied[t.id] = 1; } });
     this.zombies.forEach(function (z) {
       if (z.owner) return;
-      if (z.stunned) { z.stunned--; return; }
       var t = self.tileAtSq(z.x, z.y);
       if (t && occupied[t.id]) return;
       if (self.r() >= C.zombie.roundShuffleChance) return;
@@ -358,7 +347,6 @@
         if (self.walkable(nx, ny) && !self.zombieAt(nx, ny) && !self.livingAt(nx, ny).length && !self.anyPlayerAt(nx, ny)) { z.x = nx; z.y = ny; moved++; break; }
       }
     });
-    this.zombies.slice().forEach(function (z) { self.checkTrap(z); });
     // the fallen rise
     this.players.forEach(function (p) {
       if (p.status === 'dead' && self.round >= p.deathRound + C.riseAfterRounds) self.rise(p);
@@ -440,7 +428,7 @@
   };
   G.dangerAt = function (x, y) {     // would stepping here start a fight (with zombies where they are now)?
     var p = this.curP();
-    for (var i = 0; i < this.zombies.length; i++) { var z = this.zombies[i]; if (z.owner !== (p && p.id) && !z.stunned && Math.abs(z.x - x) + Math.abs(z.y - y) === 1) return true; }
+    for (var i = 0; i < this.zombies.length; i++) { var z = this.zombies[i]; if (z.owner !== (p && p.id) && Math.abs(z.x - x) + Math.abs(z.y - y) === 1) return true; }
     return false;
   };
   G.execute = function () {
@@ -478,7 +466,7 @@
   G.zombiesLunge = function (p) {
     var self = this, t = this.tileAtSq(p.x, p.y), n = 0;
     this.zombies.forEach(function (z) {
-      if (z.owner || z.stunned || self.tileAtSq(z.x, z.y) !== t) return;
+      if (z.owner || self.tileAtSq(z.x, z.y) !== t) return;
       var d0 = man(z, p);
       if (d0 <= 1 || d0 > C.zombie.lungeRange) return;
       var best = null;
@@ -490,7 +478,6 @@
       }
       if (best) { z.x = best.x; z.y = best.y; n++; }
     });
-    this.zombies.slice().forEach(function (z) { self.checkTrap(z); });
     if (n) { this.say(n === 1 ? 'A zombie lurches toward ' + p.name + '!' : n + ' zombies lurch toward ' + p.name + '!'); this.event('lunge', { n: n }); }
     return n;
   };
@@ -505,10 +492,6 @@
       }
       if (k === 'ammo') {
         p.ammo = Math.min(C.maxAmmo, p.ammo + C.ammoClipRounds); self.say(p.name + ' grabs an ammo clip.'); self.event('pickup', { pid: p.id, kind: k, private: true }); return false;
-      }
-      if (C.items[k]) {
-        if (p.items[k] >= C.items[k].max) return true;
-        p.items[k]++; self.say(p.name + ' picks up ' + (k === 'trap' ? 'a trap box' : 'some dynamite') + '!'); self.event('pickup', { pid: p.id, kind: k }); return false;
       }
       if (W[k]) {
         if (k === p.weapon && W[k].gun) {
@@ -572,67 +555,6 @@
       this.endTurn();
     }
     return tile;
-  };
-
-  // ------------------------------------------------------------ v0.4 items: trap boxes + dynamite
-  G.trapAt = function (x, y) { for (var i = 0; i < this.traps.length; i++) if (this.traps[i].x === x && this.traps[i].y === y) return this.traps[i]; return null; };
-  G.bombAt = function (x, y) { for (var i = 0; i < this.bombs.length; i++) if (this.bombs[i].x === x && this.bombs[i].y === y) return this.bombs[i]; return null; };
-  G.canDrop = function (p, kind) { return !!(p && p.status === 'alive' && C.items[kind] && p.items[kind] > 0 && !this.trapAt(p.x, p.y) && !this.bombAt(p.x, p.y)); };
-  G.dropItem = function (p, kind) {
-    if (!this.canDrop(p, kind)) return false;
-    p.items[kind]--;
-    var it = { id: ++this.itemSeq, x: p.x, y: p.y, owner: p.id, color: p.color };
-    (kind === 'trap' ? this.traps : this.bombs).push(it);
-    this.say(kind === 'trap' ? p.name + ' sets a trap box.' : p.name + ' lights some dynamite! It blows at the end of the round.');
-    this.event('drop', { pid: p.id, kind: kind, x: p.x, y: p.y });
-    this.changed();
-    return true;
-  };
-  function snag(g, z, cfg) {          // a trap / blast hits zombie z: wild ones per cfg.wild, player-zombies per cfg.playerZombie
-    var mode = z.owner ? cfg.playerZombie : cfg.wild;
-    if (mode === 'stun') { z.stunned = cfg.stunTurns || 1; return false; }
-    g.zombies.splice(g.zombies.indexOf(z), 1);
-    if (z.owner) { var o = g.byId(z.owner); if (o) { o.status = 'spectator'; o.deadChoice = 'spectate'; o.zid = null; } }
-    return true;
-  }
-  G.checkTrap = function (z) {        // zombie z just moved: did it step on a trap box?
-    if (!z || this.zombies.indexOf(z) === -1) return false;
-    var t = this.trapAt(z.x, z.y);
-    if (!t) return false;
-    this.traps.splice(this.traps.indexOf(t), 1);
-    var removed = snag(this, z, C.items.trap), owner = z.owner && this.byId(z.owner);
-    this.say(removed ? 'SNAP! A rope snare yanks a zombie up and away!' : 'SNAP! ' + (owner ? owner.name + ' (zombie)' : 'A zombie') + ' is caught in a rope snare!');
-    this.event('snare', { x: z.x, y: z.y, zid: z.id, removed: removed, owner: z.owner || null, by: t.owner, pid: t.owner });
-    this.changed();
-    return true;
-  };
-  G.blastArea = function (b) { var r = C.items.dynamite.radius; return function (x, y) { return Math.abs(x - b.x) <= r && Math.abs(y - b.y) <= r; }; };
-  G.detonate = function (b) {
-    if (this.bombs.indexOf(b) === -1) return;
-    this.bombs.splice(this.bombs.indexOf(b), 1);
-    var self = this, cfg = C.items.dynamite, inA = this.blastArea(b), gone = 0, hurt = [];
-    this.zombies.slice().forEach(function (z) { if (inA(z.x, z.y)) { if (snag(self, z, cfg)) gone++; } });
-    this.players.forEach(function (p) {
-      if (p.status !== 'alive' || !inA(p.x, p.y)) return;
-      p.hearts = Math.max(0, p.hearts - cfg.playerDamage); hurt.push(p.id);
-      if (p.hearts <= 0) self.killPlayer(p);
-    });
-    this.say('KA-BOOM! ' + (gone ? gone + ' zombie' + (gone > 1 ? 's' : '') + ' blown away' : 'The dynamite goes off') + (hurt.length ? '. Ouch, ' + hurt.map(function (id) { return self.byId(id).name; }).join(' and ') + '!' : '!'));
-    this.event('boom', { x: b.x, y: b.y, r: cfg.radius, zombies: gone, hurt: hurt, pid: b.owner });
-    this.changed();
-  };
-  G.detonateMine = function (p) {     // DETONATE button: all of your lit dynamite goes off now
-    var mine = this.bombs.filter(function (b) { return b.owner === p.id; });
-    if (!mine.length) return false;
-    var self = this; mine.forEach(function (b) { self.detonate(b); });
-    if (this.curP() === p && p.status !== 'alive') { this.plan = []; this.phase = 'between'; this.changed(); this.later(C.timing.banner, this.endTurn); }
-    else if (this.curP() === p && this.phase === 'plan') { var z = this.adjacentZombie(p); if (z) { this.plan = []; this.startFight(p, z, 'move'); } }
-    return true;
-  };
-  G.endTurnNow = function (p) {       // END TURN button: stop where you are, unused moves are lost
-    this.say(p.name + ' ends the turn.');
-    this.endTurn();
-    return true;
   };
 
   // ------------------------------------------------------------ helipad gates
@@ -768,11 +690,9 @@
     if (!path || !path.length) { this.say(p.name + ' (zombie) groans. Nobody in reach.'); this.endTurn(); return; }
     z.x = path[0][0]; z.y = path[0][1];
     this.changed();
-    if (this.checkTrap(z)) { this.later(C.timing.banner, this.endTurn); return; }
     this.later(C.timing.step, function () { this.zombieMove(p, z, steps - 1); });
   };
   G.adjacentLiving = function (z) {
-    if (z.stunned) return null;
     for (var i = 0; i < this.players.length; i++) { var q = this.players[i]; if (q.status === 'alive' && man(q, z) === 1) return q; }
     return null;
   };
@@ -836,12 +756,6 @@
     if (m.t === 'share') {     // on your own turn: before rolling, or right after your move
       var mine = (this.actorId() === pid && (this.phase === 'roll' || (this.phase === 'plan' && !this.plan.length))) || (this.phase === 'between' && this.curP() === p && p.status === 'alive');
       return mine && this.shareAmmo(p, this.byId(m.to), m.n);
-    }
-    if (m.t === 'drop' || m.t === 'detonate' || m.t === 'endTurn') {
-      if (this.actorId() !== pid || (this.phase !== 'roll' && this.phase !== 'plan') || p.status !== 'alive') return false;
-      if (m.t === 'drop') return this.dropItem(p, m.item);
-      if (m.t === 'detonate') return this.detonateMine(p);
-      return this.endTurnNow(p);
     }
     if (this.actorId() !== pid) return false;
     switch (this.phase) {

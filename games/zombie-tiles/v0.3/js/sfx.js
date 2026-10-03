@@ -1,5 +1,5 @@
 /* ZOMBIE TILES - procedural sound effects (v0.3). WebAudio only, no audio files: short, punchy, kid-friendly.
-   ZTSfx.play(name, {pitch}) ; names: crunch, victory, charge, scream, ouch, rotor, pop, fanfare, fuse, snare, boom, plus tone() for the small UI blips. */
+   ZTSfx.play(name, {pitch}) ; names: crunch, victory, charge, scream, ouch, rotor, pop, fanfare, plus tone() for the small UI blips. */
 (function (root) {
   'use strict';
   var AC = null, out = null, noiseBuf = null;
@@ -87,28 +87,6 @@
       var n = noise(A), f = A.createBiquadFilter(), g = gainEnv(A, t, 0.002, 0.5, 0.16); f.type = 'highpass'; f.frequency.value = 900;
       n.connect(f); f.connect(g); g.connect(dest); n.start(t); n.stop(t + 0.2);
       for (var i = 0; i < 7; i++) { var tt = t + 0.12 + Math.random() * 0.4, c = noise(A), cf = A.createBiquadFilter(), cg = gainEnv(A, tt, 0.001, 0.18, 0.025); cf.type = 'bandpass'; cf.frequency.value = 2500 + Math.random() * 3000; cf.Q.value = 4; c.connect(cf); cf.connect(cg); cg.connect(dest); c.start(tt); c.stop(tt + 0.04); }
-    },
-    // v0.4 dynamite lit: a short sizzle
-    fuse: function (A, dest, t) {
-      var n = noise(A), f = A.createBiquadFilter(), g = A.createGain(); f.type = 'highpass'; f.frequency.value = 3500;
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + 0.05); g.gain.setValueAtTime(0.22, t + 0.55); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.8);
-      var l = A.createOscillator(), lg = A.createGain(); l.frequency.value = 23; lg.gain.value = 0.12; l.connect(lg); lg.connect(g.gain); l.start(t); l.stop(t + 0.8);
-      n.connect(f); f.connect(g); g.connect(dest); n.start(t); n.stop(t + 0.85);
-    },
-    // v0.4 trap: SNAP + rope whoosh upward + cartoon boing
-    snare: function (A, dest, t) {
-      var c = noise(A), cf = A.createBiquadFilter(), cg = gainEnv(A, t, 0.002, 0.5, 0.05); cf.type = 'bandpass'; cf.frequency.value = 2400; cf.Q.value = 2;
-      c.connect(cf); cf.connect(cg); cg.connect(dest); c.start(t); c.stop(t + 0.08);
-      var n = noise(A), f = A.createBiquadFilter(), g = gainEnv(A, t + 0.04, 0.05, 0.3, 0.3); f.type = 'bandpass'; f.Q.value = 3;
-      f.frequency.setValueAtTime(400, t + 0.04); f.frequency.exponentialRampToValueAtTime(3000, t + 0.38); n.connect(f); f.connect(g); g.connect(dest); n.start(t + 0.04); n.stop(t + 0.45);
-      var o = osc(A, dest, 'sine', 180, 520, t + 0.3, 0.35, 0.3, 0.01); vibrato(A, o, t + 0.3, 0.35, 14, 60);
-    },
-    // v0.4 dynamite: big (but not scary) KA-BOOM
-    boom: function (A, dest, t) {
-      var n = noise(A), f = A.createBiquadFilter(), g = gainEnv(A, t, 0.004, 0.9, 1.1); f.type = 'lowpass';
-      f.frequency.setValueAtTime(3200, t); f.frequency.exponentialRampToValueAtTime(120, t + 1.0); n.connect(f); f.connect(g); g.connect(dest); n.start(t); n.stop(t + 1.2);
-      osc(A, dest, 'sine', 110, 30, t, 0.9, 0.8, 0.005); osc(A, dest, 'triangle', 70, 24, t + 0.02, 0.7, 0.45);
-      for (var i = 0; i < 6; i++) { var tt = t + 0.25 + Math.random() * 0.6, d = noise(A), df = A.createBiquadFilter(), dg = gainEnv(A, tt, 0.002, 0.15, 0.04); df.type = 'bandpass'; df.frequency.value = 900 + Math.random() * 1500; d.connect(df); df.connect(dg); dg.connect(dest); d.start(tt); d.stop(tt + 0.06); }
     },
     // escape cinematic: ta-da fanfare with a little crowd cheer
     fanfare: function (A, dest, t) {

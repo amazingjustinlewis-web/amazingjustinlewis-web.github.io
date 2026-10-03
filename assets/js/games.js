@@ -89,18 +89,26 @@ window.GAMES = [
     goodToKnow: [
       'Cartoon zombies, no gore: fights are dice rolls with big result text.',
       'Players can be knocked out and come back as a zombie (or just watch).',
+      'Trap boxes catch zombies in a cartoon rope snare, and dynamite goes off with a big cartoon boom and a screen shake.',
       'Each phone shows its own hearts and ammo, so a little secrecy is part of the fun.',
       'Short, cartoony sound effects from the TV (war cries, little screams, a crunch when a fight goes wrong): press M to mute.',
       'Computer players (AI) can fill empty seats, each with its own personality and an Easy, Normal or Ruthless setting.',
       'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi). No phones? Play hot-seat on one screen.',
-      'Optional Philips Hue lights: short colour flickers plus red and gold flashes in fights and escapes. Leave them off if anyone is sensitive to flashing lights.'
+      'Optional Philips Hue lights: short colour flickers plus red, gold and orange flashes in fights, escapes and explosions. Leave them off if anyone is sensitive to flashing lights.'
     ],
     versions: [
       {
-        id: 'v0.3',
-        name: 'AI Crew',
+        id: 'v0.4',
+        name: 'Traps & TNT',
         current: true,
         play: 'games/zombie-tiles/index.html',
+        notes: 'Pick up trap boxes and dynamite and drop them from your phone. Zombies that step on a trap get caught in a cartoon rope snare; lit dynamite goes off at the end of the round (or when you press DETONATE) and clears the zombies around it, but it hurts players standing too close. New phone buttons: RESET MOVES and END TURN. Players and zombies are now little animated characters that walk square by square (you can draw your own). Computer players use traps and dynamite too.'
+      },
+      {
+        id: 'v0.3',
+        name: 'AI Crew',
+        current: false,
+        play: 'games/zombie-tiles/v0.3/index.html',
         notes: 'Add computer players with personalities (cautious looter, reckless fighter, helipad sprinter, sneaky backstabber, loyal buddy) and Easy / Normal / Ruthless difficulty. They show their planned path, chat in speech bubbles, sometimes share ammo with a teammate (or leave them behind at the helipad), and cover for a phone that drops out. Optional coach hints on a phone. New sound effects and stronger light effects for everyone. v0.3.1: a helicopter celebration when someone escapes, a gentle "your turn" buzz on phones (switchable), and placing a tile now always ends your turn.'
       },
       {

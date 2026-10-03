@@ -1,4 +1,4 @@
-# Zombie Tiles (working title) - prototype v0.3
+# Zombie Tiles (working title) - prototype v0.4
 
 A zombie tile-laying board game for a TV or big screen. Up to 4 players use their
 phones as controllers (Jackbox-style), or play hot-seat on one screen.
@@ -11,7 +11,20 @@ Plain HTML5 + JavaScript (canvas). No build step, no server of our own.
 4. No phones? Add hot-seat players in the lobby and play with the keyboard or the on-screen pad.
 
 TV keys: arrows plan a path, Enter = roll / execute / place, Backspace = undo,
-Esc = clear the path, Q/E = rotate a tile, M = mute, L = Hue lights off/on.
+Esc = reset moves, N = end turn, T = drop a trap box, B = drop dynamite, X = detonate your dynamite,
+Q/E = rotate a tile, M = mute, L = Hue lights off/on.
+
+## Traps, dynamite and sprites (new in v0.4)
+- **Trap boxes** and **dynamite** are new pickups (max 2 of each). On your turn (before rolling or while planning) press
+  DROP TRAP / DROP TNT on your phone (T / B in hot-seat) to leave one on your square.
+- A zombie that steps on a trap is caught in a rope snare and yanked away (player-zombies just dangle for 2 turns).
+- Lit dynamite goes off at the end of the round, or right away with DETONATE (X). It clears zombies in the 3x3 area
+  around it and takes 1 heart from any player standing there (you included). Big boom, screen shake, orange Hue flash.
+- Phone buttons: RESET MOVES clears your planned path; END TURN (tap twice) stops where you are and gives up the rest of your moves.
+- AI players drop traps when zombies come close and light dynamite when zombies bunch up, then walk out of the blast.
+- Tokens are now little animated characters that walk square to square. Draw your own: see `assets/sprites/README.md`.
+- All numbers are in `js/config.js` (`items`, `sprites`).
+- **Placing a tile ends your turn** (since v0.3.1).
 
 ## Computer players (new in v0.3)
 Add AI players in the TV lobby (click the personality and difficulty buttons, then + ADD AI) or from the host
@@ -42,7 +55,8 @@ Tiles are in `js/tiles.js` (8x8 text grids, legend at the top) with how many of 
 | `js/render.js` | Board renderer (pixel-art tiles, tokens, path preview, tile ghost) |
 | `js/dice.js` | The six dice styles, drawn in code |
 | `js/ai.js` | AI players: path planning, personalities, difficulty, coach hints, reactions |
-| `js/sfx.js` | Procedural sound effects (WebAudio): crunch, victory, charge, scream |
+| `js/sfx.js` | Procedural sound effects (WebAudio): crunch, victory, charge, scream, rotor, fireworks, fuse, snare, boom |
+| `js/sprites.js`, `assets/sprites/` | Character sprite sheets (walk cycles); placeholders drawn in code, your own PNGs optional |
 | `js/net.js` | WebRTC via PeerJS and its free cloud broker; reconnect handling |
 | `js/vendor/` | PeerJS 1.5.4 (MIT) and qrcode-generator 1.4.4 (MIT) |
 | `assets/` | Zero to Phi logo, fonts (OFL) |
