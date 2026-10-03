@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Zombie Tiles (working title) - TV | Zero to Phi</title>
+<meta name="description" content="Zombie Tiles (working title): a zombie tile-laying board game for the TV. Up to 4 players use their phones as controllers. Prototype v0.1 by Zero to Phi.">
+<meta name="theme-color" content="#14121b">
+<meta name="robots" content="noindex">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/tv.css">
+</head>
+<body>
+<canvas id="board" aria-label="Game board"></canvas>
+
+<header id="top">
+  <div class="brand"><img src="assets/logo.svg" alt="" width="49" height="40"><span>ZERO&nbsp;TO&nbsp;PHI</span></div>
+  <div class="title">ZOMBIE TILES <span class="wt">working title</span><span class="proto">PROTOTYPE v0.1</span></div>
+  <div class="top-right"><span id="roundInfo"></span><span id="deckInfo"></span><span id="joinInfo"></span></div>
+</header>
+
+<aside id="side">
+  <div id="cards"></div>
+  <div id="pad" hidden>
+    <div class="pad-title">HOT-SEAT PAD <span id="padWho"></span></div>
+    <div class="pad-grid">
+      <button data-k="U" class="pu" aria-label="Up">&#9650;</button>
+      <button data-k="L" class="pl" aria-label="Left">&#9664;</button>
+      <button data-k="exec" class="pc" id="padExec">GO</button>
+      <button data-k="R" class="pr" aria-label="Right">&#9654;</button>
+      <button data-k="D" class="pd" aria-label="Down">&#9660;</button>
+    </div>
+    <div class="pad-row"><button data-k="roll" id="padRoll">ROLL</button><button data-k="undo">UNDO</button></div>
+    <div class="pad-keys">Keys: arrows, Enter = go/roll, Backspace = undo, Q/E rotate</div>
+  </div>
+  <div id="log"></div>
+</aside>
+
+<div id="banner"><canvas id="bannerDice" width="240" height="120"></canvas><div><div class="who" id="bWho"></div><div class="what" id="bWhat"></div><div class="sub" id="bSub"></div></div></div>
+<div id="big" aria-live="polite"></div>
+
+<div id="fight" class="overlay" hidden>
+  <div class="fpanel">
+    <div class="fhead">FIGHT!</div>
+    <div class="frow">
+      <div class="fside fplayer"><div class="fname" id="fpName"></div><div class="fweap" id="fpWeap"></div><canvas id="fpDice" width="420" height="200"></canvas><div class="ftotal" id="fpTot"></div></div>
+      <div class="fvs">VS</div>
+      <div class="fside fzombie"><div class="fname" id="fzName">ZOMBIE</div><div class="fweap" id="fzHp"></div><canvas id="fzDice" width="420" height="200"></canvas><div class="ftotal" id="fzTot"></div></div>
+    </div>
+    <div class="fresult" id="fRes"></div>
+    <div class="fprompt" id="fPrompt"></div>
+  </div>
+</div>
+
+<section id="lobby" class="screen">
+  <div class="lobby-left">
+    <div class="presents"><img src="assets/logo.svg" alt="" width="49" height="40"> ZERO TO PHI presents <a id="backLink" class="back" href="../zombie-tiles.html">&larr; game page</a></div>
+    <div id="phoneHint" class="phone-hint" hidden>On a phone? This is the <b>TV screen</b>. Open it on the TV, then join with the <a href="controller.html">phone controller</a>.</div>
+    <h1>ZOMBIE TILES <small>working title</small></h1>
+    <p class="tagline">Explore the city tile by tile. Find the helipad. Hope the guard says <b>YES</b>.</p>
+    <div class="join-box">
+      <canvas id="qr" width="300" height="300" aria-label="QR code to join"></canvas>
+      <div class="join-text">
+        <div class="join-label">JOIN ON YOUR PHONE</div>
+        <div class="code" id="code">----</div>
+        <div class="url" id="joinUrl"></div>
+        <div class="netstatus" id="netStatus">Connecting to the room server&hellip;</div>
+      </div>
+    </div>
+  </div>
+  <div class="lobby-right">
+    <h2>PLAYERS <span id="pcount">0/4</span></h2>
+    <ul id="lobbyPlayers"></ul>
+    <div class="hotseat">
+      <div class="hs-title">No phones? Add a hot-seat player (plays on this screen)</div>
+      <div class="hs-row"><input id="hsName" maxlength="12" placeholder="Name" aria-label="Hot-seat player name"><button id="hsDice" class="ghost">Dice: Bone</button><button id="hsAdd">+ ADD</button></div>
+    </div>
+    <button id="startBtn" class="start" disabled>START GAME</button>
+    <div class="howto">Phones: scan the code, type a name, pick your dice. The first player to join can start the game from their phone.</div>
+  </div>
+</section>
+
+<section id="results" class="screen" hidden>
+  <h1 id="resTitle">THE CHOPPER LIFTS OFF!</h1>
+  <ol id="resList"></ol>
+  <div class="res-btns"><button id="againBtn" class="start">PLAY AGAIN</button><button id="lobbyBtn" class="ghost">CHANGE PLAYERS</button></div>
+  <p class="res-note">Press Enter to play again &middot; the first player can also restart from their phone.</p>
+</section>
+
+<div id="netBadge"></div>
+
+<script src="js/vendor/peerjs.min.js"></script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/config.js"></script>
+<script src="js/tiles.js"></script>
+<script src="js/game.js"></script>
+<script src="js/dice.js"></script>
+<script src="js/net.js"></script>
+<script src="js/render.js"></script>
+<script src="js/host.js"></script>
+</body>
+</html>

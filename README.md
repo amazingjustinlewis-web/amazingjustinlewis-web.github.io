@@ -24,10 +24,13 @@ games-site/
 │   └── img/
 │       ├── logo.svg, logo-light.svg, favicon.svg    The logo in use (concept 1, "Unfurl")
 │       ├── logo-concepts/  The three logo concepts (+ index.html preview sheet)
-│       └── charge-hop/     Screenshots, cover, share image
+│       ├── charge-hop/     Screenshots, cover, share image
+│       └── zombie-tiles/   Zombie Tiles cover, screenshots, share image
 └── games/
     ├── charge-hop.html     Charge Hop details page
-    └── charge-hop/         The game itself, current build v3 "The Lava Run"
+    ├── charge-hop/         The game itself, current build v3 "The Lava Run"
+    ├── zombie-tiles.html   Zombie Tiles (working title) details page
+    └── zombie-tiles/       TV/host page (index.html) + phone controller (controller.html), v0.1; see its README
 ```
 
 ## The three sections

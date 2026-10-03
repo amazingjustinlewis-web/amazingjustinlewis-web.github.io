@@ -73,5 +73,34 @@ window.GAMES = [
       // Older builds can be added here once they're in the repo, e.g.
       // ,{ id: 'v2', name: 'The Long Way', current: false, play: 'games/charge-hop/v2/index.html', notes: '...' }
     ]
+  },
+  {
+    id: 'zombie-tiles',
+    title: 'Zombie Tiles',          // WORKING TITLE (placeholder name)
+    pitch: 'Explore a zombie city tile by tile, fight with dice and race for the helipad. On your TV, with phones as controllers.',
+    cover: 'assets/img/zombie-tiles/cover-card.webp',
+    coverAlt: 'Zombie Tiles title art: a pixel-art city board with a fortified helipad, zombies and four stylised dice',
+    details: 'games/zombie-tiles.html',
+    status: 'Prototype',
+    tags: ['1\u20134 players', 'TV + phones', 'Working title'],
+    accent: '#b6ff7a',
+    sections: ['family'],
+    intensity: 4,
+    goodToKnow: [
+      'Cartoon zombies, no gore: fights are dice rolls with big result text.',
+      'Players can be knocked out and come back as a zombie (or just watch).',
+      'Each phone shows its own hearts and ammo, so a little secrecy is part of the fun.',
+      'Simple bleeps and boops from the TV: press M to mute.',
+      'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi). No phones? Play hot-seat on one screen.'
+    ],
+    versions: [
+      {
+        id: 'v0.1',
+        name: 'First playable',
+        current: true,
+        play: 'games/zombie-tiles/index.html',
+        notes: 'Working title. Open it on a TV or big screen; phones join with the QR code. Hot-seat on one screen works too.'
+      }
+    ]
   }
 ];
