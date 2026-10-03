@@ -1,0 +1,4 @@
+private/
+private-mock/
+__pycache__/
+*.pyc

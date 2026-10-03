@@ -112,7 +112,6 @@
       case 'lobby':
         s1 = "You're in!"; s2 = y.vip ? 'Start when everyone has joined.' : 'Waiting for ' + esc((s.lobby[0] || {}).name || 'the first player') + ' to start...';
         extra = '<ul class="plist">' + s.lobby.map(function (q) { return '<li><span class="d" style="background:' + q.color + '"></span>' + esc(q.name) + '<span class="lab">' + (q.local ? 'hot-seat' : 'phone') + '</span></li>'; }).join('') + '</ul>' +
-          hueHtml(s.hue, y.vip) +
           (y.vip ? '<button class="big-btn" id="startGame">START GAME</button>' : '') + '<button class="small" id="changeDice">Change dice (' + esc(window.ZTDice.style(y.dice).name) + ')</button>';
         break;
       case 'roll': s1 = 'YOUR TURN!'; s2 = 'Roll to move'; hot = true; rollShow = rollOn = true; break;
@@ -189,36 +188,8 @@
       lastMode = mode;
     }
   }
-  // Philips Hue (v0.2): only shown when the TV has a Lights Helper connected. The host phone (first player) picks rooms.
-  function hueHtml(h, vip) {
-    if (!h) return '';
-    if (!h.canEdit) {
-      if (!h.ok || !h.enabled || !h.selected.length) return '';
-      var names = h.groups.filter(function (g) { return h.selected.indexOf(g.id) !== -1; }).map(function (g) { return g.name; });
-      return '<div class="huecard mini">\uD83D\uDCA1 Hue lights on: ' + esc(names.join(', ')) + '</div>';
-    }
-    if (!h.ok) return '<div class="huecard warn"><div class="ht">\uD83D\uDCA1 Lights helper found</div><div class="hs">' + esc(h.msg) + '</div></div>';
-    var out = '<div class="huecard"><div class="ht">\uD83D\uDCA1 Philips Hue found' + (h.mock ? ' (mock)' : '') + '</div><div class="hs">Use your lights in this game?</div>' +
-      '<div class="hchoice"><button data-hue="on" class="' + (h.enabled ? 'on' : '') + '">Yes</button><button data-hue="off" class="' + (!h.enabled ? 'on' : '') + '">No</button></div>';
-    if (h.enabled) {
-      out += '<div class="hlist" role="group" aria-label="Rooms and zones">' + h.groups.map(function (g) {
-        var on = h.selected.indexOf(g.id) !== -1;
-        return '<button class="hroom' + (on ? ' on' : '') + '" data-g="' + esc(g.id) + '" role="checkbox" aria-checked="' + on + '"><span class="box">' + (on ? '\u2714' : '') + '</span><span class="hn">' + esc(g.name) + '</span><span class="hk">' + (g.type === 'Zone' ? 'Zone' : 'Room') + ' \u00b7 ' + g.lights + ' light' + (g.lights === 1 ? '' : 's') + '</span></button>';
-      }).join('') + '</div>' +
-        (h.selected.length ? '<button class="small htest" data-hue="test">Flash ticked rooms</button>' : '<div class="hs warnc">Tick at least one room.</div>');
-    }
-    return out + '</div>';
-  }
   function wireExtra() {
     var b;
-    Array.prototype.forEach.call(document.querySelectorAll('#extra .huecard button'), function (bt) {
-      press(bt, function () {
-        var v = bt.getAttribute('data-hue'), g = bt.getAttribute('data-g');
-        if (v === 'on' || v === 'off') send({ t: 'hue', enabled: v === 'on' });
-        else if (v === 'test') send({ t: 'hue', test: true });
-        else if (g) send({ t: 'hue', toggle: g });
-      });
-    });
     if ((b = $('startGame'))) press(b, function () { send({ t: 'start' }); });
     if ((b = $('again'))) press(b, function () { send({ t: 'again' }); });
     if ((b = $('toSpectate'))) press(b, function () { send({ t: 'deadChoice', v: 'spectate' }); });

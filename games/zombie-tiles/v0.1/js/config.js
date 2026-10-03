@@ -1,12 +1,12 @@
 /* =====================================================================
-   ZOMBIE TILES (working title) - TUNABLE RULES  v0.2
+   ZOMBIE TILES (working title) - TUNABLE RULES  v0.1
    ---------------------------------------------------------------------
    Every rule number lives here. Change a value, save, refresh the TV.
    Phones read the same file (dice styles, colours, labels).
    ===================================================================== */
 (function (root) {
   root.ZT_CONFIG = {
-    version: '0.2',
+    version: '0.1',
 
     // ---- board ----
     tileSize: 8,                 // squares per tile side (data model keeps w/h per tile for later)
@@ -73,30 +73,6 @@
       { id: 'candy',    name: 'Candy',     face: '#ffa3d5', edge: '#e0549f', pip: '#ffffff', mood: 'happy' },
       { id: 'sunshine', name: 'Sunshine',  face: '#ffd84a', edge: '#e09a12', pip: '#d0401a', mood: 'happy' }
     ],
-
-    // ---- Philips Hue lights (optional, v0.2) ----
-    // Lights only work when the "Lights Helper" runs on a PC on the same network (see lights-helper/README.md).
-    // The helper reads these values when it joins the room. Colours are hex; brightness values are 0..1.
-    // All effects are short and return to the base look; the lights' original state is restored when the
-    // game ends, when Hue is switched off, or when the TV disconnects.
-    hue: {
-      intensity: 0.85,           // master scale for effect brightness (0..1). Lower = subtler.
-      ambient: { color: '#1d4a6e', bri: 0.22, transitionMs: 2500 },   // moody base during play
-      turn: { mix: 0.6, bri: 0.34, transitionMs: 1200, flickers: 2 },  // base tinted toward the player's colour
-      zombieTurnColor: '#5cff2e',                                      // tint for a player-zombie's turn
-      roll: { flickers: 3, dip: 0.3, gapMs: 140, lights: 3 },          // quick brightness dips on dice rolls
-      fight: { color: '#ff1a1a', bri: 0.7, low: 0.22, pulses: 3, pulseMs: 850 },  // red pulses while fighting
-      hit: { color: '#ff0000', bri: 0.85, ms: 450 },                   // player loses hearts
-      kill: { color: '#ffffff', bri: 0.75, ms: 250 },                  // zombie destroyed: short white pop
-      crunch: { color: '#ff0000', bri: 1.0, holdMs: 1500, fadeMs: 2500 },   // a player is taken out
-      rise: { color: '#5cff2e', bri: 0.55, ms: 1200 },                 // a fallen player rises
-      escape: { colors: ['#ffc21a', '#fff0b8', '#ffa200'], bri: 1.0, steps: 6, stepMs: 500 },  // helicopter escape
-      over: { holdMs: 4000 },     // final look is held this long before the original lights come back
-      restoreTransitionMs: 1500,
-      disconnectRestoreMs: 30000, // TV gone this long -> restore the lights
-      rate: { lightsPerSec: 8, groupsPerSec: 1, perLightMax: 6 }   // Hue limits: ~10/s lights, ~1/s groups.
-      // perLightMax: up to this many selected lights are driven individually (snappier); more use room/zone commands
-    },
 
     // ---- networking ----
     peerPrefix: 'ztp-zombietiles-v01-',

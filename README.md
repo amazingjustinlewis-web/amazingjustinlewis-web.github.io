@@ -30,7 +30,8 @@ games-site/
     ├── charge-hop.html     Charge Hop details page
     ├── charge-hop/         The game itself, current build v3 "The Lava Run"
     ├── zombie-tiles.html   Zombie Tiles (working title) details page
-    └── zombie-tiles/       TV/host page (index.html) + phone controller (controller.html), v0.1; see its README
+    └── zombie-tiles/       TV/host page (index.html) + phone controller (controller.html), v0.2;
+                            lights-helper/ = optional Philips Hue helper for a PC; v0.1/ = previous build. See its README
 ```
 
 ## The three sections

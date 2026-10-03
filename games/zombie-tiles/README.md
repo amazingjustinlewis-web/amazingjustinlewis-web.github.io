@@ -1,4 +1,4 @@
-# Zombie Tiles (working title) - prototype v0.1
+# Zombie Tiles (working title) - prototype v0.2
 
 A zombie tile-laying board game for a TV or big screen. Up to 4 players use their
 phones as controllers (Jackbox-style), or play hot-seat on one screen.
@@ -11,7 +11,13 @@ Plain HTML5 + JavaScript (canvas). No build step, no server of our own.
 4. No phones? Add hot-seat players in the lobby and play with the keyboard or the on-screen pad.
 
 TV keys: arrows plan a path, Enter = roll / execute / place, Backspace = undo,
-Esc = clear the path, Q/E = rotate a tile, M = mute.
+Esc = clear the path, Q/E = rotate a tile, M = mute, L = Hue lights off/on.
+
+## Philips Hue lights (optional, new in v0.2)
+Run the Lights Helper on a PC on the same network (`lights-helper/`, see its README). It joins the
+room as a non-player, and the host phone / TV lobby then asks "Use your lights in this game?" with a
+checklist of the bridge's rooms and zones. Without the helper the game is exactly the same as v0.1.
+Effect colours, brightness, lengths and Hue rate limits are in the `hue` block of `js/config.js`.
 
 ## Tuning
 Every rule number is in `js/config.js` (hearts, weapon bonuses, ammo, fight margins, zombie
@@ -29,6 +35,7 @@ Tiles are in `js/tiles.js` (8x8 text grids, legend at the top) with how many of 
 | `js/net.js` | WebRTC via PeerJS and its free cloud broker; reconnect handling |
 | `js/vendor/` | PeerJS 1.5.4 (MIT) and qrcode-generator 1.4.4 (MIT) |
 | `assets/` | Zero to Phi logo, fonts (OFL) |
+| `lights-helper/` | Optional Philips Hue helper for a PC (Python, standard library): pairing, effects, mock bridge |
 
 ## URL options (TV page)
 `?hotseat=3` adds 3 hot-seat players, `&autostart` starts at once, `&seed=42` fixes the shuffle,

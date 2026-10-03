@@ -91,14 +91,22 @@ window.GAMES = [
       'Players can be knocked out and come back as a zombie (or just watch).',
       'Each phone shows its own hearts and ammo, so a little secrecy is part of the fun.',
       'Simple bleeps and boops from the TV: press M to mute.',
-      'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi). No phones? Play hot-seat on one screen.'
+      'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi). No phones? Play hot-seat on one screen.',
+      'Optional Philips Hue lights: short colour flickers plus red and gold flashes in fights and escapes. Leave them off if anyone is sensitive to flashing lights.'
     ],
     versions: [
       {
-        id: 'v0.1',
-        name: 'First playable',
+        id: 'v0.2',
+        name: 'Lights On',
         current: true,
         play: 'games/zombie-tiles/index.html',
+        notes: 'Same game as v0.1, plus optional Philips Hue lights that react to turns, dice, fights and escapes (needs the Lights Helper on a PC).'
+      },
+      {
+        id: 'v0.1',
+        name: 'First playable',
+        current: false,
+        play: 'games/zombie-tiles/v0.1/index.html',
         notes: 'Working title. Open it on a TV or big screen; phones join with the QR code. Hot-seat on one screen works too.'
       }
     ]

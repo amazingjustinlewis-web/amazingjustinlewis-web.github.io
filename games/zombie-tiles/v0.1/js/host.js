@@ -63,7 +63,6 @@
       case 'over': tone(392, 0.3, 'square', 0.05); break;
     }
     if (type === 'escape' || type === 'death' || type === 'fightResult' || type === 'over' || type === 'rise') phoneDirty = true;
-    lightsForEvent(type, d, p);
   }
   var Ordinal = window.ZTGame.ordinal;
 
@@ -104,7 +103,6 @@
     $('roundInfo').innerHTML = 'Round <b>' + g.round + '</b>';
     $('deckInfo').innerHTML = 'Tiles left <b>' + g.deck.length + '</b>';
     $('joinInfo').innerHTML = net && net.status === 'online' ? 'Room <b>' + net.code + '</b>' : '';
-    $('lightInfo').innerHTML = lightsOn() ? '\uD83D\uDCA1 <b>Hue</b>' : '';
     // cards
     var cards = $('cards'); cards.innerHTML = '';
     var cur = g.curP();
@@ -215,7 +213,6 @@
     $('startBtn').disabled = !game.players.length;
     $('hsDice').textContent = 'Dice: ' + C.dice[hsDice].name;
     $('hsAdd').disabled = game.players.length >= C.maxPlayers;
-    renderHuePanel();
   }
   $('hsDice').onclick = function () { hsDice = (hsDice + 1) % C.dice.length; dirty = true; };
   function addHotseat(name) {
@@ -227,7 +224,7 @@
   $('hsName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.stopPropagation(); addHotseat(); } });
   $('startBtn').onclick = function () { startGame(); };
   $('againBtn').onclick = function () { startGame(); };
-  $('lobbyBtn').onclick = function () { game.phase = 'lobby'; game.changed(); lightFx('end', { reason: 'back to the lobby' }); };
+  $('lobbyBtn').onclick = function () { game.phase = 'lobby'; game.changed(); };
   function startGame() { if (!game.players.length) return; requestWake(); game.start(SEED); layout(); rnd.snap(game); }
 
   function renderResults() {
@@ -250,7 +247,6 @@
     if (e.target && e.target.tagName === 'INPUT') return;
     var k = e.key;
     if (k === 'm' || k === 'M') { muted = !muted; return; }
-    if ((k === 'l' || k === 'L') && lightsAvailable()) { setLights(!lights.enabled, lights.selected); if (game.phase !== 'lobby') big(lights.enabled ? 'LIGHTS ON' : 'LIGHTS OFF', lights.enabled ? 'Hue effects are back' : 'Your lights go back to normal', '#ffd65a'); return; }
     if (game.phase === 'lobby') {
       if (k === 'Enter' && document.activeElement === document.body && game.players.length) { startGame(); e.preventDefault(); }
       return;
@@ -307,7 +303,6 @@
   }
   function onPhoneMessage(conn, m) {
     if (!m || typeof m !== 'object') return;
-    if ((m.t === 'hello' && m.role === 'lights') || conn._lights) { onLightsMessage(conn, m); return; }
     if (m.t === 'hello') {
       var cid = String(m.clientId || conn.peer).slice(0, 40), c = clients[cid];
       var p = c ? game.byId(c.pid) : null;
@@ -339,11 +334,9 @@
       return;
     }
     if (m.t === 'leave') { if (game.phase === 'lobby') { game.removePlayer(pl.id); delete clients[conn._cid]; } return; }
-    if (m.t === 'hue') { if (game.players[0] === pl) hueIntent(m); return; }
     game.intent(pl.id, m);
   }
   function onPhoneClose(conn) {
-    if (conn._lights) { if (conn === lights.conn) { lights.conn = null; lights.st = null; dirty = phoneDirty = true; } return; }
     var cl = clients[conn._cid];
     if (cl && cl.conn === conn) { var p = game.byId(cl.pid); if (p) { p.connected = false; game.changed(); } }
   }
@@ -354,7 +347,6 @@
       if (p && p.connected && now - cl.seen > 15000) { p.connected = false; ch = true; }
     }
     if (ch) game.changed();
-    if (lights.conn && now - lights.seen > 20000) { lights.conn = null; lights.st = null; dirty = true; }
     phoneDirty = true;                   // heartbeat: resend state every few seconds
     for (var c2 in clients) clients[c2].lastSent = '';
   }, 3000);
@@ -382,8 +374,7 @@
       place: g.phase === 'place' && g.place ? { slots: g.place.slots.length, tile: window.ZT_TILES.byId[g.place.tpl].name } : null,
       msg: g.lastMsg || '',
       lobby: g.phase === 'lobby' ? g.players.map(function (q) { return { name: q.name, color: q.color, dice: q.dice, local: q.local }; }) : null,
-      results: g.phase === 'over' ? g.results : null,
-      hue: g.phase === 'lobby' ? hueView(p) : null
+      results: g.phase === 'over' ? g.results : null
     };
     return st;
   }
@@ -398,126 +389,6 @@
       net.send(cl.conn, st);
     }
   }
-
-  // ------------------------------------------------------------ Philips Hue lights (optional) via the Lights Helper
-  // The helper (lights-helper/ on a PC) joins the room as a non-player peer, reports the bridge's rooms/zones,
-  // and turns the events we send into light effects. Without it nothing here does anything.
-  var lights = { conn: null, seen: 0, st: null, enabled: false, selected: [], adopted: false };
-  function lightsAvailable() { return !!(lights.conn && lights.conn.open && lights.st && lights.st.ok); }
-  function lightsOn() { return lightsAvailable() && lights.enabled && lights.selected.length > 0; }
-  function lightsSend(m) { if (net && lights.conn && lights.conn.open) net.send(lights.conn, m); }
-  function inGame() { return game.phase !== 'lobby' && game.phase !== 'over'; }
-  function lightFx(k, d) { if (!lightsOn()) return; var m = d || {}; m.t = 'fx'; m.k = k; lightsSend(m); }
-  function lightsSync() {
-    lightsSend({ t: 'lights-config', enabled: lights.enabled && lightsAvailable(), selected: lights.selected });
-    if (lightsOn() && inGame()) {                       // switched on (or helper rejoined) mid-game
-      lightFx('start');
-      var cur = game.curP && game.curP();
-      if (cur) lightFx('turn', { color: cur.color, zombie: cur.status === 'zombie' });
-    }
-    dirty = true; phoneDirty = true;
-  }
-  function setLights(enabled, selected) {
-    var ids = (lights.st && lights.st.groups || []).map(function (g) { return g.id; });
-    lights.enabled = !!enabled;
-    lights.selected = (selected || []).map(String).filter(function (id) { return ids.indexOf(id) !== -1; });
-    lightsSync();
-  }
-  function hueIntent(m) {
-    if (!lightsAvailable()) return;
-    if (typeof m.enabled === 'boolean') setLights(m.enabled, lights.selected);
-    if (m.toggle != null && game.phase === 'lobby') {
-      var id = String(m.toggle), sel = lights.selected.slice(), i = sel.indexOf(id);
-      if (i === -1) sel.push(id); else sel.splice(i, 1);
-      setLights(lights.enabled, sel);
-    }
-    if (m.test) lightsSend({ t: 'lights-test', groups: lights.selected.length ? lights.selected : [] });
-  }
-  function onLightsMessage(conn, m) {
-    if (m.t === 'hello') {
-      if (lights.conn && lights.conn !== conn) try { lights.conn.close(); } catch (e) {}
-      conn._lights = true; lights.conn = conn; lights.seen = Date.now(); lights.st = null;
-      net.send(conn, { t: 'lights-welcome', room: net.code, fx: C.hue });
-      dirty = true; phoneDirty = true;
-      return;
-    }
-    if (conn !== lights.conn) return;
-    lights.seen = Date.now();
-    if (m.t === 'ping') { net.send(conn, { t: 'pong' }); return; }
-    if (m.t === 'lights-status') {
-      var first = !lights.st;
-      lights.st = {
-        ok: !!m.ok, paired: !!m.paired, reachable: !!m.reachable, mock: !!m.mock, error: String(m.error || '').slice(0, 160),
-        bridge: m.bridge && m.bridge.name ? String(m.bridge.name).slice(0, 40) : 'Hue bridge', pairing: m.pairing,
-        groups: (Array.isArray(m.groups) ? m.groups : []).slice(0, 40).map(function (g) { return { id: String(g.id), name: String(g.name).slice(0, 32), type: g.type === 'Zone' ? 'Zone' : 'Room', lights: +g.lights || 0 }; })
-      };
-      if (first) {
-        if (!lights.adopted && m.remembered) { lights.adopted = true; setLights(!!m.remembered.enabled, m.remembered.selected || []); }
-        else setLights(lights.enabled, lights.selected);
-      }
-      dirty = true; phoneDirty = true;
-    }
-  }
-  function lightsForEvent(type, d, p) {
-    if (!lightsOn()) return;
-    switch (type) {
-      case 'start': lightFx('start'); break;
-      case 'turn': if (p) lightFx('turn', { color: p.color, zombie: p.status === 'zombie' }); break;
-      case 'roll': lightFx('roll'); break;
-      case 'fightStart': lightFx('fight'); break;
-      case 'fightRoll': lightFx('fightRoll'); break;
-      case 'fightResult': var f = game.fight || {}; lightFx('fightResult', { lost: f.lost || 0, zdead: !!f.zdead }); break;
-      case 'death': lightFx('crunch'); break;
-      case 'rise': lightFx('rise'); break;
-      case 'escape': lightFx('escape', { color: p ? p.color : '#ffd65a' }); break;
-      case 'over': lightFx('over', { escaped: (game.results || []).some(function (r) { return r.escaped; }) }); break;
-    }
-  }
-  function hueView(p) {
-    if (!lights.conn || !lights.st) return null;
-    var st = lights.st;
-    return { ok: st.ok, msg: st.ok ? '' : hueProblem(st), bridge: st.bridge, mock: st.mock, enabled: lights.enabled, selected: lights.selected,
-      groups: st.ok ? st.groups : [], canEdit: game.players[0] === p };
-  }
-  function hueProblem(st) {
-    if (!st.reachable) return st.error || 'The helper cannot reach the Hue bridge.';
-    if (!st.paired) return st.pairing === 'waiting' ? 'Pairing: press the button on the Hue bridge now.' : 'The helper is not paired with the bridge yet (run pair-hue-bridge.bat on the PC).';
-    if (!st.groups.length) return st.error || 'No rooms or zones found on the bridge.';
-    return st.error || 'Hue not ready.';
-  }
-  function renderHuePanel() {
-    var el = $('huePanel'), st = lights.st;
-    var code = net && net.status === 'online' ? net.code : '';
-    if (!lights.conn) {
-      el.className = 'hue-panel off';
-      el.innerHTML = '<span class="bulb">\uD83D\uDCA1</span><span>Philips Hue lights (optional): lights helper not found. Start the <b>Lights Helper</b> on your PC' + (code ? ' and connect it to room <b>' + code + '</b>' : '') + '.</span>';
-      return;
-    }
-    if (!st) { el.className = 'hue-panel'; el.innerHTML = '<span class="bulb">\uD83D\uDCA1</span><span>Lights helper connected. Checking the Hue bridge&hellip;</span>'; return; }
-    if (!st.ok) { el.className = 'hue-panel warn'; el.innerHTML = '<span class="bulb">\uD83D\uDCA1</span><span>Lights helper connected, but: ' + esc(hueProblem(st)) + '</span>'; return; }
-    var key = JSON.stringify([lights.enabled, lights.selected, st.groups, st.bridge]);
-    if (el._key === key) return;               // don't rebuild while someone is clicking
-    el._key = key;
-    el.className = 'hue-panel ok';
-    var h = '<div class="hue-q"><span class="bulb">\uD83D\uDCA1</span><span>Philips Hue found' + (st.mock ? ' (mock bridge)' : '') + '. <b>Use lights in this game?</b></span>' +
-      '<button class="hb' + (lights.enabled ? ' on' : '') + '" data-hue="on">YES</button><button class="hb' + (!lights.enabled ? ' on' : '') + '" data-hue="off">NO</button></div>';
-    if (lights.enabled) {
-      h += '<div class="hue-rooms">' + st.groups.map(function (g) {
-        var on = lights.selected.indexOf(g.id) !== -1;
-        return '<button class="hroom' + (on ? ' on' : '') + '" data-g="' + esc(g.id) + '" aria-pressed="' + on + '"><span class="box">' + (on ? '\u2714' : '') + '</span>' + esc(g.name) + '<small>' + (g.type === 'Zone' ? 'zone' : 'room') + ' \u00b7 ' + g.lights + '</small></button>';
-      }).join('') + '<button class="htest" data-hue="test"' + (lights.selected.length ? '' : ' disabled') + '>Flash ticked</button></div>' +
-        (lights.selected.length ? '' : '<div class="hue-note">Tick the rooms that should join the game.</div>');
-    }
-    el.innerHTML = h;
-  }
-  $('huePanel').addEventListener('click', function (e) {
-    var b = e.target.closest('button'); if (!b) return;
-    var v = b.getAttribute('data-hue'), g = b.getAttribute('data-g');
-    if (v === 'on' || v === 'off') hueIntent({ enabled: v === 'on' });
-    else if (v === 'test') hueIntent({ test: true });
-    else if (g) hueIntent({ toggle: g });
-    b.blur();
-  });
 
   // ------------------------------------------------------------ misc
   var wake = null;
@@ -534,6 +405,5 @@
   if (hs > 0) { var names = ['Maya', 'Leo', 'Ava', 'Sam']; for (var i = 0; i < Math.min(hs, 4); i++) { hsDice = i; addHotseat(names[i]); } }
   if (Q.has('autostart') && game.players.length) startGame();
   window.ZT.startGame = startGame; window.ZT.addHotseat = addHotseat; window.ZT.net = function () { return net; };
-  window.ZT.lights = function () { return lights; }; window.ZT.hue = hueIntent;
   requestAnimationFrame(loop);
 })();

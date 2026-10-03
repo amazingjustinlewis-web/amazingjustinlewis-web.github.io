@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lights Helper - Zombie Tiles | Zero to Phi</title>
+<link rel="icon" href="/game/assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/www/helper.css">
+</head>
+<body>
+<header><img src="/game/assets/logo.svg" alt="" width="44" height="36"><div><h1>Lights Helper</h1><div class="sub">Zombie Tiles (working title) &middot; Philips Hue &middot; v0.2 <span id="mockTag" class="tag" hidden>MOCK BRIDGE</span></div></div></header>
+<main>
+  <section class="card" id="bridgeCard">
+    <h2>1. Hue bridge</h2>
+    <div id="bridgeLine" class="line">Checking&hellip;</div>
+    <div id="pairBox" hidden>
+      <p>This helper isn't paired with your bridge yet. Click <b>Pair</b>, then press the round <b>link button</b> on top of the bridge within 60 seconds.</p>
+      <button id="pairBtn">Pair with bridge</button> <button id="mockLink" class="ghost" hidden>Simulate the bridge button (mock)</button>
+      <div id="pairMsg" class="msg"></div>
+    </div>
+    <div id="groupsLine" class="line small"></div>
+  </section>
+
+  <section class="card">
+    <h2>2. Connect to the game</h2>
+    <div class="row" id="castRow" hidden><button id="castBtn" class="big">Open the game on <span id="castDev">the TV</span> &amp; connect</button><span id="castMsg" class="msg"></span></div>
+    <div class="row"><label>Room code on the TV <input id="code" maxlength="4" autocomplete="off" spellcheck="false" placeholder="ABCD"></label><button id="connectBtn">Connect</button></div>
+    <div id="connLine" class="line">Not connected.</div>
+  </section>
+
+  <section class="card">
+    <h2>3. Lights in the game</h2>
+    <div id="useLine" class="line">Pick rooms on the host phone or the TV lobby ("Use Philips Hue lights?").</div>
+    <div class="row"><button id="restoreBtn" class="ghost">Restore my lights now</button><button id="staleBtn" class="warn" hidden>Restore lights from an earlier game</button></div>
+  </section>
+
+  <section class="card">
+    <h2>Log</h2>
+    <pre id="log"></pre>
+  </section>
+  <p class="foot">Keep this tab open while you play (it can be in the background). Close the helper window to stop; lights are put back first.</p>
+</main>
+<script src="/game/js/vendor/peerjs.min.js"></script>
+<script src="/game/js/config.js"></script>
+<script src="/game/js/net.js"></script>
+<script src="/www/helper.js"></script>
+</body>
+</html>
