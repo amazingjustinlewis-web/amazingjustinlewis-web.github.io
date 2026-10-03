@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>404 - Game Over | Cohesion Games</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0913">
+<!--
+  GitHub Pages serves this file for ANY missing URL, at any depth (e.g. /repo/some/deep/path).
+  Relative links would break there, so a tiny script below works out where the site root is:
+    - custom domain (or user site username.github.io): root is "/"
+    - project site username.github.io/REPO/: root is "/REPO/"
+  It then loads the normal stylesheet and points the links at the real home page.
+  Inline styles keep the page looking right even before that happens.
+-->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23120e1e'/%3E%3Cpath d='M9 3h3l-3 4h3l-7 6 2-5H4z' fill='%23FFD700'/%3E%3C/svg%3E">
+<style>
+  html, body { margin: 0; min-height: 100%; background: #0b0913; color: #f2eeff; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  body { display: flex; flex-direction: column; min-height: 100vh; }
+  body::after { content: ''; position: fixed; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, rgba(0,0,0,.2) 0 1px, transparent 1px 3px); }
+  .go { flex: 1; display: grid; place-items: center; text-align: center; padding: 3rem 1.25rem; }
+  .go h1 { font-family: 'Press Start 2P', 'Courier New', monospace; font-weight: 400; font-size: clamp(2rem, 8vw, 4.2rem); line-height: 1.2; color: #FF2D95; text-shadow: 4px 4px 0 #FFD700, 8px 8px 0 #000; margin: 0 0 1.2rem; }
+  .go .code { font-family: 'Press Start 2P', 'Courier New', monospace; color: #00F0FF; font-size: .9rem; letter-spacing: .1em; margin-bottom: 1.6rem; }
+  .go p { max-width: 40ch; margin: 0 auto 2rem; font-size: 1.1rem; }
+  .go .continue { font-family: 'Press Start 2P', 'Courier New', monospace; color: #FFD700; animation: blink 1s steps(1) infinite; margin-bottom: 1.4rem; font-size: .8rem; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .go .btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .go .btn404 { font-family: 'Press Start 2P', 'Courier New', monospace; font-size: .72rem; padding: 1rem 1.2rem; border: 3px solid #000; border-radius: 4px; background: #FFD700; color: #0b0913; text-decoration: none; box-shadow: 5px 5px 0 #000; transition: transform .12s, box-shadow .12s; }
+  .go .btn404:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 #000; }
+  .go .btn404.alt { background: transparent; color: #00F0FF; border-color: #00F0FF; box-shadow: 5px 5px 0 rgba(0,240,255,.25); }
+  @media (prefers-reduced-motion: reduce) { .go .continue { animation: none; } }
+</style>
+<script>
+  // Work out the site root (see comment above), then upgrade the page.
+  (function () {
+    var host = location.hostname, seg = location.pathname.split('/')[1] || '';
+    function apply(root) {
+      var css = document.createElement('link'); css.rel = 'stylesheet'; css.href = root + 'assets/css/style.css';
+      document.head.appendChild(css);
+      var go = function () {
+        document.querySelectorAll('[data-href]').forEach(function (a) { a.href = root + a.getAttribute('data-href'); });
+        var s = document.createElement('script'); s.src = root + 'assets/js/site-config.js';
+        s.onload = function () {
+          if (!window.SITE) return;
+          document.querySelectorAll('[data-site-name]').forEach(function (el) { el.textContent = window.SITE.name; });
+          document.title = '404 - Game Over | ' + window.SITE.name;
+        };
+        document.body.appendChild(s);
+      };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+    }
+    // Only a *.github.io project site can live under a sub-folder; probe it once.
+    if (/\.github\.io$/i.test(host) && seg && seg.indexOf('.') === -1 && window.fetch) {
+      fetch('/' + seg + '/assets/js/site-config.js', { method: 'HEAD' })
+        .then(function (r) { apply(r.ok ? '/' + seg + '/' : '/'); })
+        .catch(function () { apply('/'); });
+    } else {
+      apply('/');
+    }
+  })();
+</script>
+</head>
+<body>
+<main class="go">
+  <div>
+    <div class="code">ERROR 404</div>
+    <h1>GAME<br>OVER</h1>
+    <p>This page hopped off the edge of the map. It may have moved, or the link might be wrong.</p>
+    <div class="continue">CONTINUE?</div>
+    <div class="btns">
+      <a class="btn404" href="/" data-href="index.html">&#9654; Home</a>
+      <a class="btn404 alt" href="/" data-href="index.html#games">All games</a>
+    </div>
+    <p style="margin-top:2.4rem;font-size:.85rem;color:#a99fc9"><span data-site-name>Cohesion Games</span></p>
+  </div>
+</main>
+</body>
+</html>

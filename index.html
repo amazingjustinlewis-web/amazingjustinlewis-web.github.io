@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- SITE NAME: the visible name comes from assets/js/site-config.js.
+     The plain-text copies in this <head> are for link previews (crawlers don't run JS);
+     see README "Renaming the site" for a one-line command that updates them all. -->
+<title>Cohesion Games</title>
+<meta name="description" content="Cohesion Games, founded by Justin Lewis: emergent, connected, visceral indie games with simple entry points and massive possibilities. Play Charge Hop free in your browser.">
+<meta name="theme-color" content="#0b0913">
+
+<!-- Social / link preview (Facebook, Twitter/X, Discord, iMessage...) -->
+<!-- TODO(domain): share URLs are absolute for the current GitHub Pages address. When the .com is live,
+     replace "https://amazingjustinlewis-web.github.io/" with the new domain in og:url / og:image / twitter:image. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Cohesion Games">
+<meta property="og:title" content="Cohesion Games">
+<meta property="og:description" content="Emergent, connected, visceral indie games. Simple to pick up, massive possibilities. Play Charge Hop free in your browser.">
+<meta property="og:image" content="https://amazingjustinlewis-web.github.io/assets/img/og-site.jpg">
+<meta property="og:url" content="https://amazingjustinlewis-web.github.io/">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Cohesion Games - now playing: Charge Hop">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Cohesion Games">
+<meta name="twitter:description" content="Emergent, connected, visceral indie games. Simple to pick up, massive possibilities.">
+<meta name="twitter:image" content="https://amazingjustinlewis-web.github.io/assets/img/og-site.jpg">
+
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/img/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+<link rel="preload" href="assets/fonts/press-start-2p-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body data-root="">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="index.html"><img src="assets/img/favicon.svg" alt="" width="32" height="32"><span data-site-name>Cohesion Games</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="index.html#games">Games</a>
+      <a href="about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <div class="kicker">&#9654; INSERT COIN <span class="blink">_</span></div>
+        <h1><span class="glitch" data-site-name>Cohesion Games</span></h1>
+        <p class="lede">Emergent, connected, visceral games: <strong>simple to pick up, massive possibilities</strong>. Founded by Justin Lewis, a feature-film character animator and punk rock drummer from Red Deer, Alberta. Free to play, right in your browser.</p>
+        <div class="cta-row">
+          <a class="btn btn--play btn--pulse" href="games/charge-hop/index.html">&#9654; Play Charge Hop</a>
+          <a class="btn btn--ghost" href="#games">Browse games</a>
+        </div>
+      </div>
+      <div class="hero-art">
+        <span class="sticker">NEW<br>GAME!</span>
+        <a class="crt" href="games/charge-hop.html" aria-label="Charge Hop details">
+          <img src="assets/img/charge-hop/v3-chute.webp" alt="Charge Hop: the yellow robot and the robot dog riding rocks down a lava chute" width="1200" height="675">
+          <span class="crt-label">NOW PLAYING: CHARGE HOP</span>
+        </a>
+      </div>
+    </div>
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee__track">
+        <span>ONE BUTTON</span><span>&#9733;</span><span>CHARGE IT</span><span>&#9733;</span><span>DON'T BLOW IT</span><span>&#9733;</span><span>2 PLAYERS 1 KEYBOARD</span><span>&#9733;</span><span>LAVA CHUTES</span><span>&#9733;</span><span>DOMINO CHAINS</span><span>&#9733;</span>
+        <span>ONE BUTTON</span><span>&#9733;</span><span>CHARGE IT</span><span>&#9733;</span><span>DON'T BLOW IT</span><span>&#9733;</span><span>2 PLAYERS 1 KEYBOARD</span><span>&#9733;</span><span>LAVA CHUTES</span><span>&#9733;</span><span>DOMINO CHAINS</span><span>&#9733;</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="games" aria-labelledby="games-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="pixel" id="games-title">Select <span class="accent">game</span></h2>
+        <span class="count"><span data-games-count>1</span> PLAYABLE &middot; MORE ON THE WAY</span>
+      </div>
+      <!-- Rendered from assets/js/games.js. To add a game, add an entry there. -->
+      <div class="games-grid" data-games-grid></div>
+      <noscript>
+        <p>Turn on JavaScript to see the full games list. Meanwhile: <a href="games/charge-hop.html">Charge Hop</a> (<a href="games/charge-hop/index.html">play</a>).</p>
+      </noscript>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="who-title">
+    <div class="wrap">
+      <div class="panel split">
+        <div>
+          <h2 class="pixel" id="who-title">Player 1: <span style="color:var(--yellow)">Justin</span></h2>
+          <p>Justin is a professional character animator with credits on the feature films <em>9</em> and <em>Hoodwinked</em>, and a punk rock drummer who makes music. He founded Cohesion Games to make emergent, connected, visceral games: simple entry points, massive possibilities.</p>
+          <a class="btn btn--orange" href="about.html">Read the bio</a>
+        </div>
+        <ul class="credits">
+          <li><span class="k">FILMS</span><span>9 &middot; Hoodwinked</span></li>
+          <li><span class="k">STUDIOS</span><span>Starz Animation &middot; Silicon Knights &middot; Nerd Corps</span></li>
+          <li><span class="k">SCHOOL</span><span>Vancouver Film School</span></li>
+          <li><span class="k">BASE</span><span>Red Deer, Alberta</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div><span class="footer-brand" data-site-name>Cohesion Games</span><br>&copy; <span data-year>2026</span> Justin Lewis &middot; Made in Red Deer, Alberta</div>
+    <nav aria-label="Footer">
+      <a href="index.html#games">Games</a>
+      <a href="about.html">About</a>
+      <!-- TODO(contact): add contact / social links here once Justin decides which to share. -->
+      <a href="#main">Back to top &uarr;</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="assets/js/site-config.js"></script>
+<script src="assets/js/games.js"></script>
+<script src="assets/js/site.js"></script>
+</body>
+</html>
