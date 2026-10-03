@@ -135,7 +135,8 @@
     return { dirs: dirs, why: gl.why, item: gl.item, reach: reach, win: odds.win };
   }
 
-  // ------------------------------------------------------------ tile placement: the explore spot, rotated for the most new exits
+  // ------------------------------------------------------------ tile placement: the explore spot, rotated for the most new exits.
+  // If the tile can't go where the AI walked, it goes in the nearest open spot (slots come sorted by distance); placing ends the turn either way.
   function placeChoice(g, p, rng) {
     var P = g.place, idx = 0, b = brain(p);
     for (var i = 0; i < P.slots.length; i++) if (P.slots[i].explore) { idx = i; break; }

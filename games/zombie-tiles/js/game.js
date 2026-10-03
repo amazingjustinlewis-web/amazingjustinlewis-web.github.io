@@ -269,7 +269,7 @@
   G.beginTurn = function () {
     if (this.checkOver()) return;
     var p = this.curP();
-    this.plan = []; this.movesLeft = 0; this.roll = null; this.execSteps = 0; this.place = null;
+    this.plan = []; this.movesLeft = 0; this.roll = null; this.execSteps = 0; this.place = null; this.placedThisTurn = false;
     if (p.status === 'zombie') {
       this.phase = 'zturn';
       this.say(p.name + ' (zombie) lurches...');
@@ -539,16 +539,20 @@
   G.placeConfirm = function () {
     var P = this.place, sl = P.slots[P.idx];
     var tile = this.placeTile(P.tpl, P.rot, sl.tx, sl.ty);
-    this.place = null;
-    if (sl.explore) {
+    this.place = null; this.placedThisTurn = true;     // placing a tile ends the turn (after stepping onto it / any fight there)
+    if (sl.explore && (this.zombieAt(P.step.x, P.step.y) || !this.walkable(P.step.x, P.step.y))) {
+      this.say('Blocked! A zombie is in the way. ' + this.curP().name + ' stays on the edge. Turn over.');
+      this.endTurn();
+    } else if (sl.explore) {
       this.plan.unshift({ x: P.step.x, y: P.step.y, d: P.step.d, kind: 'step' });
       this.phase = 'exec';
       this.changed();
       this.later(C.timing.step, this.stepNext);
     } else {
-      this.plan = []; this.phase = 'plan';
-      this.say('Tile placed. ' + this.curP().name + ' has ' + this.movesLeft + ' moves left.');
-      this.changed();
+      // Placing a tile always ends the turn (v0.3.1). Placed somewhere other than where you walked? You stay on the
+      // edge and can explore it (or go another way) on a later turn.
+      this.say('Tile placed. ' + this.curP().name + ' stays on the edge. Turn over.');
+      this.endTurn();
     }
     return tile;
   };
@@ -565,7 +569,7 @@
       this.event('escape', { pid: p.id, place: p.place });
       this.phase = 'escape'; this.plan = [];
       this.changed();
-      this.later(C.timing.banner * 1.4, this.endTurn);
+      this.later((C.escapeShow && C.escapeShow.ms) || C.timing.banner * 1.4, this.endTurn);   // the TV plays the helicopter cinematic meanwhile
     } else {
       this.say('The ' + SIDE_NAME[g.side] + ' guard says NO! Try another gate.');
       this.plan = []; this.phase = 'plan';
@@ -644,6 +648,7 @@
     var z = this.adjacentZombie(p);
     if (z) { this.startFight(p, z, f.context); return; }
     if (f.context === 'turnStart') { this.toRoll(); return; }
+    if (this.placedThisTurn) { this.endTurn(); return; }          // won on the tile you just placed: the turn still ends
     // won during a move: you get your remaining squares back (the old plan is restored where still valid)
     this.phase = 'plan'; this.plan = [];
     for (var i = 0; i < f.savedPlan.length; i++) { if (this.addDir(f.savedPlan[i].d) !== true) break; }

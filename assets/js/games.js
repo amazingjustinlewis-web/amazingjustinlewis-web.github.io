@@ -101,7 +101,7 @@ window.GAMES = [
         name: 'AI Crew',
         current: true,
         play: 'games/zombie-tiles/index.html',
-        notes: 'Add computer players with personalities (cautious looter, reckless fighter, helipad sprinter, sneaky backstabber, loyal buddy) and Easy / Normal / Ruthless difficulty. They show their planned path, chat in speech bubbles, sometimes share ammo with a teammate (or leave them behind at the helipad), and cover for a phone that drops out. Optional coach hints on a phone. New sound effects and stronger light effects for everyone.'
+        notes: 'Add computer players with personalities (cautious looter, reckless fighter, helipad sprinter, sneaky backstabber, loyal buddy) and Easy / Normal / Ruthless difficulty. They show their planned path, chat in speech bubbles, sometimes share ammo with a teammate (or leave them behind at the helipad), and cover for a phone that drops out. Optional coach hints on a phone. New sound effects and stronger light effects for everyone. v0.3.1: a helicopter celebration when someone escapes, a gentle "your turn" buzz on phones (switchable), and placing a tile now always ends your turn.'
       },
       {
         id: 'v0.2',

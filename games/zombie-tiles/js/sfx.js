@@ -1,5 +1,5 @@
 /* ZOMBIE TILES - procedural sound effects (v0.3). WebAudio only, no audio files: short, punchy, kid-friendly.
-   ZTSfx.play(name, {pitch}) ; names: crunch, victory, charge, scream, ouch, plus tone() for the small UI blips. */
+   ZTSfx.play(name, {pitch}) ; names: crunch, victory, charge, scream, ouch, rotor, pop, fanfare, plus tone() for the small UI blips. */
 (function (root) {
   'use strict';
   var AC = null, out = null, noiseBuf = null;
@@ -69,7 +69,35 @@
       osc(A, f, 'sine', 1640 * p, 2100 * p, t, 0.3, 0.12, 0.02);
     },
     // a small "oof" when a fight hurts
-    ouch: function (A, dest, t, o) { var p = o.pitch || 1; osc(A, dest, 'square', 420 * p, 210 * p, t, 0.14, 0.14); }
+    ouch: function (A, dest, t, o) { var p = o.pitch || 1; osc(A, dest, 'square', 420 * p, 210 * p, t, 0.14, 0.14); },
+    // escape cinematic: helicopter rotor "whop-whop" (swells in, fades out as it flies away)
+    rotor: function (A, dest, t, o) {
+      var dur = o.dur || 2.6, rate = 11, n = Math.floor(dur * rate);
+      var f = A.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 420; f.Q.value = 3; f.connect(dest);
+      for (var i = 0; i < n; i++) {
+        var tt = t + i / rate, x = i / n, vol = 0.55 * Math.min(1, x * 4) * Math.min(1, (1 - x) * 2.2) + 0.02;
+        var b = noise(A), g = gainEnv(A, tt, 0.006, vol, 0.07); b.connect(g); g.connect(f); b.start(tt); b.stop(tt + 0.09);
+        osc(A, dest, 'sine', 70, 55, tt, 0.06, vol * 0.35);
+      }
+    },
+    // escape cinematic: one firework (thump, pop, crackle)
+    pop: function (A, dest, t, o) {
+      var p = o.pitch || 1;
+      osc(A, dest, 'sine', 220 * p, 80, t, 0.12, 0.3);
+      var n = noise(A), f = A.createBiquadFilter(), g = gainEnv(A, t, 0.002, 0.5, 0.16); f.type = 'highpass'; f.frequency.value = 900;
+      n.connect(f); f.connect(g); g.connect(dest); n.start(t); n.stop(t + 0.2);
+      for (var i = 0; i < 7; i++) { var tt = t + 0.12 + Math.random() * 0.4, c = noise(A), cf = A.createBiquadFilter(), cg = gainEnv(A, tt, 0.001, 0.18, 0.025); cf.type = 'bandpass'; cf.frequency.value = 2500 + Math.random() * 3000; cf.Q.value = 4; c.connect(cf); cf.connect(cg); cg.connect(dest); c.start(tt); c.stop(tt + 0.04); }
+    },
+    // escape cinematic: ta-da fanfare with a little crowd cheer
+    fanfare: function (A, dest, t) {
+      [[523, 0, 0.12], [659, 0.13, 0.12], [784, 0.26, 0.12], [1047, 0.39, 0.5]].forEach(function (n) {
+        osc(A, dest, 'square', n[0], 0, t + n[1], n[2], 0.11); osc(A, dest, 'triangle', n[0] / 2, 0, t + n[1], n[2], 0.12);
+      });
+      [523, 659, 784].forEach(function (f) { var v = osc(A, dest, 'sawtooth', f, 0, t + 0.39, 0.55, 0.05, 0.02); vibrato(A, v, t + 0.39, 0.55, 6, 5); });
+      var c = noise(A), cf = A.createBiquadFilter(), cg = A.createGain(); cf.type = 'bandpass'; cf.frequency.value = 1300; cf.Q.value = 0.8;
+      cg.gain.setValueAtTime(0.0001, t + 0.3); cg.gain.exponentialRampToValueAtTime(0.16, t + 0.6); cg.gain.exponentialRampToValueAtTime(0.0001, t + 1.5);
+      c.connect(cf); cf.connect(cg); cg.connect(dest); c.start(t + 0.3); c.stop(t + 1.55);
+    }
   };
   S.play = function (name, o) {
     if (S.muted || !SOUNDS[name]) return;
@@ -81,7 +109,7 @@
   };
   // test helper: render a sound offline and return its peak and length (seconds above -40 dB)
   S.render = function (name, o) {
-    var Off = root.OfflineAudioContext || root.webkitOfflineAudioContext, A = new Off(1, 44100 * 1.2, 44100);
+    var Off = root.OfflineAudioContext || root.webkitOfflineAudioContext, A = new Off(1, 44100 * 3, 44100);
     SOUNDS[name](A, A.destination, 0.01, o || {});
     return A.startRendering().then(function (buf) {
       var d = buf.getChannelData(0), peak = 0, lastLoud = 0;

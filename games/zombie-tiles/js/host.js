@@ -28,7 +28,8 @@
 
   // ------------------------------------------------------------ events -> juice
   function playerById(id) { return game.byId(id); }
-  function big(text, sub, color) {
+  function big(text, sub, color, cls) {
+    $('big').className = cls || '';
     var el = document.createElement('div'); el.className = 'b'; if (color) el.style.setProperty('--bc', color);
     el.innerHTML = esc(text) + (sub ? '<small>' + esc(sub) + '</small>' : '');
     $('big').innerHTML = ''; $('big').appendChild(el);
@@ -68,8 +69,11 @@
         break;
       case 'gate': if (!d.yes) { big('NO!', 'The guard shakes his head. Try another gate.', '#ff3b4e'); tone(110, 0.4, 'square', 0.06); if (p && p.ai) say(p, 'gateNo'); } break;
       case 'escape':
-        big(p.name + ' ESCAPED!', Ordinal(d.place) + ' place. The chopper takes them aboard.', p.color); [523, 659, 784, 1046].forEach(function (f, i) { setTimeout(function () { tone(f, 0.18, 'square', 0.05); }, i * 110); });
-        setTimeout(function () { sfx('victory', p); }, 480); flash('#ffd23f', 0.4);
+        big(p.name + ' ESCAPED!', Ordinal(d.place) + ' place. The chopper takes them aboard.', p.color, 'esc');
+        rnd.cinematic(p, p.x, p.y);                       // helicopter swoops in, token hops aboard, lift-off + fireworks
+        SFX.play('rotor', { dur: 4.4 }); setTimeout(function () { SFX.play('fanfare'); }, 1900);
+        ((C.escapeShow && C.escapeShow.fireworks) || []).forEach(function (s, i) { setTimeout(function () { SFX.play('pop', { pitch: 0.8 + (i % 3) * 0.2 }); flash(i % 2 ? p.color : '#ffffff', 0.18); }, s * 1000); });
+        flash('#ffd23f', 0.4);
         if (p.ai) {
           var al = p.allyPid && game.byId(p.allyPid);
           if (al && al.status === 'alive') {      // light betrayal: ditch the partner at the helipad (or cheer them on)

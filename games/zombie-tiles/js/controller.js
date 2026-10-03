@@ -54,7 +54,7 @@
       onStatus: function (s, d) {
         var c = $('conn');
         if (s === 'online') { c.textContent = 'LINKED'; c.className = 'conn'; }
-        else { c.textContent = s === 'noroom' ? 'NO ROOM' : 'RECONNECTING'; c.className = 'conn bad'; }
+        else { nagStop(); c.textContent = s === 'noroom' ? 'NO ROOM' : 'RECONNECTING'; c.className = 'conn bad'; }
         if (!state) {
           if (s === 'noroom') { joinStatus('No room ' + room + ' found. Check the code on the TV (still trying...).', true); }
           else if (s === 'offline') { joinStatus('Could not reach the room server. Check your internet.', true); $('joinBtn').disabled = false; }
@@ -66,6 +66,17 @@
   function send(m) { if (net) net.send(m); }
   // v0.3: coach hints (remembered per phone) and the host's "Add AI player" picker
   var coachOn = store.get('zt_coach') === '1';
+  // turn reminder: gentle buzz every few seconds + an on-screen YOUR TURN pulse, from the start of your turn until you touch the phone
+  var turnBuzzOn = store.get('zt_turnbuzz') !== '0', canVibrate = 'vibrate' in navigator;
+  var NEED = ['roll', 'fight', 'zturn', 'place', 'plan'], TURN = NEED.concat(['rolling', 'exec', 'fightview', 'zmoving']);
+  var nag = null;
+  function nagStart() {
+    if (nag) return;
+    var pc = C.phone || {};
+    nag = setInterval(function () { if (turnBuzzOn && document.visibilityState === 'visible') buzz(pc.turnBuzzPattern || [40]); }, pc.turnBuzzEveryMs || 3500);
+    $('play').classList.add('nag');
+  }
+  function nagStop() { if (!nag) return; clearInterval(nag); nag = null; $('play').classList.remove('nag'); }
   var AIC = C.ai, aiSel = { p: 0, l: 1 };
   var BLURB = { looter: 'Grabs weapons and hearts, avoids risky fights.', fighter: 'Charges at zombies. Very loud!', sprinter: 'Races for the helipad.',
     sneak: 'Tiptoes around zombies.', buddy: 'Teams up with a player and shares ammo.' };
@@ -95,6 +106,7 @@
   press($('clear'), function () { send({ t: 'clear' }); });
   document.addEventListener('keydown', function (e) {     // handy when testing on a laptop
     if (!state || e.target.tagName === 'INPUT') return;
+    nagStop();
     var m = { ArrowUp: 'U', ArrowDown: 'D', ArrowLeft: 'L', ArrowRight: 'R' }[e.key];
     if (m) { send({ t: 'dir', d: m }); e.preventDefault(); }
     else if (e.key === 'Enter') send({ t: 'exec' }); else if (e.key === ' ') send({ t: 'roll' }); else if (e.key === 'Backspace') send({ t: 'undo' });
@@ -119,7 +131,7 @@
         s2 = y.vip ? 'Start when everyone has joined.' : 'Waiting for ' + esc(s.vipName || 'the first player') + ' to start...';
         extra = lobbyList(s, y.vip) + (y.vip ? aiPicker(s) : '') +
           hueHtml(s.hue, y.vip) +
-          (y.vip ? '<button class="big-btn" id="startGame">START GAME</button>' : '') + '<button class="small" id="changeDice">Change dice (' + esc(window.ZTDice.style(y.dice).name) + ')</button>' + coachBtn();
+          (y.vip ? '<button class="big-btn" id="startGame">START GAME</button>' : '') + '<button class="small" id="changeDice">Change dice (' + esc(window.ZTDice.style(y.dice).name) + ')</button>' + coachBtn() + (canVibrate ? buzzBtn() : '');
         break;
       case 'roll': s1 = 'YOUR TURN!'; s2 = 'Roll to move'; hot = true; rollShow = rollOn = true; break;
       case 'rolling': s1 = 'Rolling...'; rollShow = true; break;
@@ -159,6 +171,7 @@
     if (mode === 'zturn' && y.status === 'zombie') extra = '<button class="small" id="toSpectate">Stop and spectate instead</button>';
     if (coachOn && s.coach && s.coach.text && (mode === 'plan' || mode === 'roll' || mode === 'fight')) extra = '<div class="coach"><span class="ci">\uD83E\uDDE0 Coach:</span> ' + esc(s.coach.text) + (s.coach.arrows && mode === 'plan' ? '<div class="carr">' + esc(s.coach.arrows) + '</div>' : '') + '</div>' + extra;
     if (['wait', 'roll', 'plan', 'fight', 'zturn'].indexOf(mode) !== -1 && y.status !== 'escaped') extra += coachBtn();
+    if (mode === 'wait' && canVibrate) extra += buzzBtn();
     var nopad = ['lobby', 'over', 'dead', 'escaped', 'spectate'].indexOf(mode) !== -1;
     $('play').classList.toggle('nopad', nopad);
     if (nopad && stopAnim) { stopAnim(); stopAnim = null; }
@@ -191,9 +204,12 @@
         else window.ZTDice.still($('dice'), s.fight.p, y.dice);
       }
     }
+    if (TURN.indexOf(mode) === -1) nagStop();                                        // turn passed / game over
+    else if (mode !== lastMode && NEED.indexOf(mode) !== -1 && TURN.indexOf(lastMode) === -1) nagStart();   // my turn (or a fight) just started
     if (mode !== lastMode) {
       if (mode === 'roll' || mode === 'fight' || mode === 'zturn' || mode === 'place') buzz([60, 60, 120]);
       if (mode === 'dead') buzz([300, 100, 300]);
+      if (mode === 'escaped') buzz((C.escapeShow && C.escapeShow.buzz) || [90, 60, 90, 60, 300]);   // celebration buzz
       lastMode = mode;
     }
   }
@@ -232,8 +248,10 @@
       '<button class="small addai" id="aiAddP">+ ADD ' + esc(lv.label.toUpperCase()) + ' AI</button></div>';
   }
   function coachBtn() { return '<button class="small coachb' + (coachOn ? ' on' : '') + '" id="coachT">\uD83E\uDDE0 Coach hints: ' + (coachOn ? 'ON' : 'OFF') + '</button>'; }
+  function buzzBtn() { return '<button class="small coachb' + (turnBuzzOn ? ' on' : '') + '" id="buzzT">\uD83D\uDCF3 Turn buzz: ' + (turnBuzzOn ? 'ON' : 'OFF') + '</button>'; }
   function wireExtra() {
     var b;
+    if ((b = $('buzzT'))) press(b, function () { turnBuzzOn = !turnBuzzOn; store.set('zt_turnbuzz', turnBuzzOn ? '1' : '0'); render(); });
     if ((b = $('coachT'))) press(b, function () { coachOn = !coachOn; store.set('zt_coach', coachOn ? '1' : '0'); send({ t: 'coach', on: coachOn }); render(); });
     if ((b = $('aiPer'))) press(b, function () { aiSel.p = (aiSel.p + 1) % AIC.order.length; render(); });
     if ((b = $('aiAddP'))) press(b, function () { send({ t: 'addAI', persona: AIC.order[aiSel.p], level: AIC.levelOrder[aiSel.l] }); aiSel.p = (aiSel.p + 1) % AIC.order.length; });
@@ -256,7 +274,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('#extra .choice button'), function (bt) { press(bt, function () { send({ t: 'deadChoice', v: bt.getAttribute('data-v') }); }); });
   }
   var tapped = false;
-  document.addEventListener('pointerdown', function () { tapped = true; }, true);
+  document.addEventListener('pointerdown', function () { tapped = true; nagStop(); }, true);   // any touch = 'I'm on it'
   function buzz(p) { if (!tapped) return; try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} }
   function ordinal(n) { return window.ZTGame ? window.ZTGame.ordinal(n) : n + ['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : (n % 10 < 4 ? n % 10 : 0)]; }
   var wake = null;

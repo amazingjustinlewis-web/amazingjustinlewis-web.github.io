@@ -178,3 +178,7 @@ button:focus-visible { outline: .5vh solid var(--gold); outline-offset: .4vh; }
 .cally.bad { color: #ff8a95; }
 #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 40; mix-blend-mode: screen; }
 .hs-row .wide { min-width: 12.5em; }
+
+/* escape cinematic: banner sits low and stays longer so the helicopter stays visible */
+#big.esc { top: 68%; }
+#big.esc .b { animation-duration: 4.8s; }

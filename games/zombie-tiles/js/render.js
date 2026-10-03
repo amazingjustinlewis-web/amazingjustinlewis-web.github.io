@@ -130,6 +130,11 @@
   R.setArea = function (a) { this.area = a; };
   // speech bubble over a player (AI reactions); shout = charge / scream style
   R.bubble = function (pid, text, color, shout) { if (!text) return; this.bubbles[pid] = { text: text, color: color || '#fff', t: 0, dur: ((C.ai && C.ai.bubbleMs) || 2300) / 1000, shout: !!shout }; };
+  // escape cinematic: chopper swoops in, the token hops aboard, lift-off, fly away; fireworks in the player's colour + confetti
+  R.cinematic = function (p, x, y) {
+    var es = C.escapeShow || {};
+    this.cine = { p: p, x: x + 0.5, y: y + 0.5, t: 0, dur: (es.ms || 5200) / 1000, fwAt: (es.fireworks || []).slice(), fw: [], conf: [], confDone: false, dir: Math.random() < 0.5 ? -1 : 1 };
+  };
   R.pop = function (text, x, y, color, big) { this.pops.push({ text: text, x: x, y: y, color: color || '#fff', t: 0, big: !!big }); };
   R.bounds = function (g) {
     var minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9;
@@ -306,8 +311,65 @@
       ctx.fillStyle = pp.color; ctx.fillText(pp.text, p[0], p[1] - pp.t * sq * 0.9);
       ctx.globalAlpha = 1;
     });
+    if (this.cine) drawCinematic(this, ctx, dt, now, sq);
     ctx.restore();
   };
+
+  function ease(t) { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }
+  var PARTY = ['#ffd23f', '#ff4fd8', '#3fd0ff', '#9dff6a', '#ffffff', '#ff7a1a'];
+  function drawCinematic(R, ctx, dt, now, sq) {
+    var c = R.cine; c.t += dt;
+    if (c.t > c.dur + 1.2) { R.cine = null; return; }
+    var t = c.t, a = R.area, base = R.toScreen(c.x, c.y), u = Math.max(sq * 0.17, 6);   // u = one helicopter "pixel"
+    var hoverX = base[0], hoverY = base[1] - Math.max(sq * 1.25, u * 9), hx, hy, tilt = 0;
+    var startX = c.dir > 0 ? a.x - u * 30 : a.x + a.w + u * 30, startY = a.y - u * 12;
+    var endX = c.dir > 0 ? a.x + a.w + u * 40 : a.x - u * 40, endY = a.y - u * 25;
+    if (t < 1.4) { var k = ease(t / 1.4); hx = startX + (hoverX - startX) * k; hy = startY + (hoverY - startY) * k + Math.sin(t * 5) * u * (1 - k); tilt = c.dir * 0.25 * (1 - k); }
+    else if (t < 2.6) { hx = hoverX; hy = hoverY + Math.sin(t * 6) * u * 0.6 - (t > 2.1 ? (t - 2.1) * u * 4 : 0); }
+    else { var k2 = Math.pow(Math.min(1, (t - 2.6) / 1.8), 1.8); hx = hoverX + (endX - hoverX) * k2; hy = hoverY - u * 2 + (endY - hoverY) * k2; tilt = c.dir * 0.3 * Math.min(1, (t - 2.6) * 2); }
+    // token: bounces on the gate square, hops up into the chopper between 1.4 and 2.0 s
+    var p = c.p, r = Math.max(sq * 0.38, 15);
+    if (t < 1.4) drawPlayer(ctx, base[0], base[1] - Math.abs(Math.sin(t * 9)) * sq * 0.18, sq, p, false, now, false);
+    else if (t < 2.0) { var h = (t - 1.4) / 0.6, px = base[0] + (hx - base[0]) * h, py = base[1] + (hy + u * 2 - base[1]) * h - Math.sin(h * Math.PI) * sq * 0.9; ctx.save(); ctx.translate(px, py); ctx.scale(1 - h * 0.5, 1 - h * 0.5); drawPlayer(ctx, 0, 0, sq, p, false, now, false); ctx.restore(); }
+    if (t < 4.6) drawChopper(ctx, hx, hy, u, tilt, now, c.dir, t >= 2.0 ? p.color : null);
+    // fireworks in the player's colour (plus a few party colours)
+    while (c.fwAt.length && t >= c.fwAt[0]) {
+      c.fwAt.shift();
+      var fx = a.x + a.w * (0.15 + Math.random() * 0.7), fy = a.y + a.h * (0.12 + Math.random() * 0.35), n = 42;
+      for (var i = 0; i < n; i++) { var ang = i / n * Math.PI * 2, sp = (0.6 + Math.random() * 0.5) * Math.min(a.w, a.h) * 0.32; c.fw.push({ x: fx, y: fy, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 1.1 + Math.random() * 0.4, t: 0, col: Math.random() < 0.65 ? p.color : PARTY[i % PARTY.length] }); }
+    }
+    c.fw = c.fw.filter(function (f) { return (f.t += dt) < f.life; });
+    c.fw.forEach(function (f) {
+      f.vy += 260 * dt; f.vx *= 0.985; f.vy *= 0.985; f.x += f.vx * dt; f.y += f.vy * dt;
+      ctx.globalAlpha = Math.max(0, 1 - f.t / f.life); ctx.fillStyle = f.col; var s = Math.max(5, u * 0.8); ctx.fillRect(f.x - s / 2, f.y - s / 2, s, s);
+    });
+    // confetti from the top once the token is aboard
+    if (!c.confDone && t > 1.9) {
+      c.confDone = true;
+      for (var j = 0; j < 140; j++) c.conf.push({ x: a.x + Math.random() * a.w, y: a.y - Math.random() * a.h * 0.5, vy: 90 + Math.random() * 120, ph: Math.random() * 6, w: u * (0.6 + Math.random() * 0.6), col: j % 3 === 0 ? p.color : PARTY[j % PARTY.length] });
+    }
+    var fade = Math.max(0, Math.min(1, (c.dur + 1.2 - t) / 1.0));
+    c.conf.forEach(function (q) {
+      q.y += q.vy * dt; q.ph += dt * 6; var x = q.x + Math.sin(q.ph) * u * 2;
+      ctx.globalAlpha = fade; ctx.fillStyle = q.col; ctx.fillRect(x, q.y, q.w, q.w * (0.4 + 0.6 * Math.abs(Math.sin(q.ph))));
+    });
+    ctx.globalAlpha = 1;
+  }
+  // little pixel-art helicopter, built from u-sized blocks; seat shows the escaper's colour once aboard
+  function drawChopper(ctx, x, y, u, tilt, now, dir, rider) {
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(tilt); ctx.scale(dir > 0 ? 1 : -1, 1);
+    function b(px, py, w, h, col) { ctx.fillStyle = col; ctx.fillRect(px * u, py * u, w * u, h * u); }
+    b(-11, -1, 8, 2, '#2b3a55'); b(-13, -3, 2, 4, '#2b3a55'); b(-13, -3, 1, 1, '#ff3b4e');       // tail boom + fin
+    var tr = Math.abs(Math.sin(now / 25)); b(-13.5, -3 - tr * 2, 1, 1 + tr * 4, '#c9d3e6');        // tail rotor
+    b(-4, -4, 9, 7, '#ffd23f'); b(-3, -5, 7, 1, '#ffd23f'); b(-4, 1, 9, 1, '#d9a400');               // body
+    b(1, -3, 4, 3, '#9ae4ff'); b(2, -3, 1, 1, '#ffffff');                                             // cockpit window
+    if (rider) { b(-2, -3, 2, 2, rider); }                                                            // escaper in the side window
+    else b(-2, -3, 2, 2, '#4a5a78');
+    b(-3, 4, 8, 1, '#2b3a55'); b(-2, 3, 1, 1, '#2b3a55'); b(3, 3, 1, 1, '#2b3a55');                 // skids
+    b(0, -6, 1, 1, '#2b3a55');                                                                         // mast
+    var rw = 8 + 6 * Math.abs(Math.sin(now / 30)); b(0.5 - rw, -7, rw * 2, 0.8, '#c9d3e6');          // main rotor blur
+    ctx.restore();
+  }
 
   function hexA(hex, a) { var n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
   function drawPlayer(ctx, x, y, sq, p, isCur, now, fighting) {

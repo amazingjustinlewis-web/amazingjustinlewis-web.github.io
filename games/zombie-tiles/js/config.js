@@ -6,7 +6,7 @@
    ===================================================================== */
 (function (root) {
   root.ZT_CONFIG = {
-    version: '0.3',
+    version: '0.3.1',
 
     // ---- board ----
     tileSize: 8,                 // squares per tile side (data model keeps w/h per tile for later)
@@ -59,6 +59,8 @@
     pickupWeights: { heart: 3, pipe: 3, pistol: 2, mg: 1, ammo: 3 },
 
     // ---- display ----
+    phone: { turnBuzzEveryMs: 3500, turnBuzzPattern: [40] },   // gentle 'your turn' reminder buzz on the phone until the player acts (phones can switch it off)
+    escapeShow: { ms: 5200, fireworks: [0.9, 1.7, 2.3, 2.9, 3.5, 4.1], buzz: [90, 60, 90, 60, 90, 120, 400] },   // helicopter cinematic on the TV when someone escapes (the game waits for it)
     showHeartsOnTV: true,        // hearts on the TV player cards (ammo is ALWAYS phone-only)
 
     // ---- timing (ms) ----
@@ -96,7 +98,7 @@
       lunge: { color: '#5cff2e', dip: 0.35, flickers: 2 },             // zombies lurch toward you
       crunch: { color: '#ff0000', bri: 1.0, holdMs: 1500, fadeMs: 2500 },   // a player is taken out
       rise: { color: '#5cff2e', bri: 0.55, ms: 1200 },                 // a fallen player rises
-      escape: { colors: ['#ffc21a', '#fff0b8', '#ffa200'], bri: 1.0, steps: 6, stepMs: 500 },  // helicopter escape
+      escape: { colors: ['#ffd23f', '#ff4fd8', '#3fd0ff', '#9dff6a', '#ffffff', '#ff7a1a'], bri: 1.0, steps: 8, stepMs: 500 },  // helicopter escape: multi-colour firework bursts
       over: { holdMs: 4000 },     // final look is held this long before the original lights come back
       restoreTransitionMs: 1500,
       disconnectRestoreMs: 30000, // TV gone this long -> restore the lights
