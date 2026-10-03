@@ -13,7 +13,9 @@ const Camera = (() => {
   const ease = (k, dt) => 1 - Math.exp(-k * dt);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-  function baseScale() { return cam.viewH / (CONFIG.camera.rowsAtZoom1 * CONFIG.world.tile); }
+  // v3.1: tall portrait screens (phone / iPad held upright) scale from a 4:3 box so the full playfield WIDTH
+  // stays visible (they just see extra rows above / below). Anything 4:3 or wider is exactly as before.
+  function baseScale() { return Math.min(cam.viewH, cam.viewW * 0.75) / (CONFIG.camera.rowsAtZoom1 * CONFIG.world.tile); }
 
   function clampPos(x, y, zoom) {
     const T = CONFIG.world.tile, s = baseScale() * zoom, b = cam.bounds;

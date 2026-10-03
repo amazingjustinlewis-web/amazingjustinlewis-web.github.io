@@ -4,7 +4,7 @@
    To use real sound files later, swap the bodies of the functions in SOUNDS.
    ===================================================================== */
 const Sfx = (() => {
-  let ac = null, master = null, noiseBuf = null, muted = false;
+  let ac = null, master = null, noiseBuf = null, muted = false, silentDone = false;
   const hums = [null, null];
 
   function ensure() {
@@ -19,7 +19,7 @@ const Sfx = (() => {
       const d = noiseBuf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     }
-    if (ac.state === 'suspended') ac.resume().catch(() => {});
+    if (ac.state === 'suspended' || ac.state === 'interrupted') ac.resume().catch(() => {});   // (iOS: 'interrupted')
     return ac;
   }
 
@@ -93,7 +93,13 @@ const Sfx = (() => {
   };
 
   return {
-    unlock() { ensure(); },
+    unlock() {
+      if (!ensure()) return;
+      if (!silentDone) {   // iOS: start a silent buffer inside the first gesture to fully unlock Web Audio
+        silentDone = true;
+        try { const s = ac.createBufferSource(); s.buffer = ac.createBuffer(1, 1, 22050); s.connect(ac.destination); s.start(0); } catch (e) { /* optional */ }
+      }
+    },
     play(name, a, b) { if (!muted && SOUNDS[name]) try { SOUNDS[name](a, b); } catch (e) { /* audio is optional */ } },
     toggleMute() {
       muted = !muted;

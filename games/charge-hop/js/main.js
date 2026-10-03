@@ -261,13 +261,18 @@ const Game = {
     if (CONFIG.debug.showHitboxes) this.drawHitboxes();
 
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    // overlays shrink on small screens (phones); exactly 1 at desktop / iPad sizes
+    const uiS = this.uiScale = Math.max(0.55, Math.min(1, w / 720, h / 420)), uw = w / uiS, uh = h / uiS;
+    const ui = () => ctx.setTransform(DPR * uiS, 0, 0, DPR * uiS, 0, 0);
     if (this.state === 'title') this.drawTitle(w, h);
     else {
-      this.drawHUD(w, h);
-      if (this.state === 'countdown') this.drawCountdown(w, h);
-      if (this.state === 'won') { Fireworks.draw(ctx, w, h, Math.min(1, this.wonT / 0.6)); this.drawWin(w, h); }
+      this.drawTouchSplit(w, h);
+      ui(); this.drawHUD(uw, uh);
+      if (this.state === 'countdown') this.drawCountdown(uw, uh);
+      if (this.state === 'won') { ctx.setTransform(DPR, 0, 0, DPR, 0, 0); Fireworks.draw(ctx, w, h, Math.min(1, this.wonT / 0.6)); ui(); this.drawWin(uw, uh); }
     }
-    if (this.paused) this.drawPaused(w, h);
+    if (this.paused) { ui(); this.drawPaused(uw, uh); }
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     if (Drama.amt > 0) { // cinematic letterbox during slow-mo
       const bh = h * 0.06 * Drama.amt;
       ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0, 0, w, bh); ctx.fillRect(0, h - bh, w, bh);
@@ -353,11 +358,17 @@ const Game = {
       }
     }
     // players not in this round: how to get into the next one
+    const uiS = this.uiScale || 1;
+    this.joinHits = [];
     for (const p of this.players) {
       if (p.joined) continue;
       const x = p.idx === 0 ? 14 : w - 204, y = 14;
       ctx.fillStyle = 'rgba(10,12,18,0.55)'; rrect(ctx, x, y, 190, 26, 8); ctx.fill();
-      this.text(p.joinNext ? `${p.name} joins next round` : `${p.name}: press ${CONFIG.player.keys[p.idx]} to join next round`,
+      // touch: this note is the player's join button (screen px; generous tap area)
+      this.joinHits.push({ idx: p.idx, x0: (x - 14) * uiS, x1: (x + 204) * uiS, y0: 0, y1: Math.max(56, (y + 40) * uiS) });
+      const how = Input.isTouch ? `${p.name}: tap HERE to join next round`
+        : `${p.name}: press ${CONFIG.player.keys[p.idx]} to join next round`;
+      this.text(p.joinNext ? `${p.name} joins next round` : how,
         x + 95, y + 13, 11, p.joinNext ? p.color : 'rgba(255,255,255,0.7)', 'center', 800, 0);
     }
     // off-screen arrows for trailing players
@@ -381,7 +392,7 @@ const Game = {
     const t = this.raceTime;
     this.text(`${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`, w / 2, 26, 22, '#fff');
     this.text(this.level.name.toUpperCase(), w / 2, 48, 11, 'rgba(255,255,255,0.6)', 'center', 800, 3);
-    if (Sfx.muted) this.text('MUTED (M)', w / 2, 66, 11, '#ff9b9b', 'center', 800, 3);
+    if (Sfx.muted) this.text(Input.isTouch ? 'MUTED' : 'MUTED (M)', w / 2, 66, 11, '#ff9b9b', 'center', 800, 3);
     if (this.state === 'play') {   // v3: one-time hints the first time anyone reaches a lava chute / open straight
       this.hintSeen = this.hintSeen || {};
       for (const p of this.active) {
@@ -398,7 +409,10 @@ const Game = {
       ctx.globalAlpha = 1;
     } else if (this.state === 'play' && this.playT < 9) {
       ctx.globalAlpha = Math.min(1, (9 - this.playT) / 1.5);
-      this.text('TAP = hop  ·  HOLD = charged jump  ·  hold too long and it BLOWS  ·  tap fast for a streak', w / 2, h - 26, 14, '#fff', 'center', 800, 4);
+      const hint = !Input.isTouch ? 'TAP = hop  ·  HOLD = charged jump  ·  hold too long and it BLOWS  ·  tap fast for a streak'
+        : this.touchSplit ? 'LEFT side = P1  ·  RIGHT side = P2  ·  tap = hop  ·  hold = charged jump'
+        : 'TAP anywhere = hop  ·  HOLD = charged jump  ·  hold too long and it BLOWS';
+      this.text(hint, w / 2, h - 26, 14, '#fff', 'center', 800, 4);
       ctx.globalAlpha = 1;
     }
   },
@@ -420,12 +434,28 @@ const Game = {
     ctx.restore();
 
     // level selector
-    const L = this.level, ly0 = h * 0.335;
-    this.text(`◀   LEVEL ${this.levelIndex + 1}: ${L.name.toUpperCase()}   ▶`, w / 2, ly0, 19 * s + 3, '#ffffff', 'center', 900, 4);
-    this.text(`${L.rows} rows${L.def.blurb ? '  ·  ' + L.def.blurb : ''}   —   ← → or 1-${LEVELS.length} to change`, w / 2, ly0 + 22 * s + 2, 11 * s + 2, 'rgba(255,255,255,0.7)', 'center', 700, 3);
+    const L = this.level, ly0 = h * 0.335, touch = Input.isTouch;
+    const lvlLabel = `◀   LEVEL ${this.levelIndex + 1}: ${L.name.toUpperCase()}   ▶`, lsz = 19 * s + 3;
+    this.text(lvlLabel, w / 2, ly0, lsz, '#ffffff', 'center', 900, 4);
+    this.text(`${L.rows} rows${L.def.blurb ? '  ·  ' + L.def.blurb : ''}   —   ${touch ? 'tap ◀ ▶ to change' : `← → or 1-${LEVELS.length} to change`}`, w / 2, ly0 + 22 * s + 2, 11 * s + 2, 'rgba(255,255,255,0.7)', 'center', 700, 3);
+    // touch: tap areas on the title (checked by touchRoute before a tap counts as a join)
+    ctx.font = `900 ${lsz}px ${FONT}`;
+    const lw = ctx.measureText(lvlLabel).width, ah = Math.max(44, lsz * 2.4);
+    this.titleHits = [
+      { x0: w / 2 - lw / 2 - 30, x1: w / 2 - lw / 2 + lsz * 2, y0: ly0 - ah / 2, y1: ly0 + ah / 2, fn: () => { this.selectLevel(this.levelIndex - 1); } },
+      { x0: w / 2 + lw / 2 - lsz * 2, x1: w / 2 + lw / 2 + 30, y0: ly0 - ah / 2, y1: ly0 + ah / 2, fn: () => { this.selectLevel(this.levelIndex + 1); } }
+    ];
 
     // join cards
     const cw = 270 * s, ch = 120 * s, gap = 30 * s, y0 = h * 0.45;
+    if (touch) {   // touch-friendly join hint
+      const nj = this.players.filter((p) => p.joined).length;
+      const msg = nj === 0 ? 'Tap or hold anywhere on your side  ·  LEFT side = P1  ·  RIGHT side = P2'
+        : nj === 1 ? 'Tap your side again to start solo  ·  or a 2nd player taps the other side' : 'Get ready!';
+      ctx.globalAlpha = 0.75 + 0.25 * Math.sin(this.realTime * 4);
+      this.text(msg, w / 2, y0 - 16 * s - 4, 13 * s + 3, '#ffe14d', 'center', 900, 4);
+      ctx.globalAlpha = 1;
+    }
     this.players.forEach((p, i) => {
       const x = w / 2 + (i === 0 ? -cw - gap / 2 : gap / 2);
       ctx.fillStyle = p.joined ? 'rgba(20,24,34,0.9)' : 'rgba(20,24,34,0.6)'; rrect(ctx, x, y0, cw, ch, 14 * s); ctx.fill();
@@ -441,11 +471,11 @@ const Game = {
       if (p.joined) {
         this.text('READY!', x + 80 * s, y0 + 66 * s, 20 * s, '#fff', 'left');
         const other = this.players[1 - i];
-        if (!other.joined) this.text(`${CONFIG.player.keys[i]} again = start solo`, x + 80 * s, y0 + 92 * s, 12 * s, 'rgba(255,255,255,0.75)', 'left', 700, 3);
+        if (!other.joined) this.text(touch ? 'tap again = start solo' : `${CONFIG.player.keys[i]} again = start solo`, x + 80 * s, y0 + 92 * s, 12 * s, 'rgba(255,255,255,0.75)', 'left', 700, 3);
       } else {
         const blink = Math.floor(this.realTime * 2.2) % 2 ? 1 : 0.55;
         ctx.globalAlpha = blink;
-        this.text(`press ${CONFIG.player.keys[i]}`, x + 80 * s, y0 + 66 * s, 18 * s, '#fff', 'left');
+        this.text(touch ? `tap ${i === 0 ? 'LEFT' : 'RIGHT'} side` : `press ${CONFIG.player.keys[i]}`, x + 80 * s, y0 + 66 * s, 18 * s, '#fff', 'left');
         this.text('to join', x + 80 * s, y0 + 90 * s, 14 * s, 'rgba(255,255,255,0.8)', 'left', 700, 3);
         ctx.globalAlpha = 1;
       }
@@ -463,9 +493,52 @@ const Game = {
       this.text(a, w / 2 - 170 * s, ly + i * 24 * s, 14 * s, '#ffb02e', 'right', 900, 3);
       this.text(b, w / 2 - 158 * s, ly + i * 24 * s, 14 * s, '#e8e8f0', 'left', 700, 3);
     });
-    this.text(`C characters: ${Characters.robots ? 'ROBOTS' : 'STICKMEN'}`, w / 2, h - 46, 12 * s + 2, '#ffe14d', 'center', 800, 3);
-    this.text('first to the GOAL wins  ·  M mute  ·  P pause  ·  R restart  ·  ESC title  ·  ` tuning panel',
+    const chLabel = touch ? `characters: ${Characters.robots ? 'ROBOTS' : 'STICKMEN'}  (tap to switch)` : `C characters: ${Characters.robots ? 'ROBOTS' : 'STICKMEN'}`;
+    this.text(chLabel, w / 2, h - 46, 12 * s + 2, '#ffe14d', 'center', 800, 3);
+    if (touch) {
+      ctx.font = `800 ${12 * s + 2}px ${FONT}`;
+      const cwid = ctx.measureText(chLabel).width;
+      this.titleHits.push({ x0: w / 2 - cwid / 2 - 16, x1: w / 2 + cwid / 2 + 16, y0: h - 46 - 22, y1: h - 46 + 16, fn: () => { Characters.toggle(); Sfx.play('beep'); } });
+    }
+    this.text(touch ? 'first to the GOAL wins  ·  ⏸ button (top) = pause / restart / level select'
+      : 'first to the GOAL wins  ·  M mute  ·  P pause  ·  R restart  ·  ESC title  ·  ` tuning panel',
       w / 2, h - 24, 12 * s + 2, 'rgba(255,255,255,0.6)', 'center', 700, 3);
+  },
+
+  /** touch, 2 players in the round: LEFT half = P1, RIGHT half = P2. Otherwise one player = the whole screen. */
+  get touchSplit() {
+    if (this.state === 'title') return true;
+    return this.players.filter((p) => p.joined && !p.satOut).length > 1;
+  },
+  /** where a touch at (x, y) goes: 0 = P1 (Space), 1 = P2 (Enter), -1 = consumed / ignored */
+  touchRoute(x, y, w, h) {
+    if (this.paused) return -1;
+    if (this.state === 'title') {
+      for (const r of this.titleHits || []) if (x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1) { r.fn(); return -1; }
+      return x < w / 2 ? 0 : 1;
+    }
+    // a player sitting out taps their "tap HERE to join" note (same as pressing their key: joins next round)
+    for (const r of this.joinHits || []) if (x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1 && !this.players[r.idx].joined) return r.idx;
+    if (this.touchSplit) return x < w / 2 ? 0 : 1;
+    const solo = this.players.find((p) => p.joined && !p.satOut);
+    return solo ? solo.idx : 0;                       // one player: anywhere on the screen
+  },
+  /** faint split line + side labels (touch devices, 2 players playing) */
+  drawTouchSplit(w, h) {
+    if (!Input.isTouch || (this.state !== 'play' && this.state !== 'countdown') || !this.touchSplit) return;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 2; ctx.setLineDash([10, 12]);
+    ctx.beginPath(); ctx.moveTo(w / 2, 96 * (this.uiScale || 1)); ctx.lineTo(w / 2, h - 50); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 0.45;
+    const [p1, p2] = this.players, fs = Math.max(12, 18 * (this.uiScale || 1));
+    this.text(`◀ ${p1.name}`, 16, h - 60, fs, p1.color, 'left', 900, 3);
+    this.text(`${p2.name} ▶`, w - 16, h - 60, fs, p2.color, 'right', 900, 3);
+    ctx.restore();
+  },
+  togglePause() {
+    if (this.state === 'title') return;
+    this.paused = !this.paused;
+    if (this.paused) this.players.forEach((p) => Sfx.stopHum(p.idx));
   },
 
   drawCountdown(w, h) {
@@ -490,7 +563,8 @@ const Game = {
     this.text(`${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}    ${summary}`, w / 2, h * 0.6 + 34, 18, '#fff', 'center', 800, 4);
     if (this.wonT > 1) {
       const C = CONFIG.celebrate, left = Math.max(0, Math.ceil(C.duration - this.wonT));
-      this.text(C.autoRestart ? `next round in ${left}   ·   R = go now   ·   ESC = title` : 'R = play again   ·   ESC = title',
+      this.text(Input.isTouch ? (C.autoRestart ? `next round in ${left}   ·   ⏸ = menu` : '⏸ = menu (restart / title)')
+        : C.autoRestart ? `next round in ${left}   ·   R = go now   ·   ESC = title` : 'R = play again   ·   ESC = title',
         w / 2, h * 0.6 + 60, 15, 'rgba(255,255,255,0.8)', 'center', 700, 3);
     }
   },
@@ -498,7 +572,7 @@ const Game = {
   drawPaused(w, h) {
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, w, h);
     this.text('PAUSED', w / 2, h / 2 - 10, 64, '#fff', 'center', 900, 8);
-    this.text('P to resume  ·  R restart  ·  ESC title', w / 2, h / 2 + 40, 16, 'rgba(255,255,255,0.8)', 'center', 700, 3);
+    if (!Input.isTouch) this.text('P to resume  ·  R restart  ·  ESC title', w / 2, h / 2 + 40, 16, 'rgba(255,255,255,0.8)', 'center', 700, 3);
   },
 
   /* ---------------- debug / test helpers ---------------- */
@@ -521,11 +595,7 @@ const Game = {
 /* ---------------- hotkeys ---------------- */
 Input.onAnyKey(() => Sfx.unlock());
 Input.onKey('KeyM', () => Sfx.toggleMute());
-Input.onKey('KeyP', () => {
-  if (Game.state === 'title') return;
-  Game.paused = !Game.paused;
-  if (Game.paused) Game.players.forEach((p) => Sfx.stopHum(p.idx));
-});
+Input.onKey('KeyP', () => Game.togglePause());
 Input.onKey('KeyR', () => Game.restart());
 Input.onKey('KeyC', () => { if (Game.state === 'title') { Characters.toggle(); Sfx.play('beep'); } });
 Input.onKey('Escape', () => Game.toTitle());

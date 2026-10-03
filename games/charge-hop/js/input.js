@@ -60,7 +60,70 @@ const Input = (() => {
     });
   });
 
+  /* ---------------- touch / pointer (v3.1) ----------------
+     Every touch is tracked by its pointerId and treated as one more "physical key" held on the
+     button it started on (left/right half etc. - main.js decides via the router). So a touch
+     feeds EXACTLY the same edge queue / held state / blocking as Space and Enter do. */
+  const owners = new Map();      // pointerId -> button index it is holding
+  const touchListeners = [];
+  let touchUsed = false;
+  function pressVirtual(i, id) {
+    const b = buttons[i], wasDown = b.keys.size > 0;
+    b.keys.add(id);
+    if (!wasDown && !b.blocked) b.queue.push('down');
+  }
+  function releaseVirtual(i, id) {
+    const b = buttons[i];
+    if (!b.keys.delete(id)) return;
+    if (b.keys.size === 0) {
+      if (b.blocked) b.blocked = false;
+      else b.queue.push('up');
+    }
+  }
+  window.addEventListener('blur', () => owners.clear());   // (keys were cleared by the blur handler above)
+
+  function attachTouch(el, route) {
+    const nopassive = { passive: false };
+    el.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse') return;              // desktop mouse: unchanged (keyboard only, as before)
+      e.preventDefault();
+      touchUsed = true;
+      touchListeners.forEach((f) => f(e));
+      const r = el.getBoundingClientRect();
+      const i = route(e.clientX - r.left, e.clientY - r.top, r.width, r.height, e);
+      if (i !== 0 && i !== 1) return;                     // consumed (a title-screen button) or ignored
+      owners.set(e.pointerId, i);
+      pressVirtual(i, 'pointer' + e.pointerId);
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* not critical */ }
+    }, nopassive);
+    const up = (e) => {
+      const i = owners.get(e.pointerId);
+      if (i === undefined) return;
+      owners.delete(e.pointerId);
+      releaseVirtual(i, 'pointer' + e.pointerId);
+    };
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('lostpointercapture', up);
+    // no scrolling, pinch / double-tap zoom, long-press callout, selection or context menu on the game
+    for (const t of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {
+      el.addEventListener(t, (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (t === 'touchend' || t === 'touchstart') touchListeners.forEach((f) => f(e));   // iOS audio unlock
+      }, nopassive);
+    }
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+    el.addEventListener('dblclick', (e) => e.preventDefault());
+    el.addEventListener('selectstart', (e) => e.preventDefault());
+    for (const t of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(t, (e) => e.preventDefault(), nopassive);
+  }
+
   return {
+    attachTouch,
+    onTouch(fn) { touchListeners.push(fn); },
+    /** true on touch-first devices (coarse pointer) or once a real touch has happened */
+    get isTouch() { return touchUsed || !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); },
+    get touchCount() { return owners.size; },
     /** Returns and clears pending edges for player i. */
     poll(i) { const q = buttons[i].queue; buttons[i].queue = []; return q; },
     isHeld(i) { return buttons[i].keys.size > 0 && !buttons[i].blocked; },
