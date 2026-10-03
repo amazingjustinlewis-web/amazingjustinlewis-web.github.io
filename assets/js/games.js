@@ -90,6 +90,7 @@ window.GAMES = [
       'Cartoon zombies, no gore: fights are dice rolls with big result text.',
       'Players can be knocked out and come back as a zombie (or just watch).',
       'Trap boxes catch zombies in a cartoon rope snare, and dynamite goes off with a big cartoon boom and a screen shake.',
+      'A player down to their last heart leaves a few small cartoon red drops on the board as they walk; they fade away after a few seconds.',
       'Each phone shows its own hearts and ammo, so a little secrecy is part of the fun.',
       'Short, cartoony sound effects from the TV (war cries, little screams, a crunch when a fight goes wrong): press M to mute.',
       'Computer players (AI) can fill empty seats, each with its own personality and an Easy, Normal or Ruthless setting.',
@@ -102,7 +103,7 @@ window.GAMES = [
         name: 'Traps & TNT',
         current: true,
         play: 'games/zombie-tiles/index.html',
-        notes: 'Pick up trap boxes and dynamite and drop them from your phone. Zombies that step on a trap get caught in a cartoon rope snare; lit dynamite goes off at the end of the round (or when you press DETONATE) and clears the zombies around it, but it hurts players standing too close. New phone buttons: RESET MOVES and END TURN. Players and zombies are now little animated characters that walk square by square (you can draw your own). Computer players use traps and dynamite too.'
+        notes: 'Pick up trap boxes and dynamite and drop them from your phone. Zombies that step on a trap get caught in a cartoon rope snare; lit dynamite goes off at the end of the round (or when you press DETONATE) and clears the zombies around it, but it hurts players standing too close. New phone buttons: RESET MOVES and END TURN. Players and zombies are now little animated characters that walk square by square (you can draw your own). Computer players use traps and dynamite too. v0.4.1: weapons hit harder (pipe +2, pistol +3, machine gun +5; bare hands unchanged), and a player on their last heart leaves a few cartoon drops behind them.'
       },
       {
         id: 'v0.3',

@@ -155,7 +155,7 @@
     var s = Math.min(a.w / bw, a.h / bh, a.h / (S * 1.15));
     return { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2, s: s };
   };
-  R.snap = function (g) { var t = this.camTarget(g); this.cam = t; this.disp = {}; };
+  R.snap = function (g) { var t = this.camTarget(g); this.cam = t; this.disp = {}; this.trails = []; };
   R.toScreen = function (x, y) { var a = this.area, c = this.cam; return [a.x + a.w / 2 + (x - c.x) * c.s, a.y + a.h / 2 + (y - c.y) * c.s]; };
 
   R.frame = function (g, dt, now) {
@@ -243,6 +243,7 @@
       ctx.fillStyle = Math.random() < 0.5 ? '#fff6a0' : '#ff9a1a'; ctx.beginPath(); ctx.arc(p[0] + sq * 0.2, p[1] - sq * 0.3, sq * (0.05 + 0.05 * Math.random()), 0, 7); ctx.fill();
     });
 
+    drawTrails(this, ctx, now, sq);
     // planned path
     var cur = g.curP && g.curP();
     if (cur && g.plan && g.plan.length && (g.phase === 'plan' || g.phase === 'exec' || g.phase === 'place')) {
@@ -300,6 +301,7 @@
         if (dist > 6) { d.x = d.fx = d.tx = e.x; d.y = d.fy = d.ty = e.y; d.t = 1; }
         else {
           var ddx = e.x - d.x, ddy = e.y - d.y;
+          if (e.p && e.p.status === 'alive') dropTrail(self, e.p, d.tx, d.ty, now);   // v0.4.1: blood drops on the square being left
           d.fx = d.x; d.fy = d.y; d.tx = e.x; d.ty = e.y; d.t = 0; d.dur = stepSec * Math.min(2.2, Math.max(1, dist));
           d.dir = Math.abs(ddx) > Math.abs(ddy) ? (ddx > 0 ? 2 : 1) : (ddy > 0 ? 0 : 3);
         }
@@ -345,6 +347,29 @@
     if (this.cine) drawCinematic(this, ctx, dt, now, sq);
     ctx.restore();
   };
+
+  // v0.4.1 blood trail: small cartoon splats (round blob + a few droplets + a highlight), fading out after C.bloodTrail.fadeMs
+  function dropTrail(R, p, x, y, now) {
+    var BT = C.bloodTrail; if (!BT || !BT.enabled || p.hearts > BT.hearts || p.hearts <= 0) return;
+    var tr = R.trails = R.trails || [], drops = [], n = 2 + Math.floor(Math.random() * 3);
+    for (var i = 0; i < n; i++) drops.push({ ox: (Math.random() - 0.5) * 0.36, oy: (Math.random() - 0.5) * 0.36, r: 0.025 + Math.random() * 0.035 });
+    tr.push({ x: x, y: y, t: now, ox: (Math.random() - 0.5) * 0.3, oy: (Math.random() - 0.5) * 0.3 + 0.12, r: 0.07 + Math.random() * 0.03, rot: Math.random() * 3, drops: drops });
+    if (tr.length > (BT.max || 80)) tr.splice(0, tr.length - (BT.max || 80));
+  }
+  function drawTrails(R, ctx, now, sq) {
+    var BT = C.bloodTrail, tr = R.trails; if (!BT || !tr || !tr.length) return;
+    var life = BT.fadeMs || 12000, col = BT.color || '#d81e2c';
+    R.trails = tr = tr.filter(function (s) { return now - s.t < life; });
+    tr.forEach(function (s) {
+      var age = (now - s.t) / life, a = age < 0.6 ? 0.9 : 0.9 * (1 - (age - 0.6) / 0.4), grow = Math.min(1, (now - s.t) / 180);
+      var p = R.toScreen(s.x + 0.5 + s.ox, s.y + 0.5 + s.oy), r = s.r * sq * (0.6 + 0.4 * grow);
+      ctx.globalAlpha = Math.max(0, a); ctx.fillStyle = col;
+      ctx.beginPath(); ctx.ellipse(p[0], p[1], r * 1.2, r * 0.85, s.rot, 0, 7); ctx.fill();
+      s.drops.forEach(function (d) { ctx.beginPath(); ctx.arc(p[0] + d.ox * sq * grow, p[1] + d.oy * sq * grow, d.r * sq, 0, 7); ctx.fill(); });
+      ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(p[0] - r * 0.4, p[1] - r * 0.3, r * 0.28, 0, 7); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
 
   function drawFx(R, ctx, dt, now, sq) {
     if (!R.fx || !R.fx.length) return;

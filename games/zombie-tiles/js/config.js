@@ -6,7 +6,7 @@
    ===================================================================== */
 (function (root) {
   root.ZT_CONFIG = {
-    version: '0.4',
+    version: '0.4.1',
 
     // ---- board ----
     tileSize: 8,                 // squares per tile side (data model keeps w/h per tile for later)
@@ -24,9 +24,9 @@
     // ---- weapons (rank decides auto-pickup: higher replaces lower) ----
     weapons: {
       none:   { label: 'Empty hands',  short: 'Fists',  bonus: 0, rank: 0 },
-      pipe:   { label: 'Lead pipe',    short: 'Pipe',   bonus: 1, rank: 1 },
-      pistol: { label: 'Pistol',       short: 'Pistol', bonus: 1, rank: 2, gun: true, ammoPerFight: 1, clip: 5 },
-      mg:     { label: 'Machine gun',  short: 'MG',     bonus: 2, rank: 3, gun: true, ammoPerFight: 3, clip: 20 }
+      pipe:   { label: 'Lead pipe',    short: 'Pipe',   bonus: 2, rank: 1 },                                         // v0.4.1: was +1
+      pistol: { label: 'Pistol',       short: 'Pistol', bonus: 3, rank: 2, gun: true, ammoPerFight: 1, clip: 5 },   // v0.4.1: was +1
+      mg:     { label: 'Machine gun',  short: 'MG',     bonus: 5, rank: 3, gun: true, ammoPerFight: 3, clip: 20 }   // v0.4.1: was +2
     },
     ammoClipRounds: 5,           // rounds in a loose ammo clip pickup
     maxAmmo: 40,
@@ -72,6 +72,8 @@
     escapeShow: { ms: 5200, fireworks: [0.9, 1.7, 2.3, 2.9, 3.5, 4.1], buzz: [90, 60, 90, 60, 90, 120, 400] },   // helicopter cinematic on the TV when someone escapes (the game waits for it)
     // v0.4 character sprites: walk cycles + idle bobs. Drop in your own sheets (format: js/sprites.js / assets/sprites/README.md)
     sprites: { enabled: true, frame: 32, player: '', zombie: '', walkFps: 12, idleMs: 520, stepSec: 0.22 },
+    // v0.4.1: a badly hurt player leaves little cartoon blood drops on the squares they walk through (TV only, purely visual)
+    bloodTrail: { enabled: true, hearts: 1, fadeMs: 12000, max: 80, color: '#d81e2c' },
     showHeartsOnTV: true,        // hearts on the TV player cards (ammo is ALWAYS phone-only)
 
     // ---- timing (ms) ----

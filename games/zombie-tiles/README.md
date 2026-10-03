@@ -1,4 +1,4 @@
-# Zombie Tiles (working title) - prototype v0.4
+# Zombie Tiles (working title) - prototype v0.4.1
 
 A zombie tile-laying board game for a TV or big screen. Up to 4 players use their
 phones as controllers (Jackbox-style), or play hot-seat on one screen.
@@ -13,6 +13,13 @@ Plain HTML5 + JavaScript (canvas). No build step, no server of our own.
 TV keys: arrows plan a path, Enter = roll / execute / place, Backspace = undo,
 Esc = reset moves, N = end turn, T = drop a trap box, B = drop dynamite, X = detonate your dynamite,
 Q/E = rotate a tile, M = mute, L = Hue lights off/on.
+
+## Stronger weapons and a last-heart trail (v0.4.1)
+- Weapons give a bigger edge in zombie fights (your 2 dice + weapon bonus vs the zombie's 2 dice):
+  fists +0 (unchanged), lead pipe **+2** (was +1), pistol **+3** (was +1, 1 ammo per fight), machine gun **+5** (was +2, 3 ammo per fight).
+  Ammo, clips and everything else are unchanged. AI players follow the same rules.
+- A player down to their last heart leaves a few cartoon red drops on the squares they walk through; they fade after about 12 seconds
+  (`bloodTrail` in `js/config.js`; set `enabled: false` to switch it off).
 
 ## Traps, dynamite and sprites (new in v0.4)
 - **Trap boxes** and **dynamite** are new pickups (max 2 of each). On your turn (before rolling or while planning) press
