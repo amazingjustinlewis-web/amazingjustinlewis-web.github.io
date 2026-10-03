@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-77.53 -75.41 155.06 160.26" role="img" aria-labelledby="t d">
+  <title id="t">0 → φ (Zero to Phi logo concept)</title>
+  <desc id="d">Monogram: a tiny 0 at the centre unwinds as a golden spiral and connects to the phi bowl at a single gold node.</desc>
+  <defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="-60" y1="-57.88" x2="60" y2="67.32"><stop offset="0" stop-color="#B88A1E"/><stop offset="0.55" stop-color="#93680F"/><stop offset="1" stop-color="#6E4C08"/></linearGradient></defs>
+  <rect x="-77.53" y="-75.41" width="155.06" height="160.26" rx="9.3" fill="#FAF6EC"/>
+  <g fill="none" stroke="url(#g)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="0" cy="0" rx="6.2" ry="10.03"/>
+    <path d="M-4.04 -7.62 C-5.17 -7.4 -6.34 -6.94 -7.43 -6.23 C-8.52 -5.52 -9.55 -4.56 -10.39 -3.36 C-11.23 -2.16 -11.88 -0.72 -12.25 0.89 C-12.62 2.5 -12.69 4.28 -12.4 6.11 C-12.1 7.95 -11.43 9.83 -10.34 11.62 C-9.25 13.4 -7.75 15.09 -5.87 16.49 C-3.98 17.89 -1.7 19.01 0.86 19.68 C3.42 20.34 6.27 20.55 9.22 20.16 C12.17 19.76 15.23 18.77 18.14 17.12 C21.06 15.46 23.82 13.13 26.16 10.17 C28.5 7.21 30.4 3.62 31.58 -0.46 C32.77 -4.54 33.23 -9.09 32.74 -13.84 C32.25 -18.59 30.8 -23.54 28.28 -28.28"/>
+    <circle cx="0" cy="0" r="40"/>
+    <path d="M0 -55.28 V-40 M0 40 V64.72"/>
+  </g>
+  <circle cx="28.28" cy="-28.28" r="3.25" fill="url(#g)"/>
+</svg>

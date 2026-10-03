@@ -3,28 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- SITE NAME: the visible name comes from assets/js/site-config.js.
-     The plain-text copies in this <head> are for link previews (crawlers don't run JS);
-     see README "Renaming the site" for a one-line command that updates them all. -->
-<title>Cohesion Games</title>
-<meta name="description" content="Cohesion Games, founded by Justin Lewis: emergent, connected, visceral indie games with simple entry points and massive possibilities. Play Charge Hop free in your browser.">
+<!-- SITE NAME: visible copies come from assets/js/site-config.js; the plain-text copies in this <head> are for link previews (see README). -->
+<title>Zero to Phi</title>
+<meta name="description" content="Zero to Phi is the indie game studio founded by Justin Lewis: games with one simple connection point, lots of freedom and mathematically clean rails. Play Charge Hop free in your browser.">
 <meta name="theme-color" content="#0b0913">
-
-<!-- Social / link preview (Facebook, Twitter/X, Discord, iMessage...) -->
 <!-- TODO(domain): share URLs are absolute for the current GitHub Pages address. When the .com is live,
      replace "https://amazingjustinlewis-web.github.io/" with the new domain in og:url / og:image / twitter:image. -->
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Cohesion Games">
-<meta property="og:title" content="Cohesion Games">
-<meta property="og:description" content="Emergent, connected, visceral indie games. Simple to pick up, massive possibilities. Play Charge Hop free in your browser.">
+<meta property="og:site_name" content="Zero to Phi">
+<meta property="og:title" content="Zero to Phi">
+<meta property="og:description" content="Indie games by Justin Lewis. One simple connection point, lots of freedom, mathematically clean rails. Play Charge Hop free in your browser.">
 <meta property="og:image" content="https://amazingjustinlewis-web.github.io/assets/img/og-site.jpg">
 <meta property="og:url" content="https://amazingjustinlewis-web.github.io/">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Cohesion Games - now playing: Charge Hop">
+<meta property="og:image:alt" content="Zero to Phi">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Cohesion Games">
-<meta name="twitter:description" content="Emergent, connected, visceral indie games. Simple to pick up, massive possibilities.">
+<meta name="twitter:title" content="Zero to Phi">
+<meta name="twitter:description" content="Indie games by Justin Lewis. One simple connection point, lots of freedom, mathematically clean rails. Play Charge Hop free in your browser.">
 <meta name="twitter:image" content="https://amazingjustinlewis-web.github.io/assets/img/og-site.jpg">
 
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
@@ -38,62 +34,82 @@
 
 <header class="site-header">
   <div class="wrap">
-    <a class="logo" href="index.html"><img src="assets/img/favicon.svg" alt="" width="32" height="32"><span data-site-name>Cohesion Games</span></a>
+    <a class="logo" href="index.html"><img src="assets/img/logo.svg" alt="" width="55" height="40"><span data-site-name>Zero to Phi</span><span class="sr-only"> home</span></a>
     <nav class="nav" aria-label="Main">
-      <a href="index.html#games">Games</a>
+      <a href="soft-play.html">Soft Play</a>
+      <a href="family.html">Family</a>
+      <a href="deep-end.html">Deep End</a>
       <a href="about.html">About</a>
     </nav>
   </div>
 </header>
 
 <main id="main">
-  <section class="hero">
+  <section class="intro" aria-labelledby="site-title">
     <div class="wrap">
+      <img class="intro__mark" src="assets/img/logo.svg" alt="Zero to Phi logo: a 0 unfurling along a golden spiral into the Greek letter phi (0 → φ)" width="170" height="124">
       <div>
-        <div class="kicker">&#9654; INSERT COIN <span class="blink">_</span></div>
-        <h1><span class="glitch" data-site-name>Cohesion Games</span></h1>
-        <p class="lede">Emergent, connected, visceral games: <strong>simple to pick up, massive possibilities</strong>. Founded by Justin Lewis, a feature-film character animator and punk rock drummer from Red Deer, Alberta. Free to play, right in your browser.</p>
-        <div class="cta-row">
-          <a class="btn btn--play btn--pulse" href="games/charge-hop/index.html">&#9654; Play Charge Hop</a>
-          <a class="btn btn--ghost" href="#games">Browse games</a>
-        </div>
-      </div>
-      <div class="hero-art">
-        <span class="sticker">NEW<br>GAME!</span>
-        <a class="crt" href="games/charge-hop.html" aria-label="Charge Hop details">
-          <img src="assets/img/charge-hop/v3-chute.webp" alt="Charge Hop: the yellow robot and the robot dog riding rocks down a lava chute" width="1200" height="675">
-          <span class="crt-label">NOW PLAYING: CHARGE HOP</span>
-        </a>
-      </div>
-    </div>
-    <div class="marquee" aria-hidden="true">
-      <div class="marquee__track">
-        <span>ONE BUTTON</span><span>&#9733;</span><span>CHARGE IT</span><span>&#9733;</span><span>DON'T BLOW IT</span><span>&#9733;</span><span>2 PLAYERS 1 KEYBOARD</span><span>&#9733;</span><span>LAVA CHUTES</span><span>&#9733;</span><span>DOMINO CHAINS</span><span>&#9733;</span>
-        <span>ONE BUTTON</span><span>&#9733;</span><span>CHARGE IT</span><span>&#9733;</span><span>DON'T BLOW IT</span><span>&#9733;</span><span>2 PLAYERS 1 KEYBOARD</span><span>&#9733;</span><span>LAVA CHUTES</span><span>&#9733;</span><span>DOMINO CHAINS</span><span>&#9733;</span>
+        <h1 id="site-title" data-site-name>Zero to Phi</h1>
+        <p class="tagline"><b>One simple connection point.</b> Lots of freedom inside the system. Mathematically clean rails underneath.</p>
+        <p class="sub">An indie game studio founded by Justin Lewis, a feature-film character animator and punk rock drummer from Red Deer, Alberta. Free to play in your browser.</p>
       </div>
     </div>
   </section>
 
-  <section class="section" id="games" aria-labelledby="games-title">
+  <section class="deck-section" aria-labelledby="deck-title">
     <div class="wrap">
-      <div class="section-head">
-        <h2 class="pixel" id="games-title">Select <span class="accent">game</span></h2>
-        <span class="count"><span data-games-count>1</span> PLAYABLE &middot; MORE ON THE WAY</span>
+      <h2 class="sr-only" id="deck-title">Choose a section</h2>
+      <p class="deck-hint" aria-hidden="true">&#9654; PICK A CARD</p>
+      <div class="deck">
+
+        <a class="deck-card deck-card--soft" href="soft-play.html" aria-labelledby="soft-title soft-desc">
+          <svg class="soft-sun" viewBox="0 0 140 140" aria-hidden="true" focusable="false"><g stroke="#ffc93c" stroke-width="7" stroke-linecap="round"><line x1="122" y1="70" x2="134" y2="70"/><line x1="115.03" y1="96" x2="125.43" y2="102"/><line x1="96" y1="115.03" x2="102" y2="125.43"/><line x1="70" y1="122" x2="70" y2="134"/><line x1="44" y1="115.03" x2="38" y2="125.43"/><line x1="24.97" y1="96" x2="14.57" y2="102"/><line x1="18" y1="70" x2="6" y2="70"/><line x1="24.97" y1="44" x2="14.57" y2="38"/><line x1="44" y1="24.97" x2="38" y2="14.57"/><line x1="70" y1="18" x2="70" y2="6"/><line x1="96" y1="24.97" x2="102" y2="14.57"/><line x1="115.03" y1="44" x2="125.43" y2="38"/></g><circle cx="70" cy="70" r="40" fill="#ffe066" stroke="#ffc93c" stroke-width="4"/><circle cx="48" cy="80" r="6" fill="#ff9db5" opacity=".7"/><circle cx="92" cy="80" r="6" fill="#ff9db5" opacity=".7"/><circle cx="57" cy="66" r="4.2" fill="#5a3a00"/><circle cx="83" cy="66" r="4.2" fill="#5a3a00"/><path d="M57 81 Q70 93 83 81" fill="none" stroke="#5a3a00" stroke-width="4" stroke-linecap="round"/></svg>
+          <div class="soft-inner">
+            <span class="soft-chip">Kids &middot; one-button games</span>
+            <h2 id="soft-title">Soft Play</h2>
+            <p id="soft-desc">Soft, bright and gentle games for little hands and anyone who likes things simple.</p>
+            <div class="soft-list">
+              <span class="list-head" data-series-title="one-button">The One-Button Series</span>
+              <ul data-mini-series="one-button"><li><span class="mini-title">Charge Hop</span> <span class="mini-v">v3 &middot; The Lava Run</span></li></ul>
+            </div>
+            <span class="pill pill--go card-cta">Come play &rarr;</span>
+          </div>
+        </a>
+
+        <a class="deck-card deck-card--family" href="family.html" aria-labelledby="family-title family-desc">
+          <div class="family-art">
+            <img src="assets/img/charge-hop/v3-straight-thumb.webp" alt="" width="480" height="270">
+            <div class="family-head"><h2 id="family-title">Family Friendly</h2><span class="main-chip">MAIN SECTION</span></div>
+          </div>
+          <div class="family-body">
+            <p id="family-desc">A wide range of games, from soft to intense. All of them family-appropriate.</p>
+            <div class="scale" aria-hidden="true"><div class="scale__bar"></div><div class="scale__ends"><span>Soft</span><span>Intense</span></div></div>
+            <ul class="mini-list" data-mini-section="family"><li><span class="mini-title">Charge Hop</span> <span class="mini-v">Lively</span></li></ul>
+            <span class="btn btn--play card-cta">Browse family games</span>
+          </div>
+        </a>
+
+        <a class="deck-card deck-card--deep" href="deep-end.html" aria-labelledby="deep-title deep-desc">
+          <svg class="deep-spiral" viewBox="-160 -160 320 320" aria-hidden="true" focusable="false"><path d="M0.18 -0 C0.18 -0.02 0.19 -0.05 0.18 -0.08 C0.18 -0.1 0.17 -0.13 0.16 -0.16 C0.14 -0.18 0.12 -0.21 0.1 -0.23 C0.07 -0.25 0.04 -0.27 -0 -0.28 C-0.04 -0.29 -0.08 -0.3 -0.12 -0.3 C-0.17 -0.29 -0.21 -0.28 -0.25 -0.25 C-0.3 -0.23 -0.34 -0.2 -0.38 -0.16 C-0.41 -0.11 -0.44 -0.06 -0.46 -0 C-0.48 0.06 -0.48 0.13 -0.48 0.2 C-0.47 0.27 -0.45 0.34 -0.41 0.41 C-0.37 0.48 -0.32 0.55 -0.25 0.61 C-0.18 0.66 -0.1 0.71 -0 0.74 C0.1 0.77 0.21 0.78 0.32 0.77 C0.43 0.76 0.55 0.73 0.67 0.67 C0.78 0.61 0.89 0.52 0.98 0.41 C1.08 0.29 1.15 0.16 1.2 0 C1.25 -0.16 1.27 -0.33 1.25 -0.52 C1.23 -0.7 1.18 -0.89 1.08 -1.08 C0.98 -1.26 0.84 -1.44 0.66 -1.59 C0.48 -1.74 0.25 -1.86 0 -1.94 C-0.25 -2.02 -0.54 -2.05 -0.84 -2.02 C-1.14 -1.99 -1.45 -1.9 -1.75 -1.75 C-2.05 -1.59 -2.33 -1.36 -2.57 -1.07 C-2.82 -0.77 -3.02 -0.41 -3.14 -0 C-3.27 0.41 -3.32 0.87 -3.27 1.36 C-3.23 1.84 -3.08 2.34 -2.83 2.83 C-2.57 3.31 -2.2 3.77 -1.72 4.16 C-1.25 4.56 -0.67 4.88 -0 5.08 C0.67 5.29 1.41 5.37 2.19 5.3 C2.98 5.22 3.79 4.99 4.57 4.57 C5.35 4.16 6.1 3.56 6.74 2.79 C7.37 2.02 7.9 1.08 8.22 0 C8.55 -1.08 8.69 -2.29 8.57 -3.55 C8.45 -4.81 8.07 -6.13 7.4 -7.4 C6.73 -8.66 5.76 -9.87 4.52 -10.9 C3.27 -11.93 1.74 -12.77 0 -13.31 C-1.74 -13.84 -3.7 -14.06 -5.74 -13.87 C-7.79 -13.67 -9.92 -13.06 -11.97 -11.97 C-14.02 -10.88 -15.98 -9.32 -17.64 -7.31 C-19.3 -5.29 -20.67 -2.82 -21.53 -0 C-22.4 2.82 -22.75 5.98 -22.44 9.29 C-22.12 12.6 -21.13 16.06 -19.37 19.37 C-17.61 22.68 -15.08 25.85 -11.82 28.54 C-8.56 31.23 -4.56 33.44 -0 34.84" fill="none" stroke="#cbb8ff" stroke-width="1.4" stroke-linecap="round"/><circle cx="0" cy="0" r="150" fill="none" stroke="#cbb8ff" stroke-width=".6" stroke-dasharray="2 6"/></svg>
+          <span class="deep-eyes" aria-hidden="true"><i></i><i></i></span>
+          <div class="deep-inner">
+            <span class="lock-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4.5" y="10.5" width="15" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="15.5" r="1.6" fill="currentColor"/></svg> Locked</span>
+            <h2 id="deep-title">The Deep End</h2>
+            <p id="deep-desc">Darker, deeper experimental games and experiences. Sealed for now.</p>
+            <p class="deep-teaser" aria-hidden="true">Something is stirring down here&hellip;</p>
+          </div>
+        </a>
+
       </div>
-      <!-- Rendered from assets/js/games.js. To add a game, add an entry there. -->
-      <div class="games-grid" data-games-grid></div>
-      <noscript>
-        <p>Turn on JavaScript to see the full games list. Meanwhile: <a href="games/charge-hop.html">Charge Hop</a> (<a href="games/charge-hop/index.html">play</a>).</p>
-      </noscript>
     </div>
   </section>
 
-  <section class="section" aria-labelledby="who-title">
+  <section class="section" aria-labelledby="who-title" style="padding-top:0">
     <div class="wrap">
       <div class="panel split">
         <div>
-          <h2 class="pixel" id="who-title">Player 1: <span style="color:var(--yellow)">Justin</span></h2>
-          <p>Justin is a professional character animator with credits on the feature films <em>9</em> and <em>Hoodwinked</em>, and a punk rock drummer who makes music. He founded Cohesion Games to make emergent, connected, visceral games: simple entry points, massive possibilities.</p>
+          <h2 class="pixel" id="who-title">Founder: <span style="color:var(--gold)">Justin Lewis</span></h2>
+          <p>Justin is a professional character animator with credits on the feature films <em>9</em> and <em>Hoodwinked</em>, and a punk rock drummer who makes music. He founded Zero to Phi to make emergent, connected, visceral games: simple entry points, massive possibilities.</p>
           <a class="btn btn--orange" href="about.html">Read the bio</a>
         </div>
         <ul class="credits">
@@ -109,9 +125,11 @@
 
 <footer class="site-footer">
   <div class="wrap">
-    <div><span class="footer-brand" data-site-name>Cohesion Games</span><br>&copy; <span data-year>2026</span> Justin Lewis &middot; Made in Red Deer, Alberta</div>
+    <div><span class="footer-brand" data-site-name>Zero to Phi</span><br>&copy; <span data-year>2026</span> Justin Lewis &middot; Made in Red Deer, Alberta</div>
     <nav aria-label="Footer">
-      <a href="index.html#games">Games</a>
+      <a href="soft-play.html">Soft Play</a>
+      <a href="family.html">Family</a>
+      <a href="deep-end.html">Deep End</a>
       <a href="about.html">About</a>
       <!-- TODO(contact): add contact / social links here once Justin decides which to share. -->
       <a href="#main">Back to top &uarr;</a>

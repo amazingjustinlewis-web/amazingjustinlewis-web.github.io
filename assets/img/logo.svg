@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-42.36 -80.09 189.64 189.64" role="img" aria-labelledby="t d">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-29.2 -45.04 163.32 119.54" role="img" aria-labelledby="t d">
   <title id="t">0 → φ (Zero to Phi)</title>
-  <desc id="d">Zero to Phi icon</desc>
-  <defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="-32.2" y1="-48.04" x2="137.12" y2="77.5"><stop offset="0" stop-color="#FBE7A1"/><stop offset="0.5" stop-color="#E2B84A"/><stop offset="1" stop-color="#C08A22"/></linearGradient></defs>
-  <rect x="-42.36" y="-80.09" width="189.64" height="189.64" rx="11.38" fill="#0B0913"/>
-  <g fill="none" stroke="url(#g)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+  <desc id="d">Zero to Phi logo: a 0 unfurling along a golden spiral into a phi.</desc>
+  <defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="-29.2" y1="-45.04" x2="134.12" y2="74.5"><stop offset="0" stop-color="#FBE7A1"/><stop offset="0.5" stop-color="#E2B84A"/><stop offset="1" stop-color="#C08A22"/></linearGradient></defs>
+  
+  <g fill="none" stroke="url(#g)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
     <ellipse cx="0" cy="0" rx="16" ry="25.89"/>
     <path d="M-14.49 -10.96 C-16.44 -9.55 -18.23 -7.69 -19.67 -5.41 C-21.12 -3.14 -22.21 -0.45 -22.78 2.52 C-23.34 5.5 -23.37 8.76 -22.72 12.1 C-22.07 15.43 -20.74 18.85 -18.68 22.06 C-16.61 25.27 -13.81 28.28 -10.33 30.78 C-6.84 33.27 -2.66 35.25 2.01 36.4 C6.69 37.56 11.86 37.88 17.22 37.15 C22.58 36.41 28.12 34.6 33.4 31.61 C38.68 28.61 43.71 24.42 47.98 19.1 C52.25 13.78 55.76 7.33 58 0 A35.85 35.85 0 0 1 126.55 21 A35.85 35.85 0 0 1 58 0"/>
     <path d="M92.27 -39.04 V68.5"/>

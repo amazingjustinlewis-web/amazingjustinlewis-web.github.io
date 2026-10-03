@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- SITE NAME: visible copies come from ../assets/js/site-config.js; plain-text copies below are for link previews (see README). -->
-<title>Charge Hop | Cohesion Games</title>
+<title>Charge Hop | Zero to Phi</title>
 <meta name="description" content="Charge Hop: a one-button arcade race. Tap to hop, hold to charge, don't overload. Ride logs, topple dominoes, surf lava chutes. 2 players on one keyboard. Free in your browser.">
 <meta name="theme-color" content="#0b0913">
 
 <!-- TODO(domain): share URLs are absolute for the current GitHub Pages address. When the .com is live,
      replace "https://amazingjustinlewis-web.github.io/" with the new domain in og:url / og:image / twitter:image. -->
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Cohesion Games">
+<meta property="og:site_name" content="Zero to Phi">
 <meta property="og:title" content="Charge Hop - one button. charge it. don't blow it.">
 <meta property="og:description" content="A one-button arcade race for 1-2 players: hop, charge, overload, surf lava chutes and topple domino chains. Free in your browser.">
 <meta property="og:image" content="https://amazingjustinlewis-web.github.io/assets/img/charge-hop/og-charge-hop.jpg">
@@ -35,9 +35,11 @@
 
 <header class="site-header">
   <div class="wrap">
-    <a class="logo" href="../index.html"><img src="../assets/img/favicon.svg" alt="" width="32" height="32"><span data-site-name>Cohesion Games</span></a>
+    <a class="logo" href="../index.html"><img src="../assets/img/logo.svg" alt="" width="55" height="40"><span data-site-name>Zero to Phi</span><span class="sr-only"> home</span></a>
     <nav class="nav" aria-label="Main">
-      <a href="../index.html#games" aria-current="page">Games</a>
+      <a href="../soft-play.html" aria-current="page">Soft Play</a>
+      <a href="../family.html">Family</a>
+      <a href="../deep-end.html">Deep End</a>
       <a href="../about.html">About</a>
     </nav>
   </div>
@@ -47,20 +49,22 @@
   <section class="game-hero">
     <div class="wrap">
       <div>
-        <div class="breadcrumb"><a href="../index.html#games">Games</a> / Charge Hop</div>
+        <div class="breadcrumb"><a href="../soft-play.html">Soft Play</a> / <a href="../soft-play.html#series">The One-Button Series</a> / Charge Hop</div>
         <h1 class="game-title">Charge Hop</h1>
         <div class="status-row">
           <span class="chip chip--hot">Early prototype</span>
           <span class="chip">1&ndash;2 players</span>
           <span class="chip">PC keyboard</span>
           <span class="chip">Free &middot; browser</span>
+          <span class="chip">v3 &middot; The Lava Run</span>
+          <span class="chip">Family: Lively (3/5)</span>
         </div>
         <p class="lede">One button does everything. <strong>Tap</strong> to hop, <strong>hold</strong> to charge a bigger jump&hellip; and don't hold it too long.</p>
-        <a class="btn btn--play btn--huge btn--pulse" href="charge-hop/index.html">&#9654; Play now</a>
+        <a class="btn btn--play btn--huge btn--pulse" href="charge-hop/index.html" data-play-current="charge-hop">&#9654; Play now</a>
         <p class="play-note">Needs a keyboard for now (phone touch controls are coming). Player 1 is <kbd class="p1">Space</kbd>, Player 2 is <kbd class="p2">Enter</kbd>. Use your browser's Back button to return here.</p>
       </div>
       <div class="hero-art">
-        <a class="crt" href="charge-hop/index.html" aria-label="Play Charge Hop">
+        <a class="crt" href="charge-hop/index.html" data-play-current="charge-hop" aria-label="Play Charge Hop">
           <img src="../assets/img/charge-hop/cover.webp" alt="Charge Hop title screen: P1 yellow toy robot (press Space) and P2 orange robot dog (press Enter)" width="1200" height="675">
           <span class="crt-label">PRESS SPACE</span>
         </a>
@@ -155,6 +159,23 @@
     </div>
   </section>
 
+  <section class="section" aria-labelledby="versions-title" style="padding-top:0">
+    <div class="wrap">
+      <h2 class="pixel" id="versions-title">Versions</h2>
+      <p style="color:var(--muted);margin-top:-.4rem">Charge Hop is part of the One-Button Series. New builds get added here as they come out, and older ones stay playable.</p>
+      <div data-versions="charge-hop">
+        <ul class="versions"><li class="is-current"><a href="charge-hop/index.html"><span class="v-id">v3 &middot; The Lava Run</span><span class="v-badge">Current</span></a></li></ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="gtk-title" style="padding-top:0">
+    <div class="wrap">
+      <h2 class="pixel" id="gtk-title">Good to know</h2>
+      <ul class="next-list" data-good-to-know="charge-hop"></ul>
+    </div>
+  </section>
+
   <section class="section" aria-labelledby="next-title" style="padding-top:0">
     <div class="wrap">
       <h2 class="pixel" id="next-title">What's coming next</h2>
@@ -169,7 +190,7 @@
   <section class="cta-band">
     <div class="wrap">
       <h2 class="pixel">Ready, player one?</h2>
-      <a class="btn btn--play btn--huge" href="charge-hop/index.html">&#9654; Play Charge Hop</a>
+      <a class="btn btn--play btn--huge" href="charge-hop/index.html" data-play-current="charge-hop">&#9654; Play Charge Hop</a>
     </div>
   </section>
 </main>
@@ -190,10 +211,13 @@
 
 <footer class="site-footer">
   <div class="wrap">
-    <div><span class="footer-brand" data-site-name>Cohesion Games</span><br>&copy; <span data-year>2026</span> Justin Lewis &middot; Made in Red Deer, Alberta</div>
+    <div><span class="footer-brand" data-site-name>Zero to Phi</span><br>&copy; <span data-year>2026</span> Justin Lewis &middot; Made in Red Deer, Alberta</div>
     <nav aria-label="Footer">
-      <a href="../index.html#games">Games</a>
+      <a href="../soft-play.html">Soft Play</a>
+      <a href="../family.html">Family</a>
+      <a href="../deep-end.html">Deep End</a>
       <a href="../about.html">About</a>
+      <!-- TODO(contact): add contact / social links here once Justin decides which to share. -->
       <a href="#main">Back to top &uarr;</a>
     </nav>
   </div>

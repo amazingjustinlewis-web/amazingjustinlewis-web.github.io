@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Logo concepts | Zero to Phi</title>
+<style>
+  @font-face { font-family: 'Press Start 2P'; src: url('../../fonts/press-start-2p-latin.woff2') format('woff2'); }
+  @font-face { font-family: 'Space Grotesk'; src: url('../../fonts/space-grotesk-latin-var.woff2') format('woff2'); font-weight: 300 700; }
+  body { margin: 0; background: #14111d; color: #eee8ff; font: 16px/1.5 'Space Grotesk', system-ui, sans-serif; }
+  header { padding: 2rem 2.5rem 0; }
+  h1 { font: 400 1.1rem/1.5 'Press Start 2P', monospace; color: #E2B84A; margin: 0 0 .4rem; }
+  header p { margin: 0; color: #b5aacf; max-width: 70ch; }
+  .concept { display: grid; grid-template-columns: 1fr 1fr 220px; gap: 1.2rem; padding: 1.6rem 2.5rem; border-bottom: 1px solid #2a2440; align-items: stretch; }
+  .tile { border-radius: 14px; display: grid; place-items: center; padding: 1.6rem; min-height: 230px; }
+  .tile.dark { background: #0B0913; box-shadow: inset 0 0 0 1px #2a2440; }
+  .tile.light { background: #FAF6EC; }
+  .tile img { max-height: 180px; max-width: 100%; }
+  .lockup { display: flex; flex-direction: column; align-items: center; gap: .9rem; }
+  .word { font: 400 .8rem 'Press Start 2P', monospace; letter-spacing: .12em; color: #E2B84A; }
+  .light .word { color: #7a560c; }
+  .meta { display: flex; flex-direction: column; gap: .7rem; }
+  .meta h2 { font: 400 .72rem/1.6 'Press Start 2P', monospace; color: #FBE7A1; margin: 0; }
+  .meta p { margin: 0; font-size: .9rem; color: #c9c0e0; }
+  .sizes { display: flex; align-items: center; gap: 12px; background: #0B0913; border-radius: 10px; padding: 12px; box-shadow: inset 0 0 0 1px #2a2440; }
+  .sizes.l { background: #FAF6EC; }
+  .chosen { white-space: nowrap; color: #0B0913; background: #E2B84A; font: 400 .55rem 'Press Start 2P', monospace; padding: .35rem .5rem; align-self: flex-start; border-radius: 3px; }
+  .glyph { white-space: nowrap; font: 1.6rem 'Times New Roman', serif; color: #b5aacf; }
+  @media (max-width: 900px) { .concept { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Zero to Phi &middot; logo concepts</h1>
+  <p>The mark is <strong>0 → φ</strong> in gold line art. Each concept is hand-built from golden-ratio geometry (spirals grow by φ every quarter turn). Shown on dark and on light, plus small sizes. <span class="glyph">0 → φ</span></p>
+</header>
+<main>
+<section class="concept" id="c1">
+  <div class="tile dark"><div class="lockup"><img src="concept-1-unfurl.svg" alt="Concept 1, Unfurl, on dark"><span class="word">ZERO TO PHI</span></div></div>
+  <div class="tile light"><div class="lockup"><img src="concept-1-unfurl-light.svg" alt="Concept 1, Unfurl, on light"><span class="word">ZERO TO PHI</span></div></div>
+  <div class="meta">
+    <span class="chosen">IN USE: HEADER + FAVICON</span>
+    <h2>1 · Unfurl</h2>
+    <p>The 0 peels open into a golden spiral that sweeps under it and flows, in one unbroken S-curve, into the bowl of the φ. The most literal "0 spirals into φ".</p>
+    <div class="sizes"><img src="../logo.svg" alt="" height="40"><img src="../logo.svg" alt="" height="24"><img src="../favicon.svg" alt="" height="32"><img src="../favicon.svg" alt="" height="16"></div>
+    <p style="font-size:.8rem">Header and favicon use heavier-stroke versions (logo.svg, favicon.svg) so the lines survive at small sizes.</p>
+  </div>
+</section>
+
+<section class="concept" id="c2">
+  <div class="tile dark"><div class="lockup"><img src="concept-2-golden-rails.svg" alt="Concept 2, Golden Rails, on dark"><span class="word">ZERO TO PHI</span></div></div>
+  <div class="tile light"><div class="lockup"><img src="concept-2-golden-rails-light.svg" alt="Concept 2, Golden Rails, on light"><span class="word">ZERO TO PHI</span></div></div>
+  <div class="meta">
+    <h2>2 · Golden Rails</h2>
+    <p>0, arrow and φ set on four golden-ratio rails (cap, x-height, baseline, descender) with golden subdivision ticks. A single gold dot is the connection point. Reads like a formula.</p>
+    <div class="sizes"><img src="concept-2-golden-rails.svg" alt="" height="40"><img src="concept-2-golden-rails.svg" alt="" height="24"><img src="concept-2-golden-rails.svg" alt="" height="16"></div>
+  </div>
+</section>
+
+<section class="concept" id="c3">
+  <div class="tile dark"><div class="lockup"><img src="concept-3-seed.svg" alt="Concept 3, Seed, on dark"><span class="word">ZERO TO PHI</span></div></div>
+  <div class="tile light"><div class="lockup"><img src="concept-3-seed-light.svg" alt="Concept 3, Seed, on light"><span class="word">ZERO TO PHI</span></div></div>
+  <div class="meta">
+    <h2>3 · Seed</h2>
+    <p>Monogram. A tiny 0 at the centre unwinds as a golden spiral and joins the φ's bowl at one gold node: a single connection point, freedom inside the ring, clean rails around it. Compact and badge-like.</p>
+    <div class="sizes"><img src="concept-3-seed.svg" alt="" height="40"><img src="concept-3-seed.svg" alt="" height="24"><img src="concept-3-seed.svg" alt="" height="16"></div>
+  </div>
+</section>
+</main>
+</body>
+</html>

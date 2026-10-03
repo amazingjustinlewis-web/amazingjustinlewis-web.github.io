@@ -9,8 +9,8 @@
    has a one-line command that renames those copies too.)
    ===================================================================== */
 window.SITE = {
-  name: 'Cohesion Games',            // <-- WORKING TITLE: rename here
-  tagline: 'Emergent, connected, visceral games. Simple to pick up, massive possibilities.',
+  name: 'Zero to Phi',            // <-- WORKING TITLE: rename here
+  tagline: 'One simple connection point, lots of freedom, mathematically clean rails.',
   owner: 'Justin Lewis',                 // founder
   location: 'Red Deer, Alberta'
 };

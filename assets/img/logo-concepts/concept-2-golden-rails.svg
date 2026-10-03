@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 15.6 152 81.23" role="img" aria-labelledby="t d">
+  <title id="t">0 → φ (Zero to Phi logo concept)</title>
+  <desc id="d">A 0, an arrow and a phi set on four golden-ratio rails (cap, x-height, baseline, descender), with golden subdivision ticks on the baseline.</desc>
+  <defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" y1="23.6" x2="152" y2="88.83"><stop offset="0" stop-color="#FBE7A1"/><stop offset="0.5" stop-color="#E2B84A"/><stop offset="1" stop-color="#C08A22"/></linearGradient><linearGradient id="rail" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="152" y2="0"><stop offset="0" stop-color="#E2B84A" stop-opacity="0"/><stop offset=".18" stop-color="#E2B84A" stop-opacity="0.55"/><stop offset=".82" stop-color="#E2B84A" stop-opacity="0.55"/><stop offset="1" stop-color="#E2B84A" stop-opacity="0"/></linearGradient></defs>
+  
+  <g stroke="url(#rail)" stroke-width="0.7" fill="none"><line x1="0" y1="23.6" x2="152" y2="23.6"/><line x1="0" y1="41.63" x2="152" y2="41.63"/><line x1="0" y1="70.8" x2="152" y2="70.8"/><line x1="0" y1="88.83" x2="152" y2="88.83"/><line x1="93.94" y1="70.8" x2="93.94" y2="74"/><line x1="58.06" y1="70.8" x2="58.06" y2="74"/><line x1="58.06" y1="70.8" x2="58.06" y2="74"/><line x1="93.94" y1="70.8" x2="93.94" y2="74"/><line x1="35.88" y1="70.8" x2="35.88" y2="74"/><line x1="116.12" y1="70.8" x2="116.12" y2="74"/><line x1="22.18" y1="70.8" x2="22.18" y2="74"/><line x1="129.82" y1="70.8" x2="129.82" y2="74"/><line x1="13.71" y1="70.8" x2="13.71" y2="74"/><line x1="138.29" y1="70.8" x2="138.29" y2="74"/><line x1="8.47" y1="70.8" x2="8.47" y2="74"/><line x1="143.53" y1="70.8" x2="143.53" y2="74"/><line x1="5.24" y1="70.8" x2="5.24" y2="74"/><line x1="146.76" y1="70.8" x2="146.76" y2="74"/></g>
+  <g fill="none" stroke="url(#g)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="30" cy="47.2" rx="14.59" ry="23.6"/>
+    <path d="M54.59 56.21 H91.41 M85.41 50.21 L91.41 56.21 L85.41 62.21"/>
+    <circle cx="116" cy="56.21" r="14.59"/>
+    <path d="M116 23.6 V88.83"/>
+  </g>
+  <circle cx="54.59" cy="56.21" r="2.1" fill="url(#g)"/>
+</svg>
