@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Zombie Tiles (working title) - TV | Zero to Phi</title>
-<meta name="description" content="Zombie Tiles (working title): a zombie tile-laying board game for the TV. Up to 4 players use their phones as controllers. Prototype v0.3 by Zero to Phi.">
+<title>Zombie Tiles v0.2 (working title) - TV | Zero to Phi</title>
+<meta name="description" content="Zombie Tiles (working title): a zombie tile-laying board game for the TV. Up to 4 players use their phones as controllers. Prototype v0.2 by Zero to Phi.">
 <meta name="theme-color" content="#14121b">
 <meta name="robots" content="noindex">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
@@ -15,7 +15,7 @@
 
 <header id="top">
   <div class="brand"><img src="assets/logo.svg" alt="" width="49" height="40"><span>ZERO&nbsp;TO&nbsp;PHI</span></div>
-  <div class="title">ZOMBIE TILES <span class="wt">working title</span><span class="proto">PROTOTYPE v0.3</span></div>
+  <div class="title">ZOMBIE TILES <span class="wt">working title</span><span class="proto">PROTOTYPE v0.2</span></div>
   <div class="top-right"><span id="roundInfo"></span><span id="deckInfo"></span><span id="joinInfo"></span><span id="lightInfo"></span></div>
 </header>
 
@@ -54,7 +54,7 @@
 
 <section id="lobby" class="screen">
   <div class="lobby-left">
-    <div class="presents"><img src="assets/logo.svg" alt="" width="49" height="40"> ZERO TO PHI presents <a id="backLink" class="back" href="../zombie-tiles.html">&larr; game page</a></div>
+    <div class="presents"><img src="assets/logo.svg" alt="" width="49" height="40"> ZERO TO PHI presents <a id="backLink" class="back" href="../../zombie-tiles.html">&larr; game page</a></div>
     <div id="phoneHint" class="phone-hint" hidden>On a phone? This is the <b>TV screen</b>. Open it on the TV, then join with the <a href="controller.html">phone controller</a>.</div>
     <h1>ZOMBIE TILES <small>working title</small></h1>
     <p class="tagline">Explore the city tile by tile. Find the helipad. Hope the guard says <b>YES</b>.</p>
@@ -75,8 +75,6 @@
     <div class="hotseat">
       <div class="hs-title">No phones? Add a hot-seat player (plays on this screen)</div>
       <div class="hs-row"><input id="hsName" maxlength="12" placeholder="Name" aria-label="Hot-seat player name"><button id="hsDice" class="ghost">Dice: Bone</button><button id="hsAdd">+ ADD</button></div>
-      <div class="hs-title">Add a computer player (AI): click to change personality and difficulty</div>
-      <div class="hs-row"><button id="aiPersona" class="ghost wide">Reckless fighter</button><button id="aiLevel" class="ghost">Normal</button><button id="aiAdd">+ ADD AI</button></div>
     </div>
     <button id="startBtn" class="start" disabled>START GAME</button>
     <div class="howto">Phones: scan the code, type a name, pick your dice. The first player to join can start the game from their phone.</div>
@@ -91,15 +89,12 @@
 </section>
 
 <div id="netBadge"></div>
-<div id="flash" aria-hidden="true"></div>
 
 <script src="js/vendor/peerjs.min.js"></script>
 <script src="js/vendor/qrcode.js"></script>
 <script src="js/config.js"></script>
 <script src="js/tiles.js"></script>
 <script src="js/game.js"></script>
-<script src="js/ai.js"></script>
-<script src="js/sfx.js"></script>
 <script src="js/dice.js"></script>
 <script src="js/net.js"></script>
 <script src="js/render.js"></script>

@@ -168,13 +168,3 @@ button:focus-visible { outline: .5vh solid var(--gold); outline-offset: .4vh; }
 .hue-panel button.htest { background: transparent; border-style: dashed; }
 .hue-panel button:disabled { opacity: .4; cursor: default; }
 .hue-note { margin-top: 1vh; color: #ffd9a0; font-size: 1.7vh; }
-
-/* v0.3: AI players, portraits, bubbles, flashes */
-.cname .cport { width: 3.2vh; height: 3.2vh; flex: none; }
-#lobbyPlayers canvas.lport { width: 6.5vh; height: 6.5vh; margin-left: 0; flex: none; }
-.tag.ai { background: #2c2440; color: #c9b7ff; border-color: #6b55c9; }
-.aitag { display: inline-block; font-size: 0.55em; background: #6b3cff; color: #fff; border-radius: 6px; padding: 1px 7px; vertical-align: middle; letter-spacing: .05em; }
-.cally { font-size: 13px; opacity: .85; margin-top: 3px; }
-.cally.bad { color: #ff8a95; }
-#flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 40; mix-blend-mode: screen; }
-.hs-row .wide { min-width: 12.5em; }

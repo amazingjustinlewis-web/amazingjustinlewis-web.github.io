@@ -24,8 +24,14 @@ DEFAULT_FX = {
     "zombieTurnColor": "#5cff2e",
     "roll": {"flickers": 3, "dip": 0.3, "gapMs": 140, "lights": 3},
     "fight": {"color": "#ff1a1a", "bri": 0.7, "low": 0.22, "pulses": 3, "pulseMs": 850},
-    "hit": {"color": "#ff0000", "bri": 0.85, "ms": 450},
-    "kill": {"color": "#ffffff", "bri": 0.75, "ms": 250},
+    "hit": {"color": "#ff0000", "bri": 1.0, "ms": 380, "flashes": 2, "gapMs": 260},
+    "kill": {"color": "#fff3c4", "colors": ["#fff3c4", "#ffd23f", "#9dff6a"], "bri": 1.0, "ms": 650, "sparkle": 3},
+    "charge": {"bri": 1.0, "ms": 350},
+    "scream": {"color": "#ffffff", "bri": 0.9, "blinks": 2, "ms": 140},
+    "pickup": {"bri": 0.8, "ms": 300},
+    "helipad": {"color": "#ffc21a", "bri": 0.8, "ms": 1400},
+    "gateNo": {"color": "#ff2020", "bri": 0.75, "ms": 500},
+    "lunge": {"color": "#5cff2e", "dip": 0.35, "flickers": 2},
     "crunch": {"color": "#ff0000", "bri": 1.0, "holdMs": 1500, "fadeMs": 2500},
     "rise": {"color": "#5cff2e", "bri": 0.55, "ms": 1200},
     "escape": {"colors": ["#ffc21a", "#fff0b8", "#ffa200"], "bri": 1.0, "steps": 6, "stepMs": 500},
@@ -470,33 +476,63 @@ class Engine:
         elif k in ("fight", "fightRoll"):
             f = fx["fight"]
             pulses = f["pulses"] if k == "fight" else 1
-            self.transient(pulses * f["pulseMs"])
+            style = d.get("style") if k == "fight" else None
+            ch, sc = fx.get("charge") or {}, fx.get("scream") or {}
+            n, ms = int(sc.get("blinks", 2)), int(sc.get("ms", 140))
+            lead = int(ch.get("ms", 350)) if style == "charge" else (n * ms * 2 if self.per_light() else ms * 2) if style == "scream" else 0
+            self.transient(lead + pulses * f["pulseMs"])      # bumps gen: schedule timers after this
+            if style == "charge":                   # war cry: a flash of the fighter's own colour first
+                self.apply(d.get("color") or "#ffffff", ch.get("bri", 1.0) * I, 0)
+            elif style == "scream":                 # cornered: quick white blinks
+                if self.per_light():
+                    for i in range(n):
+                        self.after(i * ms * 2, lambda: self.apply(sc.get("color", "#ffffff"), sc.get("bri", 0.9) * I, 0))
+                        self.after(i * ms * 2 + ms, lambda: self.apply(f["color"], f["low"] * I, 0))
+                else:
+                    self.apply(sc.get("color", "#ffffff"), sc.get("bri", 0.9) * I, 0)
             self.fighting = True
             if self.per_light():
                 for i in range(int(pulses)):
-                    t = i * f["pulseMs"]
+                    t = lead + i * f["pulseMs"]
                     self.after(t, lambda: self.apply(f["color"], f["bri"] * I, f["pulseMs"] * 0.3))
                     self.after(t + f["pulseMs"] * 0.5, lambda: self.apply(f["color"], f["low"] * I, f["pulseMs"] * 0.45))
             elif k == "fight":
-                self.apply(f["color"], f["low"] * I, 300)
-                for gid in self.selected:
-                    self.sender.submit("g", gid, {"alert": "lselect"})
+                def red():
+                    self.apply(f["color"], f["low"] * I, 300)
+                    for gid in self.selected:
+                        self.sender.submit("g", gid, {"alert": "lselect"})
+                if lead:
+                    self.after(lead, red)
+                else:
+                    red()
         elif k == "fightResult":
             was = self.fighting
             self.fighting = False
             if not self.per_light() and was:
                 for gid in self.selected:
                     self.sender.submit("g", gid, {"alert": "none"})
-            if d.get("lost"):
+            if d.get("lost"):                       # hard red flash (double flash when there are few lights)
                 h = fx["hit"]
-                self.transient(h["ms"] + 300)
-                self.apply(h["color"], h["bri"] * I, 0)
-                self.after(h["ms"], lambda: self.to_base(800))
-            elif d.get("zdead"):
+                n = int(h.get("flashes", 1)) if self.per_light() else 1
+                gap = int(h.get("gapMs", 260))
+                self.transient(h["ms"] + (n - 1) * (h["ms"] + gap) + 300)
+                for i in range(n):
+                    t = i * (h["ms"] + gap)
+                    self.after(t, lambda: self.apply(h["color"], h["bri"] * I, 0))
+                    if i < n - 1:
+                        self.after(t + h["ms"], lambda: self.apply(h["color"], 0.08, 0))
+                self.after((n - 1) * (h["ms"] + gap) + h["ms"], lambda: self.to_base(800))
+            elif d.get("zdead"):                    # bright burst, then a few lights sparkle in party colours
                 kk = fx["kill"]
-                self.transient(kk["ms"] + 300)
+                cols = kk.get("colors") or [kk["color"]]
+                sp = int(kk.get("sparkle", 0)) if self.per_light() else 0
+                self.transient(kk["ms"] + sp * 220 + 300)
                 self.apply(kk["color"], kk["bri"] * I, 0)
-                self.after(kk["ms"], lambda: self.to_base(700))
+                lights = self.sel_lights()
+                for i in range(sp):
+                    pick = random.sample(lights, min(len(lights), 2)) if lights else []
+                    self.after(kk["ms"] * 0.5 + i * 220, lambda p=pick, c=cols[(i + 1) % len(cols)]: self.apply(c, kk["bri"] * I, 0, only=p))
+                self.after(kk["ms"] + sp * 220, lambda: self.to_base(700))
             else:
                 self.gen += 1
                 self.to_base(700)
@@ -520,6 +556,28 @@ class Engine:
                 bri = e["bri"] * I * (1.0 if i % 2 == 0 else 0.55)
                 self.after(i * e["stepMs"], lambda c=cols[i % len(cols)], b=bri: self.apply(c, b, e["stepMs"] * 0.6))
             self.after(e["steps"] * e["stepMs"], lambda: self.to_base(1500))
+        elif k == "pickup":                         # one light sparkles in the item's colour (per-light mode only)
+            pk = fx.get("pickup") or {}
+            lights = self.sel_lights()
+            if self.per_light() and lights and time.monotonic() >= self.busy_until:
+                one = [random.choice(lights)]
+                c, b = self.base
+                self.apply(d.get("color") or "#ffd65a", pk.get("bri", 0.8) * I, 0, only=one)
+                self.after(pk.get("ms", 300), lambda: self.apply(c, b, 3, only=one))
+        elif k == "helipad":
+            hp = fx.get("helipad") or {}
+            self.transient(hp.get("ms", 1400) + 600)
+            self.apply(hp.get("color", "#ffc21a"), hp.get("bri", 0.8) * I, 400)
+            self.after(hp.get("ms", 1400), lambda: self.to_base(900))
+        elif k == "gateNo":
+            gn = fx.get("gateNo") or {}
+            self.transient(gn.get("ms", 500) + 400)
+            self.apply(gn.get("color", "#ff2020"), gn.get("bri", 0.75) * I, 0)
+            self.after(gn.get("ms", 500), lambda: self.to_base(600))
+        elif k == "lunge":                          # zombies lurch: green-tinted dips on a few lights (skipped in room mode)
+            lu = fx.get("lunge") or {}
+            if self.per_light() and time.monotonic() >= self.busy_until:
+                self.flicker(lu.get("flickers", 2), lu.get("dip", 0.35), 150, 2)
         elif k == "over":
             o = fx["over"]
             wait = max(0.0, (self.busy_until - time.monotonic()) * 1000.0)

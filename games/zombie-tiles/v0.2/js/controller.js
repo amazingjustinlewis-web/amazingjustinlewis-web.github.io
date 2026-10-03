@@ -49,7 +49,7 @@
     if (net) { net.code = room; net.reconnect(); return; }
     net = new window.ZTNet.Client({
       code: room,
-      onOpen: function () { send({ t: 'hello', clientId: clientId(room), name: store.get('zt_name') || $('name').value, dice: dice, coach: coachOn }); },
+      onOpen: function () { send({ t: 'hello', clientId: clientId(room), name: store.get('zt_name') || $('name').value, dice: dice }); },
       onMessage: onMessage,
       onStatus: function (s, d) {
         var c = $('conn');
@@ -64,11 +64,6 @@
     });
   }
   function send(m) { if (net) net.send(m); }
-  // v0.3: coach hints (remembered per phone) and the host's "Add AI player" picker
-  var coachOn = store.get('zt_coach') === '1';
-  var AIC = C.ai, aiSel = { p: 0, l: 1 };
-  var BLURB = { looter: 'Grabs weapons and hearts, avoids risky fights.', fighter: 'Charges at zombies. Very loud!', sprinter: 'Races for the helipad.',
-    sneak: 'Tiptoes around zombies.', buddy: 'Teams up with a player and shares ammo.' };
 
   function onMessage(m) {
     if (!m || typeof m !== 'object') return;
@@ -116,10 +111,9 @@
     switch (mode) {
       case 'lobby':
         s1 = "You're in!"; s2 = y.vip ? 'Start when everyone has joined.' : 'Waiting for ' + esc((s.lobby[0] || {}).name || 'the first player') + ' to start...';
-        s2 = y.vip ? 'Start when everyone has joined.' : 'Waiting for ' + esc(s.vipName || 'the first player') + ' to start...';
-        extra = lobbyList(s, y.vip) + (y.vip ? aiPicker(s) : '') +
+        extra = '<ul class="plist">' + s.lobby.map(function (q) { return '<li><span class="d" style="background:' + q.color + '"></span>' + esc(q.name) + '<span class="lab">' + (q.local ? 'hot-seat' : 'phone') + '</span></li>'; }).join('') + '</ul>' +
           hueHtml(s.hue, y.vip) +
-          (y.vip ? '<button class="big-btn" id="startGame">START GAME</button>' : '') + '<button class="small" id="changeDice">Change dice (' + esc(window.ZTDice.style(y.dice).name) + ')</button>' + coachBtn();
+          (y.vip ? '<button class="big-btn" id="startGame">START GAME</button>' : '') + '<button class="small" id="changeDice">Change dice (' + esc(window.ZTDice.style(y.dice).name) + ')</button>';
         break;
       case 'roll': s1 = 'YOUR TURN!'; s2 = 'Roll to move'; hot = true; rollShow = rollOn = true; break;
       case 'rolling': s1 = 'Rolling...'; rollShow = true; break;
@@ -150,15 +144,13 @@
         s1 = (s.results || []).some(function (r) { return r.pid === y.id && r.escaped; }) ? 'YOU MADE IT!' : 'GAME OVER';
         s2 = '';
         extra = '<ul class="plist">' + (s.results || []).map(function (r) { return '<li><span class="d" style="background:' + r.color + '"></span>' + esc(r.name) + '<span class="lab">' + esc(r.label) + '</span></li>'; }).join('') + '</ul>' +
-          (y.vip ? '<button class="big-btn" id="again">PLAY AGAIN</button>' : '<div class="private">' + esc(s.vipName || 'The first player') + ' can start the next game.</div>');
+          (y.vip ? '<button class="big-btn" id="again">PLAY AGAIN</button>' : '<div class="private">' + esc((s.lobby || [{}])[0].name || 'The first player') + ' can start the next game.</div>');
         break;
       default:
         s1 = s.cur ? curName + (s.cur.zombie ? ' (zombie)' : '') + "'s turn" : 'Waiting...';
         if (y.status === 'zombie') s2 = 'You are a zombie. Your lurch comes on your turn.';
     }
     if (mode === 'zturn' && y.status === 'zombie') extra = '<button class="small" id="toSpectate">Stop and spectate instead</button>';
-    if (coachOn && s.coach && s.coach.text && (mode === 'plan' || mode === 'roll' || mode === 'fight')) extra = '<div class="coach"><span class="ci">\uD83E\uDDE0 Coach:</span> ' + esc(s.coach.text) + (s.coach.arrows && mode === 'plan' ? '<div class="carr">' + esc(s.coach.arrows) + '</div>' : '') + '</div>' + extra;
-    if (['wait', 'roll', 'plan', 'fight', 'zturn'].indexOf(mode) !== -1 && y.status !== 'escaped') extra += coachBtn();
     var nopad = ['lobby', 'over', 'dead', 'escaped', 'spectate'].indexOf(mode) !== -1;
     $('play').classList.toggle('nopad', nopad);
     if (nopad && stopAnim) { stopAnim(); stopAnim = null; }
@@ -217,28 +209,8 @@
     }
     return out + '</div>';
   }
-  function lobbyList(s, vip) {
-    return '<ul class="plist">' + (s.lobby || []).map(function (q) {
-      return '<li><span class="d" style="background:' + q.color + '"></span>' + esc(q.name) + '<span class="lab">' + (q.ai ? '\uD83E\uDD16 ' + esc(q.ai) : q.local ? 'hot-seat' : 'phone') + '</span>' +
-        (vip && q.ai ? '<button class="rmai" data-pid="' + q.pid + '" aria-label="Remove ' + esc(q.name) + '">\u2715</button>' : '') + '</li>';
-    }).join('') + '</ul>';
-  }
-  function aiPicker(s) {
-    if (s.full) return '<div class="private">The game is full (' + C.maxPlayers + ' players).</div>';
-    var per = AIC.personas[AIC.order[aiSel.p]], lv = AIC.levels[AIC.levelOrder[aiSel.l]];
-    return '<div class="aicard"><div class="ht">\uD83E\uDD16 Add AI player</div>' +
-      '<button class="small" id="aiPer">' + esc(per.label) + ' \u25B8</button><div class="hs">' + esc(BLURB[AIC.order[aiSel.p]] || '') + '</div>' +
-      '<div class="hchoice">' + AIC.levelOrder.map(function (k, i) { return '<button data-lv="' + i + '" class="' + (i === aiSel.l ? 'on' : '') + '">' + esc(AIC.levels[k].label) + '</button>'; }).join('') + '</div>' +
-      '<button class="small addai" id="aiAddP">+ ADD ' + esc(lv.label.toUpperCase()) + ' AI</button></div>';
-  }
-  function coachBtn() { return '<button class="small coachb' + (coachOn ? ' on' : '') + '" id="coachT">\uD83E\uDDE0 Coach hints: ' + (coachOn ? 'ON' : 'OFF') + '</button>'; }
   function wireExtra() {
     var b;
-    if ((b = $('coachT'))) press(b, function () { coachOn = !coachOn; store.set('zt_coach', coachOn ? '1' : '0'); send({ t: 'coach', on: coachOn }); render(); });
-    if ((b = $('aiPer'))) press(b, function () { aiSel.p = (aiSel.p + 1) % AIC.order.length; render(); });
-    if ((b = $('aiAddP'))) press(b, function () { send({ t: 'addAI', persona: AIC.order[aiSel.p], level: AIC.levelOrder[aiSel.l] }); aiSel.p = (aiSel.p + 1) % AIC.order.length; });
-    Array.prototype.forEach.call(document.querySelectorAll('#extra .aicard [data-lv]'), function (bt) { press(bt, function () { aiSel.l = +bt.getAttribute('data-lv'); render(); }); });
-    Array.prototype.forEach.call(document.querySelectorAll('#extra .rmai'), function (bt) { press(bt, function () { send({ t: 'removeAI', pid: +bt.getAttribute('data-pid') }); }); });
     Array.prototype.forEach.call(document.querySelectorAll('#extra .huecard button'), function (bt) {
       press(bt, function () {
         var v = bt.getAttribute('data-hue'), g = bt.getAttribute('data-g');

@@ -67,20 +67,10 @@
     if (this.players.length >= C.maxPlayers) return null;
     var used = this.players.map(function (p) { return p.colorIdx; }), ci = 0;
     while (used.indexOf(ci) !== -1) ci++;
-    var ai = null, AI = C.ai || { personas: {}, levels: {} };
-    if (o.ai) {          // v0.3: computer player { persona, level }
-      var per = AI.personas[o.ai.persona] ? o.ai.persona : (AI.order || Object.keys(AI.personas))[this.players.length % 5];
-      ai = { persona: per, level: AI.levels[o.ai.level] ? o.ai.level : 'normal' };
-      if (!o.name) {
-        var taken = this.players.map(function (q) { return q.name; }), opts = (AI.personas[per].names || ['Bot']).filter(function (n) { return taken.indexOf(n) === -1; });
-        o.name = opts[0] || ('Bot ' + (this.players.length + 1));
-      }
-      if (!o.dice) o.dice = AI.personas[per].dice;
-    }
     var name = String(o.name || '').replace(/[^\w \-'!.?]/g, '').trim().slice(0, 12) || ('Player ' + (this.players.length + 1));
     var dice = C.dice.some(function (d) { return d.id === o.dice; }) ? o.dice : C.dice[this.players.length % C.dice.length].id;
     var p = { id: ++this.pidSeq, name: name, dice: dice, local: !!o.local, clientId: o.clientId || null, connected: true,
-      colorIdx: ci, color: C.playerColors[ci], x: 0, y: 0, ai: ai };
+      colorIdx: ci, color: C.playerColors[ci], x: 0, y: 0 };
     freshStats(p);
     this.players.push(p);
     this.changed();
@@ -651,15 +641,6 @@
     this.say(p.name + ' has ' + this.movesLeft + ' moves left. EXECUTE to carry on.');
     this.changed();
   };
-  G.shareAmmo = function (from, to, n) {      // v0.3 alliances: hand ammo to a living player on your square or next to you
-    n = Math.min(n | 0, from.ammo, C.maxAmmo - to.ammo);
-    if (!to || to === from || to.status !== 'alive' || man(from, to) > 1 || n <= 0) return false;
-    from.ammo -= n; to.ammo += n;
-    this.say(from.name + ' shares ' + n + ' ammo with ' + to.name + '.');
-    this.event('share', { pid: from.id, to: to.id, n: n });
-    this.changed();
-    return true;
-  };
   G.killPlayer = function (p) {
     p.status = 'dead'; p.hearts = 0; p.deathRound = this.round; p.deadOrder = ++this.deadSeq; p.weapon = 'none';
     this.say(p.name + ' is left for dead...');
@@ -680,8 +661,7 @@
     var target = this.adjacentLiving(z);
     if (target) { this.startFight(target, z, 'zombieAttack', p); return; }
     if (steps <= 0) { this.endTurn(); return; }
-    var pref = p.ai ? this.huntTarget(p, z) : null;          // AI zombies hunt in their own style (humans: nearest)
-    var path = (pref && this.pathToLiving(z, pref)) || this.pathToLiving(z);
+    var path = this.pathToLiving(z);
     if (!path || !path.length) { this.say(p.name + ' (zombie) groans. Nobody in reach.'); this.endTurn(); return; }
     z.x = path[0][0]; z.y = path[0][1];
     this.changed();
@@ -691,19 +671,10 @@
     for (var i = 0; i < this.players.length; i++) { var q = this.players[i]; if (q.status === 'alive' && man(q, z) === 1) return q; }
     return null;
   };
-  G.huntTarget = function (p, z) {
-    var per = C.ai && p.ai && C.ai.personas[p.ai.persona], style = per ? per.hunt : 'nearest', W = C.weapons;
-    var living = this.players.filter(function (q) { return q.status === 'alive'; });
-    if (!living.length || style === 'nearest') return null;
-    var score = style === 'weakest' ? function (q) { return -q.hearts * 10 - man(q, z) * 0.01; }
-      : function (q) { return q.hearts + W[q.weapon].rank * 1.5 + q.kills - man(q, z) * 0.01; };
-    living.sort(function (a, b) { return score(b) - score(a); });
-    return living[0].id;
-  };
-  G.pathToLiving = function (z, onlyPid) {
+  G.pathToLiving = function (z) {
     var self = this, goal = {};
     this.players.forEach(function (q) {
-      if (q.status !== 'alive' || (onlyPid && q.id !== onlyPid)) return;
+      if (q.status !== 'alive') return;
       for (var d in DIRS) goal[key(q.x + DIRS[d][0], q.y + DIRS[d][1])] = 1;
     });
     var q = [[z.x, z.y]], prev = {}; prev[key(z.x, z.y)] = null;
@@ -748,10 +719,6 @@
       this.changed(); return true;
     }
     if (m.t === 'start') { if ((this.phase === 'lobby' || this.phase === 'over') && this.players.length) { this.start(m.seed); return true; } return false; }
-    if (m.t === 'share') {     // on your own turn: before rolling, or right after your move
-      var mine = (this.actorId() === pid && (this.phase === 'roll' || (this.phase === 'plan' && !this.plan.length))) || (this.phase === 'between' && this.curP() === p && p.status === 'alive');
-      return mine && this.shareAmmo(p, this.byId(m.to), m.n);
-    }
     if (this.actorId() !== pid) return false;
     switch (this.phase) {
       case 'roll': if (m.t === 'roll' || m.t === 'exec') { this.doRoll(); return true; } return false;

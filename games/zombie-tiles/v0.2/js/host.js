@@ -8,21 +8,21 @@
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
 
   var dirty = true, phoneDirty = true;
-  var game = new window.ZTGame({ speed: FAST ? 0.08 : 1, onChange: function () { dirty = true; phoneDirty = true; if (ai) ai.poke(); }, onEvent: onEvent });
+  var game = new window.ZTGame({ speed: FAST ? 0.08 : 1, onChange: function () { dirty = true; phoneDirty = true; }, onEvent: onEvent });
   var rnd = new window.ZTRender($('board'));
-  var AIC = C.ai, ai = null;
-  function isAI(p) { return !!(p && (p.ai || p.aiTakeover)); }
-  ai = new window.ZTAI.Driver(game, { controls: isAI, react: aiReact });
-  window.ZT = { game: game, render: rnd, config: C, ai: ai };     // handy for testing / tinkering in the console
+  window.ZT = { game: game, render: rnd, config: C };     // handy for testing / tinkering in the console
 
   // ------------------------------------------------------------ sound (tiny synth, M to mute)
-  var SFX = window.ZTSfx, muted = Q.has('mute'); SFX.muted = muted;
-  function tone(f, d, type, vol, slide) { SFX.tone(f, d, type, vol, slide); }
-  function sfx(name, p) { SFX.play(name, { pitch: voice(p) }); }
-  function voice(p) {             // each player's little voice: AI by personality, humans by seat colour
-    if (!p) return 1;
-    if (p.ai && AIC.personas[p.ai.persona]) return AIC.personas[p.ai.persona].voice;
-    return [1.0, 1.18, 0.88, 1.3][p.colorIdx % 4];
+  var AC = null, muted = Q.has('mute');
+  function tone(f, d, type, vol, slide) {
+    if (muted) return;
+    try {
+      AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+      var o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime;
+      o.type = type || 'square'; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + d);
+      g.gain.setValueAtTime(vol || 0.06, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + d);
+    } catch (e) {}
   }
   function rattle() { for (var i = 0; i < 7; i++) setTimeout(function () { tone(300 + Math.random() * 500, 0.04, 'triangle', 0.05); }, i * 60 + Math.random() * 40); }
 
@@ -36,82 +36,36 @@
   function onEvent(type, d) {
     var p = d.pid ? playerById(d.pid) : null;
     switch (type) {
-      case 'start': ai.onStart(); rnd.snap(game); big('FIND THE HELIPAD', 'Explore tile by tile. Watch out for zombies.', '#b6ff7a'); tone(220, 0.4, 'sawtooth', 0.05, 110); break;
+      case 'start': rnd.snap(game); big('FIND THE HELIPAD', 'Explore tile by tile. Watch out for zombies.', '#b6ff7a'); tone(220, 0.4, 'sawtooth', 0.05, 110); break;
       case 'turn': if (p) { tone(660, 0.08); tone(990, 0.1, 'square', 0.04); } break;
       case 'roll': rattle(); break;
       case 'step': tone(180 + Math.random() * 40, 0.05, 'triangle', 0.04); break;
       case 'bump': tone(90, 0.08, 'square', 0.04); break;
-      case 'pickup': if (p && p.ai && Math.random() < 0.35) say(p, 'pickup'); if (p) rnd.pop(d.kind === 'heart' ? '+1 \u2665' : d.kind === 'ammo' ? 'AMMO' : W[d.kind].short.toUpperCase() + '!', p.x, p.y, d.kind === 'heart' ? '#ff6b88' : '#ffd65a'); tone(880, 0.08, 'square', 0.05, 1320); break;
+      case 'pickup': if (p) rnd.pop(d.kind === 'heart' ? '+1 \u2665' : d.kind === 'ammo' ? 'AMMO' : W[d.kind].short.toUpperCase() + '!', p.x, p.y, d.kind === 'heart' ? '#ff6b88' : '#ffd65a'); tone(880, 0.08, 'square', 0.05, 1320); break;
       case 'draw': big(d.tpl === 'helipad' ? 'THE HELIPAD!' : 'NEW TILE', d.tpl === 'helipad' ? 'Reach a gate. The guard says YES... or NO.' : 'Rotate it and attach it', d.tpl === 'helipad' ? '#ffd65a' : '#9ad8ff'); tone(330, 0.25, 'sine', 0.06, 660); break;
       case 'tile': break;
       case 'lunge': tone(120, 0.2, 'sawtooth', 0.05, 80); break;
-      case 'fightStart':
-        fightStyle = chargeOrScream(game.fight);
-        sfx(fightStyle, p);
-        if (p) { if (p.ai) say(p, fightStyle); else rnd.pop(fightStyle === 'charge' ? 'CHARGE!' : 'EEK!', p.x, p.y, fightStyle === 'charge' ? '#ffd65a' : '#ffffff', true); }
-        if (game.fight && game.fight.attackerPid) { var att = game.byId(game.fight.attackerPid); if (att && att.ai) rnd.bubble(att.id, 'Braaains!', att.color, true); }
-        break;
+      case 'fightStart': tone(140, 0.3, 'sawtooth', 0.07, 70); break;
       case 'fightRoll': rattle(); break;
       case 'fightResult':
         var f = game.fight;
         if (f) {
-          if (f.lost) {
-            rnd.pop('-' + f.lost + ' \u2665', f.px, f.py, '#ff4a5a', true); rnd.shake = Math.min(1.4, 0.5 + f.lost * 0.3);
-            sfx('crunch', p); setTimeout(function () { sfx('ouch', p); }, 120); flash('#ff1e2e', 0.55);
-            if (p && p.ai && p.hearts > 0) say(p, 'hit');
-          }
-          if (f.zdead) {
-            rnd.pop('KILL!', f.x, f.y, '#6dff9e', true); setTimeout(function () { sfx('victory', p); }, f.lost ? 350 : 0); flash('#ffe27a', 0.45);
-            if (p && p.ai && !f.lost) say(p, 'kill');
-          } else if (f.zdmg) rnd.pop('-1 HP', f.x, f.y, '#ffd65a');
+          if (f.lost) { rnd.pop('-' + f.lost + ' \u2665', f.px, f.py, '#ff4a5a', true); rnd.shake = Math.min(1.2, 0.4 + f.lost * 0.3); tone(90, 0.35, 'sawtooth', 0.08, 50); }
+          if (f.zdead) { rnd.pop('KILL!', f.x, f.y, '#6dff9e', true); tone(520, 0.12, 'square', 0.06, 260); }
+          else if (f.zdmg) rnd.pop('-1 HP', f.x, f.y, '#ffd65a');
         }
         break;
-      case 'gate': if (!d.yes) { big('NO!', 'The guard shakes his head. Try another gate.', '#ff3b4e'); tone(110, 0.4, 'square', 0.06); if (p && p.ai) say(p, 'gateNo'); } break;
-      case 'escape':
-        big(p.name + ' ESCAPED!', Ordinal(d.place) + ' place. The chopper takes them aboard.', p.color); [523, 659, 784, 1046].forEach(function (f, i) { setTimeout(function () { tone(f, 0.18, 'square', 0.05); }, i * 110); });
-        setTimeout(function () { sfx('victory', p); }, 480); flash('#ffd23f', 0.4);
-        if (p.ai) {
-          var al = p.allyPid && game.byId(p.allyPid);
-          if (al && al.status === 'alive') {      // light betrayal: ditch the partner at the helipad (or cheer them on)
-            var b = AIC.personas[p.ai.persona] || {};
-            if (Math.random() < (b.betray || 0)) { p.betrayed = al.id; say(p, 'betray', { ally: al.name }); } else say(p, 'loyal', { ally: al.name });
-          } else say(p, 'escape');
-        }
-        break;
-      case 'death': big('LEFT FOR DEAD', p.name + ' will rise in ' + C.riseAfterRounds + ' full round' + (C.riseAfterRounds > 1 ? 's' : '') + '...', '#ff3b4e'); rnd.shake = 1.2; tone(70, 0.8, 'sawtooth', 0.08, 40); setTimeout(function () { sfx('scream', p); }, 60); if (p.ai) say(p, 'death'); break;
-      case 'rise': big(p.name + ' RISES!', p.status === 'zombie' ? 'Now playing as a zombie' : 'A new zombie joins the horde', '#b6ff7a'); tone(60, 0.9, 'sawtooth', 0.08, 120); if (p.ai && p.status === 'zombie') say(p, 'rise'); break;
-      case 'share': var to = game.byId(d.to); if (to) { rnd.pop('+' + d.n + ' AMMO', to.x, to.y, '#ffd65a', true); tone(880, 0.08, 'square', 0.05, 1320); } break;
+      case 'gate': if (!d.yes) { big('NO!', 'The guard shakes his head. Try another gate.', '#ff3b4e'); tone(110, 0.4, 'square', 0.06); } break;
+      case 'escape': big(p.name + ' ESCAPED!', Ordinal(d.place) + ' place. The chopper takes them aboard.', p.color); [523, 659, 784, 1046].forEach(function (f, i) { setTimeout(function () { tone(f, 0.18, 'square', 0.05); }, i * 110); }); break;
+      case 'death': big('LEFT FOR DEAD', p.name + ' will rise in ' + C.riseAfterRounds + ' full round' + (C.riseAfterRounds > 1 ? 's' : '') + '...', '#ff3b4e'); rnd.shake = 1.2; tone(70, 0.8, 'sawtooth', 0.08, 40); break;
+      case 'rise': big(p.name + ' RISES!', p.status === 'zombie' ? 'Now playing as a zombie' : 'A new zombie joins the horde', '#b6ff7a'); tone(60, 0.9, 'sawtooth', 0.08, 120); break;
       case 'round': if (d.round > 1) big('ROUND ' + d.round, d.moved ? 'The dead shuffle...' : '', '#c9b7ff'); break;
       case 'over': tone(392, 0.3, 'square', 0.05); break;
     }
     if (type === 'escape' || type === 'death' || type === 'fightResult' || type === 'over' || type === 'rise') phoneDirty = true;
     lightsForEvent(type, d, p);
   }
-  var Ordinal = window.ZTGame.ordinal, fightStyle = 'charge';
-  // charge if you walked into the fight with decent odds; scream if you got grabbed, are hurt, or the odds are bad
-  function chargeOrScream(f) {
-    if (!f) return 'scream';
-    var p = game.byId(f.pid), odds = window.ZTAI.fightOdds(p).win;
-    if (f.context === 'move' && odds >= 0.5 && p.hearts > C.fight.weakHearts) return 'charge';
-    if (f.context === 'zombieAttack' || p.hearts <= C.fight.weakHearts || odds < 0.45) return 'scream';
-    return f.context === 'turnStart' ? 'scream' : 'charge';
-  }
-  function say(p, kind, vars) {
-    vars = vars || {};
-    if (!vars.ally && p.allyPid) { var a = game.byId(p.allyPid); if (a) vars.ally = a.name; }
-    rnd.bubble(p.id, window.ZTAI.line(p, kind, null, vars), p.color, kind === 'charge' || kind === 'scream');
-  }
-  function aiReact(p, kind, info) {
-    if (kind === 'think') {
-      var vars = {}; if (p.allyPid) { var a = game.byId(p.allyPid); if (a) vars.ally = a.name; }
-      rnd.bubble(p.id, window.ZTAI.line(p, 'think', info.why, vars), p.color, false);
-    } else if (kind === 'share') say(p, 'share', { ally: info.ally.name });
-  }
-  function flash(color, a) {
-    var el = $('flash'); if (!el) return;
-    el.style.transition = 'none'; el.style.background = color; el.style.opacity = a;
-    void el.offsetWidth; el.style.transition = 'opacity 0.6s ease-out'; el.style.opacity = 0;
-  }
+  var Ordinal = window.ZTGame.ordinal;
 
   // ------------------------------------------------------------ layout + loop
   function layout() {
@@ -139,12 +93,7 @@
     return cv;
   }
   function actor() { var id = game.actorId(); return id ? game.byId(id) : null; }
-  function tvControls(p) { return !!p && !isAI(p) && (p.local || !p.connected || Q.get('hotseat') === 'all'); }
-  function aiTag(p) {
-    if (p.aiTakeover) return 'AI COVERING';
-    var per = AIC.personas[p.ai.persona], lv = AIC.levels[p.ai.level];
-    return 'AI \u00b7 ' + (per ? per.short : '') + ' \u00b7 ' + (lv ? lv.label : '');
-  }
+  function tvControls(p) { return !!p && (p.local || !p.connected || Q.get('hotseat') === 'all'); }
 
   function updateDom() {
     var g = game, ph = g.phase;
@@ -164,15 +113,13 @@
       var out = p.status !== 'alive' && p.status !== 'zombie';
       el.className = 'card' + (p === cur && ph !== 'over' ? ' cur' : '') + (out ? ' out' : '');
       el.style.setProperty('--c', p.color);
-      var tag = isAI(p) ? aiTag(p) : p.local ? 'HOT-SEAT' : (p.connected ? 'PHONE' : 'RECONNECTING');
+      var tag = p.local ? 'HOT-SEAT' : (p.connected ? 'PHONE' : 'RECONNECTING');
       var stat = p.status === 'escaped' ? '<div class="cstat esc">ESCAPED ' + Ordinal(p.place).toUpperCase() + '!</div>'
         : p.status === 'dead' ? '<div class="cstat dead">Left for dead (rises soon)</div>'
         : p.status === 'zombie' ? '<div class="cstat zom">Zombie (hunting)</div>'
         : p.status === 'spectator' ? '<div class="cstat dead">Spectating</div>' : '';
-      var ally = p.ai && p.allyPid && g.byId(p.allyPid), rel = ally ? (p.betrayed === ally.id ? '<div class="cally bad">\uD83D\uDC94 ditched ' + esc(ally.name) + '</div>' : '<div class="cally">\uD83E\uDD1D teamed with ' + esc(ally.name) + '</div>') : '';
-      el.innerHTML = '<div class="cname"><canvas class="cport" width="56" height="56"></canvas>' + esc(p.name) + '<span class="tag' + (isAI(p) ? ' ai' : p.local || p.connected ? '' : ' off') + '">' + tag + '</span></div>' +
-        (p.status === 'alive' ? '<div class="crow">' + (C.showHeartsOnTV ? '<span class="hearts">' + heartsHtml(p.hearts) + '</span>' : '') + '<span class="weap"></span></div>' : '') + stat + rel;
-      window.ZTRender.portrait(el.querySelector('.cport'), p);
+      el.innerHTML = '<div class="cname"><span class="dot"></span>' + esc(p.name) + '<span class="tag' + (p.local || p.connected ? '' : ' off') + '">' + tag + '</span></div>' +
+        (p.status === 'alive' ? '<div class="crow">' + (C.showHeartsOnTV ? '<span class="hearts">' + heartsHtml(p.hearts) + '</span>' : '') + '<span class="weap"></span></div>' : '') + stat;
       var wp = el.querySelector('.weap');
       if (wp) { wp.appendChild(weaponCanvas(p.weapon)); wp.appendChild(document.createTextNode(W[p.weapon].short)); }
       cards.appendChild(el);
@@ -183,13 +130,6 @@
     var who = cur ? '<span style="color:' + cur.color + '">' + esc(cur.name) + '</span>' : '';
     var what = '', sub = '';
     var key = function (k, phone) { return tv ? '<kbd>' + k + '</kbd>' : phone; };
-    var aiNow = isAI(cur) && ph !== 'over';
-    if (aiNow) {
-      what = { roll: 'Getting ready to roll...', rolling: 'Rolling...', plan: g.plan.length ? 'Planned route: <b>' + g.plan.length + '</b> / ' + g.movesLeft + ' squares' : 'Thinking...', exec: 'Moving... ' + g.movesLeft + ' left',
-        place: 'Placing the new tile...', fight: 'FIGHT!', zturn: 'Zombie turn...', zmoving: 'Lurching...', escape: 'ESCAPED!' }[ph] || '';
-      sub = cur.aiTakeover ? 'The AI plays for ' + cur.name + ' until their phone reconnects.' : '';
-      ph = '_ai';
-    }
     switch (ph) {
       case 'roll': what = 'Roll to move: ' + key('ENTER', 'press ROLL on your phone'); break;
       case 'rolling': what = 'Rolling...'; break;
@@ -202,8 +142,7 @@
       case 'escape': what = 'ESCAPED!'; break;
       case 'between': case 'roundEnd': what = ''; break;
     }
-    ph = g.phase;
-    $('bWho').innerHTML = who + (aiNow ? ' <span class="aitag">AI</span>' : ''); $('bWhat').innerHTML = what; $('bSub').textContent = sub || g.lastMsg || '';
+    $('bWho').innerHTML = who; $('bWhat').innerHTML = what; $('bSub').textContent = sub || g.lastMsg || '';
     // banner dice
     if (g.roll && g.roll.seq !== lastRollSeq) {
       lastRollSeq = g.roll.seq; if (stopDice) stopDice();
@@ -239,7 +178,7 @@
       [$('fpDice'), $('fzDice')].forEach(function (cv) { var c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height); c.fillStyle = 'rgba(255,255,255,0.25)'; c.font = '700 120px Fredoka'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('? ?', cv.width / 2, cv.height / 2); });
       $('fpTot').textContent = ''; $('fzTot').textContent = '';
       res.className = 'fresult'; res.innerHTML = '';
-      pr.className = 'fprompt blink'; pr.innerHTML = isAI(p) ? esc(p.name) + ' is rolling...' : esc(p.name) + ', ' + (tv ? 'press <b>ENTER</b> to roll!' : 'press <b>ROLL</b> on your phone!');
+      pr.className = 'fprompt blink'; pr.innerHTML = esc(p.name) + ', ' + (tv ? 'press <b>ENTER</b> to roll!' : 'press <b>ROLL</b> on your phone!');
     } else if (f.stage === 'rolling') {
       pr.className = 'fprompt'; pr.textContent = '';
       if (stopF1) stopF1(); if (stopF2) stopF2();
@@ -263,10 +202,8 @@
       var p = game.players[i], li = document.createElement('li');
       if (!p) { li.className = 'empty'; li.textContent = 'Waiting for player ' + (i + 1) + '...'; ul.appendChild(li); continue; }
       li.style.setProperty('--c', p.color);
-      var kind = p.ai ? 'AI \u00b7 ' + esc(AIC.personas[p.ai.persona].label) + ' \u00b7 ' + esc(AIC.levels[p.ai.level].label) : (p.local ? 'Hot-seat (this screen)' : p.connected ? 'Phone' : 'Phone (reconnecting)');
-      li.innerHTML = '<canvas class="lport" width="64" height="64"></canvas><span>' + esc(p.name) + (i === 0 && !p.ai ? ' <span class="kind">(starts the game)</span>' : '') +
-        '<br><span class="kind">' + kind + ' \u00b7 ' + esc(window.ZTDice.style(p.dice).name) + ' dice</span></span>';
-      window.ZTRender.portrait(li.querySelector('.lport'), p);
+      li.innerHTML = '<span class="dot"></span><span>' + esc(p.name) + (i === 0 ? ' <span class="kind">(starts the game)</span>' : '') +
+        '<br><span class="kind">' + (p.local ? 'Hot-seat (this screen)' : p.connected ? 'Phone' : 'Phone (reconnecting)') + ' \u00b7 ' + esc(window.ZTDice.style(p.dice).name) + ' dice</span></span>';
       var cv = document.createElement('canvas'); cv.width = 240; cv.height = 120; li.appendChild(cv);
       window.ZTDice.still(cv, [5, 6], p.dice);
       var rm = document.createElement('button'); rm.className = 'rm'; rm.innerHTML = '&times;'; rm.setAttribute('aria-label', 'Remove ' + p.name);
@@ -278,9 +215,6 @@
     $('startBtn').disabled = !game.players.length;
     $('hsDice').textContent = 'Dice: ' + C.dice[hsDice].name;
     $('hsAdd').disabled = game.players.length >= C.maxPlayers;
-    $('aiAdd').disabled = game.players.length >= C.maxPlayers;
-    $('aiPersona').textContent = AIC.personas[AIC.order[aiPick.p]].label;
-    $('aiLevel').textContent = AIC.levels[AIC.levelOrder[aiPick.l]].label;
     renderHuePanel();
   }
   $('hsDice').onclick = function () { hsDice = (hsDice + 1) % C.dice.length; dirty = true; };
@@ -290,15 +224,6 @@
     return p;
   }
   $('hsAdd').onclick = function () { addHotseat(); };
-  var aiPick = { p: 0, l: 1 };
-  function vip() {                // the host phone = first phone player (AI and hot-seat seats can't hold a phone)
-    for (var i = 0; i < game.players.length; i++) { var q = game.players[i]; if (!q.ai && !q.local) return q; }
-    return null;
-  }
-  function addAI(persona, level) { return game.addPlayer({ ai: { persona: persona || AIC.order[aiPick.p], level: level || AIC.levelOrder[aiPick.l] } }); }
-  $('aiPersona').onclick = function () { aiPick.p = (aiPick.p + 1) % AIC.order.length; dirty = true; };
-  $('aiLevel').onclick = function () { aiPick.l = (aiPick.l + 1) % AIC.levelOrder.length; dirty = true; };
-  $('aiAdd').onclick = function () { if (addAI()) aiPick.p = (aiPick.p + 1) % AIC.order.length; dirty = true; };
   $('hsName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.stopPropagation(); addHotseat(); } });
   $('startBtn').onclick = function () { startGame(); };
   $('againBtn').onclick = function () { startGame(); };
@@ -317,14 +242,14 @@
   function act(m) {
     var a = actor();
     if (game.phase === 'over' && m.t === 'exec') { startGame(); return; }
-    if (!a || !tvControls(a)) return;     // AI seats (and phones) aren't driven from the TV keys
+    if (!a || !tvControls(a)) return;
     if (m.t === 'roll' && (game.phase === 'plan' || game.phase === 'place')) return;
     game.intent(a.id, m);
   }
   document.addEventListener('keydown', function (e) {
     if (e.target && e.target.tagName === 'INPUT') return;
     var k = e.key;
-    if (k === 'm' || k === 'M') { muted = !muted; SFX.muted = muted; return; }
+    if (k === 'm' || k === 'M') { muted = !muted; return; }
     if ((k === 'l' || k === 'L') && lightsAvailable()) { setLights(!lights.enabled, lights.selected); if (game.phase !== 'lobby') big(lights.enabled ? 'LIGHTS ON' : 'LIGHTS OFF', lights.enabled ? 'Hue effects are back' : 'Your lights go back to normal', '#ffd65a'); return; }
     if (game.phase === 'lobby') {
       if (k === 'Enter' && document.activeElement === document.body && game.players.length) { startGame(); e.preventDefault(); }
@@ -398,8 +323,6 @@
       clients[cid] = { pid: p.id, conn: conn, seen: Date.now(), lastSent: '' };
       conn._cid = cid;
       p.connected = true;
-      if (typeof m.coach === 'boolean') p.coach = m.coach;
-      handBack(p);
       game.changed();
       net.send(conn, { t: 'welcome', pid: p.id, room: net.code });
       return;
@@ -409,49 +332,26 @@
     cl.seen = Date.now();
     var pl = game.byId(cl.pid);
     if (!pl) { net.send(conn, { t: 'reject', reason: 'You were removed from the room.' }); return; }
-    if (!pl.connected) { pl.connected = true; dirty = true; handBack(pl); }
+    if (!pl.connected) { pl.connected = true; dirty = true; }
     if (m.t === 'ping') { net.send(conn, { t: 'pong' }); return; }
     if (m.t === 'start' || m.t === 'again') {
-      if (vip() === pl && (game.phase === 'lobby' || game.phase === 'over')) startGame();
+      if (game.players[0] === pl && (game.phase === 'lobby' || game.phase === 'over')) startGame();
       return;
     }
     if (m.t === 'leave') { if (game.phase === 'lobby') { game.removePlayer(pl.id); delete clients[conn._cid]; } return; }
-    if (m.t === 'hue') { if (vip() === pl) hueIntent(m); return; }
-    if (m.t === 'coach') { pl.coach = !!m.on; phoneDirty = true; return; }
-    if (m.t === 'addAI' || m.t === 'removeAI') {        // the host phone manages computer players in the lobby
-      if (vip() !== pl || (game.phase !== 'lobby' && game.phase !== 'over')) return;
-      if (m.t === 'addAI') addAI(AIC.personas[m.persona] ? m.persona : null, AIC.levels[m.level] ? m.level : null);
-      else { var q = game.byId(+m.pid); if (q && q.ai) game.removePlayer(q.id); }
-      return;
-    }
+    if (m.t === 'hue') { if (game.players[0] === pl) hueIntent(m); return; }
     game.intent(pl.id, m);
   }
   function onPhoneClose(conn) {
     if (conn._lights) { if (conn === lights.conn) { lights.conn = null; lights.st = null; dirty = phoneDirty = true; } return; }
     var cl = clients[conn._cid];
-    if (cl && cl.conn === conn) { var p = game.byId(cl.pid); if (p) { p.connected = false; if (!p.offSince) p.offSince = Date.now(); game.changed(); } }
-  }
-  function handBack(p) {           // a phone came back: the AI gives the seat back
-    p.offSince = 0;
-    if (!p.aiTakeover) return;
-    p.aiTakeover = null;
-    if (inGame()) { big(p.name + ' IS BACK!', 'The AI hands the seat back.', p.color); rnd.bubble(p.id, "I'm back!", p.color, false); }
-    game.changed();
+    if (cl && cl.conn === conn) { var p = game.byId(cl.pid); if (p) { p.connected = false; game.changed(); } }
   }
   setInterval(function () {               // phones that went quiet (asleep) show as reconnecting; hot-seat keys can cover for them
     var now = Date.now(), ch = false;
     for (var cid in clients) {
       var cl = clients[cid], p = game.byId(cl.pid);
       if (p && p.connected && now - cl.seen > 15000) { p.connected = false; ch = true; }
-      if (p && !p.connected && !p.ai && inGame()) {       // still gone after a while: an AI keeps the seat warm
-        if (!p.offSince) p.offSince = now;
-        if (!p.aiTakeover && now - p.offSince > AIC.takeoverAfterMs && p.status !== 'escaped' && p.status !== 'spectator') {
-          p.aiTakeover = { persona: AIC.takeoverPersona, level: AIC.takeoverLevel };
-          big('AI PLAYS FOR ' + p.name.toUpperCase(), 'Until their phone reconnects.', p.color);
-          rnd.bubble(p.id, 'I\'ll play for ' + p.name + ' for now!', p.color, false);
-          ch = true;
-        }
-      }
     }
     if (ch) game.changed();
     if (lights.conn && now - lights.seen > 20000) { lights.conn = null; lights.st = null; dirty = true; }
@@ -473,9 +373,7 @@
     var st = {
       t: 'state', phase: g.phase, mode: mode, round: g.round || 1,
       you: { id: p.id, name: p.name, color: p.color, dice: p.dice, hearts: p.hearts, maxHearts: C.maxHearts, ammo: p.ammo, weapon: p.weapon,
-        status: p.status, place: p.place, deadChoice: p.deadChoice, vip: vip() === p, coach: !!p.coach, aiCover: !!p.aiTakeover },
-      coach: p.coach && !p.aiTakeover && (mode === 'plan' || mode === 'fight' || mode === 'roll') ? coachFor(p) : null,
-      full: g.players.length >= C.maxPlayers, vipName: vip() ? vip().name : '',
+        status: p.status, place: p.place, deadChoice: p.deadChoice, vip: g.players[0] === p },
       cur: cur ? { id: cur.id, name: cur.name, color: cur.color, zombie: cur.status === 'zombie' } : null,
       movesLeft: g.movesLeft || 0, planLen: g.plan ? g.plan.length : 0,
       roll: g.roll && g.roll.pid === p.id ? { seq: g.roll.seq, d: g.roll.d, total: g.roll.total, kind: g.roll.kind } : null,
@@ -483,17 +381,11 @@
         outcome: f.stage === 'result' ? f.outcome : null, text: f.stage === 'result' ? f.text : null, title: f.title || null, attacker: f.attackerPid ? (g.byId(f.attackerPid) || {}).name : null } : null,
       place: g.phase === 'place' && g.place ? { slots: g.place.slots.length, tile: window.ZT_TILES.byId[g.place.tpl].name } : null,
       msg: g.lastMsg || '',
-      lobby: g.phase === 'lobby' || g.phase === 'over' ? g.players.map(function (q) { return { pid: q.id, name: q.name, color: q.color, dice: q.dice, local: q.local, ai: q.ai ? AIC.personas[q.ai.persona].short + ' \u00b7 ' + AIC.levels[q.ai.level].label : null }; }) : null,
+      lobby: g.phase === 'lobby' ? g.players.map(function (q) { return { name: q.name, color: q.color, dice: q.dice, local: q.local }; }) : null,
       results: g.phase === 'over' ? g.results : null,
       hue: g.phase === 'lobby' ? hueView(p) : null
     };
     return st;
-  }
-  var coachCache = {};
-  function coachFor(p) {          // worked out once per decision, so the hint doesn't jump around while you tap
-    var g = game, k = [p.id, g.phase, g.rollSeq, g.fightSeq, g.tiles.length, g.execSteps].join(':');
-    if (!coachCache[p.id] || coachCache[p.id].k !== k) coachCache[p.id] = { k: k, v: window.ZTAI.coach(g, p) };
-    return coachCache[p.id].v;
   }
   function pushPhones() {
     if (!net) return;
@@ -577,16 +469,12 @@
       case 'start': lightFx('start'); break;
       case 'turn': if (p) lightFx('turn', { color: p.color, zombie: p.status === 'zombie' }); break;
       case 'roll': lightFx('roll'); break;
-      case 'fightStart': lightFx('fight', { style: fightStyle, color: p ? p.color : '#ffffff' }); break;
+      case 'fightStart': lightFx('fight'); break;
       case 'fightRoll': lightFx('fightRoll'); break;
       case 'fightResult': var f = game.fight || {}; lightFx('fightResult', { lost: f.lost || 0, zdead: !!f.zdead }); break;
       case 'death': lightFx('crunch'); break;
       case 'rise': lightFx('rise'); break;
       case 'escape': lightFx('escape', { color: p ? p.color : '#ffd65a' }); break;
-      case 'pickup': lightFx('pickup', { color: d.kind === 'heart' ? '#ff6b88' : '#ffd65a' }); break;
-      case 'draw': if (d.tpl === 'helipad') lightFx('helipad'); break;
-      case 'gate': if (!d.yes) lightFx('gateNo'); break;
-      case 'lunge': lightFx('lunge'); break;
       case 'over': lightFx('over', { escaped: (game.results || []).some(function (r) { return r.escaped; }) }); break;
     }
   }
@@ -594,7 +482,7 @@
     if (!lights.conn || !lights.st) return null;
     var st = lights.st;
     return { ok: st.ok, msg: st.ok ? '' : hueProblem(st), bridge: st.bridge, mock: st.mock, enabled: lights.enabled, selected: lights.selected,
-      groups: st.ok ? st.groups : [], canEdit: vip() === p };
+      groups: st.ok ? st.groups : [], canEdit: game.players[0] === p };
   }
   function hueProblem(st) {
     if (!st.reachable) return st.error || 'The helper cannot reach the Hue bridge.';
@@ -649,13 +537,8 @@
   else setNetUi('offline', null, 'phones disabled with ?nonet');
   var hs = +Q.get('hotseat');
   if (hs > 0) { var names = ['Maya', 'Leo', 'Ava', 'Sam']; for (var i = 0; i < Math.min(hs, 4); i++) { hsDice = i; addHotseat(names[i]); } }
-  if (Q.get('ai')) {                   // ?ai=3 or ?ai=fighter:ruthless,looter:easy
-    var spec = Q.get('ai');
-    if (/^\d+$/.test(spec)) { for (var j = 0; j < Math.min(+spec, C.maxPlayers); j++) addAI(AIC.order[j % AIC.order.length], 'normal'); }
-    else spec.split(',').forEach(function (x) { var pr = x.split(':'); addAI(AIC.personas[pr[0]] ? pr[0] : null, AIC.levels[pr[1]] ? pr[1] : 'normal'); });
-  }
   if (Q.has('autostart') && game.players.length) startGame();
-  window.ZT.startGame = startGame; window.ZT.addHotseat = addHotseat; window.ZT.addAI = addAI; window.ZT.sfx = SFX; window.ZT.net = function () { return net; };
+  window.ZT.startGame = startGame; window.ZT.addHotseat = addHotseat; window.ZT.net = function () { return net; };
   window.ZT.lights = function () { return lights; }; window.ZT.hue = hueIntent;
   requestAnimationFrame(loop);
 })();

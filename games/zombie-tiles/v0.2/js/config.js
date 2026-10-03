@@ -1,12 +1,12 @@
 /* =====================================================================
-   ZOMBIE TILES (working title) - TUNABLE RULES  v0.3
+   ZOMBIE TILES (working title) - TUNABLE RULES  v0.2
    ---------------------------------------------------------------------
    Every rule number lives here. Change a value, save, refresh the TV.
    Phones read the same file (dice styles, colours, labels).
    ===================================================================== */
 (function (root) {
   root.ZT_CONFIG = {
-    version: '0.3',
+    version: '0.2.1',
 
     // ---- board ----
     tileSize: 8,                 // squares per tile side (data model keeps w/h per tile for later)
@@ -86,14 +86,8 @@
       zombieTurnColor: '#5cff2e',                                      // tint for a player-zombie's turn
       roll: { flickers: 3, dip: 0.3, gapMs: 140, lights: 3 },          // quick brightness dips on dice rolls
       fight: { color: '#ff1a1a', bri: 0.7, low: 0.22, pulses: 3, pulseMs: 850 },  // red pulses while fighting
-      hit: { color: '#ff0000', bri: 1.0, ms: 380, flashes: 2, gapMs: 260 },   // you lose a fight: hard red double flash
-      kill: { color: '#fff3c4', colors: ['#fff3c4', '#ffd23f', '#9dff6a'], bri: 1.0, ms: 650, sparkle: 3 },  // zombie destroyed: bright burst
-      charge: { bri: 1.0, ms: 350 },                                   // charging into a fight: flash of the player's colour
-      scream: { color: '#ffffff', bri: 0.9, blinks: 2, ms: 140 },      // cornered / grabbed: quick white blinks
-      pickup: { bri: 0.8, ms: 300 },                                   // grabbing an item: one light sparkles
-      helipad: { color: '#ffc21a', bri: 0.8, ms: 1400 },               // the helipad tile is found
-      gateNo: { color: '#ff2020', bri: 0.75, ms: 500 },                // the guard says NO
-      lunge: { color: '#5cff2e', dip: 0.35, flickers: 2 },             // zombies lurch toward you
+      hit: { color: '#ff0000', bri: 0.85, ms: 450 },                   // player loses hearts
+      kill: { color: '#ffffff', bri: 0.75, ms: 250 },                  // zombie destroyed: short white pop
       crunch: { color: '#ff0000', bri: 1.0, holdMs: 1500, fadeMs: 2500 },   // a player is taken out
       rise: { color: '#5cff2e', bri: 0.55, ms: 1200 },                 // a fallen player rises
       escape: { colors: ['#ffc21a', '#fff0b8', '#ffa200'], bri: 1.0, steps: 6, stepMs: 500 },  // helicopter escape
@@ -102,39 +96,6 @@
       disconnectRestoreMs: 30000, // TV gone this long -> restore the lights
       rate: { lightsPerSec: 8, groupsPerSec: 1, perLightMax: 6 }   // Hue limits: ~10/s lights, ~1/s groups.
       // perLightMax: up to this many selected lights are driven individually (snappier); more use room/zone commands
-    },
-
-    // ---- AI players (v0.3) ----
-    // Personalities: w = how much they care about loot / hearts / exploring / the helipad / fighting / avoiding danger.
-    // minOdds = chance of winning a fight they need before walking into one on purpose.
-    // share / betray = how likely they share ammo with their ally / ditch the ally at the helipad (0..1).
-    // hunt = who they chase after rising as a zombie: nearest | weakest | leader.  voice = pitch of their little screams.
-    ai: {
-      personas: {
-        looter:   { label: 'Cautious looter',  short: 'Looter',   names: ['Penny', 'Magpie', 'Pip', 'Rummy'],  dice: 'candy',
-                    w: { loot: 1.7, heart: 1.5, explore: 0.8, helipad: 1.1, fight: 0.15, danger: 2.4 }, minOdds: 0.78, share: 0.5, betray: 0.15, hunt: 'weakest', voice: 1.3 },
-        fighter:  { label: 'Reckless fighter', short: 'Fighter',  names: ['Brick', 'Tank', 'Rumble', 'Moose'], dice: 'blood',
-                    w: { loot: 0.9, heart: 0.6, explore: 0.8, helipad: 0.9, fight: 1.7, danger: 0.45 }, minOdds: 0.5, share: 0.3, betray: 0.2, hunt: 'nearest', voice: 0.8 },
-        sprinter: { label: 'Helipad sprinter', short: 'Sprinter', names: ['Dash', 'Zoom', 'Bolt', 'Skye'],     dice: 'sunshine',
-                    w: { loot: 0.45, heart: 0.7, explore: 1.7, helipad: 2.2, fight: 0.35, danger: 1.2 }, minOdds: 0.6, share: 0.2, betray: 0.6, hunt: 'leader', voice: 1.15 },
-        sneak:    { label: 'Sneaky backstabber', short: 'Sneak',  names: ['Slink', 'Vex', 'Shady', 'Weasel'],  dice: 'midnight',
-                    w: { loot: 1.25, heart: 0.9, explore: 1.0, helipad: 1.6, fight: 0.6, danger: 1.4 }, minOdds: 0.6, share: 0.1, betray: 0.95, hunt: 'leader', voice: 1.0 },
-        buddy:    { label: 'Team player',      short: 'Buddy',    names: ['Sunny', 'Nova', 'Pal', 'Biscuit'],  dice: 'toxic',
-                    w: { loot: 1.0, heart: 1.1, explore: 1.0, helipad: 1.4, fight: 0.8, danger: 1.3 }, minOdds: 0.55, share: 0.9, betray: 0.0, hunt: 'nearest', voice: 1.2 }
-      },
-      order: ['fighter', 'looter', 'sprinter', 'sneak', 'buddy'],
-      // noise = random wobble in how they value things; slip = chance of picking a worse plan (from the top 4);
-      // oddsErr = fight-odds misjudgement; care = how seriously they take zombie danger (1 = sensibly)
-      levels: {
-        easy:     { label: 'Easy',     noise: 0.6,  slip: 0.4,  oddsErr: 0.25, care: 0.35 },
-        normal:   { label: 'Normal',   noise: 0.12, slip: 0.06, oddsErr: 0.06, care: 1 },
-        ruthless: { label: 'Ruthless', noise: 0,    slip: 0,    oddsErr: 0,    care: 1.25 }
-      },
-      levelOrder: ['easy', 'normal', 'ruthless'],
-      timing: { think: 450, dirStep: 120, showPlan: 1000, roll: 750, fight: 900, place: 350, placeHold: 600 },  // ms (TV speed)
-      takeoverAfterMs: 10000,    // a phone silent this long mid-game: an AI plays that seat until the phone comes back
-      takeoverPersona: 'buddy', takeoverLevel: 'normal',
-      bubbleMs: 2300              // speech bubbles on the TV
     },
 
     // ---- networking ----

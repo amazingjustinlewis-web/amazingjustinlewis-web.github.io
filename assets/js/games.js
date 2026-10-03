@@ -90,16 +90,24 @@ window.GAMES = [
       'Cartoon zombies, no gore: fights are dice rolls with big result text.',
       'Players can be knocked out and come back as a zombie (or just watch).',
       'Each phone shows its own hearts and ammo, so a little secrecy is part of the fun.',
-      'Simple bleeps and boops from the TV: press M to mute.',
+      'Short, cartoony sound effects from the TV (war cries, little screams, a crunch when a fight goes wrong): press M to mute.',
+      'Computer players (AI) can fill empty seats, each with its own personality and an Easy, Normal or Ruthless setting.',
       'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi). No phones? Play hot-seat on one screen.',
       'Optional Philips Hue lights: short colour flickers plus red and gold flashes in fights and escapes. Leave them off if anyone is sensitive to flashing lights.'
     ],
     versions: [
       {
-        id: 'v0.2',
-        name: 'Lights On',
+        id: 'v0.3',
+        name: 'AI Crew',
         current: true,
         play: 'games/zombie-tiles/index.html',
+        notes: 'Add computer players with personalities (cautious looter, reckless fighter, helipad sprinter, sneaky backstabber, loyal buddy) and Easy / Normal / Ruthless difficulty. They show their planned path, chat in speech bubbles, sometimes share ammo with a teammate (or leave them behind at the helipad), and cover for a phone that drops out. Optional coach hints on a phone. New sound effects and stronger light effects for everyone.'
+      },
+      {
+        id: 'v0.2',
+        name: 'Lights On',
+        current: false,
+        play: 'games/zombie-tiles/v0.2/index.html',
         notes: 'Same game as v0.1, plus optional Philips Hue lights that react to turns, dice, fights and escapes (needs the Lights Helper on a PC). v0.2.1: the helper connects through a hidden Edge/Chrome, so it works even when Firefox is the default browser; rooms can be ticked on the helper page too.'
       },
       {

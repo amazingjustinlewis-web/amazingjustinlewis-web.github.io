@@ -122,14 +122,12 @@
   // ------------------------------------------------------------ renderer
   function Renderer(canvas) {
     this.cv = canvas; this.ctx = canvas.getContext('2d');
-    this.cam = { x: 4, y: 4, s: 40 }; this.disp = {}; this.pops = []; this.shake = 0; this.flash = null; this.bubbles = {};
+    this.cam = { x: 4, y: 4, s: 40 }; this.disp = {}; this.pops = []; this.shake = 0; this.flash = null;
     this.area = { x: 0, y: 0, w: 100, h: 100 };
   }
   var R = Renderer.prototype;
   R.resize = function (w, h, dpr) { this.dpr = dpr; this.cv.width = Math.round(w * dpr); this.cv.height = Math.round(h * dpr); this.cv.style.width = w + 'px'; this.cv.style.height = h + 'px'; this.W = w; this.H = h; };
   R.setArea = function (a) { this.area = a; };
-  // speech bubble over a player (AI reactions); shout = charge / scream style
-  R.bubble = function (pid, text, color, shout) { if (!text) return; this.bubbles[pid] = { text: text, color: color || '#fff', t: 0, dur: ((C.ai && C.ai.bubbleMs) || 2300) / 1000, shout: !!shout }; };
   R.pop = function (text, x, y, color, big) { this.pops.push({ text: text, x: x, y: y, color: color || '#fff', t: 0, big: !!big }); };
   R.bounds = function (g) {
     var minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9;
@@ -286,16 +284,6 @@
       else drawPlayer(ctx, p[0], p[1], sq * (e.sc || 1), e.p, cur === e.p && g.phase !== 'over', now, e.p.id === fightP);
     });
 
-    // speech bubbles
-    for (var bid in this.bubbles) {
-      var bb = this.bubbles[bid]; bb.t += dt;
-      if (bb.t > bb.dur) { delete this.bubbles[bid]; continue; }
-      var bp = g.byId(+bid); if (!bp) continue;
-      var dd = this.disp['p' + bid];
-      if (!dd && bp.zid) dd = this.disp['z' + bp.zid];
-      var bx = dd ? dd.x : bp.x, by = dd ? dd.y : bp.y;
-      drawBubble(ctx, self.toScreen(bx + 0.5, by + 0.5), sq, bb);
-    }
     // floating texts
     this.pops = this.pops.filter(function (pp) { return (pp.t += dt) < 1.6; });
     this.pops.forEach(function (pp) {
@@ -321,11 +309,8 @@
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, r + 3, 0, 7); ctx.fill();
     ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.35, r * 0.35, 0, 7); ctx.fill();
-    if (p.ai) drawFace(ctx, x, y, r, p.ai.persona, now);
-    else {
-      ctx.fillStyle = '#1a1420'; ctx.font = '700 ' + Math.round(r * 1.1) + 'px Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(p.name.charAt(0).toUpperCase(), x, y + 1);
-    }
+    ctx.fillStyle = '#1a1420'; ctx.font = '700 ' + Math.round(r * 1.1) + 'px Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(p.name.charAt(0).toUpperCase(), x, y + 1);
     // weapon badge (visible to everyone)
     if (p.weapon !== 'none') {
       var bx = x + r * 0.95, by = y + r * 0.7;
@@ -336,12 +321,10 @@
     // name tag
     var fs = Math.max(15, Math.round(sq * 0.32));
     ctx.font = '700 ' + fs + 'px Fredoka, sans-serif';
-    var label = p.name + (p.aiTakeover ? ' (AI)' : '');
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    var tw = ctx.measureText(label).width + fs * 0.8, ty = y - r - fs * 0.95;
+    var tw = ctx.measureText(p.name).width + fs * 0.8, ty = y - r - fs * 0.95;
     ctx.fillStyle = 'rgba(15,12,22,0.85)'; roundRect(ctx, x - tw / 2, ty - fs * 0.62, tw, fs * 1.24, fs * 0.4); ctx.fill();
     ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.fillText(label, x, ty + 1);
+    ctx.fillStyle = '#fff'; ctx.fillText(p.name, x, ty + 1);
     if (fighting) { ctx.strokeStyle = '#ff3b4e'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, 7); ctx.stroke(); }
   }
   function drawBody(ctx, x, y, sq, p) {
@@ -376,59 +359,6 @@
       ctx.fillStyle = z.owner ? (z.color || '#cfe') : '#b9c9a0'; ctx.fillText(z.name + (z.owner ? ' (zombie)' : ''), x, y - r * 1.35);
     }
   }
-  // AI portraits: a face plus a persona accessory (headband, goggles, mask, cap, bandana)
-  function drawFace(ctx, x, y, r, persona, now) {
-    var blink = now && (Math.floor(now / 160) % 25 === 0);
-    ctx.save();
-    if (persona === 'fighter') {            // red headband with tails
-      ctx.fillStyle = '#e8203a'; ctx.fillRect(x - r * 0.92, y - r * 0.62, r * 1.84, r * 0.3);
-      ctx.beginPath(); ctx.moveTo(x + r * 0.8, y - r * 0.55); ctx.lineTo(x + r * 1.35, y - r * 0.9); ctx.lineTo(x + r * 1.3, y - r * 0.35); ctx.fill();
-    } else if (persona === 'sprinter') {     // aviator goggles strap
-      ctx.fillStyle = '#5a3a1a'; ctx.fillRect(x - r * 0.98, y - r * 0.5, r * 1.96, r * 0.2);
-    } else if (persona === 'sneak') {       // bandit mask
-      ctx.fillStyle = '#16121c'; roundRect(ctx, x - r * 0.85, y - r * 0.42, r * 1.7, r * 0.42, r * 0.2); ctx.fill();
-    } else if (persona === 'buddy') {       // baseball cap
-      ctx.fillStyle = '#2f7dff'; ctx.beginPath(); ctx.arc(x, y - r * 0.35, r * 0.82, Math.PI, 0); ctx.fill(); ctx.fillRect(x - r * 0.1, y - r * 0.42, r * 1.05, r * 0.16);
-    } else if (persona === 'looter') {      // green bandana + backpack strap
-      ctx.fillStyle = '#3cb44b'; ctx.beginPath(); ctx.arc(x, y - r * 0.4, r * 0.85, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
-      ctx.strokeStyle = '#7a4a1e'; ctx.lineWidth = r * 0.16; ctx.beginPath(); ctx.moveTo(x - r * 0.6, y + r * 0.1); ctx.lineTo(x - r * 0.3, y + r * 0.9); ctx.stroke();
-    }
-    var ey = y - r * 0.2, ex = r * 0.33, er = r * 0.2;
-    if (persona === 'sprinter') { ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(x - ex, ey, er * 1.45, 0, 7); ctx.arc(x + ex, ey, er * 1.45, 0, 7); ctx.fill(); }
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x - ex, ey, er, 0, 7); ctx.arc(x + ex, ey, er, 0, 7); ctx.fill();
-    ctx.fillStyle = '#1a1420';
-    if (blink) { ctx.fillRect(x - ex - er, ey - 1, er * 2, 2); ctx.fillRect(x + ex - er, ey - 1, er * 2, 2); }
-    else { ctx.beginPath(); ctx.arc(x - ex + er * 0.25, ey + er * 0.1, er * 0.5, 0, 7); ctx.arc(x + ex + er * 0.25, ey + er * 0.1, er * 0.5, 0, 7); ctx.fill(); }
-    ctx.strokeStyle = '#1a1420'; ctx.lineWidth = Math.max(1.5, r * 0.1); ctx.beginPath();
-    if (persona === 'fighter') { ctx.moveTo(x - r * 0.3, y + r * 0.38); ctx.lineTo(x + r * 0.3, y + r * 0.32); }
-    else if (persona === 'sneak') ctx.arc(x + r * 0.08, y + r * 0.22, r * 0.28, 0.15 * Math.PI, 0.7 * Math.PI);
-    else ctx.arc(x, y + r * 0.18, r * 0.32, 0.15 * Math.PI, 0.85 * Math.PI);
-    ctx.stroke();
-    ctx.restore();
-  }
-  // small portrait on its own canvas (lobby, player cards, results)
-  function portrait(cv, p) {
-    var c = cv.getContext('2d'), w = cv.width, r = w * 0.36;
-    c.clearRect(0, 0, w, cv.height);
-    c.fillStyle = '#fff'; c.beginPath(); c.arc(w / 2, cv.height / 2, r + Math.max(2, w * 0.04), 0, 7); c.fill();
-    c.fillStyle = p.color; c.beginPath(); c.arc(w / 2, cv.height / 2, r, 0, 7); c.fill();
-    if (p.ai) drawFace(c, w / 2, cv.height / 2, r, p.ai.persona, 0);
-    else { c.fillStyle = '#1a1420'; c.font = '700 ' + Math.round(r * 1.1) + 'px Fredoka, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(p.name.charAt(0).toUpperCase(), w / 2, cv.height / 2 + 1); }
-    return cv;
-  }
-  function drawBubble(ctx, pos, sq, b) {
-    var a = Math.min(1, b.t * 6, (b.dur - b.t) * 3), pop = b.t < 0.15 ? 0.7 + b.t * 2 : 1;
-    var fs = Math.max(16, Math.round(sq * (b.shout ? 0.5 : 0.4))) * pop;
-    ctx.save(); ctx.globalAlpha = Math.max(0, a);
-    ctx.font = '700 ' + Math.round(fs) + 'px Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    var tw = ctx.measureText(b.text).width + fs * 1.1, th = fs * 1.6, x = pos[0], y = pos[1] - Math.max(sq * 0.38, 15) - fs * 2.6 - th / 2;
-    ctx.fillStyle = b.shout ? '#fff3c4' : '#ffffff'; ctx.strokeStyle = b.color; ctx.lineWidth = 3;
-    roundRect(ctx, x - tw / 2, y - th / 2, tw, th, th * 0.45); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x - fs * 0.35, y + th / 2 - 1); ctx.lineTo(x + fs * 0.1, y + th / 2 + fs * 0.6); ctx.lineTo(x + fs * 0.35, y + th / 2 - 1); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(x - fs * 0.35, y + th / 2); ctx.lineTo(x + fs * 0.1, y + th / 2 + fs * 0.6); ctx.lineTo(x + fs * 0.35, y + th / 2); ctx.stroke();
-    ctx.fillStyle = '#1a1420'; ctx.fillText(b.text, x, y + 1);
-    ctx.restore();
-  }
   function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
   // item icons (pickups and weapon badges)
   function drawItem(ctx, kind, x, y, s) {
@@ -460,7 +390,6 @@
     ctx.restore();
   }
   Renderer.drawItem = drawItem;
-  Renderer.portrait = portrait;
   Renderer.tileCanvas = tileCanvas;
   root.ZTRender = Renderer;
 })(window);
