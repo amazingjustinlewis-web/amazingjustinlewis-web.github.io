@@ -58,15 +58,17 @@
       }
     }, 4000);
     if (typeof document !== 'undefined') document.addEventListener('visibilitychange', function () {
+      if (self.destroyed) return;
       if (document.visibilityState === 'visible' && !(self.conn && self.conn.open)) self.reconnect();
       else if (document.visibilityState === 'visible') self.send({ t: 'ping' });
     });
-    root.addEventListener && root.addEventListener('online', function () { self.reconnect(); });
+    root.addEventListener && root.addEventListener('online', function () { if (!self.destroyed) self.reconnect(); });
     this.start();
   }
   Client.prototype.setStatus = function (s, d) { this.status = s; if (this.o.onStatus) this.o.onStatus(s, d); };
   Client.prototype.start = function () {
     var self = this;
+    if (this.destroyed) return;
     if (typeof root.Peer !== 'function') { this.setStatus('offline', 'PeerJS did not load'); return; }
     this.setStatus('connecting');
     if (!this.peer || this.peer.destroyed) {
@@ -100,7 +102,13 @@
     conn.on('close', function () { if (conn === self.conn) { self.setStatus('reconnecting', 'closed'); self.retry(800); } });
     conn.on('error', function () { if (conn === self.conn) { self.setStatus('reconnecting', 'error'); self.retry(800); } });
   };
-  Client.prototype.reconnect = function () { clearTimeout(this.rt); if (this.conn) { var c = this.conn; this.conn = null; try { c.close(); } catch (e) {} } this.start(); };
+  Client.prototype.reconnect = function () { if (this.destroyed) return; clearTimeout(this.rt); if (this.conn) { var c = this.conn; this.conn = null; try { c.close(); } catch (e) {} } this.start(); };
+  Client.prototype.destroy = function () {     // stop for good (used by the lights helper page when another page takes over)
+    this.destroyed = true; clearTimeout(this.rt); clearInterval(this.ping);
+    try { if (this.conn) this.conn.close(); } catch (e) {}
+    try { if (this.peer) this.peer.destroy(); } catch (e) {}
+    this.conn = null; this.peer = null;
+  };
   Client.prototype.send = function (m) { try { if (this.conn && this.conn.open) { this.conn.send(m); return true; } } catch (e) {} return false; };
 
   root.ZTNet = { Host: Host, Client: Client, makeCode: makeCode };

@@ -402,7 +402,7 @@
   // ------------------------------------------------------------ Philips Hue lights (optional) via the Lights Helper
   // The helper (lights-helper/ on a PC) joins the room as a non-player peer, reports the bridge's rooms/zones,
   // and turns the events we send into light effects. Without it nothing here does anything.
-  var lights = { conn: null, seen: 0, st: null, enabled: false, selected: [], adopted: false };
+  var lights = { conn: null, seen: 0, st: null, enabled: false, selected: [], adopted: false, prefsRev: null };
   function lightsAvailable() { return !!(lights.conn && lights.conn.open && lights.st && lights.st.ok); }
   function lightsOn() { return lightsAvailable() && lights.enabled && lights.selected.length > 0; }
   function lightsSend(m) { if (net && lights.conn && lights.conn.open) net.send(lights.conn, m); }
@@ -451,10 +451,15 @@
         bridge: m.bridge && m.bridge.name ? String(m.bridge.name).slice(0, 40) : 'Hue bridge', pairing: m.pairing,
         groups: (Array.isArray(m.groups) ? m.groups : []).slice(0, 40).map(function (g) { return { id: String(g.id), name: String(g.name).slice(0, 32), type: g.type === 'Zone' ? 'Zone' : 'Room', lights: +g.lights || 0 }; })
       };
+      var rev = m.prefs && typeof m.prefs.rev === 'number' ? m.prefs.rev : null;
       if (first) {
         if (!lights.adopted && m.remembered) { lights.adopted = true; setLights(!!m.remembered.enabled, m.remembered.selected || []); }
+        else if (rev !== null && lights.prefsRev != null && rev !== lights.prefsRev) setLights(!!m.prefs.enabled, m.prefs.selected || []);
         else setLights(lights.enabled, lights.selected);
+      } else if (rev !== null && rev !== lights.prefsRev) {
+        setLights(!!m.prefs.enabled, m.prefs.selected || []);   // lights were chosen on the helper page itself
       }
+      if (rev !== null) lights.prefsRev = rev;
       dirty = true; phoneDirty = true;
     }
   }

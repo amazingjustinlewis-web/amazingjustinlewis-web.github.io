@@ -6,7 +6,7 @@
    ===================================================================== */
 (function (root) {
   root.ZT_CONFIG = {
-    version: '0.2',
+    version: '0.2.1',
 
     // ---- board ----
     tileSize: 8,                 // squares per tile side (data model keeps w/h per tile for later)

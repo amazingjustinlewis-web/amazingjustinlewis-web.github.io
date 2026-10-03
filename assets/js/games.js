@@ -100,7 +100,7 @@ window.GAMES = [
         name: 'Lights On',
         current: true,
         play: 'games/zombie-tiles/index.html',
-        notes: 'Same game as v0.1, plus optional Philips Hue lights that react to turns, dice, fights and escapes (needs the Lights Helper on a PC).'
+        notes: 'Same game as v0.1, plus optional Philips Hue lights that react to turns, dice, fights and escapes (needs the Lights Helper on a PC). v0.2.1: the helper connects through a hidden Edge/Chrome, so it works even when Firefox is the default browser; rooms can be ticked on the helper page too.'
       },
       {
         id: 'v0.1',
