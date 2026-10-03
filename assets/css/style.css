@@ -399,7 +399,7 @@ dialog.lightbox figcaption { padding: .8rem 1rem; font-weight: 700; display: fle
 .intro { padding: clamp(2rem, 5vw, 3.5rem) 0 1rem; }
 .intro .wrap { display: flex; align-items: center; gap: clamp(1rem, 3vw, 2.2rem); flex-wrap: wrap; }
 .intro .wrap > div { flex: 1 1 360px; }
-.intro__mark { width: clamp(110px, 16vw, 170px); height: auto; filter: drop-shadow(0 0 22px rgba(226,184,74,.28)); }
+.intro__mark { width: clamp(100px, 14.6vw, 156px); height: auto; filter: drop-shadow(0 0 22px rgba(226,184,74,.28)); }
 .intro h1 {
   font-family: var(--pixel); font-weight: 400; font-size: clamp(1.6rem, 4.6vw, 3rem); line-height: 1.2;
   color: var(--gold); text-shadow: 3px 3px 0 #000, 0 0 28px rgba(226,184,74,.25); margin: 0 0 .7rem;
