@@ -127,5 +127,36 @@ window.GAMES = [
         notes: 'Working title. Open it on a TV or big screen; phones join with the QR code. Hot-seat on one screen works too.'
       }
     ]
+  },
+  {
+    id: 'red-deer-rich',
+    title: 'Red Deer Rich',
+    pitch: 'Buy Red Deer, build Shops, make deals on your phone and hit PAY UP before they pass the dice. On your TV, with phones as controllers.',
+    cover: 'assets/img/red-deer-rich/cover-card.webp',
+    coverAlt: 'Red Deer Rich TV board: Red Deer streets around a river, the Upper Level Youth Centre and player tokens',
+    details: 'games/red-deer-rich.html',
+    status: 'Early test',
+    tags: ['2\u20138 players', 'TV + phones', 'Placeholder art'],
+    accent: '#f2c230',
+    sections: ['family'],
+    intensity: 2,
+    goodToKnow: [
+      'A friendly property trading game set in Red Deer, Alberta. Players can go bankrupt; the last one standing wins.',
+      'PAY UP is a reaction race: a big button pops up on the owner\u2019s phone, with a cartoon BOOM on the payer\u2019s phone when they get caught.',
+      'Phones carry private chat and deals between players (the TV never shows them).',
+      'A faint, made-up punk band plays from the Upper Level Youth Centre and gets louder as tokens get close. Press M on the TV to mute.',
+      'Computer players can fill empty seats (Easy, Normal or Ruthless).',
+      'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi).',
+      'Early test: placeholder art, and some character perks are still marked coming soon.'
+    ],
+    versions: [
+      {
+        id: 'v0.1',
+        name: 'First playable',
+        current: true,
+        play: 'games/red-deer-rich/index.html',
+        notes: 'Present Day board, dice, buying, rent with the PAY UP race, Shops and Mega-Plexes, hocking, the Snowbank, bankruptcy, trades and chat on phones, AI players, house rules, Full or Quick mode. Placeholder art.'
+      }
+    ]
   }
 ];

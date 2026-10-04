@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Red Deer Rich - TV | Zero to Phi</title>
+<meta name="description" content="Red Deer Rich: a Red Deer property-trading board game for the TV with phones as controllers. First playable v0.1 by Zero to Phi.">
+<meta name="theme-color" content="#14121b">
+<meta name="robots" content="noindex">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/tv.css">
+</head>
+<body>
+<canvas id="board" aria-label="Game board"></canvas>
+
+<header id="top">
+  <div class="brand"><img src="assets/logo.svg" alt="" width="49" height="40"><span>ZERO&nbsp;TO&nbsp;PHI</span></div>
+  <div class="title">RED DEER <span class="rich">RICH</span><span class="proto">FIRST PLAYABLE v0.1</span></div>
+  <div class="top-right"><span id="roundInfo"></span><span id="potInfo"></span><span id="joinInfo"></span><span id="lightInfo"></span><span id="fxInfo"></span></div>
+</header>
+
+<aside id="side">
+  <div id="cards"></div>
+  <div id="log"></div>
+</aside>
+
+<div id="banner" hidden><canvas id="bannerDice" width="200" height="100"></canvas><div class="btxt"><div class="who" id="bWho"></div><div class="what" id="bWhat"></div></div></div>
+<div id="deedPop" class="pop" hidden></div>
+<div id="cardPop" class="pop" hidden></div>
+<div id="payupBar" hidden></div>
+<div id="big" aria-live="polite"></div>
+<div id="flash" aria-hidden="true"></div>
+
+<section id="lobby" class="screen">
+  <div class="lobby-left">
+    <div class="presents"><img src="assets/logo.svg" alt="" width="49" height="40"> ZERO TO PHI presents <a id="backLink" class="back" href="../../family.html">&larr; games</a></div>
+    <div id="phoneHint" class="phone-hint" hidden>On a phone? This is the <b>TV screen</b>. Open it on the TV, then join with the <a href="controller.html">phone controller</a>.</div>
+    <h1>RED DEER <span>RICH</span></h1>
+    <p class="tagline">Ten broke Red Deerians. One city. Buy up Gasoline Alley, build Shops on Ross Street, and hit <b>PAY UP</b> before your friends sneak past.</p>
+    <div class="join-box">
+      <canvas id="qr" width="300" height="300" aria-label="QR code to join"></canvas>
+      <div class="join-text">
+        <div class="join-label">JOIN ON YOUR PHONE</div>
+        <div class="code" id="code">----</div>
+        <div class="url" id="joinUrl"></div>
+        <div class="netstatus" id="netStatus">Connecting to the room server&hellip;</div>
+      </div>
+    </div>
+    <div id="huePanel" class="hue-panel off"></div>
+  </div>
+  <div class="lobby-right">
+    <h2>PLAYERS <span id="pcount">0/8</span></h2>
+    <ul id="lobbyPlayers"></ul>
+    <div class="lb-box">
+      <div class="lb-title">Add a computer player (AI): click to pick the character and difficulty</div>
+      <div class="lb-row"><button id="aiChar" class="ghost wide">Character</button><button id="aiLevel" class="ghost">Normal</button><button id="aiAdd">+ ADD AI</button></div>
+      <div class="lb-title">House rules</div>
+      <div class="lb-row wrap" id="rulesRow"></div>
+      <div class="lb-title">Mode</div>
+      <div class="lb-row" id="modeRow"><button data-mode="full" class="ghost">FULL GAME</button><button data-mode="quick" class="ghost">QUICK (pre-dealt, 45 min)</button></div>
+    </div>
+    <button id="startBtn" class="start" disabled>START GAME</button>
+    <div class="howto">Phones: scan the code, type a name, swipe to pick a character. The first phone to join can also add AI, set rules and start.</div>
+  </div>
+</section>
+
+<section id="results" class="screen" hidden>
+  <h1 id="resTitle">WINNER!</h1>
+  <ol id="resList"></ol>
+  <div class="res-btns"><button id="againBtn" class="start">PLAY AGAIN</button><button id="lobbyBtn" class="ghost">CHANGE PLAYERS</button></div>
+  <p class="res-note">Press Enter to play again &middot; the first player can also restart from their phone.</p>
+</section>
+
+<div id="netBadge"></div>
+
+<script src="js/vendor/peerjs.min.js"></script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/config.js"></script>
+<script src="js/board.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/sfx.js"></script>
+<script src="js/net.js"></script>
+<script src="js/render.js"></script>
+<script src="js/host.js"></script>
+</body>
+</html>
