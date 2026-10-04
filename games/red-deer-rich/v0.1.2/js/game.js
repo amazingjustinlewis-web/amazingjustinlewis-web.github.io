@@ -39,7 +39,6 @@
   G.rint = function (a, b) { return a + Math.floor(this.rand() * (b - a + 1)); };
 
   G.resetBoard = function () {
-    this.auctionQ = [];
     this.props = S.map(function (s) { return s.price ? { owner: -1, shops: 0, hocked: false } : null; });
     this.bankShops = C.bankShops; this.bankMegas = C.bankMegas;
     this.pot = C.jackpotSeed;
@@ -93,7 +92,7 @@
     this.resetBoard();
     var self = this, MD = C.modes[this.mode] || C.modes.regular;
     this.players.forEach(function (p) {
-      p.cash = MD.startCash; p.stats = null; p.pos = 0; p.snow = false; p.snowTries = 0; p.passes = []; p.bankrupt = false; p.skip = 0; p.bustOwed = 0; p.bustTo = null; p.leftTo = null;
+      p.cash = MD.startCash; p.stats = null; p.pos = 0; p.snow = false; p.snowTries = 0; p.passes = []; p.bankrupt = false; p.skip = 0;
       p.perk = {}; p.laps = 0; p.halfwayPasses = 0; p.preLap = -1; p.state = 'rags'; p.place = 0;
     });
     this.chats = []; this.trades = []; this.log = []; this.tradeSeq = 1;
@@ -174,9 +173,8 @@
         this.emit('tab', { pid: p.id, amount: amount, to: to, hopeless: true });
         return false;
       }
-      if (this.liquidValue(p) < amount) { this.bankrupt(p, to, amount); return false; }    // v0.2: hopeless -> pay what you can
       this.autoRaise(p, amount);
-      if (p.cash < amount) { this.bankrupt(p, to, amount); return false; }
+      if (p.cash < amount) { this.bankrupt(p, to); return false; }
     }
     this.transfer(p, amount, to, reason);
     return true;
@@ -207,49 +205,22 @@
     }
     return p.cash >= need;
   };
-  // v0.2 "Go bust, pay what I can": the bank buys the Shops back, then each deed goes the way that gives the creditor more.
-  //   player creditor: a deed handed over is worth its price to them (price - unhock cost if hocked); hocking it first and
-  //   handing over cash + the hocked deed is worth hock + price - unhockCost, which is always less, so deeds go over as-is.
-  //   bank / pot creditor: deeds are no use to the bank, so each unhocked deed is hocked and that cash paid; the deeds then
-  //   go back to the bank and (with Auctions on) are queued for auction straight after.
-  // Anything still unpaid is remembered as p.bustOwed ("Skipped Town Owing $840").
-  G.bustPlan = function (p, to, debt) {
-    var self = this, creditor = typeof to === 'number' ? this.byId(to) : null, shopCash = 0, deeds = [];
+  G.bankrupt = function (p, to) {
+    if (p.bankrupt) return;
+    var self = this, creditor = typeof to === 'number' ? this.byId(to) : null;
     this.props.forEach(function (pr, i) {
       if (!pr || pr.owner !== p.id) return;
-      shopCash += Math.floor(pr.shops * self.shopCost(i) * C.shopSellBack);
-      var P = S[i].price, H = S[i].hock, U = self.unhockCost(i);
-      var give = pr.hocked ? P - U : P, hockPay = pr.hocked ? -1 : H + (creditor ? P - U : 0);
-      deeds.push({ sp: i, how: !creditor ? (pr.hocked ? 'release' : 'hock') : (hockPay > give ? 'hock' : 'give') });
+      if (pr.shops) { p.cash += Math.floor(pr.shops * self.shopCost(i) * C.shopSellBack); self.returnShops(pr.shops); pr.shops = 0; }
+      if (creditor) pr.owner = creditor.id; else { pr.owner = -1; pr.hocked = false; }
     });
-    var liquid = Math.max(0, p.cash) + shopCash; deeds.forEach(function (d) { if (!self.props[d.sp].hocked) liquid += S[d.sp].hock; });
-    return { creditor: creditor, deeds: deeds, owed: Math.max(0, Math.round((debt || 0) - liquid)) };
-  };
-  G.bankrupt = function (p, to, debt) {
-    if (p.bankrupt) return;
-    var self = this, plan = this.bustPlan(p, to, debt), creditor = plan.creditor, gave = 0, queue = [];
-    this.props.forEach(function (pr, i) {     // the bank buys every Shop back first
-      if (pr && pr.owner === p.id && pr.shops) { p.cash += Math.floor(pr.shops * self.shopCost(i) * C.shopSellBack); self.returnShops(pr.shops); pr.shops = 0; }
-    });
-    plan.deeds.forEach(function (d) { var pr = self.props[d.sp]; if (d.how === 'hock' && !pr.hocked) { pr.hocked = true; p.cash += S[d.sp].hock; } });
-    var cash = Math.max(0, p.cash);
-    plan.deeds.forEach(function (d) {
-      var pr = self.props[d.sp];
-      if (creditor) { pr.owner = creditor.id; gave++; }                 // hocked deeds stay hocked
-      else { pr.owner = -1; pr.hocked = false; queue.push(d.sp); }
-    });
-    p.cash = 0;
-    if (creditor) { creditor.cash += cash; creditor.passes = creditor.passes.concat(p.passes); }
-    else { if (to === 'pot') this.pot += cash; p.passes.forEach(function (d) { self.returnPass(d); }); }
-    if (cash > 0) this.emit('pay', { from: p.id, to: creditor ? creditor.id : (to || 'bank'), amount: cash, reason: 'went bust' });
-    p.passes = []; p.bankrupt = true; p.snow = false; p.place = this.alive().length + 1; p.bustOwed = plan.owed; p.bustTo = creditor ? creditor.id : (to || 'bank');
+    if (creditor) { creditor.cash += Math.max(0, p.cash); creditor.passes = creditor.passes.concat(p.passes); }
+    else p.passes.forEach(function (d) { self.returnPass(d); });
+    p.cash = 0; p.passes = []; p.bankrupt = true; p.snow = false; p.place = this.alive().length + 1;
     this.trades.forEach(function (t) { if (t.status === 'open' && (t.a === p.id || t.b === p.id)) { t.status = 'cancelled'; t.why = p.name + ' went bankrupt'; } });
-    this.addLog(p.name + ' went BUST' + (creditor ? ' to ' + creditor.name : '') + ': paid ' + money(cash) + (creditor && gave ? ' + ' + gave + ' deed' + (gave > 1 ? 's' : '') : '') +
-      (plan.owed > 0 ? ' and skipped town owing ' + money(plan.owed) : '') + '.');
-    this.checkTrades(); this.updateStates();       // (state banners first, so BUSTED! is the one left on screen)
-    this.emit('bankrupt', { pid: p.id, to: creditor ? creditor.id : null, paid: cash, owed: plan.owed, deeds: gave });
-    if (!creditor && queue.length && this.rules.auctions) this.auctionQ = (this.auctionQ || []).concat(queue);
-    if (this.turn && this.turn.pid === p.id) { this.turn.tab = null; this.turn.payup = null; this.turn.buy = null; this.turn.canRollAgain = false; this.turn.stage = 'ended'; this.turn.endAt = this.now + this.ms(1200); }
+    this.addLog(p.name + ' is BANKRUPT' + (creditor ? ' to ' + creditor.name : '') + '!');
+    this.emit('bankrupt', { pid: p.id, to: creditor ? creditor.id : null });
+    if (this.turn && this.turn.pid === p.id) { this.turn.tab = null; this.turn.payup = null; this.turn.stage = 'ended'; this.turn.endAt = this.now + this.ms(1200); }
+    this.checkTrades(); this.updateStates();
     if (this.alive().length <= 1) this.finish('last');
   };
   // ------------------------------------------------------------------ leaving mid-game (v0.1.1)
@@ -303,7 +274,7 @@
       p.passes.forEach(function (d) { self.returnPass(d); });
       detail = money(cash) + ' into the Dirt Lot pot, deeds back to the bank';
     }
-    p.cash = 0; p.passes = []; p.bankrupt = true; p.left = how; p.leftTo = r ? r.id : null; p.snow = false; p.place = this.alive().length + 1; p.clientId = null;
+    p.cash = 0; p.passes = []; p.bankrupt = true; p.left = how; p.snow = false; p.place = this.alive().length + 1; p.clientId = null;
     this.addLog(p.name + ' left the game: ' + detail + '.');
     this.emit('left', { pid: p.id, how: how, to: r ? r.id : null, amount: cash, detail: detail });
     if (this.turn && this.turn.pid === p.id) { var t = this.turn; t.buy = null; t.tab = null; t.payup = null; t.canRollAgain = false; t.stage = 'ended'; t.endAt = this.now + this.ms(1200); }
@@ -469,7 +440,6 @@
     pick('Auction Hawk', function (p) { return S_(p).auctions; }, 2);
     pick('Deal Maker', function (p) { return S_(p).bestTrade; }, 1);
     pick('Asleep at the Till', function (p) { return S_(p).missed; }, 2);
-    list.forEach(function (p) { if (p.bankrupt && !p.left && p.bustOwed > 0) { titled[p.id] = 1; out[p.id] = 'Skipped Town Owing ' + money(p.bustOwed); } });
     list.forEach(function (p) {
       if (titled[p.id]) return;
       var s = S_(p), spot = self.topSpot(s);
@@ -490,7 +460,7 @@
     var titles = this.awardTitles(ranked);
     this.results = ranked.map(function (p, k) {
       var st = self.statsOf(p);
-      return { pid: p.id, name: p.name, charId: p.charId, color: p.color, worth: p.bankrupt ? 0 : self.worthOf(p), bankrupt: p.bankrupt, left: p.left || null, owed: p.bankrupt && !p.left ? p.bustOwed || 0 : 0, place: k + 1, state: p.state,
+      return { pid: p.id, name: p.name, charId: p.charId, color: p.color, worth: p.bankrupt ? 0 : self.worthOf(p), bankrupt: p.bankrupt, left: p.left || null, place: k + 1, state: p.state,
         title: titles[p.id], stats: { bigRent: st.bigRent, bigRentAt: self.placeName(st.bigRentSp), bestTrade: st.bestTrade, caught: st.caught, missed: st.missed, auctions: st.auctions, snow: st.snow, rent: st.rent } };
     });
     this.phase = 'over'; this.overWhy = why;
@@ -833,7 +803,7 @@
       case 'giveUp':
         if (!active || !t.tab) return 'no tab';
         if (this.liquidValue(p) >= t.tab.amount) return 'You can still raise the cash';
-        var to = t.tab.to, debt = t.tab.amount; t.tab = null; this.bankrupt(p, to, debt); return '';
+        var to = t.tab.to; t.tab = null; this.bankrupt(p, to); return '';
       case 'trade': return this.proposeTrade(pid, +m.to, m.give, m.get);
       case 'counter': return this.counterTrade(pid, +m.id, m.give, m.get);
       case 'accept': return this.acceptTrade(pid, +m.id);
@@ -903,11 +873,7 @@
         if (t.tab) { t.stage = 'act'; }
         else { this.closePayup(); t.stage = 'ended'; t.endAt = now + this.ms(C.timing.turnGap); this.emit('passDice', { pid: t.pid }); }
       }
-      else if (st === 'ended' && now >= t.endAt) {
-        if (t.auction) break;                                                   // v0.2: a bust-sale auction finishes first
-        if (this.auctionQ && this.auctionQ.length) { var qsp = this.auctionQ.shift(); if (this.props[qsp] && this.props[qsp].owner < 0) this.startAuction(qsp); if (t.auction) break; continue; }
-        this.endTurn(); t = this.turn; if (this.phase !== 'play') return;
-      }
+      else if (st === 'ended' && now >= t.endAt) { this.endTurn(); t = this.turn; if (this.phase !== 'play') return; }
       else break;
       if (this.phase !== 'play') return;
       t = this.turn;

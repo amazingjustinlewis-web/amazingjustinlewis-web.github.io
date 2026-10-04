@@ -27,8 +27,7 @@
     var Sz = Math.floor(box.size);
     this.bx = Math.round(box.x); this.by = Math.round(box.y); this.S = Sz;
     this.cs = Math.round(Sz * 0.13); this.w = (Sz - 2 * this.cs) / 9;
-    this.staticKey = ''; this.ycKey = ''; this.litKey = '';
-    if (root.RDRFx) root.RDRFx.setScale(this.w / 48);
+    this.staticKey = ''; this.ycKey = '';
     this.initLiving();
   };
   // rectangle of space i in board-local coords + which side faces the middle
@@ -66,7 +65,7 @@
   // ------------------------------------------------------------------ static layer
   P.propsKey = function () {
     var g = this.g;
-    return [this.S, this.rung >= 6 ? 'flat' : 'full', g.rules.jackpot ? g.pot : '-', JSON.stringify(g.props), g.players.map(function (p) { return p.id + p.color; }).join(), root.RDRArt ? root.RDRArt.ver : 0].join('|');
+    return [this.S, this.rung >= 6 ? 'flat' : 'full', g.rules.jackpot ? g.pot : '-', JSON.stringify(g.props), g.players.map(function (p) { return p.id + p.color; }).join()].join('|');
   };
   P.drawStatic = function () {
     var key = this.propsKey(); if (key === this.staticKey) return;
@@ -169,51 +168,31 @@
     c.lineWidth = Math.max(2, k * 0.009); c.strokeRect(x0 + wi, y0 + wi, k - 2 * wi, k - 2 * wi);
     // trees
     L.trees.forEach(function (t) { var x = x0 + t[0] * k, y = y0 + t[1] * k, r = t[2] * k; c.fillStyle = 'rgba(0,0,0,0.15)'; c.beginPath(); c.arc(x + r * 0.3, y + r * 0.35, r, 0, 7); c.fill(); c.fillStyle = '#4f8f45'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.fillStyle = '#6aab5a'; c.beginPath(); c.arc(x - r * 0.3, y - r * 0.3, r * 0.5, 0, 7); c.fill(); });
-    // v0.2 buildings: line-art boxes seen from a camera above the board centre (RDRArt): roofs lean outward, walls facing
-    // the middle show. Drawn far-to-near so a nearer roof overlaps the ground beyond it.
-    var Art = root.RDRArt;
-    L.b.map(function (bd) { return self.cityBld(bd, k, x0, y0); }).sort(function (a, b) { return b.d2 - a.d2; }).forEach(function (g) {
-      var bd = g.bd;
-      if (!Art) { c.fillStyle = bd.col; c.fillRect(g.x, g.y, g.w, g.h); c.strokeStyle = shade(bd.col, -0.45); c.lineWidth = 1; c.strokeRect(g.x + 0.5, g.y + 0.5, g.w - 1, g.h - 1); return; }
-      var rf = Art.box(c, g.x, g.y, g.w, g.h, g.o, { wall: shade(bd.col, 0.35), roof: bd.col, line: shade(bd.col, -0.6), sprite: 'city' });
-      self.cityWindows(c, g, 'rgba(60,70,90,0.45)');
-      c.strokeStyle = shade(bd.col, 0.3); c.lineWidth = 1; if (g.w > 7 && g.h > 7) c.strokeRect(rf.x + 2.5, rf.y + 2.5, g.w - 5, g.h - 5);
-      if (bd.roof > 0.55 && g.w > 8 && g.h > 10) { c.fillStyle = shade(bd.col, -0.15); c.fillRect(rf.x + g.w * 0.55, rf.y + g.h * 0.2, g.w * 0.28, g.h * 0.22); c.strokeStyle = shade(bd.col, -0.5); c.strokeRect(rf.x + g.w * 0.55, rf.y + g.h * 0.2, g.w * 0.28, g.h * 0.22); }
+    // buildings: footprint roof + a front face (fake 3D toward the viewer), soft shadow, rooftop bits
+    L.b.slice().sort(function (a, b) { return a.y + a.h - (b.y + b.h); }).forEach(function (bd) {
+      var x = x0 + bd.x * k, y = y0 + bd.y * k, w = bd.w * k, h = bd.h * k, face = Math.min(h * 0.55, k * 0.012 * (0.6 + bd.ht));
+      c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x + face * 0.6, y + face * 0.6, w, h);
+      c.fillStyle = shade(bd.col, -0.28); c.fillRect(x, y + h - face, w, face);                                  // front face
+      c.fillStyle = 'rgba(255,240,190,0.55)'; var nw = Math.max(1, Math.floor(w / Math.max(4, k * 0.012)));
+      for (var i = 0; i < nw; i++) c.fillRect(x + (i + 0.3) * w / nw, y + h - face * 0.72, w / nw * 0.4, face * 0.4);
+      c.fillStyle = bd.col; c.fillRect(x, y, w, h - face);                                                        // roof
+      c.strokeStyle = shade(bd.col, -0.45); c.lineWidth = 1; c.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      c.strokeStyle = shade(bd.col, 0.25); c.strokeRect(x + 2.5, y + 2.5, Math.max(0, w - 5), Math.max(0, h - face - 4));
+      if (bd.roof > 0.55 && w > 8 && h > 10) { c.fillStyle = shade(bd.col, -0.15); c.fillRect(x + w * 0.55, y + h * 0.18, w * 0.28, h * 0.22); }
     });
     c.restore();
-  };
-  // one mini-city building's geometry (footprint, height, outward roof offset) - shared by the day art and the night windows
-  P.cityBld = function (bd, k, x0, y0) {
-    var x = x0 + bd.x * k, y = y0 + bd.y * k, w = bd.w * k, h = bd.h * k, H = k * 0.028 * (0.6 + bd.ht), half = this.S / 2, cx = x + w / 2 - half, cy = y + h / 2 - half;
-    var o = root.RDRArt ? root.RDRArt.offset(x + w / 2, y + h / 2, H, half, half, half) : { x: 0, y: 0 };
-    return { bd: bd, x: x, y: y, w: w, h: h, H: H, o: o, d2: cx * cx + cy * cy };
-  };
-  // windows: short strokes along the middle of each visible wall (fn picks a colour per window, for the night overlay)
-  P.cityWindows = function (c, g, col, pick) {
-    if (!root.RDRArt) return;
-    root.RDRArt.walls(g.x, g.y, g.w, g.h, g.o).forEach(function (wl) {
-      var p = wl.p, ax = (p[0][0] + p[3][0]) / 2, ay = (p[0][1] + p[3][1]) / 2, bx = (p[1][0] + p[2][0]) / 2, by = (p[1][1] + p[2][1]) / 2;
-      var depth = Math.abs(wl.edge === 'n' || wl.edge === 's' ? g.o.y : g.o.x); if (depth < 2.2) return;
-      var len = Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay)), n = Math.max(1, Math.floor(len / 5));
-      c.lineWidth = Math.max(1, depth * 0.38); c.lineCap = 'butt';
-      for (var i = 0; i < n; i++) {
-        var cc = pick ? pick() : col; if (!cc) continue;
-        var t0 = (i + 0.25) / n, t1 = (i + 0.7) / n; c.strokeStyle = cc;
-        c.beginPath(); c.moveTo(ax + (bx - ax) * t0, ay + (by - ay) * t0); c.lineTo(ax + (bx - ax) * t1, ay + (by - ay) * t1); c.stroke();
-      }
-    });
   };
   function shade(hx, f) { var r = hexRgb(hx); return 'rgb(' + r.map(function (v) { return Math.round(f < 0 ? v * (1 + f) : v + (255 - v) * f); }).join(',') + ')'; }
   // lit windows at night: one cached overlay faded in by darkness
   P.cityNight = function () {
-    var S0 = this.S, key = [S0, this.dpr, root.RDRArt ? root.RDRArt.ver : 0].join(); if (this._cnKey === key && this._cnCv) return this._cnCv;
+    var S0 = this.S, key = [S0, this.dpr].join(); if (this._cnKey === key && this._cnCv) return this._cnCv;
     var cv = this._cnCv || (this._cnCv = document.createElement('canvas')), d = this.dpr, k = S0 - 2 * this.cs, x0 = this.cs, y0 = this.cs;
     cv.width = Math.round(S0 * d); cv.height = Math.round(S0 * d); var c = cv.getContext('2d'); c.setTransform(d, 0, 0, d, 0, 0);
-    var L = this.cityLayout(k), rnd = mulberry(77), self = this;
+    var L = this.cityLayout(k), rnd = mulberry(77);
     L.b.forEach(function (bd) {
-      var g = self.cityBld(bd, k, x0, y0);
-      self.cityWindows(c, g, null, function () { return rnd() < 0.7 ? (rnd() < 0.8 ? '#ffd27a' : '#bfe0ff') : null; });
-      if (rnd() < 0.35) { c.fillStyle = 'rgba(255,210,120,0.35)'; c.fillRect(g.x + g.o.x + g.w * 0.2, g.y + g.o.y + g.h * 0.2, g.w * 0.6, g.h * 0.5); }
+      var x = x0 + bd.x * k, y = y0 + bd.y * k, w = bd.w * k, h = bd.h * k, face = Math.min(h * 0.55, k * 0.012 * (0.6 + bd.ht)), nw = Math.max(1, Math.floor(w / Math.max(4, k * 0.012)));
+      for (var i = 0; i < nw; i++) if (rnd() < 0.7) { c.fillStyle = rnd() < 0.8 ? '#ffd27a' : '#bfe0ff'; c.fillRect(x + (i + 0.3) * w / nw, y + h - face * 0.72, w / nw * 0.4, face * 0.4); }
+      if (rnd() < 0.35) { c.fillStyle = 'rgba(255,210,120,0.35)'; c.fillRect(x + w * 0.2, y + h * 0.2, w * 0.6, (h - face) * 0.5); }
     });
     this._cnKey = key; return cv;
   };
@@ -228,7 +207,7 @@
     c.font = '900 ' + Math.round(k * 0.11) + 'px Fredoka, system-ui, sans-serif';
     c.strokeText('RICH', 0, k * 0.056); c.fillStyle = '#f2c230'; c.fillText('RICH', 0, k * 0.056);
     c.font = '700 ' + Math.round(k * 0.024) + 'px Fredoka, system-ui, sans-serif'; c.fillStyle = '#3a2a10';
-    c.fillText('a Zero to Phi game \u00b7 v0.2', 0, k * 0.125);
+    c.fillText('a Zero to Phi game \u00b7 first playable v0.1.2', 0, k * 0.125);
     c.restore();
     // card decks
     var dw = k * 0.14, dh = k * 0.09;      // v0.1.1: the card piles sit in the open middle of the mini city
@@ -286,7 +265,7 @@
     // ownership: owner-colour strip on the outer edge + Shops on the band
     if (pr && pr.owner >= 0) {
       c.strokeStyle = '#fff'; c.lineWidth = 1;   // (owner colour itself is drawn per frame in drawOwners)
-      if (pr.shops > 0) this.drawShops(c, band, pr.shops, horiz, r, (g.byId(pr.owner) || {}).color);
+      if (pr.shops > 0) this.drawShops(c, band, pr.shops, horiz);
       if (pr.hocked) {
         c.fillStyle = 'rgba(40,40,50,0.55)'; c.fillRect(0, 0, r.w, r.h);
         c.save(); c.translate(r.w / 2, r.h / 2); c.rotate(horiz ? -Math.PI / 2.6 : -0.3);
@@ -298,9 +277,8 @@
     }
     c.restore();
   };
-  P.drawShops = function (c, band, n, horiz, r, own) {
+  P.drawShops = function (c, band, n, horiz) {
     var bx = band[0], by = band[1], bw = band[2], bh = band[3];
-    if (root.RDRArt && r && this.rung < 6) return this.drawShops3d(c, band, n, horiz, r, own);
     if (n === 5) {      // Mega-Plex
       var mw = horiz ? bw * 0.62 : bw * 0.75, mh = horiz ? bh * 0.75 : bh * 0.62;
       c.fillStyle = '#c0182a'; rr(c, bx + (bw - mw) / 2, by + (bh - mh) / 2, mw, mh, 3); c.fill(); c.strokeStyle = '#ffd84a'; c.lineWidth = 1.5; c.stroke();
@@ -314,25 +292,6 @@
       c.fillStyle = '#1f9d47'; c.fillRect(x, y + sz * 0.3, sz, sz * 0.7);
       c.beginPath(); c.moveTo(x - 1, y + sz * 0.32); c.lineTo(x + sz / 2, y); c.lineTo(x + sz + 1, y + sz * 0.32); c.closePath(); c.fill();
       c.strokeStyle = '#0b3d1b'; c.lineWidth = 1; c.strokeRect(x, y + sz * 0.3, sz, sz * 0.7);
-    }
-  };
-  // v0.2: Shops as little line-art houses and the Mega-Plex as a block, leaning outward (RDRArt), owner colour as the accent
-  P.drawShops3d = function (c, band, n, horiz, r, own) {
-    var A = root.RDRArt, bx = band[0], by = band[1], bw = band[2], bh = band[3], half = this.S / 2, line = '#1b2a1e';
-    if (n === 5) {
-      var mw = horiz ? bw * 0.6 : bw * 0.72, mh = horiz ? bh * 0.72 : bh * 0.6, mx = bx + (bw - mw) / 2, my = by + (bh - mh) / 2;
-      var o = A.offset(r.x + mx + mw / 2, r.y + my + mh / 2, Math.min(mw, mh) * 1.1, half, half, half);
-      var rf = A.box(c, mx, my, mw, mh, o, { wall: '#efe4cf', roof: '#c0182a', line: '#3a0a10', sprite: 'mega' });
-      if (own) { c.fillStyle = own; c.fillRect(rf.x + 2, rf.y + 2, horiz ? mw - 4 : Math.max(2, mw * 0.16), horiz ? Math.max(2, mh * 0.16) : mh - 4); }
-      c.fillStyle = '#ffd84a'; c.font = '800 ' + Math.max(7, Math.round(Math.min(mw, mh) * 0.48)) + 'px Fredoka, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('MP', rf.x + mw / 2, rf.y + mh / 2 + 1);
-      return;
-    }
-    for (var k = 0; k < n; k++) {
-      var sz = horiz ? Math.min(bw / 4.8, bh * 0.62) : Math.min(bh / 4.8, bw * 0.62);
-      var x = horiz ? bx + 3 + k * (bw - 6) / 4 + ((bw - 6) / 4 - sz) / 2 : bx + (bw - sz) / 2;
-      var y = horiz ? by + (bh - sz) / 2 : by + 3 + k * (bh - 6) / 4 + ((bh - 6) / 4 - sz) / 2;
-      var oo = A.offset(r.x + x + sz / 2, r.y + y + sz / 2, sz * 1.05, half, half, half);
-      A.box(c, x, y, sz, sz, oo, { wall: '#f4ecd8', roof: '#1f9d47', line: line, ridge: horiz ? 'v' : 'h', accent: own, sprite: 'shop' });
     }
   };
   P.icon = function (c, s, x, y, h) {
@@ -605,9 +564,6 @@
         var a = this.slot(p, from), b = this.slot(p, to);
         return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f - Math.sin(f * Math.PI) * this.w * 0.35, step: k, sp: f < 0.5 ? from : to };
       }
-      // v0.2 fix: hops done but the engine is still in its short after-move pause: stay on the landing tile
-      // (it used to fall back to p.pos, which is still the START tile until the move resolves, then slide back slowly)
-      var last = m.path[m.path.length - 1], e = this.slot(p, last); e.sp = last; e.landed = true; return e;
     }
     var s = this.slot(p, p.pos); s.sp = p.pos; return s;
   };
@@ -655,19 +611,6 @@
     }
   };
   function star(c, x, y, r) { c.beginPath(); for (var i = 0; i < 10; i++) { var a = i * Math.PI / 5 - Math.PI / 2, rr2 = i % 2 ? r * 0.45 : r; c.lineTo(x + Math.cos(a) * rr2, y + Math.sin(a) * rr2); } c.closePath(); c.fill(); }
-  // v0.2 effect hooks (board coordinates; the effects themselves live in fx.js and are swappable)
-  P.tokenPos = function (pid) { var v = this.vis[pid]; return v ? { x: v.x, y: v.y } : null; };
-  P.landBurst = function (p, sp, ownerCol) {
-    var e = this.slot(p, sp), cols = ownerCol ? [p.color, ownerCol, '#ffffff', p.color, ownerCol] : [p.color, '#ffffff', p.color];
-    if (root.RDRFx) root.RDRFx.burst(e.x, e.y, cols.map(function (c2) { return c2 === '#1d1d24' ? '#ff4040' : c2; }), 1);
-  };
-  P.moneyFx = function (pid, delta) {
-    var v = this.tokenPos(pid); if (!v || !root.RDRFx || !delta) return;
-    if (delta > 0) root.RDRFx.earn(v.x, v.y - this.tokenR() * 0.6, delta); else root.RDRFx.lose(v.x, v.y, -delta);
-  };
-  P.payFx = function (from, to, amount) { var self = this; if (root.RDRFx) root.RDRFx.fly(from, to, amount, function (pid) { return self.tokenPos(pid); }); };
-  // v0.2: short zoom-ins on big moments (purchase, big rent, bankruptcy). Purely visual: the game never waits for it.
-  P.camMoment = function (pid, ms, zoomMul) { this.cam.moment = { pid: pid, until: performance.now() + (ms || 1500), z: zoomMul || 1.25 }; };
   P.tokenR = function () { return Math.max(7, this.w * 0.26); };
 
   // ------------------------------------------------------------------ day / night
@@ -694,12 +637,16 @@
   P.drawSky = function (c, dark) {
     var K = C.sky || {}, S = this.S, self = this, low = this.rung >= 4;
     if (K.on === false) return;
-    var glows = [], bodies = this.skyBodies();
-    bodies.forEach(function (b) {
+    this.skyBodies().forEach(function (b) {
       var p = self.arcXY(b.u), edge = Math.max(0, Math.min(1, Math.min(b.u, 1 - b.u) * 7));   // fade in/out at the horizon
       var sun = b.kind === 'sun', r = S * (sun ? (K.sunR || 0.075) : (K.moonR || 0.06));
       // 1) the light follows the arc: a broad soft glow on the board (warm by day, low and orange near the horizon, cool by night)
-      if (!low) glows.push({ p: p, r: r, sun: sun, edge: edge, u: b.u });
+      if (!low) {
+        var warm = Math.min(1, Math.min(b.u, 1 - b.u) * 4), col = sun ? (warm < 1 ? '255,' + Math.round(170 + 70 * warm) + ',' + Math.round(110 + 110 * warm) : '255,240,215') : '175,195,255';
+        var g = c.createRadialGradient(p.x, p.y, r, p.x, p.y, S * 0.95);
+        g.addColorStop(0, 'rgba(' + col + ',' + ((sun ? K.sunLight || 0.16 : K.moonLight || 0.12) * edge).toFixed(3) + ')'); g.addColorStop(1, 'rgba(' + col + ',0)');
+        c.globalCompositeOperation = 'screen'; c.fillStyle = g; c.fillRect(self.bx, self.by, S, S); c.globalCompositeOperation = 'source-over';
+      }
       // 2) the body itself: soft, about 80% transparent wherever it crosses the board and its lettering
       var a = (K.alpha || 0.2) * edge;
       c.save(); c.beginPath(); c.rect(self.bx, self.by, S, S); c.clip();
@@ -711,52 +658,6 @@
       if (!sun) { c.fillStyle = 'rgba(120,135,175,' + (a * 0.45).toFixed(3) + ')'; [[-0.3, -0.15, 0.2], [0.25, 0.2, 0.15], [0.05, -0.4, 0.1]].forEach(function (q) { c.beginPath(); c.arc(p.x + q[0] * r, p.y + q[1] * r, q[2] * r, 0, 7); c.fill(); }); }
       c.restore();
     });
-    if (glows.length) this.drawGlow(c, glows, K);
-  };
-  // ------------------------------------------------------------------ v0.2: lighting stays on the centre square
-  // Night tint and sun/moon glow are drawn through a soft mask: full strength over the big centre square, feathering
-  // out over only the inner ~20% of the property tiles, so the tiles stay bright and crisp. Both layers are small
-  // (quarter-size) offscreen canvases, rebuilt only when the light changes, then scaled up in one drawImage each.
-  P.litMask = function () {
-    var q = 4, m = Math.max(16, Math.round(this.S / q)), key = this.S + ':' + this.cs;
-    if (this.maskCv && this.maskKey === key) return this.maskCv;
-    var cvm = this.maskCv || document.createElement('canvas'); cvm.width = cvm.height = m;
-    var x = cvm.getContext('2d'), cs = this.cs / q, grow = cs * (C.lighting ? C.lighting.feather : 0.2) * 0.5, sig = cs * (C.lighting ? C.lighting.feather : 0.2) * 0.25;
-    x.clearRect(0, 0, m, m); x.fillStyle = '#fff';
-    if ('filter' in x) { x.filter = 'blur(' + sig.toFixed(2) + 'px)'; x.fillRect(cs - grow, cs - grow, m - 2 * (cs - grow), m - 2 * (cs - grow)); x.filter = 'none'; }
-    else {     // old browsers: stepped feather
-      for (var i = 0; i < 5; i++) { x.globalAlpha = 0.2; var gg = grow * 2 * (1 - i / 5); x.fillRect(cs - gg, cs - gg, m - 2 * (cs - gg), m - 2 * (cs - gg)); }
-      x.globalAlpha = 1;
-    }
-    this.maskCv = cvm; this.maskKey = key; return cvm;
-  };
-  P.drawTint = function (c, dark) {
-    var mask = this.litMask(), m = mask.width, q = Math.round(dark * 48) / 48, key = q + ':' + this.maskKey;
-    if (this.tintKey !== key) {
-      var tc = this.tintCv || (this.tintCv = document.createElement('canvas')), tmp = this.tintTmp || (this.tintTmp = document.createElement('canvas'));
-      tc.width = tc.height = tmp.width = tmp.height = m;
-      var t2 = tmp.getContext('2d'); t2.globalCompositeOperation = 'source-over'; t2.clearRect(0, 0, m, m); t2.fillStyle = this.tint(q); t2.fillRect(0, 0, m, m);
-      t2.globalCompositeOperation = 'destination-in'; t2.drawImage(mask, 0, 0); t2.globalCompositeOperation = 'source-over';
-      var tx = tc.getContext('2d'); tx.fillStyle = '#ffffff'; tx.fillRect(0, 0, m, m); tx.drawImage(tmp, 0, 0);
-      this.tintKey = key;
-    }
-    c.globalCompositeOperation = 'multiply'; c.drawImage(this.tintCv, this.bx, this.by, this.S, this.S); c.globalCompositeOperation = 'source-over';
-  };
-  P.drawGlow = function (c, glows, K) {
-    var now = performance.now(), mask = this.litMask(), m = mask.width, q = m / this.S, self = this;
-    if (!this.glowLayer || now - (this.glowT || 0) > 200 || this.glowLayer.width !== m) {
-      this.glowT = now;
-      var gc = this.glowLayer || (this.glowLayer = document.createElement('canvas')); if (gc.width !== m) gc.width = gc.height = m;
-      var x = gc.getContext('2d'); x.globalCompositeOperation = 'source-over'; x.clearRect(0, 0, m, m);
-      glows.forEach(function (o) {
-        var warm = Math.min(1, Math.min(o.u, 1 - o.u) * 4), col = o.sun ? (warm < 1 ? '255,' + Math.round(170 + 70 * warm) + ',' + Math.round(110 + 110 * warm) : '255,240,215') : '175,195,255';
-        var px = (o.p.x - self.bx) * q, py = (o.p.y - self.by) * q, g = x.createRadialGradient(px, py, o.r * q, px, py, self.S * 0.95 * q);
-        g.addColorStop(0, 'rgba(' + col + ',' + ((o.sun ? K.sunLight || 0.16 : K.moonLight || 0.12) * o.edge).toFixed(3) + ')'); g.addColorStop(1, 'rgba(' + col + ',0)');
-        x.fillStyle = g; x.fillRect(0, 0, m, m);
-      });
-      x.globalCompositeOperation = 'destination-in'; x.drawImage(mask, 0, 0); x.globalCompositeOperation = 'source-over';
-    }
-    c.globalCompositeOperation = 'screen'; c.drawImage(this.glowLayer, this.bx, this.by, this.S, this.S); c.globalCompositeOperation = 'source-over';
   };
   P.tint = function (d) { return d < 0.4 ? lerpC('#ffffff', '#f2b583', d / 0.4) : lerpC('#f2b583', '#4a568f', (d - 0.4) / 0.6); };
 
@@ -785,7 +686,7 @@
     }
     // night tint over the whole board (one multiply pass), then lights on top
     if (dark > 0.01) {
-      this.drawTint(c, dark);
+      c.globalCompositeOperation = 'multiply'; c.fillStyle = this.tint(dark); c.fillRect(this.bx, this.by, this.S, this.S); c.globalCompositeOperation = 'source-over';
       if (dark > 0.4) this.nightLights(c, dark, now);
       if (dark > 0.3 && this.rung < 4) { c.globalAlpha = Math.min(1, (dark - 0.3) / 0.5) * 0.9; c.drawImage(this.cityNight(), this.bx, this.by, this.S, this.S); c.globalAlpha = 1; }
     }
@@ -794,11 +695,10 @@
     var self = this, r = this.tokenR(), cur = g.turn ? g.turn.pid : -1;
     var list = g.players.filter(function (p) { return !p.bankrupt; });
     list.sort(function (a, b) { return (a.id === cur) - (b.id === cur); });
-    var ease = 1 - Math.exp(-Math.min(200, dt || 16) / 60);    // frame-rate independent settle (same feel at 12 fps on a Chromecast)
     list.forEach(function (p) {
       var tg = self.tokenTarget(p, now), v = self.vis[p.id];
       var moving = g.turn && g.turn.pid === p.id && g.turn.stage === 'moving';
-      if (!v || moving) v = self.vis[p.id] = { x: tg.x, y: tg.y }; else { v.x += (tg.x - v.x) * ease; v.y += (tg.y - v.y) * ease; }
+      if (!v || moving) v = self.vis[p.id] = { x: tg.x, y: tg.y }; else { v.x += (tg.x - v.x) * 0.2; v.y += (tg.y - v.y) * 0.2; }
       v.sp = tg.sp;
       self.drawToken(c, p, v.x, v.y, r * (p.id === cur ? 1.15 : 1), p.id === cur && g.phase === 'play', now);
     });
@@ -806,7 +706,6 @@
     var tnow = Date.now();
     this.bubbles = this.bubbles.filter(function (b) { return b.until > tnow; });
     this.drawBoardDice(c, now);
-    if (root.RDRFx) { root.RDRFx.setRung(this.rung); root.RDRFx.step(dt || 16); root.RDRFx.draw(c); }
     this.bubbles.forEach(function (b) { var v = self.vis[b.pid]; if (v) self.drawBubble(c, v.x, v.y - r * 1.8, b.text, b.color); });
     if (camOn) c.restore();
   };
@@ -857,15 +756,11 @@
       // ease out to the full board after PASS DICE (always all the way, even on a slow TV), hold a moment, then ease in on the next player
       if (v && t.stage !== 'ended' && cam.outDone && now - cam.turnAt > K.outHoldMs) { want = K.zoom; fx = v.x; fy = v.y; }
     }
-    var mo = cam.moment;
-    if (mo && now < mo.until && g.phase === 'play' && g.rules.camera && this.rung < C.living.maxRung) {
-      var mv = this.vis[mo.pid]; if (mv) { v = mv; want = K.zoom * mo.z; fx = mv.x; fy = mv.y; var fastCam = true; }
-    } else if (mo) cam.moment = null;
-    var a = 1 - Math.exp(-dt / (fastCam ? K.zoomTauMs * 0.55 : K.zoomTauMs)), b = 1 - Math.exp(-dt / (fastCam ? K.followTauMs * 0.6 : K.followTauMs));
+    var a = 1 - Math.exp(-dt / K.zoomTauMs), b = 1 - Math.exp(-dt / K.followTauMs);
     cam.z += (want - cam.z) * a;
     if (Math.abs(cam.z - want) < 0.001) cam.z = want;
     // target: blend from board centre toward the token as we zoom (so zooming out returns to the middle)
-    var zk = Math.max(0, Math.min(1, (cam.z - 1) / Math.max(0.001, want > 1 ? want - 1 : K.zoom - 1)));
+    var zk = Math.max(0, Math.min(1, (cam.z - 1) / Math.max(0.001, K.zoom - 1)));
     var tx = cx0 + (fx - cx0) * (want > 1 ? 1 : zk), ty = cy0 + (fy - cy0) * (want > 1 ? 1 : zk);
     cam.x += (tx - cam.x) * b; cam.y += (ty - cam.y) * b;
     // keep the view inside the board, and the active token always well inside the view

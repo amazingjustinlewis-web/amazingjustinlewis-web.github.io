@@ -161,10 +161,17 @@ window.GAMES = [
     ],
     versions: [
       {
-        id: 'v0.1.2',
-        name: 'Projector night fixes',
+        id: 'v0.2',
+        name: 'Game feel',
         current: true,
         play: 'games/red-deer-rich/index.html',
+        notes: 'Game feel pass: tokens hop tile by tile and stay put on the landing tile with a little firework in your colour, money pops (+$200 floats out of your total and counts up, $ signs and flying bills on the board, rent flies from token to token), board announcements that stay up for 6 seconds and shatter when the next one punches in, a 10-second countdown on the TV when a phone drops before an AI covers the seat, a bigger TV play-by-play, day/night lighting kept to the middle of the board, My Stuff in board order, a one-button “Go bust, pay what I can”, out-of-game plaques beside names, quick camera zoom-ins on big moments, and line-art buildings with a gentle overhead 3D lean.'
+      },
+      {
+        id: 'v0.1.2',
+        name: 'Projector night fixes',
+        current: false,
+        play: 'games/red-deer-rich/v0.1.2/index.html',
         notes: 'Fixes from the first Chromecast and projector night: a much bigger, high-contrast watch QR in the corner that scans off a blurry wall projector, a sound engine rebuild that stops the "chunky blips" on slow TV sticks, a New Game button on the host phone (with an are-you-sure) that takes everyone back to setup without recasting, and the host phone no longer moves to someone else when the game starts.'
       },
       {

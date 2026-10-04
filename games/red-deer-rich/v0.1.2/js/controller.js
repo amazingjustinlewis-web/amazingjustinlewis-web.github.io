@@ -159,7 +159,7 @@
   function renderOver() {
     var r = st.results || [];
     $('oTitle').textContent = r.length ? r[0].name + ' is RED DEER RICH!' : 'GAME OVER';
-    setH($('oList'), r.map(function (x) { return '<li>' + esc(x.name) + ' \u2014 ' + (x.bankrupt ? (x.left ? 'left' : x.owed > 0 ? 'bust, owed ' + money(x.owed) : 'bankrupt') : money(x.worth)) + (x.title ? '<br><small class="otitle">' + esc(x.title) + '</small>' : '') + '</li>'; }).join(''));
+    setH($('oList'), r.map(function (x) { return '<li>' + esc(x.name) + ' \u2014 ' + (x.bankrupt ? (x.left ? 'left' : 'bankrupt') : money(x.worth)) + (x.title ? '<br><small class="otitle">' + esc(x.title) + '</small>' : '') + '</li>'; }).join(''));
     $('againBtn').hidden = $('lobbyBtn').hidden = !st.me.vip; $('oWait').textContent = st.me.vip ? '' : 'Waiting for the host\u2026';
   }
   $('againBtn').onclick = function () { send({ t: 'start' }); }; $('lobbyBtn').onclick = function () { send({ t: 'toLobby' }); };
@@ -197,7 +197,7 @@
       if (t.tab) {
         h += '<div class="info warn"><b>You owe ' + money(t.tab.amount) + '</b> (' + esc(t.tab.reason) + ').<br>Sell Shops or hock deeds in <b>My Stuff</b>, make a deal, or raise it automatically.</div>';
         if (!t.tab.hopeless) h += '<button class="act buy" data-act="raise">AUTO-RAISE CASH</button>';
-        else h += '<div class="info">Even selling everything only raises ' + money(t.tab.raise) + '. Going bust sells your Shops back and pays ' + esc(t.tab.to === 'bank' || t.tab.to === 'pot' ? 'the bank' : t.tab.to) + ' everything you have' + (t.tab.amount > t.tab.raise ? ': you skip town owing ' + money(t.tab.amount - t.tab.raise) : '') + '.</div><button class="act bust" data-act="giveUp">GO BUST, PAY WHAT I CAN</button>';
+        else h += '<div class="info">Even selling everything only raises ' + money(t.tab.raise) + '.</div><button class="act" data-act="giveUp">DECLARE BANKRUPTCY</button>';
       }
       if (t.stage === 'roll') {
         if (me.snow) {
@@ -275,12 +275,6 @@
     if (s.type === 'whistle') return B.WHISTLE_RENT[B.WHISTLES.filter(function (w) { return st.props[w][0] === pr[0]; }).length];
     return 'dice\u00d7' + B.JUICE_MULT[B.GROUP_MEMBERS.juice.filter(function (w) { return st.props[w][0] === pr[0]; }).length];
   }
-  function boardRank(sp) {
-    if (sp > 20 && sp < 30) return sp - 21;            // top row 21..29, left to right
-    if (sp > 10 && sp < 20) return 10 + (19 - sp);     // left side 19..11, top to bottom
-    if (sp > 30 && sp < 40) return 20 + (sp - 31);     // right side 31..39, top to bottom
-    return 30 + (10 - sp);                             // bottom row 9..1, left to right
-  }
   function renderStuff() {
     var me = st.me, deeds = myDeeds(), G = C.states, max = G.goldNetWorth * 1.15, pct = function (v) { return Math.min(100, v / max * 100); };
     var h = '<div class="muted">Cash</div><div class="bigcash">' + money(me.cash) + '</div>';
@@ -289,11 +283,7 @@
     h += '<div class="info">\uD83D\uDE9A Tow Truck Passes: <b>' + me.passes + '</b>' + (me.lockedCash ? '<br>\uD83D\uDD12 ' + money(me.lockedCash) + ' locked for your open Tab' : '') + '</div>';
     setH($('stuffMain'), h);
     var groups = {}; deeds.forEach(function (sp) { (groups[S[sp].group] = groups[S[sp].group] || []).push(sp); });
-    // v0.2: deeds in the order you see them on the board: top row left to right, left side top to bottom,
-    // right side top to bottom, bottom row left to right. Sets appear in order of their first deed.
-    var out = '', order = [];
-    deeds.slice().sort(function (a, b) { return boardRank(a) - boardRank(b); }).forEach(function (sp) { if (order.indexOf(S[sp].group) < 0) order.push(S[sp].group); });
-    Object.keys(groups).forEach(function (gr) { groups[gr].sort(function (a, b) { return boardRank(a) - boardRank(b); }); });
+    var order = ['brown', 'sky', 'pink', 'orange', 'red', 'yellow', 'green', 'navy', 'whistle', 'juice'], out = '';
     order.forEach(function (gr) {
       if (!groups[gr]) return; var G2 = B.GROUPS[gr], full = ownsGroup(me.id, gr), groupShops = B.GROUP_MEMBERS[gr].some(function (i) { return st.props[i][1] > 0; });
       out += '<div class="grp"><div class="grp-h"><span class="sw" style="background:' + G2.color + '"></span>' + G2.name + (full && G2.shop ? ' \u00b7 FULL SET (Shop ' + money(G2.shop) + ')' : ' \u00b7 ' + groups[gr].length + '/' + B.GROUP_MEMBERS[gr].length) + '</div>';

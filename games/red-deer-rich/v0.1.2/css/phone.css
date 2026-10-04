@@ -80,7 +80,6 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .act { display: block; width: 100%; padding: 14px; margin: 8px 0; border: 0; border-radius: 14px; font-size: 20px; font-weight: 800; background: var(--panel2); color: #fff; }
 .act.roll { background: var(--red); font-size: 24px; box-shadow: 0 5px 0 #6a0d12; }
 .act.buy { background: var(--green); box-shadow: 0 5px 0 #1d5a36; }
-.act.bust { background: #b8323a; box-shadow: 0 5px 0 #6a1a20; padding: 20px 14px; }
 .act.pass { background: var(--gold); color: #1a1420; font-size: 24px; box-shadow: 0 5px 0 #8a6a10; }
 .act:disabled { opacity: .45; box-shadow: none; }
 .act.small { font-size: 16px; padding: 10px; }

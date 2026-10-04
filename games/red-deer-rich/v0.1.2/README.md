@@ -1,4 +1,6 @@
-# Red Deer Rich - v0.2 (placeholder art)
+> Archived copy of v0.1.2 (kept so the old version stays playable). The current build is one folder up.
+
+# Red Deer Rich - v0.1.2 first playable (placeholder art)
 
 A Red Deer-themed property trading board game by Zero to Phi. The spec is the design doc
 (`red-deer-rich/design-doc.md`, outside this repo). Same architecture as Zombie Tiles: plain
@@ -27,43 +29,6 @@ Live: https://amazingjustinlewis-web.github.io/games/red-deer-rich/
 | Regular | nothing pre-dealt, $1,800 each | none (last one standing) |
 | Medium | 3 deeds each (2 each for 4+ players), $1,500 each | 45 min, then the richest wins |
 | Quick | ALL ownable spaces dealt out round-robin, $1,500 each | 30 min, then the richest wins |
-
-### What's new in v0.2 (game feel)
-Kept exactly as they were: the dice spitting out of the token with each player's own dice on the board, the play-by-play
-log, QR rejoin to your original seat, and the fast turn pace (the game never waits on any of the new effects).
-- **Tokens hop tile by tile and stay on the landing tile.** The bug: once the hops finished, the token aimed back at its
-  old tile for a moment and slid. On landing there's a small firework in your colour, mixed with the owner's colour on
-  someone else's property.
-- **Board announcements** (the big banner, card and deed pop-ups, same spots as before) stay up for 6 seconds, then fade
-  slowly. A new one shatters the old one and punches in: one at a time, never stacked.
-- **Money you can feel.** A "+$200" in your colour floats up out of your total on the TV and the total counts up; losses
-  float a red "−$50". On the board, $ signs pop from your token when you gain and bills flutter away when you pay;
-  more money, more particles. Rent and other player-to-player payments fly from the payer's token to the receiver's.
-  Trades stay private: no floats or particles for trade cash.
-- **Dropped phones:** a 10-second countdown shows on the player's name on the TV, then an AI covers the seat until they
-  rejoin (scan the QR again: same seat, control comes back straight away).
-- **TV log** text is 50% bigger. With lots of players it shows fewer lines rather than shrinking.
-- **Day/night lighting** stays on the big centre square and feathers about 20% onto the tiles, so the tiles stay crisp.
-  Two small cached layers (quarter size), rebuilt only when the light changes: light work for a Chromecast.
-- **My Stuff** on the phone lists your deeds in the order you see them on the board (top row, left side, right side,
-  bottom row).
-- **"Go bust, pay what I can"**: when even selling everything can't cover a debt, the phone shows one big button. The
-  bank buys your Shops back, then each deed goes whichever way is worth more to the creditor: deeds go to a player as
-  they are (hocked ones stay hocked); for the bank, deeds are hocked for cash and then go back up for auction straight
-  after. Whatever is still unpaid follows you: "Skipped Town Owing $840" on the podium. AI and off-turn bankruptcies use
-  the same rules.
-- **Plaques** beside out-of-game names on the TV: "Busted, owed $840", "Busted", "Left town, the AI took over",
-  "Left town, split their stuff", "Left town, gave it all to X", "Left town, threw it in the pot".
-- **Camera moments:** a quick zoom-in on purchases, auction wins, big rent ($150+) and bankruptcies, then back to the
-  soft follow.
-- **Placeholder building art** (`js/art.js`): line-art Shops, Mega-Plexes and mini-city blocks with a gentle overhead 3D
-  look, as if the camera hangs over the middle of the board with a slight fisheye. Roofs lean OUTWARD from the centre,
-  more toward the edges and almost none in the middle; nothing ever leans into the board. One knob:
-  `C.art.lean` (0 = flat, 0.12 default, about 9 degrees at the edge) plus `C.art.fisheye`.
-- **Swappable effects for real sprites:** `RDRFx.useSprite('spark' | 'dollar' | 'bill' | 'flybill', [frame urls], {fps})`
-  for the particles and `RDRArt.useSprite('shop' | 'mega' | 'city', url)` for the buildings. A 3 to 8 frame top-down
-  sprite sheet drops straight in; the cached board redraws itself once the image loads.
-- v0.1.2 is archived at `v0.1.2/`.
 
 ### What's new in v0.1.2 (fixes from the first Chromecast + projector night)
 - **Bigger watch QR** in the TV's bottom-right corner: 26vh (about 2.9x the old one; 21vh with 7+ players), pure
@@ -120,9 +85,7 @@ log, QR rejoin to your original seat, and the fast turn pace (the game never wai
 | `js/board.js` | the 40 Present Day spaces, groups, rents, Hailstone and Potluck cards (each with a Red Deer fact) |
 | `js/game.js` | rules engine (pure, time-driven `tick(now)`; also runs in node for the simulations) |
 | `js/ai.js` | AI players: buying, building, unhocking, set-completing trades, PAY UP reflexes, chat lines |
-| `js/render.js` | canvas board: tiles, Youth Centre vignette, walkers and cars, day/night, tokens, camera |
-| `js/fx.js` | v0.2 board particles (landing fireworks, $ pops, bills, token-to-token money): pre-rendered sprites, capped, swappable |
-| `js/art.js` | v0.2 building line art with the outward overhead lean (`C.art.lean`), swappable for rendered sprites |
+| `js/render.js` | canvas board: tiles, Youth Centre vignette, walkers and cars, day/night, tokens |
 | `js/sfx.js` | WebAudio sound effects plus the procedural punk band loop (no audio files) |
 | `js/net.js` | PeerJS host and client (copied from Zombie Tiles) plus a BroadcastChannel transport for `?local` tests |
 
@@ -170,8 +133,8 @@ helper's existing effects:
 | results podium | pickup / kill flashes in the winner's colour, a second escape wave, then over |
 | bankrupt | crunch |
 
-## Placeholder or not done yet (v0.2)
-- Art is all placeholder: coloured tokens with initials and shapes, line-art buildings, simple particles, simple silhouettes.
+## Placeholder or not done yet (v0.1.2)
+- Art is all placeholder: coloured tokens with initials and shapes, flat tiles, simple silhouettes.
 - Perks still coming: Justin's Count-In, Drew's High Kick and Walt's Shortcut.
 - No drag-and-drop in the trade builder (tap to toggle instead).
 - The mini city is a first pass: generic blocks, not real Red Deer landmarks yet.
@@ -201,8 +164,6 @@ helper's existing effects:
 - `e2e.py` drives the TV plus two phones: join, carousel, host, PAY UP caught, slipped and grace lock, trade, counter, hold-accept, stale, decline, chat and lock.
 - `e2e3.py` covers v0.1.1: modes, auctions, mid-game AI, the phone board, leave game, observer + vote, and the sky arc.
 - `e2e4.py` covers v0.1.2: watch QR size and corner, quiet zone, decoding from blurred 1080p / 720p screenshots, New Game (confirm, cancel, back to setup, restart), podium join QR.
-- `e2e5.py` covers v0.2: tokens stay on the landing tile, landing bursts, money floats / count-up / particles / token-to-token flights, private trades, notification shatter + 6 s hold + fade, log size and trimming, centre-only night lighting, building lean always outward + sprite swap, My Stuff board order, Go bust + plaques + owed title, the disconnect countdown and AI hand-back, camera moments, and turn pace against v0.1.2.
-- `bust.js` unit-tests "Go bust, pay what I can" in node (player and bank creditors, auction queue, owed, plaques data).
 - `audio.py` counts WebAudio nodes per minute in a live AI game, old engine vs new.
 - `podium.py` plays quick games to the end and checks the results podium (titles, stats, net worth, fireworks).
 - `tv_full.py` checks Auto-Crush, Youth Centre proximity volume, `lowfx`, and full AI games in the browser.

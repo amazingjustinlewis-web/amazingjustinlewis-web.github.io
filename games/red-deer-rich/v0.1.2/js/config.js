@@ -1,5 +1,5 @@
 /* =====================================================================
-   RED DEER RICH - TUNABLE NUMBERS  v0.2 (placeholder art)
+   RED DEER RICH - TUNABLE NUMBERS  v0.1.2 (first playable, placeholder art)
    ---------------------------------------------------------------------
    Every rule number lives here. Change a value, save, refresh the TV.
    Phones read the same file (colours, labels, characters).
@@ -42,10 +42,6 @@
     tradeFadeMs: 10000,          // after a private deal, traded tiles drift from the old owner's colour to the new one
     ownerTint: { fill: 0.30, fillHocked: 0.16, border: 0.95 },   // owned tiles: owner-colour wash + border
     sky: { on: true, alpha: 0.2, sunR: 0.075, moonR: 0.06, sunLight: 0.16, moonLight: 0.12, horizon: 1.06, height: 0.86 },   // v0.1.1 sun + moon arc: ~80% transparent over the board
-    art: { lean: 0.12, fisheye: 0.3 },   // v0.2 building art: roofs lean OUTWARD from the board centre by lean x height at the edge (0 = flat, 0.12 = ~9 degrees). One knob.
-    lighting: { feather: 0.2 },
-    fx: { noteHoldMs: 6000, noteFadeMs: 1400, bigRent: 150, floatMs: 1700, countTauMs: 170 },  // v0.2 notifications / money feedback
-    logLines: 9,                 // v0.2 TV log: most lines shown (fewer when the side panel is crowded)  // v0.2: night tint / sun glow cover the centre square and feather this share of a tile's depth onto the tiles
     camera: { zoom: 1.32, zoomTauMs: 650, followTauMs: 420, outHoldMs: 1300, marginTiles: 1.3 },
     boardDice: { holdMs: 1700, fadeMs: 350 },
     tileText: { nameScale: 0.235, priceScale: 0.215, minPx: 12, cornerScale: 1.55 },   // v0.1 was 0.15 x tile width for names (and 0.135 for prices)
@@ -112,8 +108,7 @@
                 ruthless: { label: 'Ruthless', reserve: 220, buyBias: 1, build: 1, trade: 0.45 } },
       thinkMs: [700, 1500],      // pause before an AI rolls / buys
       tradeEveryTurns: 3,        // an AI looks for a set-completing trade about this often
-      takeoverAfterMs: 10000,    // v0.2: a phone that drops mid-game shows a countdown on the TV, then an AI covers the seat
-      lostAfterMs: 9000,         // v0.2: no ping for this long = the phone is gone (phones ping every 4 s)
+      takeoverAfterMs: 15000,    // a phone that drops mid-game gets an AI stand-in after this long
       lines: {
         greet:    { _: ['Let\'s get rich, Red Deer!', 'Good luck, everybody.', 'May the dice be kind.', 'Who brought snacks?'],
                     dez: ['Turn it up to eleven! \uD83E\uDD18', 'Life\'s too short for quiet guitars.'], grace: ['Bless this game, everyone!', 'I brought squares!'],

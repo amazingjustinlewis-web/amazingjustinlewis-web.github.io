@@ -71,17 +71,16 @@
     dirty = true; phoneDirty = true;
     lightsForEvent(type, d, p);
     switch (type) {
-      case 'start': SFX.play('fanfare'); noteClearAll(); syncCash(); break;
+      case 'start': SFX.play('fanfare'); hideBig(); break;
       case 'turn': SFX.play('turn'); if (p) banner(p, 'It\'s ' + p.name + '\'s turn', p.snow ? 'Stuck in the Snowbank: roll doubles, pay ' + money(C.towFee) + ' or use a Tow Pass' : 'Roll the dice!'); pfx(d.pid, 'turn'); break;
       case 'roll': SFX.play('dice'); diceAnim(d.d, Date.now()); rnd.rollDice(d.d, d.pid, C.timing.roll / game.speed); if (p) banner(p, p.name + ' rolled ' + d.total + (d.dbl ? ' (DOUBLES!)' : ''), ''); break;
       case 'move': break;
-      case 'land': if (p) { var lpr = game.props[d.sp], lown = lpr && lpr.owner >= 0 && lpr.owner !== p.id && !lpr.hocked ? game.byId(lpr.owner) : null; rnd.landBurst(p, d.sp, lown ? lown.color : null); } break;
       case 'halfway': SFX.play('cash'); if (d.exact) big(d.amount >= C.bullseyePay ? 'BULLSEYE!' : 'THE HALFWAY', '+' + money(d.amount) + ' for ' + p.name, '#7dff7d'); break;
       case 'offer': SFX.play('click'); showDeed(d.sp, true); break;
-      case 'buy': SFX.play('buy'); rnd.camMoment(d.pid, 1600, 1.28); big('SOLD!', p.name + ' bought ' + S[d.sp].name, B.GROUPS[S[d.sp].group].color); break;
+      case 'buy': SFX.play('buy'); hideDeed(); big('SOLD!', p.name + ' bought ' + S[d.sp].name, B.GROUPS[S[d.sp].group].color); break;
       case 'skipBuy': hideDeed(); break;
       case 'card': SFX.play('card'); showCard(d.deck, d.idx); break;
-      case 'cardDone': break;      // v0.2: the card stays up (fading after a few seconds) until something replaces it
+      case 'cardDone': setTimeout(hideCard, 900 / FAST); break;
       case 'payupOpen': hideDeed(); payupBar('open', d); pfx(d.owner, 'alarm', { sp: d.sp }); break;
       case 'caught':
         SFX.play('caught'); setTimeout(function () { SFX.play('boom'); }, 150); shake(); flash('#ff3030');
@@ -91,13 +90,7 @@
       case 'loudAmp': banner(game.byId(d.owner), 'LOUD AMP! The window stays open 1 more second\u2026', ''); break;
       case 'passDice': hidePayupSoon(); hideDeed(); break;
       case 'tax': SFX.play('cash'); break;
-      case 'pay':
-        if (d.reason && /rent/.test(d.reason)) SFX.play('cash');
-        if (typeof d.to === 'number') {      // player to player: the money flies token to token (trades never come through here)
-          rnd.payFx(d.from, d.to, d.amount); flyCover[d.from] = flyCover[d.to] = performance.now() + 900;
-          if (/rent/.test(d.reason || '') && d.amount >= FX.bigRent) rnd.camMoment(d.from, 1700, 1.3);
-        }
-        break;
+      case 'pay': if (d.reason && /rent/.test(d.reason)) SFX.play('cash'); break;
       case 'tab': pfx(d.pid, 'tab'); break;
       case 'build': SFX.play('build'); if (d.shops === 5) big('MEGA-PLEX!', S[d.sp].name, '#ffd23f'); break;
       case 'whiteout': SFX.play('whiteout'); flash('#ffffff'); big('WHITEOUT!', (p ? p.name : '') + ' hit the ditch: STUCK IN THE SNOWBANK', '#bfe6ff'); break;
@@ -109,13 +102,13 @@
         else if (d.from === 'gold') { SFX.play('tarnish'); big('GOLD TARNISHED', p.name + ' lost the lead', '#c0a060'); }
         else if (d.to === 'good') { SFX.play('buy'); big('DOING GOOD!', p.name + ' is moving up', '#cfe2ff'); }
         break;
-      case 'bankrupt': SFX.play('crunch'); shake(); rnd.camMoment(d.pid, 2200, 1.35); big('BUSTED!', p.name + (d.owed > 0 ? ' skipped town owing ' + money(d.owed) : ' is out'), '#ff5a5a'); break;
+      case 'bankrupt': SFX.play('crunch'); shake(); big('BANKRUPT!', p.name + ' is out', '#ff5a5a'); break;
       case 'skipped': big('LOSES A TURN', p ? p.name : '', '#ffb36b'); break;
-      case 'tradeDone': pfx(d.a, 'deal'); pfx(d.b, 'deal'); tradeFade(d); syncCash([d.a, d.b]); break;   // private: no TV fanfare, tiles drift colour slowly
+      case 'tradeDone': pfx(d.a, 'deal'); pfx(d.b, 'deal'); tradeFade(d); break;   // private: no TV fanfare, tiles drift colour slowly
       case 'tradeOffer': pfx(d.to, 'offer'); break;
       case 'auctionStart': SFX.play('card'); hideDeed(); game.players.forEach(function (q) { if (!q.bankrupt) pfx(q.id, 'auction', { sp: d.sp }); }); break;
       case 'bid': SFX.play('click'); auctionBump(); break;
-      case 'auctionWon': SFX.play('buy'); rnd.camMoment(d.pid, 1600, 1.28); big('SOLD AT AUCTION!', p.name + ' takes ' + S[d.sp].name + ' for ' + money(d.price), p.color === '#1d1d24' ? '#ff6a6a' : p.color); break;
+      case 'auctionWon': SFX.play('buy'); big('SOLD AT AUCTION!', p.name + ' takes ' + S[d.sp].name + ' for ' + money(d.price), p.color === '#1d1d24' ? '#ff6a6a' : p.color); break;
       case 'auctionNone': big('NO SALE', 'The bank keeps ' + S[d.sp].name, '#c9c3d8'); break;
       case 'left': if (p) { var who = d.to != null ? game.byId(d.to) : null; big(p.name.toUpperCase() + ' LEFT THE GAME', d.how === 'ai' ? 'An AI plays their seat from here' : d.how === 'one' ? 'Everything goes to ' + (who ? who.name : '?') : d.how === 'split' ? 'Cash and deeds shared out among everyone' : money(d.amount || 0) + ' into the Dirt Lot pot \u00b7 deeds back to the bank', p.color === '#1d1d24' ? '#ff6a6a' : p.color); SFX.play('tarnish'); } break;
       case 'joined': if (p) big(p.name.toUpperCase() + ' JOINS!', (p.ai ? 'AI ' + C.ai.levels[p.ai.level].label + ' takes a seat' : 'New player') + ' \u00b7 starts with ' + money(p.cash), p.color === '#1d1d24' ? '#ff6a6a' : p.color); break;
@@ -161,48 +154,9 @@
 
   // ------------------------------------------------------------------ overlays
   function banner(p, who, what) { if (!p) return; $('banner').hidden = !inGame(); $('bWho').textContent = who; $('bWho').style.color = p.color === '#1d1d24' ? '#ff6a6a' : p.color; $('bWhat').textContent = what || ''; }
-  // v0.2 board notifications: one at a time (#big, #cardPop and #deedPop keep their spots). Each stays up for
-  // FX.noteHoldMs then fades slowly; a new one shatters whatever is showing and punches in. Purely visual: the
-  // game never waits on any of this, so turns keep their pace.
-  var FX = C.fx || {}, NOTE = { cur: null, t: 0, ft: 0 };
-  function noteShow(id, html, pin) {
-    var el = $(id);
-    if (NOTE.cur) { shatterOut(NOTE.cur); if (NOTE.cur !== id) noteClear(NOTE.cur); }
-    clearTimeout(NOTE.t); clearTimeout(NOTE.ft);
-    el.innerHTML = html; el.hidden = false; el.classList.remove('nfade'); el.classList.remove('npunch'); void el.offsetWidth; el.classList.add('npunch');
-    NOTE.cur = id; NOTE.pin = !!pin; NOTE.at = Date.now();
-    if (!pin) NOTE.t = setTimeout(function () { noteFade(id); }, (FX.noteHoldMs || 6000));
-  }
-  function noteFade(id, quick) {
-    if (NOTE.cur !== id) return;
-    var el = $(id); clearTimeout(NOTE.t); clearTimeout(NOTE.ft);
-    el.style.transitionDuration = quick ? '.35s' : ''; el.classList.add('nfade');
-    NOTE.ft = setTimeout(function () { if (NOTE.cur === id) noteClear(id); }, quick ? 400 : (FX.noteFadeMs || 1400) + 100);
-  }
-  function noteClear(id) {
-    var el = $(id); el.classList.remove('nfade'); el.classList.remove('npunch'); el.style.transitionDuration = '';
-    if (id === 'big') el.innerHTML = ''; else el.hidden = true;
-    if (NOTE.cur === id) NOTE.cur = null;
-  }
-  function noteClearAll() { clearTimeout(NOTE.t); clearTimeout(NOTE.ft); ['big', 'cardPop', 'deedPop'].forEach(noteClear); NOTE.cur = null; }
-  // the outgoing notification breaks into a few shards that fly apart (one simple shard on crushed / old hardware)
-  var SHARDS = ['polygon(0 0,55% 0,40% 55%,0 70%)', 'polygon(55% 0,100% 0,100% 60%,40% 55%)', 'polygon(0 70%,40% 55%,60% 100%,0 100%)', 'polygon(40% 55%,100% 60%,100% 100%,60% 100%)'];
-  function shatterOut(id) {
-    var el = $(id); if (!el || el.hidden || !el.innerHTML) return;
-    var r = el.getBoundingClientRect(); if (r.width < 2) return;
-    var box = document.createElement('div'); box.className = 'shd shd-' + id;
-    box.style.left = r.left + 'px'; box.style.top = r.top + 'px'; box.style.width = r.width + 'px'; box.style.height = r.height + 'px';
-    var many = crush.rung < 3 && ('clipPath' in box.style || 'webkitClipPath' in box.style);
-    (many ? SHARDS : [null]).forEach(function (poly, k) {
-      var piece = document.createElement('div'); piece.className = 'shard ' + (many ? 'sh' + k : 'sh1x'); piece.innerHTML = el.innerHTML;
-      if (poly) { piece.style.clipPath = poly; piece.style.webkitClipPath = poly; }
-      box.appendChild(piece);
-    });
-    document.body.appendChild(box);
-    setTimeout(function () { if (box.parentNode) box.parentNode.removeChild(box); }, 520);
-  }
-  function big(a, b, col) { noteShow('big', '<div class="b1" style="color:' + (col || '#ffd23f') + '">' + esc(a) + '</div><div class="b2">' + esc(b || '') + '</div>'); }
-  function hideBig() { if (NOTE.cur === 'big') noteFade('big', true); }
+  var bigT = 0;
+  function big(a, b, col) { $('big').innerHTML = '<div class="b1" style="color:' + (col || '#ffd23f') + '">' + esc(a) + '</div><div class="b2">' + esc(b || '') + '</div>'; clearTimeout(bigT); bigT = setTimeout(hideBig, C.timing.banner / FAST + 300); }
+  function hideBig() { $('big').innerHTML = ''; }
   function shake() { document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); setTimeout(function () { document.body.classList.remove('shake'); }, 500); }
   function flash(col) { var f = $('flash'); f.style.transition = 'none'; f.style.background = col; f.style.opacity = '0.55'; void f.offsetWidth; f.style.transition = 'opacity .5s'; f.style.opacity = '0'; }
   function deedHtml(sp, ask) {
@@ -216,14 +170,14 @@
     h += '<div class="dprice">' + money(s.price) + '</div></div>' + (ask ? '<div class="dask">Buy it or pass?</div>' : '') + '</div>';
     return h;
   }
-  function showDeed(sp, ask) { noteShow('deedPop', deedHtml(sp, ask), ask); }
-  function hideDeed() { if (NOTE.cur === 'deedPop') noteFade('deedPop', true); }
+  function showDeed(sp, ask) { $('deedPop').innerHTML = deedHtml(sp, ask); $('deedPop').hidden = false; }
+  function hideDeed() { $('deedPop').hidden = true; }
   function cardHtml(deck, idx) {
     var c = (deck === 'hail' ? B.HAIL : B.POT)[idx];
     return '<div class="card ' + deck + '"><div class="deck">' + (deck === 'hail' ? 'HAILSTONE' : 'POTLUCK') + '</div><div class="h">' + esc(c.h) + '</div><div class="t">' + esc(c.t) + '</div><div class="fact">(' + esc(c.fact) + ')</div></div>';
   }
-  function showCard(deck, idx) { noteShow('cardPop', cardHtml(deck, idx)); }
-  function hideCard() { if (NOTE.cur === 'cardPop') noteFade('cardPop', true); }
+  function showCard(deck, idx) { $('cardPop').innerHTML = cardHtml(deck, idx); $('cardPop').hidden = false; }
+  function hideCard() { $('cardPop').hidden = true; }
   var puT = 0;
   function payupBar(kind, d) {
     var el = $('payupBar'), o = game.byId(d.owner), p = game.byId(d.pid);
@@ -258,16 +212,13 @@
     var g = game, cur = g.turn ? g.turn.pid : -1;
     $('cards').innerHTML = g.phase === 'lobby' ? '' : g.players.map(function (p) {
       var deeds = g.props.filter(function (pr) { return pr && pr.owner === p.id; }).length;
-      var cd = countdown(p), pl = plaque(p);
       return '<div class="pcard' + (p.id === cur ? ' cur' : '') + (p.bankrupt ? ' out' : '') + '" style="border-color:' + (p.id === cur ? p.color : '') + '">' +
-        '<div class="prow">' + chip(p) + '<span class="pname">' + esc(p.name) + '</span>' + (cd >= 0 ? '<span class="pcd" title="AI takes over in">\u23F1 ' + cd + '</span>' : '') +
-        '<span class="pcash" data-pid="' + p.id + '">' + (p.bankrupt ? (p.left ? 'LEFT' : 'OUT') : money(Math.round(cashShown[p.id] != null ? cashShown[p.id] : p.cash))) + '</span></div>' +
-        (pl ? '<div class="plaque">' + esc(pl) + '</div>' : '') +
-        (p.bankrupt ? '' : '<div class="psub"><span class="badge ' + p.state + '">' + stateLabel(p.state) + '</span><span>' + deeds + ' deeds</span>' +
+        '<div class="prow">' + chip(p) + '<span class="pname">' + esc(p.name) + '</span><span class="pcash">' + (p.bankrupt ? (p.left ? 'LEFT' : 'OUT') : money(p.cash)) + '</span></div>' +
+        '<div class="psub"><span class="badge ' + p.state + '">' + stateLabel(p.state) + '</span><span>' + deeds + ' deeds</span>' +
         (p.snow ? '<span>\u2744 stuck</span>' : '') + (p.passes.length ? '<span>\uD83D\uDE9A' + p.passes.length + '</span>' : '') + (p.skip ? '<span>\u23F8</span>' : '') +
-        (p.ai ? '<span class="tag">AI ' + C.ai.levels[p.ai.level].label + '</span>' : p.aiTakeover ? '<span class="tag off">AI covering</span>' : !p.connected ? '<span class="tag off">offline</span>' : '') + '</div>') + '</div>';
+        (p.ai ? '<span class="tag">AI ' + C.ai.levels[p.ai.level].label + '</span>' : p.aiTakeover ? '<span class="tag off">AI covering</span>' : !p.connected ? '<span class="tag off">offline</span>' : '') + '</div></div>';
     }).join('');
-    renderLog(g);
+    $('log').innerHTML = g.log.slice(-7).map(function (l) { return '<div>' + esc(l.s) + '</div>'; }).join('');
     $('roundInfo').innerHTML = inGame() ? 'Round <b>' + g.round + '</b>' + (g.timed() ? ' \u00b7 <b>' + clock(Math.max(0, g.endsAt - g.now)) + '</b> left' : '') : '';
     $('potInfo').innerHTML = g.rules.jackpot && g.phase !== 'lobby' ? 'Dirt Lot pot <b>' + money(g.pot) + '</b>' : '';
     var wq = $('watchQr'), showQ = inGame() && net && net.status === 'online';
@@ -287,58 +238,6 @@
         $('bWhat').textContent = what;
       }
     }
-  }
-  // v0.2 log: bigger text; with a crowded side panel it shows fewer lines instead of shrinking (trim from the top)
-  var logKey = '';
-  function renderLog(g) {
-    var el = $('log'), last = g.log.length ? g.log[g.log.length - 1] : null, key = g.log.length + ':' + (last ? last.s : '') + ':' + g.players.length + ':' + innerHeight;
-    if (key === logKey) return; logKey = key;
-    el.innerHTML = g.log.slice(-(C.logLines || 9)).map(function (l) { return '<div>' + esc(l.s) + '</div>'; }).join('');
-    var guard = 0; while (el.children.length > 1 && el.scrollHeight > el.clientHeight + 1 && guard++ < 20) el.removeChild(el.firstChild);
-  }
-  // v0.2 disconnects: seconds left before the AI covers a dropped phone (-1 = no countdown)
-  function countdown(p) {
-    if (!inGame() || p.ai || p.bankrupt || p.connected || p.aiTakeover || !p.offSince) return -1;
-    return Math.max(0, Math.ceil((p.offSince + C.ai.takeoverAfterMs - Date.now()) / 1000));
-  }
-  // v0.2 out-of-game plaques beside the name
-  function plaque(p) {
-    if (p.left === 'ai') return 'Left town, the AI took over';
-    if (p.left === 'split') return 'Left town, split their stuff';
-    if (p.left === 'one') { var r = game.byId(p.leftTo); return 'Left town, gave it all to ' + (r ? r.name : 'a friend'); }
-    if (p.left === 'pot') return 'Left town, threw it in the pot';
-    if (p.bankrupt) return p.bustOwed > 0 ? 'Busted, owed ' + money(p.bustOwed) : 'Busted';
-    return '';
-  }
-  // ------------------------------------------------------------------ v0.2 money feedback
-  // Side panel: the total counts toward the new value and a "+$200" (player colour) or red "-$50" floats up out of it.
-  // Board: $ signs pop from the token on gains, bills flutter away on losses; player-to-player payments fly token to
-  // token instead (flyCover). Trades are private, so their cash is synced silently (syncCash on tradeDone).
-  var cashSeen = {}, cashShown = {}, flyCover = {}, floats = 0;
-  function syncCash(ids) { game.players.forEach(function (q) { if (!ids || ids.indexOf(q.id) >= 0) { cashSeen[q.id] = q.cash; cashShown[q.id] = q.cash; } }); }
-  function cashEl(pid) { return document.querySelector('.pcash[data-pid="' + pid + '"]'); }
-  function cashFloat(q, dlt) {
-    var el = cashEl(q.id); if (!el || floats >= (crush.rung >= 3 ? 4 : 10)) return;
-    var r = el.getBoundingClientRect(), f = document.createElement('div');
-    f.className = 'cfloat ' + (dlt > 0 ? 'up' : 'down'); f.textContent = (dlt > 0 ? '+' : '\u2212') + money(Math.abs(dlt));
-    f.style.color = dlt > 0 ? (q.color === '#1d1d24' ? '#e8e8f0' : q.color) : '#ff5a5a';
-    f.style.left = Math.round(r.right) + 'px'; f.style.top = Math.round(r.top) + 'px';
-    document.body.appendChild(f); floats++;
-    setTimeout(function () { floats--; if (f.parentNode) f.parentNode.removeChild(f); }, FX.floatMs || 1700);
-  }
-  function moneyTick(now, dt) {
-    if (!inGame()) return;
-    game.players.forEach(function (q) {
-      if (cashSeen[q.id] == null) { cashSeen[q.id] = cashShown[q.id] = q.cash; return; }
-      var dlt = q.cash - cashSeen[q.id];
-      if (dlt) { cashSeen[q.id] = q.cash; if (!q.bankrupt) { cashFloat(q, dlt); if (!(flyCover[q.id] > now)) rnd.moneyFx(q.id, dlt); } }
-      var sh = cashShown[q.id];
-      if (sh !== q.cash && !q.bankrupt) {
-        var gap = q.cash - sh, step = Math.max(1, Math.abs(gap) * Math.min(1, dt / (FX.countTauMs || 170)));
-        sh = gap > 0 ? Math.min(q.cash, sh + step) : Math.max(q.cash, sh - step); cashShown[q.id] = sh;
-        var el = cashEl(q.id); if (el) el.textContent = money(Math.round(sh));
-      }
-    });
   }
   function clock(ms) { var s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
 
@@ -401,7 +300,7 @@
       var np = game.addPlayer({ name: clients[oc].name, clientId: oc });
       if (np) { clients[oc] = { pid: np.id, conn: clients[oc].conn, seen: Date.now(), lastSent: '' }; send(clients[oc].conn, { t: 'welcome', pid: np.id, room: net.code }); }
     }
-    stopFireworks(); $('results').hidden = true; $('lobby').hidden = false; $('banner').hidden = true; noteClearAll(); $('payupBar').hidden = true; syncCash();
+    stopFireworks(); $('results').hidden = true; $('lobby').hidden = false; $('banner').hidden = true; hideCard(); hideDeed(); $('payupBar').hidden = true;
     dirty = phoneDirty = true;
   }
   function statTiles(st) {
@@ -417,7 +316,7 @@
   function resCard(x) {
     var c = { name: x.name, charId: x.charId, color: x.color, state: x.state };
     return chip(c) + '<div class="rname">' + esc(x.name) + '</div>' + (x.title ? '<div class="rtitle">' + esc(x.title) + '</div>' : '') +
-      '<div class="rworth">' + (x.bankrupt ? (x.left ? 'left early' : x.owed > 0 ? '<span class="owed">owed ' + money(x.owed) + '</span>' : 'bankrupt') : money(x.worth)) + '<small>' + (x.bankrupt && !x.left && x.owed > 0 ? 'SKIPPED TOWN' : 'NET WORTH') + '</small></div>' + statTiles(x.stats);
+      '<div class="rworth">' + (x.bankrupt ? (x.left ? 'left early' : 'bankrupt') : money(x.worth)) + '<small>NET WORTH</small></div>' + statTiles(x.stats);
   }
   function showResults() {
     var r = game.results || [];
@@ -427,7 +326,7 @@
     }).join('');
     $('ground').innerHTML = r.slice(3).map(function (x) { return '<div class="gcard">' + resCard(x) + '</div>'; }).join('');
     $('results').classList.toggle('crowd', r.length > 3);
-    $('results').hidden = false; $('banner').hidden = true; noteClearAll(); $('payupBar').hidden = true;
+    $('results').hidden = false; $('banner').hidden = true; hideCard(); hideDeed(); $('payupBar').hidden = true;
     startFireworks(r.slice(0, 3).map(function (x) { return x.color; }));
     // Hue: a second wave once the podium is up, a pickup flash in the winner's colour per big rocket, then hand back
     if (r[0]) {
@@ -637,25 +536,21 @@
     return hit || null;
   }
   function handBack(p) { p.offSince = 0; if (!p.aiTakeover) return; p.aiTakeover = null; if (inGame()) big(p.name + ' IS BACK!', 'The AI hands the seat back.', p.color); game.changed(); }
-  var sweepN = 0;
-  setInterval(function () {        // v0.2: every 0.5 s so the 10 s countdown hands over on time (the heavy bits still run every 3 s)
-    var now = Date.now(), ch = false, full = ++sweepN % 6 === 0, counting = false;
+  setInterval(function () {
+    var now = Date.now(), ch = false;
     for (var cid in clients) {
       var cl = clients[cid], p = cl.observer ? null : game.byId(cl.pid);
       if (cl.observer && now - cl.seen > 20000) { delete clients[cid]; continue; }
-      if (p && p.connected && now - cl.seen > (C.ai.lostAfterMs || 9000)) { p.connected = false; p.offSince = now; ch = true; }
+      if (p && p.connected && now - cl.seen > 15000) { p.connected = false; ch = true; }
       if (p && !p.connected && !p.ai && inGame() && !p.bankrupt) {
         if (!p.offSince) p.offSince = now;
-        if (!p.aiTakeover && now - p.offSince >= C.ai.takeoverAfterMs) { p.aiTakeover = { level: 'normal' }; big('AI PLAYS FOR ' + p.name.toUpperCase(), 'Until their phone reconnects.', p.color); game.addLog('An AI covers ' + p.name + '\'s seat until their phone is back.'); ch = true; }
-        else if (!p.aiTakeover) counting = true;
+        if (!p.aiTakeover && now - p.offSince > C.ai.takeoverAfterMs) { p.aiTakeover = { level: 'normal' }; big('AI PLAYS FOR ' + p.name.toUpperCase(), 'Until their phone reconnects.', p.color); ch = true; }
       }
     }
     if (ch) game.changed();
-    if (counting) dirty = true;
-    if (!full) return;
     if (lights.conn && now - lights.seen > 20000) { lights.conn = null; lights.st = null; dirty = true; }
     phoneDirty = true; for (var c2 in clients) clients[c2].lastSent = '';
-  }, 500);
+  }, 3000);
 
   function sideView(s) { return { cash: s.cash || 0, props: (s.props || []).slice(), passes: s.passes || 0 }; }
   function phoneState(p) {
@@ -806,7 +701,6 @@
       rnd.frame(now, dt, { paused: paused, band: SFX.bandLevel ? Math.max(SFX.bandLevel(), inGame() ? band.vol * 0.3 : 0) : band.vol });
       if (Date.now() - dice.t < C.timing.roll / FAST + 100) drawDice();
       renderAuction();
-      moneyTick(now, dt);
       crushTick(dt);
       if (game.version !== lastVer) { lastVer = game.version; dirty = true; phoneDirty = true; }
       if ((dirty || now - domT > 1000) && now - domT > 120) { domT = now; dirty = false; if (game.phase === 'lobby') renderLobby(); renderSide(); }
@@ -815,16 +709,6 @@
     requestAnimationFrame(loop);
   }
 
-  // v0.2: if the TV tab is ever hidden (a PC tab-cast with another tab in front), animation frames stop; keep the game,
-  // the AI and the phones going on a slow timer until it's visible again (no drawing).
-  setInterval(function () {
-    if (!document.hidden) return;
-    try {
-      game.tick(performance.now()); AI.tick(game);
-      if (game.version !== lastVer) { lastVer = game.version; phoneDirty = true; }
-      if (phoneDirty) { phoneDirty = false; pushPhones(); }
-    } catch (e) { if (window.console) console.error(e); }
-  }, 250);
   var wake = null;
   function requestWake() { try { if (navigator.wakeLock && !wake) navigator.wakeLock.request('screen').then(function (w) { wake = w; w.addEventListener('release', function () { wake = null; }); }).catch(function () {}); } catch (e) {} }
 
@@ -842,7 +726,6 @@
     else spec.split(',').forEach(function (x) { var pr = x.split(':'); addAI(charById(pr[0]) && pr[0] === charById(pr[0]).id ? pr[0] : null, C.ai.levels[pr[1]] ? pr[1] : 'normal'); });
   }
   if (Q.has('autostart') && game.players.length >= 2) setTimeout(startGame, 300);
-  window.RDR.note = function () { return NOTE; }; window.RDR.big = big; window.RDR.showCard = showCard; window.RDR.cashShown = cashShown; window.RDR.plaque = plaque;   // v0.2 test hooks
   window.RDR.startGame = startGame; window.RDR.addAI = addAI; window.RDR.toLobby = toLobby; window.RDR.crush = crush; window.RDR.setRung = setRung;
   window.RDR.net = function () { return net; }; window.RDR.lights = function () { return lights; }; window.RDR.clients = clients; window.RDR.phoneState = phoneState; window.RDR.controllerUrl = controllerUrl;
   requestAnimationFrame(loop);
