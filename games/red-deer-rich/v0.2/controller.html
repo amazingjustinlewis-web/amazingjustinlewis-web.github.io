@@ -13,7 +13,7 @@
 </head>
 <body>
 <section id="join" class="screen">
-  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">RED DEER <b>RICH</b></div><div class="jsub">v0.2.1 &middot; phone controller</div></div></header>
+  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">RED DEER <b>RICH</b></div><div class="jsub">v0.2 &middot; phone controller</div></div></header>
   <label class="fld">Room code<input id="room" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD"></label>
   <label class="fld">Your name<input id="name" maxlength="12" autocomplete="nickname" placeholder="Name"></label>
   <button id="joinBtn" class="big-btn">JOIN GAME</button>
@@ -31,21 +31,11 @@
   <div class="lplayers" id="lPlayers"></div>
   <div id="hostBox" class="hostbox" hidden>
     <div class="hb-title">You're the host</div>
-    <div class="presets" id="hPresets"></div>
-    <button id="hOptToggle" class="optline" aria-expanded="false"><span id="hOptLabel">Game options</span><i>&#9662;</i></button>
-    <div id="hOpts" class="optpanel" hidden>
-      <div class="optrows" id="hOptRows"></div>
-      <div class="muted small">Tap to switch on or off. Press and hold for more.</div>
-      <div class="hb-sub">Computer players</div>
-      <div class="row"><button id="hAiChar" class="ghost">Character</button><button id="hAiLevel" class="ghost">Normal</button></div>
-      <div class="muted small">Pick who the next AI is and how tough, then use + next to START. Mid-game, you can fill an empty seat from the Board tab.</div>
-      <div id="hHue"></div>
-    </div>
-    <div class="startpick">
-      <div class="seg" id="hMode"></div>
-      <div class="aistep"><button id="hAiMinus" aria-label="Remove an AI player">&minus;</button><span id="hAiCount">AI 0</span><button id="hAiAdd" aria-label="Add an AI player">+</button></div>
-    </div>
-    <div class="muted small" id="hModeInfo"></div>
+    <div class="row"><button id="hAiChar" class="ghost">Character</button><button id="hAiLevel" class="ghost">Normal</button><button id="hAiAdd" class="go">+ AI</button></div>
+    <div class="muted small">Add computer players here. Mid-game, you can fill an empty seat from the Board tab.</div>
+    <div class="hb-title">House rules</div><div class="chips" id="hRules"></div>
+    <div class="hb-title">Game length</div><div class="chips" id="hMode"></div><div class="muted small" id="hModeInfo"></div>
+    <div id="hHue"></div>
     <button id="startBtn" class="big-btn red">START GAME</button>
   </div>
   <div id="waitHost" class="muted center"></div>
@@ -88,11 +78,9 @@
 <div id="voteBar" class="votebar" hidden></div>
 <div id="toast" class="toast" hidden></div>
 
-<div id="optSheet" class="optsheet" hidden><div class="os-card"><div class="os-h" id="osH"></div><div class="os-short" id="osShort"></div><div class="os-t" id="osT"></div><button id="osOk" class="big-btn">GOT IT</button></div></div>
 <script src="js/vendor/peerjs.min.js"></script>
 <script>/* old TV browsers (e.g. Samsung Tizen, Chromium < 80) cannot run the modern PeerJS build: load the transpiled one */ if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
 <script src="js/config.js"></script>
-<script src="js/options.js"></script>
 <script src="js/board.js"></script>
 <script src="js/sfx.js"></script>
 <script src="js/net.js"></script>

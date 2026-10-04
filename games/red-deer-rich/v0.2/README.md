@@ -1,4 +1,6 @@
-# Red Deer Rich - v0.2.1 (placeholder art)
+> **Archived v0.2** (game feel). This folder is a frozen copy for reference; the current version lives one folder up.
+
+# Red Deer Rich - v0.2 (placeholder art)
 
 A Red Deer-themed property trading board game by Zero to Phi. The spec is the design doc
 (`red-deer-rich/design-doc.md`, outside this repo). Same architecture as Zombie Tiles: plain
@@ -10,9 +12,8 @@ Live: https://amazingjustinlewis-web.github.io/games/red-deer-rich/
 ## How to play
 1. Open `index.html` on the TV: a Chromecast TV browser, DashCast, a Samsung TV browser or a PC on the TV.
 2. Phones scan the QR code (or open `controller.html` and type the code), enter a name and swipe to pick a character.
-3. The first phone is the host. It picks a preset (Classic, Chaos or Chill) or opens the one-line **Game options**
-   list, sets the game length (Regular, Medium or Quick) and the number of AI players beside the big START GAME
-   button, then taps START GAME. The setup from last time comes back on its own. On the TV you can also press Enter. Mid-game, the host can fill an empty seat with an AI from
+3. The first phone is the host. It can add AI players, switch house rules and pick the game length (Regular, Medium or Quick),
+   then taps START GAME. On the TV you can also press Enter. Mid-game, the host can fill an empty seat with an AI from
    the phone's Board tab (or press I on the TV).
 4. On your turn, swipe up on the dice (or tap ROLL), then BUY or PASS, then PASS DICE.
    When someone lands on your deed, a giant **PAY UP** button takes over your phone. Rent is only paid if you hit it
@@ -28,28 +29,6 @@ Live: https://amazingjustinlewis-web.github.io/games/red-deer-rich/
 | Regular | nothing pre-dealt, $1,800 each | none (last one standing) |
 | Medium | 3 deeds each (2 each for 4+ players), $1,500 each | 45 min, then the richest wins |
 | Quick | ALL ownable spaces dealt out round-robin, $1,500 each | 30 min, then the richest wins |
-
-### What's new in v0.2.1 (simple setup)
-Everything from v0.2 is unchanged: sticky hops, money flows, the podium awards and the fast pace.
-- **One line for all the options.** The host phone (and the TV lobby) shows a single "Game options (3 on) ▾" line.
-  Tap it to open a checklist; each option has a one-line description. Tap a row to switch it on or off. **Press and
-  hold** a row (about half a second) for a longer explanation. Holding never toggles it.
-- **Presets.** Classic (PAY UP race, auctions, perks), Chaos (everything on except Kid Mode) and Chill (automatic rent,
-  no auctions, perks, jackpot and bullseye bonus cash). One tap sets them all; change anything afterwards and the
-  preset shows "Custom". Presets leave the TV camera setting alone. The list lives in `C.options` / `C.presets` in
-  `js/config.js`, and the shared helpers are in `js/options.js`.
-- **Remembers the last game.** The host phone saves its setup (options, length, number of AIs and their difficulty) in
-  localStorage when you change it or press START, and puts it back the next time it hosts. The TV saves its options and
-  game length too, and reloads them when it opens (test URLs with `local`, `nonet`, `ai`, `rules`, `mode` or `fresh`
-  skip this).
-- **One big START button**, with the game length (Regular / Medium / Quick) and the AI count (− AI n +) as small pickers
-  beside it. Everything else (option rows, which character the next AI is, its difficulty, Hue) sits inside Game options.
-- **The TV lobby shows the rules.** The preset name (or Custom) and an icon and label for each active option are always
-  visible, so everyone sees the rules before the first roll. Waiting phones show the same chips.
-- **Owner-colour tiles are 20% lighter** (every wash alpha × 0.8, on the TV and the phone board) so the street colours
-  show through. The solid owner strip is unchanged.
-- **Bigger podium QR.** "Scan to join the next game" is 20vh (was 13vh), with the same white border and low-density
-  (level L, 4-module quiet zone) code, and it stays clear of the podium and awards.
 
 ### What's new in v0.2 (game feel)
 Kept exactly as they were: the dice spitting out of the token with each player's own dice on the board, the play-by-play
@@ -145,7 +124,6 @@ log, QR rejoin to your original seat, and the fast turn pace (the game never wai
 | `js/ai.js` | AI players: buying, building, unhocking, set-completing trades, PAY UP reflexes, chat lines |
 | `js/render.js` | canvas board: tiles, Youth Centre vignette, walkers and cars, day/night, tokens, camera |
 | `js/fx.js` | v0.2 board particles (landing fireworks, $ pops, bills, token-to-token money): pre-rendered sprites, capped, swappable |
-| `js/options.js` | v0.2.1 game-options helpers: presets, counts, active chips, and the press-and-hold row handler (tap toggles, hold explains) |
 | `js/art.js` | v0.2 building line art with the outward overhead lean (`C.art.lean`), swappable for rendered sprites |
 | `js/sfx.js` | WebAudio sound effects plus the procedural punk band loop (no audio files) |
 | `js/net.js` | PeerJS host and client (copied from Zombie Tiles) plus a BroadcastChannel transport for `?local` tests |
@@ -194,7 +172,7 @@ helper's existing effects:
 | results podium | pickup / kill flashes in the winner's colour, a second escape wave, then over |
 | bankrupt | crunch |
 
-## Placeholder or not done yet (v0.2.1)
+## Placeholder or not done yet (v0.2)
 - Art is all placeholder: coloured tokens with initials and shapes, line-art buildings, simple particles, simple silhouettes.
 - Perks still coming: Justin's Count-In, Drew's High Kick and Walt's Shortcut.
 - No drag-and-drop in the trade builder (tap to toggle instead).
@@ -226,8 +204,6 @@ helper's existing effects:
 - `e2e3.py` covers v0.1.1: modes, auctions, mid-game AI, the phone board, leave game, observer + vote, and the sky arc.
 - `e2e4.py` covers v0.1.2: watch QR size and corner, quiet zone, decoding from blurred 1080p / 720p screenshots, New Game (confirm, cancel, back to setup, restart), podium join QR.
 - `e2e5.py` covers v0.2: tokens stay on the landing tile, landing bursts, money floats / count-up / particles / token-to-token flights, private trades, notification shatter + 6 s hold + fade, log size and trimming, centre-only night lighting, building lean always outward + sprite swap, My Stuff board order, Go bust + plaques + owed title, the disconnect countdown and AI hand-back, camera moments, and turn pace against v0.1.2.
-- `e2e6.py` covers v0.2.1: owner-tint alpha × 0.8 (config and pixels), podium QR size, overlap and blurred decode, the collapsed options line, presets + Custom, press-and-hold details without toggling, remember-last-game (phone and TV), the START pickers, TV lobby chips, and no page errors.
-- `oldsetup.py` checks the new setup screens and TV lobby on Chromium 62 / 74.
 - `bust.js` unit-tests "Go bust, pay what I can" in node (player and bank creditors, auction queue, owed, plaques data).
 - `audio.py` counts WebAudio nodes per minute in a live AI game, old engine vs new.
 - `podium.py` plays quick games to the end and checks the results podium (titles, stats, net worth, fireworks).

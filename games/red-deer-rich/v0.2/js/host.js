@@ -344,29 +344,7 @@
 
   // ------------------------------------------------------------------ lobby
   var aiPick = { ch: null, level: 'normal' };
-  // v0.2.1 options: presets + one collapsed list (tap toggles, hold explains) + always-visible chips of what's on
-  var O = window.RDROpts, optsOpen = false;
-  function setHtml(el, h) { if (el._h !== h) { el._h = h; el.innerHTML = h; } }
-  function applyRules(r) { O.ordered(r).forEach(function (kv) { if (kv[0] in C.rules) game.setRule(kv[0], kv[1]); }); }
-  // remember the last setup on the TV too (real TVs open plain index.html; test URLs are left alone)
-  var TVKEY = 'rdr_tv_setup', tvSaved = '';
-  function tvStore(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
-  function saveTvSetup() {
-    if (game.phase !== 'lobby') return;
-    var r = {}; C.options.forEach(function (o) { r[o.k] = !!game.rules[o.k]; });
-    var j = JSON.stringify({ rules: r, mode: game.mode }); if (j !== tvSaved) { tvSaved = j; tvStore(TVKEY, j); }
-  }
-  function loadTvSetup() {
-    if (['local', 'nonet', 'autostart', 'ai', 'rules', 'mode', 'fresh'].some(function (k) { return Q.has(k); })) return false;
-    var sv = null; try { sv = JSON.parse(tvStore(TVKEY) || 'null'); } catch (e) {}
-    if (!sv || !sv.rules) return false;
-    applyRules(sv.rules); if (sv.mode) game.setMode(sv.mode); tvSaved = JSON.stringify(sv); return true;
-  }
-  function showOptInfo(k) {
-    var o = O.opt(k), el = $('optInfo'); if (!o) return;
-    el.innerHTML = '<div class="oi-h">' + o.icon + ' ' + esc(o.label) + (game.rules[k] ? ' <em>on</em>' : ' <em class="off">off</em>') + '</div><div class="oi-t">' + esc(o.long) + '</div><div class="oi-x">click anywhere to close</div>';
-    el.hidden = false;
-  }
+  var RULES = [['jackpot', 'Dirt Lot Jackpot ($500)'], ['feesToPot', 'Fees feed the pot'], ['bullseye', 'Bullseye Halfway ($500)'], ['payupRace', 'PAY UP race'], ['perks', 'Character perks'], ['kidMode', 'Kid Mode (4 s grace)'], ['auctions', 'Auctions'], ['camera', 'Follow camera']];
   function nextFreeChar(from) {
     var ids = C.characters.map(function (c) { return c.id; }), taken = game.players.map(function (p) { return p.charId; }), i = Math.max(-1, ids.indexOf(from));
     for (var k = 1; k <= ids.length; k++) { var id = ids[(i + k) % ids.length]; if (taken.indexOf(id) === -1) return id; }
@@ -385,14 +363,7 @@
     $('aiChar').textContent = ch ? ch.full : 'No characters left'; $('aiChar').style.borderColor = ch ? ch.color : '';
     $('aiLevel').textContent = C.ai.levels[aiPick.level].label;
     $('aiAdd').disabled = !ch || g.players.length >= C.maxPlayers;
-    var pre = O.presetOf(g.rules);
-    setHtml($('presetRow'), Object.keys(C.presets).map(function (id) { return '<button data-preset="' + id + '" class="' + (pre === id ? 'on' : '') + '">' + esc(C.presets[id].label) + '<small>' + esc(C.presets[id].blurb) + '</small></button>'; }).join('') +
-      (pre === 'custom' ? '<span class="custom">Custom</span>' : ''));
-    setHtml($('ruleChips'), O.activeList(g.rules).map(function (o) { return '<span title="' + esc(o.short) + '">' + o.icon + ' ' + esc(o.tag) + '</span>'; }).join('') || '<span class="none">No extra options: plain rules</span>');
-    setHtml($('optToggle'), 'Game options (' + O.countOn(g.rules) + ' on) <i>' + (optsOpen ? '\u25B4' : '\u25BE') + '</i>');
-    $('rulesRow').hidden = !optsOpen;
-    setHtml($('rulesRow'), C.options.map(function (o) { var on = !!g.rules[o.k]; return '<button class="optrow' + (on ? ' on' : '') + '" data-rule="' + o.k + '"><span class="ck">' + (on ? '\u2714' : '') + '</span><span class="ot"><b>' + o.icon + ' ' + esc(o.label) + '</b><small>' + esc(o.short) + '</small></span></button>'; }).join(''));
-    saveTvSetup();
+    $('rulesRow').innerHTML = RULES.map(function (r) { return '<button data-rule="' + r[0] + '" class="' + (g.rules[r[0]] ? 'on' : '') + '">' + (g.rules[r[0]] ? '\u2714 ' : '') + r[1] + '</button>'; }).join('');
     Array.prototype.forEach.call($('modeRow').children, function (b) { b.className = 'ghost' + (b.getAttribute('data-mode') === g.mode ? ' on' : ''); });
     $('startBtn').disabled = g.players.length < C.minPlayers;
     renderHuePanel();
@@ -401,10 +372,7 @@
   $('aiLevel').onclick = function () { var L = Object.keys(C.ai.levels); aiPick.level = L[(L.indexOf(aiPick.level) + 1) % L.length]; dirty = true; };
   $('aiAdd').onclick = function () { addAI(aiPick.ch, aiPick.level); };
   $('lobbyPlayers').onclick = function (e) { var b = e.target.closest('button'); if (b && b.getAttribute('data-rm')) { game.removePlayer(+b.getAttribute('data-rm')); dirty = phoneDirty = true; } };
-  O.hold($('rulesRow'), '.optrow', function (b) { var k = b.getAttribute('data-rule'); game.setRule(k, !game.rules[k]); dirty = phoneDirty = true; }, function (b) { showOptInfo(b.getAttribute('data-rule')); });
-  $('optToggle').onclick = function () { optsOpen = !optsOpen; dirty = true; };
-  $('presetRow').onclick = function (e) { var b = e.target.closest('button'); if (b && C.presets[b.getAttribute('data-preset')]) { applyRules(C.presets[b.getAttribute('data-preset')].rules); dirty = phoneDirty = true; } };
-  $('optInfo').onclick = function () { $('optInfo').hidden = true; };
+  $('rulesRow').onclick = function (e) { var b = e.target.closest('button'); if (b) { var k = b.getAttribute('data-rule'); game.setRule(k, !game.rules[k]); dirty = phoneDirty = true; } };
   $('modeRow').onclick = function (e) { var b = e.target.closest('button'); if (b) { game.setMode(b.getAttribute('data-mode')); dirty = phoneDirty = true; } };
   $('startBtn').onclick = function () { startGame(); };
   $('againBtn').onclick = function () { startGame(); };
@@ -460,7 +428,6 @@
     $('ground').innerHTML = r.slice(3).map(function (x) { return '<div class="gcard">' + resCard(x) + '</div>'; }).join('');
     $('results').classList.toggle('crowd', r.length > 3);
     $('results').hidden = false; $('banner').hidden = true; noteClearAll(); $('payupBar').hidden = true;
-    qrDodge();
     startFireworks(r.slice(0, 3).map(function (x) { return x.color; }));
     // Hue: a second wave once the podium is up, a pickup flash in the winner's colour per big rocket, then hand back
     if (r[0]) {
@@ -469,22 +436,6 @@
       setTimeout(function () { if (game.phase === 'over') lightFx('escape', { color: wc }); }, 8000 / FAST);
       setTimeout(function () { if (game.phase === 'over') lightFx('over', { escaped: true }); }, 12500 / FAST);
     }
-  }
-
-  // v0.2.1: the podium join QR is 20vh in the bottom-right corner. If a ground card would run under it (e.g. 7 players
-  // on a 16:9 TV), the ground row moves out of the QR's column and its cards get a little narrower. Measured from the
-  // layout boxes (offsetLeft/Top), so the cards' drop-in animation doesn't matter.
-  function qrDodge() {
-    var R = $('results'); R.classList.remove('qrdodge');
-    function hits() {
-      var vh = R.clientHeight / 100, qx = R.clientWidth - 23.5 * vh, qy = R.clientHeight - 23.5 * vh, g = $('ground'), cards = g.children;
-      for (var i = 0; i < cards.length; i++) {
-        var c = cards[i], x = g.offsetLeft + c.offsetLeft, y = g.offsetTop + c.offsetTop;
-        if (x + c.offsetWidth > qx && y + c.offsetHeight > qy) return true;
-      }
-      return false;
-    }
-    if (hits()) R.classList.add('qrdodge');
   }
 
   // ------------------------------------------------------------------ fireworks (results screen)
@@ -621,14 +572,6 @@
       dirty = phoneDirty = true; return;
     }
     if (m.t === 'mode') { if (isVip && lobbyish) { game.setMode(m.v); dirty = phoneDirty = true; } return; }
-    if (m.t === 'preset') { if (isVip && lobbyish && C.presets[m.v]) { applyRules(C.presets[m.v].rules); dirty = phoneDirty = true; } return; }
-    if (m.t === 'settings') {        // v0.2.1: the host phone puts back the last game's setup
-      if (!isVip || game.phase !== 'lobby' || !m.rules) return;
-      applyRules(m.rules); if (m.mode) game.setMode(String(m.mode));
-      var lvl = C.ai.levels[m.level] ? m.level : 'normal';
-      for (var ai = 0; ai < Math.min(+m.addAI || 0, C.maxPlayers); ai++) if (!addAI(null, lvl)) break;
-      dirty = phoneDirty = true; return;
-    }
     var r = game.intent(pl.id, m);
     if (r && r !== 'wait' && m.t !== 'chat') send(conn, { t: 'toast', text: r });
     dirty = phoneDirty = true;
@@ -893,14 +836,13 @@
   if (LOCAL) net = new window.RDRNet.LocalHost({ code: roomQ || 'TEST', onStatus: setNetUi, onMessage: onPhoneMessage, onClose: onPhoneClose });
   else if (!NONET) net = new window.RDRNet.Host({ code: roomQ, onStatus: setNetUi, onMessage: onPhoneMessage, onClose: onPhoneClose });
   else setNetUi('offline', null, 'phones disabled with ?nonet');
-  loadTvSetup();
   if (Q.get('ai')) {
     var spec = Q.get('ai');
     if (/^\d+$/.test(spec)) { var lv = ['normal', 'ruthless', 'easy']; for (var j = 0; j < Math.min(+spec, C.maxPlayers); j++) addAI(null, lv[j % 3]); }
     else spec.split(',').forEach(function (x) { var pr = x.split(':'); addAI(charById(pr[0]) && pr[0] === charById(pr[0]).id ? pr[0] : null, C.ai.levels[pr[1]] ? pr[1] : 'normal'); });
   }
   if (Q.has('autostart') && game.players.length >= 2) setTimeout(startGame, 300);
-  window.RDR.note = function () { return NOTE; }; window.RDR.applyRules = applyRules; window.RDR.qrDodge = qrDodge; window.RDR.big = big; window.RDR.showCard = showCard; window.RDR.cashShown = cashShown; window.RDR.plaque = plaque;   // v0.2 test hooks
+  window.RDR.note = function () { return NOTE; }; window.RDR.big = big; window.RDR.showCard = showCard; window.RDR.cashShown = cashShown; window.RDR.plaque = plaque;   // v0.2 test hooks
   window.RDR.startGame = startGame; window.RDR.addAI = addAI; window.RDR.toLobby = toLobby; window.RDR.crush = crush; window.RDR.setRung = setRung;
   window.RDR.net = function () { return net; }; window.RDR.lights = function () { return lights; }; window.RDR.clients = clients; window.RDR.phoneState = phoneState; window.RDR.controllerUrl = controllerUrl;
   requestAnimationFrame(loop);

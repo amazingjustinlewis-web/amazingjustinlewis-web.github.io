@@ -1,5 +1,5 @@
 /* =====================================================================
-   RED DEER RICH - TUNABLE NUMBERS  v0.2.1 (placeholder art)
+   RED DEER RICH - TUNABLE NUMBERS  v0.2 (placeholder art)
    ---------------------------------------------------------------------
    Every rule number lives here. Change a value, save, refresh the TV.
    Phones read the same file (colours, labels, characters).
@@ -40,7 +40,7 @@
 
     // ---- TV presentation (v0.1.1) ----
     tradeFadeMs: 10000,          // after a private deal, traded tiles drift from the old owner's colour to the new one
-    ownerTint: { fill: 0.24, fillHocked: 0.128, border: 0.76, phoneFill: 0.336, phoneFillHocked: 0.16 },   // owned tiles: owner-colour wash + border (v0.2.1: all x0.8, 20% more see-through; the outer owner strip stays solid)
+    ownerTint: { fill: 0.30, fillHocked: 0.16, border: 0.95 },   // owned tiles: owner-colour wash + border
     sky: { on: true, alpha: 0.2, sunR: 0.075, moonR: 0.06, sunLight: 0.16, moonLight: 0.12, horizon: 1.06, height: 0.86 },   // v0.1.1 sun + moon arc: ~80% transparent over the board
     art: { lean: 0.12, fisheye: 0.3 },   // v0.2 building art: roofs lean OUTWARD from the board centre by lean x height at the edge (0 = flat, 0.12 = ~9 degrees). One knob.
     lighting: { feather: 0.2 },
@@ -74,33 +74,6 @@
       camera: true,              // TV camera gently follows the active player (also the C key on the TV)
       evenBuild: true,           // build evenly across a colour set
       shopShortage: true         // limited bank stock
-    },
-
-    // ---- v0.2.1 game options as players see them (setup screens, TV lobby). Order = display order.
-    //   short: one line in the options list; long: shown when you press and hold the row; icon + tag: TV lobby chips
-    options: [
-      { k: 'payupRace', icon: '\u270B', tag: 'PAY UP race', label: 'PAY UP race', short: 'Owners hit PAY UP before the dice pass, or the rent is missed',
-        long: 'When someone lands on your deed, a giant PAY UP button takes over your phone. Hit it before they pass the dice to collect the rent. Miss it and they tiptoe away. Off: rent is paid automatically, like the classic game.' },
-      { k: 'auctions', icon: '\uD83D\uDD28', tag: 'Auctions', label: 'Auctions', short: 'A deed nobody buys goes to auction, every phone can bid',
-        long: 'If the player who lands on a deed passes on it, it goes straight to an 8-second auction starting at $10. Anyone can bid +$20, +$50 or +$100 from their phone. Each bid resets the clock.' },
-      { k: 'perks', icon: '\u2B50', tag: 'Perks', label: 'Character perks', short: 'Each character has a little special power',
-        long: 'Every character has a perk, like Mike\'s Loud Amp (his PAY UP window lasts 1 second longer). Swipe through the characters on your phone to read them. A few are still marked coming soon.' },
-      { k: 'jackpot', icon: '\uD83D\uDCB0', tag: 'Jackpot', label: 'Dirt Lot Jackpot', short: 'Land on the Secret Dirt Lot and win the pot ($500 to start)',
-        long: 'The Secret Dirt Lot corner holds a cash pot that starts at $500. Land on it and the whole pot is yours, then it resets to $500. Pairs well with Fees feed the pot.' },
-      { k: 'feesToPot', icon: '\uD83E\uDE99', tag: 'Fees \u2192 pot', label: 'Fees feed the pot', short: 'Taxes, card fines and tow fees grow the jackpot',
-        long: 'Instead of vanishing into the bank, taxes, Hailstone and Potluck fines and tow truck fees pile up in the Dirt Lot pot, so the jackpot gets juicy. Turning this on also turns on the Dirt Lot Jackpot.' },
-      { k: 'bullseye', icon: '\uD83C\uDFAF', tag: 'Bullseye', label: 'Bullseye Halfway', short: 'Land exactly on The Halfway for $500 instead of $250',
-        long: 'Passing The Halfway pays $250 as usual. Landing exactly on it is a Bullseye and pays $500.' },
-      { k: 'kidMode', icon: '\uD83E\uDDF8', tag: 'Kid Mode', label: 'Kid Mode', short: 'Owners get 4 seconds to hit PAY UP (gentler for little hands)',
-        long: 'After a token lands, the dice can\'t be passed for 4 seconds instead of 3, so slower hands still have time to hit PAY UP. Only matters with the PAY UP race on.' },
-      { k: 'camera', icon: '\uD83C\uDFA5', tag: 'TV camera', label: 'TV camera', short: 'The TV gently zooms in and follows whoever is moving',
-        long: 'The TV board softly zooms toward the active player and swoops in on big moments (purchases, big rent, bankruptcies). Turn it off for a fixed, full-board view. Also the C key on the TV.' }
-    ],
-    // one-tap presets (camera is a TV preference and is left alone). Edit anything afterwards and setup shows "Custom".
-    presets: {
-      classic: { label: 'Classic', blurb: 'The game as designed', rules: { payupRace: true, auctions: true, perks: true, jackpot: false, feesToPot: false, bullseye: false, kidMode: false } },
-      chaos:   { label: 'Chaos', blurb: 'Everything on, big swings', rules: { payupRace: true, auctions: true, perks: true, jackpot: true, feesToPot: true, bullseye: true, kidMode: false } },
-      chill:   { label: 'Chill', blurb: 'Automatic rent, no auctions, bonus cash', rules: { payupRace: false, auctions: false, perks: true, jackpot: true, feesToPot: false, bullseye: true, kidMode: false } }
     },
 
     // ---- timing (ms). &fast in the URL divides these by 4 ----

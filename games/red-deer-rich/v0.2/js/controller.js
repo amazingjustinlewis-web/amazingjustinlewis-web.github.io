@@ -2,7 +2,7 @@
    portrait (bottom tab bar) and landscape (left rail + two panes). PAY UP and BOOM take over the whole screen. */
 (function () {
   'use strict';
-  var O = window.RDROpts, C = window.RDR_CONFIG, B = window.RDR_BOARD, S = B.SPACES, SFX = window.RDRSfx, R = window.RDRRender;
+  var C = window.RDR_CONFIG, B = window.RDR_BOARD, S = B.SPACES, SFX = window.RDRSfx, R = window.RDRRender;
   var $ = function (id) { return document.getElementById(id); };
   // only touch the DOM when the markup really changed, so taps and holds survive frequent state pushes
   var setH = function (el, h) { if (!el || el._h === h) return false; el._h = h; el.innerHTML = h; return true; };
@@ -116,26 +116,14 @@
     drawCarousel(ch);
     setH($('lPlayers'), st.players.map(function (p) { return '<span>' + chip(p) + esc(p.name) + (p.ai ? ' (AI)' : '') + '</span>'; }).join(''));
     var host = st.me.vip; $('hostBox').hidden = !host;
-    var act = O.activeList(st.rules), pre = O.presetOf(st.rules);
-    setH($('waitHost'), host ? '' : 'Waiting for the host to start\u2026 (' + st.players.length + ' players)<div class="rulechips">' + (pre !== 'custom' ? '<b>' + esc(C.presets[pre].label) + '</b>' : '<b>Custom</b>') +
-      act.map(function (o) { return '<span>' + o.icon + ' ' + esc(o.tag) + '</span>'; }).join('') + '</div>');
+    $('waitHost').textContent = host ? '' : 'Waiting for the host to start\u2026 (' + st.players.length + ' players)';
     if (host) {
-      restoreSetup();
       var free = C.characters.filter(function (c) { return !taken[c.id]; });
       if (!ui.aiChar || taken[ui.aiChar]) ui.aiChar = free.length ? free[0].id : null;
       $('hAiChar').textContent = ui.aiChar ? charById(ui.aiChar).name : 'full'; $('hAiLevel').textContent = C.ai.levels[ui.aiLevel].label;
-      // v0.2.1 setup: presets, ONE collapsed options line, big START with length + AI count pickers beside it
-      setH($('hPresets'), Object.keys(C.presets).map(function (id) { var P = C.presets[id]; return '<button data-preset="' + id + '" class="' + (pre === id ? 'on' : '') + '">' + esc(P.label) + '<small>' + esc(P.blurb) + '</small></button>'; }).join('') +
-        '<span class="custom' + (pre === 'custom' ? ' on' : '') + '">' + (pre === 'custom' ? 'Custom' : '') + '</span>');
-      $('hOptLabel').textContent = 'Game options (' + O.countOn(st.rules) + ' on)';
-      $('hOpts').hidden = !ui.optsOpen; $('hOptToggle').setAttribute('aria-expanded', ui.optsOpen ? 'true' : 'false'); $('hOptToggle').classList.toggle('open', !!ui.optsOpen);
-      setH($('hOptRows'), C.options.map(function (o) {
-        var on = !!st.rules[o.k];
-        return '<button class="optrow' + (on ? ' on' : '') + '" data-rule="' + o.k + '" role="checkbox" aria-checked="' + on + '"><span class="ck">' + (on ? '\u2714' : '') + '</span><span class="ot"><b>' + o.icon + ' ' + esc(o.label) + '</b><small>' + esc(o.short) + '</small></span></button>';
-      }).join(''));
-      var nAi = st.players.filter(function (p) { return p.ai; }).length;
-      $('hAiCount').textContent = 'AI ' + nAi; $('hAiMinus').disabled = !nAi;
       $('hAiAdd').disabled = !ui.aiChar || st.players.length >= C.maxPlayers;
+      var RULES = [['jackpot', 'Dirt Lot Jackpot'], ['feesToPot', 'Fees feed pot'], ['bullseye', 'Bullseye Halfway'], ['payupRace', 'PAY UP race'], ['perks', 'Perks'], ['kidMode', 'Kid Mode'], ['auctions', 'Auctions'], ['camera', 'TV camera']];
+      setH($('hRules'), RULES.map(function (r) { return '<button data-rule="' + r[0] + '" class="' + (st.rules[r[0]] ? 'on' : '') + '">' + r[1] + '</button>'; }).join(''));
       setH($('hMode'), ['regular', 'medium', 'quick'].map(function (k) { return '<button data-mode="' + k + '" class="' + (st.mode === k ? 'on' : '') + '">' + C.modes[k].label + '</button>'; }).join(''));
       $('hModeInfo').textContent = C.modes[st.mode] ? C.modes[st.mode].label + ': ' + C.modes[st.mode].blurb + ' \u00b7 start with ' + money(C.modes[st.mode].startCash) : '';
       $('startBtn').disabled = st.players.length < 2;
@@ -159,35 +147,15 @@
   $('pickBtn').onclick = function () { var id = C.characters[ui.carIdx].id; store.set('rdr_char', id); send({ t: 'char', id: id }); vib(30); SFX.play('buy'); };
   $('hAiChar').onclick = function () { var taken = {}; (st.lobby ? st.lobby.taken : []).forEach(function (x) { taken[x[0]] = 1; }); var ids = C.characters.map(function (c) { return c.id; }), i = ids.indexOf(ui.aiChar); for (var k = 1; k <= ids.length; k++) { var id = ids[(i + k) % ids.length]; if (!taken[id]) { ui.aiChar = id; break; } } renderLobby(); };
   $('hAiLevel').onclick = function () { var L = Object.keys(C.ai.levels); ui.aiLevel = L[(L.indexOf(ui.aiLevel) + 1) % L.length]; renderLobby(); };
-  $('hAiAdd').onclick = function () { send({ t: 'addAI', charId: ui.aiChar, level: ui.aiLevel }); saveSetupSoon(); };
-  $('hAiMinus').onclick = function () { var ais = st.players.filter(function (p) { return p.ai; }); if (ais.length) send({ t: 'removeAI', pid: ais[ais.length - 1].id }); saveSetupSoon(); };
-  $('hOptToggle').onclick = function () { ui.optsOpen = !ui.optsOpen; SFX.play('click'); renderLobby(); };
-  // option rows: tap toggles, press-and-hold explains (and does not toggle)
-  O.hold($('hOptRows'), '.optrow', function (row) { var k = row.getAttribute('data-rule'); send({ t: 'rule', k: k, v: !st.rules[k] }); vib(15); saveSetupSoon(); },
-    function (row) { showOptInfo(row.getAttribute('data-rule')); vib([20, 30, 20]); });
-  function showOptInfo(k) { var o = O.opt(k); if (!o) return; $('osH').textContent = o.icon + ' ' + o.label + (st.rules[k] ? ' (on)' : ' (off)'); $('osShort').textContent = o.short; $('osT').textContent = o.long; $('optSheet').hidden = false; }
-  $('optSheet').onclick = function (e) { if (e.target === $('optSheet') || e.target === $('osOk')) $('optSheet').hidden = true; };
-  // v0.2.1 remember last game: the host phone keeps the last-used setup and puts it back when it hosts again
-  function setupNow() { var r = {}; C.options.forEach(function (o) { r[o.k] = !!st.rules[o.k]; }); return { rules: r, mode: st.mode, ai: st.players.filter(function (p) { return p.ai; }).length, level: ui.aiLevel }; }
-  var saveT = 0;
-  function saveSetupSoon() { clearTimeout(saveT); saveT = setTimeout(function () { if (st && st.me && st.me.vip && st.phase !== 'play') store.set('rdr_setup', JSON.stringify(setupNow())); }, 700); }
-  function restoreSetup() {
-    if (ui.restored || !st || st.phase !== 'lobby') return; ui.restored = true;
-    var saved = null; try { saved = JSON.parse(store.get('rdr_setup') || 'null'); } catch (e) {}
-    if (!saved || !saved.rules) return;
-    if (saved.level && C.ai.levels[saved.level]) ui.aiLevel = saved.level;
-    var nAi = st.players.filter(function (p) { return p.ai; }).length, add = Math.max(0, Math.min((saved.ai | 0) - nAi, C.maxPlayers - st.players.length));
-    send({ t: 'settings', rules: saved.rules, mode: saved.mode, addAI: add, level: ui.aiLevel });
-    toast('Set up like last time. Change anything below.', 2400);
-  }
+  $('hAiAdd').onclick = function () { send({ t: 'addAI', charId: ui.aiChar, level: ui.aiLevel }); };
   $('hostBox').addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
-    if (b.getAttribute('data-mode')) { send({ t: 'mode', v: b.getAttribute('data-mode') }); saveSetupSoon(); }
-    if (b.getAttribute('data-preset')) { send({ t: 'preset', v: b.getAttribute('data-preset') }); vib(20); SFX.play('click'); saveSetupSoon(); }
+    if (b.getAttribute('data-rule')) { var k = b.getAttribute('data-rule'); send({ t: 'rule', k: k, v: !st.rules[k] }); }
+    if (b.getAttribute('data-mode')) send({ t: 'mode', v: b.getAttribute('data-mode') });
     if (b.getAttribute('data-hue')) send({ t: 'hue', enabled: b.getAttribute('data-hue') === 'on' });
     if (b.getAttribute('data-hueg')) send({ t: 'hue', toggle: b.getAttribute('data-hueg') });
   });
-  $('startBtn').onclick = function () { if (st) store.set('rdr_setup', JSON.stringify(setupNow())); send({ t: 'start' }); };
+  $('startBtn').onclick = function () { send({ t: 'start' }); };
   function renderOver() {
     var r = st.results || [];
     $('oTitle').textContent = r.length ? r[0].name + ' is RED DEER RICH!' : 'GAME OVER';
@@ -396,7 +364,7 @@
       var pr = st.props[+sp], col = ownerRgb(+sp);
       if (!col) { el.style.backgroundImage = ''; el.style.boxShadow = ''; continue; }
       var rgb = Math.round(col[0]) + ',' + Math.round(col[1]) + ',' + Math.round(col[2]);
-      var oa = pr[2] ? C.ownerTint.phoneFillHocked : C.ownerTint.phoneFill; el.style.backgroundImage = 'linear-gradient(rgba(' + rgb + ',' + oa + '),rgba(' + rgb + ',' + oa + '))';   // v0.2.1: x0.8
+      el.style.backgroundImage = 'linear-gradient(rgba(' + rgb + ',' + (pr[2] ? 0.2 : 0.42) + '),rgba(' + rgb + ',' + (pr[2] ? 0.2 : 0.42) + '))';
       el.style.boxShadow = 'inset 0 0 0 2px rgb(' + rgb + ')';
       var own = el.querySelector('.own'); if (own) { own.style.background = 'rgb(' + rgb + ')'; own.style.opacity = pr[2] ? 0.45 : 1; }
     }

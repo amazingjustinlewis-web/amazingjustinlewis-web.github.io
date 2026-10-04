@@ -228,7 +228,7 @@
     c.font = '900 ' + Math.round(k * 0.11) + 'px Fredoka, system-ui, sans-serif';
     c.strokeText('RICH', 0, k * 0.056); c.fillStyle = '#f2c230'; c.fillText('RICH', 0, k * 0.056);
     c.font = '700 ' + Math.round(k * 0.024) + 'px Fredoka, system-ui, sans-serif'; c.fillStyle = '#3a2a10';
-    c.fillText('a Zero to Phi game \u00b7 v0.2.1', 0, k * 0.125);
+    c.fillText('a Zero to Phi game \u00b7 v0.2', 0, k * 0.125);
     c.restore();
     // card decks
     var dw = k * 0.14, dh = k * 0.09;      // v0.1.1: the card piles sit in the open middle of the mini city
