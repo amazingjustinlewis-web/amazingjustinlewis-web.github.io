@@ -1,4 +1,6 @@
-# Red Deer Rich - v0.1.2 first playable (placeholder art)
+> Archived copy of v0.1.1 (kept so the old version stays playable). The current build is one folder up.
+
+# Red Deer Rich - v0.1.1 first playable (placeholder art)
 
 A Red Deer-themed property trading board game by Zero to Phi. The spec is the design doc
 (`red-deer-rich/design-doc.md`, outside this repo). Same architecture as Zombie Tiles: plain
@@ -27,24 +29,6 @@ Live: https://amazingjustinlewis-web.github.io/games/red-deer-rich/
 | Regular | nothing pre-dealt, $1,800 each | none (last one standing) |
 | Medium | 3 deeds each (2 each for 4+ players), $1,500 each | 45 min, then the richest wins |
 | Quick | ALL ownable spaces dealt out round-robin, $1,500 each | 30 min, then the richest wins |
-
-### What's new in v0.1.2 (fixes from the first Chromecast + projector night)
-- **Bigger watch QR** in the TV's bottom-right corner: 26vh (about 2.9x the old one; 21vh with 7+ players), pure
-  black on white with a full 4-module quiet zone and low error correction (fewer, bigger squares), so it scans off a
-  slightly blurry wall projector. The podium gets a smaller "Scan to join the next game" QR in its corner.
-- **Sound fix ("chunky blips" after a while on the Chromecast).** Cause: the Youth Centre punk loop never really
-  stopped (far away it idled at 3% volume) and built about 7 fresh oscillator / noise voices every 8th note, and the
-  proximity volume rewrote two audio parameters every animation frame. On a slow device that piles up until the audio
-  thread underruns. Now the band is one fixed set of nodes driven by automation from a 0.5 s lookahead timer
-  (it resyncs instead of bursting if the device stalls), proximity writes are throttled, one-shot sounds have a voice
-  cap and per-sound rate limits and are disconnected as soon as they end, there's a brick-wall limiter, a larger
-  'playback' audio buffer, 24 kHz audio on TV sticks (Chromecast / Tizen / webOS / Fire TV), no faint far-away loop on
-  slow devices, and the audio device sleeps after 30 s of silence. In a test game, WebAudio nodes created per minute
-  dropped from about 5,000 to about 360. Laser Range and Zombie Tiles got the same treatment for their one-shot sounds.
-- **New game** button for the host phone (My Stuff, and the host panel on the Board tab): "Are you sure?", then
-  the game ends with no winner and everyone goes back to setup in the same room. No re-scanning, no recasting.
-- The host phone now stays with whoever joined first. Before, starting a game shuffled the seats and the host
-  controls could silently move to another phone.
 
 ### What's new in v0.1.1
 - Owned tiles are washed and outlined in the owner's colour (TV and phone Board tab). After a private deal the tiles
@@ -131,7 +115,7 @@ helper's existing effects:
 | results podium | pickup / kill flashes in the winner's colour, a second escape wave, then over |
 | bankrupt | crunch |
 
-## Placeholder or not done yet (v0.1.2)
+## Placeholder or not done yet (v0.1.1)
 - Art is all placeholder: coloured tokens with initials and shapes, flat tiles, simple silhouettes.
 - Perks still coming: Justin's Count-In, Drew's High Kick and Walt's Shortcut.
 - No drag-and-drop in the trade builder (tap to toggle instead).
@@ -161,7 +145,5 @@ helper's existing effects:
 - `sim.js` runs headless node AI games with invariant checks.
 - `e2e.py` drives the TV plus two phones: join, carousel, host, PAY UP caught, slipped and grace lock, trade, counter, hold-accept, stale, decline, chat and lock.
 - `e2e3.py` covers v0.1.1: modes, auctions, mid-game AI, the phone board, leave game, observer + vote, and the sky arc.
-- `e2e4.py` covers v0.1.2: watch QR size and corner, quiet zone, decoding from blurred 1080p / 720p screenshots, New Game (confirm, cancel, back to setup, restart), podium join QR.
-- `audio.py` counts WebAudio nodes per minute in a live AI game, old engine vs new.
 - `podium.py` plays quick games to the end and checks the results podium (titles, stats, net worth, fireworks).
 - `tv_full.py` checks Auto-Crush, Youth Centre proximity volume, `lowfx`, and full AI games in the browser.

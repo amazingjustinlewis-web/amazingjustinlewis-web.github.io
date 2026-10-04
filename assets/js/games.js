@@ -161,10 +161,17 @@ window.GAMES = [
     ],
     versions: [
       {
-        id: 'v0.1.1',
-        name: 'Auctions + living city',
+        id: 'v0.1.2',
+        name: 'Projector night fixes',
         current: true,
         play: 'games/red-deer-rich/index.html',
+        notes: 'Fixes from the first Chromecast and projector night: a much bigger, high-contrast watch QR in the corner that scans off a blurry wall projector, a sound engine rebuild that stops the "chunky blips" on slow TV sticks, a New Game button on the host phone (with an are-you-sure) that takes everyone back to setup without recasting, and the host phone no longer moves to someone else when the game starts.'
+      },
+      {
+        id: 'v0.1.1',
+        name: 'Auctions + living city',
+        current: false,
+        play: 'games/red-deer-rich/v0.1.1/index.html',
         notes: 'Auctions on every passed deed (bid from any phone), Regular / Medium / Quick game lengths, AI players can fill empty seats mid-game, owner-colour tiles that drift slowly after private deals, a 3 s PASS DICE lock, a follow camera, tumbling dice, bigger tile names, a sun and moon arc, a first-pass mini city in the middle of the board, a zoomable phone board with player dots, AI stand-ins you can take back by rejoining, Leave Game (hand your seat to an AI, split your stuff, give it to one player or throw it in the pot), an Observer mode from a small QR on the TV (watch, then ask to take over an AI seat), an end-of-game podium with fun titles, fireworks and a Hue celebration, and phone play on older Samsung TV browsers.'
       },
       {

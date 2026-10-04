@@ -299,7 +299,6 @@
     });
     out = out || '<div class="info">No deeds yet. Land on one and hit BUY!</div>';
     if (!me.bankrupt) out += '<button class="ghost leavebtn" data-act="leave">\uD83D\uDEAA Leave game\u2026</button>';
-    if (st.me.vip) out += '<button class="ghost leavebtn" data-act="newgame">\uD83D\uDD04 New game (back to setup)\u2026</button>';
     setH($('stuffSide'), out);
   }
 
@@ -434,13 +433,12 @@
     var el = $('seatBox'); if (!el) return;
     if (!st.me.vip) { setH(el, ''); return; }
     var n = st.players.length, max = st.maxPlayers || C.maxPlayers, full = n >= max;
-    setH(el, '<div class="seatbox"><b>Seats ' + n + '/' + max + '</b> <span class="muted small">(host)</span><div class="row"><button class="ghost" data-seat="level">AI: ' + esc(C.ai.levels[ui.aiLevel].label) + '</button><button class="go" data-seat="add"' + (full ? ' disabled' : '') + '>+ ADD AI PLAYER</button></div><div class="muted small">' + (full ? 'The table is full.' : 'Fills an empty seat right now: the AI starts at The Halfway with starting cash and plays after everyone else.') + '</div><button class="ghost newgamebtn" data-seat="new">\uD83D\uDD04 NEW GAME (back to setup)</button></div>');
+    setH(el, '<div class="seatbox"><b>Seats ' + n + '/' + max + '</b> <span class="muted small">(host)</span><div class="row"><button class="ghost" data-seat="level">AI: ' + esc(C.ai.levels[ui.aiLevel].label) + '</button><button class="go" data-seat="add"' + (full ? ' disabled' : '') + '>+ ADD AI PLAYER</button></div><div class="muted small">' + (full ? 'The table is full.' : 'Fills an empty seat right now: the AI starts at The Halfway with starting cash and plays after everyone else.') + '</div></div>');
   }
   $('seatBox').addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return; var k = b.getAttribute('data-seat');
     if (k === 'level') { var L = Object.keys(C.ai.levels); ui.aiLevel = L[(L.indexOf(ui.aiLevel) + 1) % L.length]; renderSeats(); }
     if (k === 'add') { send({ t: 'addAI', level: ui.aiLevel }); vib(30); SFX.play('buy'); toast('Adding an AI player\u2026'); }
-    if (k === 'new') openNewGame();
   });
 
   // v0.1.1: pinch-zoom + pan (touch), wheel (desktop), + / - / fit buttons; taps still select spaces
@@ -621,7 +619,6 @@
       case 'pass': send({ t: 'pass' }); vib(40); SFX.play('click'); break;
       case 'build': case 'sell': case 'hock': case 'unhock': send({ t: act, sp: +sp }); vib(25); if (act === 'build') SFX.play('build'); break;
       case 'leave': openLeave(1); break;
-      case 'newgame': openNewGame(); break;
       case 'newDeal': openBuilder(typeof ui.thread === 'number' ? ui.thread : null); break;
       case 'dealWith': openBuilder(+el.getAttribute('data-pid')); break;
       case 'closeBuilder': ui.builder = null; renderMsgs(); break;
@@ -656,18 +653,10 @@
       '<button class="big-btn ghostbtn" data-lv="cancel">CANCEL</button>';
     el.innerHTML = '<div class="lv-card">' + h + '</div>'; el.hidden = false; vib(20);
   }
-  // v0.1.2: the host can end the game and bring everyone back to setup (same room, nobody re-scans, no recasting)
-  function openNewGame() {
-    var el = $('leaveBox');
-    el.innerHTML = '<div class="lv-card"><div class="lv-t">Start a new game?</div><div class="lv-s">Are you sure? <b>This game ends right now</b> for everyone, with no winner. All phones go back to setup in the same room, so nobody has to scan again.</div>' +
-      '<button class="big-btn red" data-lv="newgame-yes">YES, NEW GAME</button><button class="big-btn ghostbtn" data-lv="cancel">CANCEL</button></div>';
-    el.hidden = false; vib(20);
-  }
   $('leaveBox').addEventListener('click', function (e) {
     var b = e.target.closest('[data-lv]'); if (!b || b.disabled) { if (e.target === $('leaveBox')) $('leaveBox').hidden = true; return; }
     var k = b.getAttribute('data-lv');
     if (k === 'cancel') { $('leaveBox').hidden = true; return; }
-    if (k === 'newgame-yes') { send({ t: 'newGame' }); $('leaveBox').hidden = true; vib([30, 30, 90]); toast('Back to setup\u2026'); return; }
     if (k === 'sure') { openLeave(2); return; }
     send({ t: 'leaveGame', how: k, to: k === 'one' ? +b.getAttribute('data-to') : null }); $('leaveBox').hidden = true; vib([40, 40, 120]);
   });

@@ -1,5 +1,5 @@
 /* =====================================================================
-   RED DEER RICH - TUNABLE NUMBERS  v0.1.2 (first playable, placeholder art)
+   RED DEER RICH - TUNABLE NUMBERS  v0.1.1 (first playable, placeholder art)
    ---------------------------------------------------------------------
    Every rule number lives here. Change a value, save, refresh the TV.
    Phones read the same file (colours, labels, characters).

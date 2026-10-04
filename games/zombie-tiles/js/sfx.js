@@ -3,16 +3,35 @@
 (function (root) {
   'use strict';
   var AC = null, out = null, noiseBuf = null;
-  var S = { muted: false };
+  var S = { muted: false, buses: 0, peakBuses: 0, dropped: 0, last: {}, lastSound: 0 };
+  /* audio audit, Oct 2026 (same fix as Red Deer Rich v0.1.2, for slow TV sticks): bigger 'playback' buffer, a limiter,
+     every sound plays into its own small bus that is disconnected once the sound is over (so finished nodes are
+     freed), a cap on overlapping sounds, per-sound rate limits, and the context sleeps when nothing has played. */
+  var SLOW_UA = /CrKey|Tizen|Web0S|webOS|SMART-TV|SmartTV|AFT[A-Z]|BRAVIA|Android TV/i.test((root.navigator && root.navigator.userAgent) || '');
+  var MAX_BUSES = SLOW_UA ? 8 : 16;
+  var MIN_GAP = { pop: 60, ouch: 60, crunch: 80, victory: 120, charge: 120, scream: 120, boom: 150, tone: 35 };
   function live() {
     if (!AC) {
-      AC = new (root.AudioContext || root.webkitAudioContext)();
-      var comp = AC.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6;
-      out = AC.createGain(); out.gain.value = 0.9; out.connect(comp); comp.connect(AC.destination);
+      var Ctx = root.AudioContext || root.webkitAudioContext, opts = { latencyHint: 'playback' }; if (SLOW_UA) opts.sampleRate = 24000;
+      try { AC = new Ctx(opts); } catch (e) { AC = new Ctx(); }
+      var lim = AC.createDynamicsCompressor(); lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.15;
+      out = AC.createGain(); out.gain.value = 0.8; out.connect(lim); lim.connect(AC.destination);
     }
-    if (AC.state === 'suspended' && AC.resume) AC.resume();
+    if (AC.state === 'suspended' && AC.resume) try { AC.resume().then(function () { S.autoSusp = false; }, function () {}); } catch (e) {}
     return AC;
   }
+  function bus(A, name, life) {      // null = skip this sound (too many at once, or the same sound just played)
+    var now = Date.now(), gap = MIN_GAP[name] || 0;
+    if (gap && now - (S.last[name] || 0) < gap) { S.dropped++; return null; }
+    if (S.buses >= MAX_BUSES) { S.dropped++; return null; }
+    S.last[name] = now; S.lastSound = now;
+    var g = A.createGain(); g.connect(out); S.buses++; if (S.buses > S.peakBuses) S.peakBuses = S.buses;
+    setTimeout(function () { try { g.disconnect(); } catch (e) {} S.buses--; }, life * 1000);
+    return g;
+  }
+  setInterval(function () {        // nothing for 30 s: let the audio device sleep (live() wakes it on the next sound)
+    if (AC && AC.state === 'running' && AC.suspend && S.buses <= 0 && Date.now() - S.lastSound > 30000) try { S.autoSusp = true; AC.suspend().then(null, function () {}); } catch (e) {}
+  }, 5000);
   function noise(A) {
     if (!noiseBuf || noiseBuf.sampleRate !== A.sampleRate) {
       var n = A.sampleRate, b = A.createBuffer(1, n, A.sampleRate), d = b.getChannelData(0);
@@ -123,12 +142,13 @@
   };
   S.play = function (name, o) {
     if (S.muted || !SOUNDS[name]) return;
-    try { var A = live(); SOUNDS[name](A, out, A.currentTime + 0.01, o || {}); } catch (e) {}
+    try { var A = live(), b = bus(A, name, 2.5 + ((o && o.dur) || 0)); if (b) SOUNDS[name](A, b, A.currentTime + 0.02, o || {}); } catch (e) {}
   };
   S.tone = function (f, d, type, vol, slide) {
     if (S.muted) return;
-    try { var A = live(); osc(A, out, type || 'square', f, slide || 0, A.currentTime, d, vol || 0.06, 0.002); } catch (e) {}
+    try { var A = live(), b = bus(A, 'tone', d + 0.5); if (b) osc(A, b, type || 'square', f, slide || 0, A.currentTime + 0.01, d, vol || 0.06, 0.002); } catch (e) {}
   };
+  S.stats = function () { return { buses: S.buses, peakBuses: S.peakBuses, dropped: S.dropped, state: AC ? AC.state : 'none', rate: AC ? AC.sampleRate : 0 }; };
   // test helper: render a sound offline and return its peak and length (seconds above -40 dB)
   S.render = function (name, o) {
     var Off = root.OfflineAudioContext || root.webkitOfflineAudioContext, A = new Off(1, 44100 * 3, 44100);

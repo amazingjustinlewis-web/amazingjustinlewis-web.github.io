@@ -203,13 +203,6 @@ button.wide { min-width: 22vh; }
 @keyframes abump { 0% { transform: translate(-50%, -50%) scale(1.07); } 100% { transform: translate(-50%, -50%) scale(1); } }
 
 /* v0.1.1 discreet mid-game QR: observers can watch and ask for an AI seat */
-#watchQr { display: flex; align-items: flex-end; justify-content: flex-end; margin-top: 1vh; flex: none; font-size: 1.9vh; color: #fff; line-height: 1.3; text-align: right; }
+#watchQr { display: flex; align-items: center; gap: 1vh; margin-top: 1vh; opacity: .8; font-size: 1.4vh; color: var(--muted); line-height: 1.25; }
 #watchQr[hidden] { display: none; }
-#watchQr canvas { width: 26vh; height: 26vh; background: #fff; flex: none; image-rendering: pixelated; box-shadow: 0 0 0 .5vh #fff; border-radius: .3vh; }
-#side.crowd #watchQr canvas { width: 21vh; height: 21vh; }
-#side { overflow: hidden; }
-#log { min-height: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; flex-shrink: 1; }
-#results > #resQr { position: absolute; right: 2.5vh; bottom: 2.5vh; display: flex; align-items: flex-end; font-size: 1.6vh; color: #fff; text-align: right; line-height: 1.3; z-index: 2; }
-#resQr[hidden] { display: none; }
-#resQr canvas { width: 13vh; height: 13vh; background: #fff; image-rendering: pixelated; box-shadow: 0 0 0 .4vh #fff; border-radius: .3vh; }
-#watchQr span, #resQr span { margin-right: 1.2vh; }
+#watchQr canvas { width: 9vh; height: 9vh; border-radius: .6vh; background: #fff; flex: none; }

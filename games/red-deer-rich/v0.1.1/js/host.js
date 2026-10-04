@@ -11,15 +11,7 @@
   var game = new Game({ seed: Q.get('seed') ? +Q.get('seed') : undefined, speed: +(Q.get('speed') || FAST) });
   var rnd = new window.RDRRender($('board'), game);
   var net = null, lightsDoor = null, clients = {}, dirty = true, phoneDirty = true, lastVersion = -1;
-  // the host phone is sticky: the first person to join stays host even after the turn order shuffles the seats
-  // (v0.1.2 fix: before, whoever went first among the humans silently became host when the game started)
-  var vipCid = null;
-  var vip = function () {
-    var i, p;
-    if (vipCid) for (i = 0; i < game.players.length; i++) { p = game.players[i]; if (!p.ai && p.clientId === vipCid) return p; }
-    for (i = 0; i < game.players.length; i++) { p = game.players[i]; if (!p.ai && p.clientId) { vipCid = p.clientId; return p; } }
-    return null;
-  };
+  var vip = function () { for (var i = 0; i < game.players.length; i++) if (!game.players[i].ai && game.players[i].clientId) return game.players[i]; return null; };
   var inGame = function () { return game.phase === 'play'; };
   window.RDR = { game: game, render: rnd, sfx: SFX };
   if (Q.has('mute')) SFX.setMuted(true);
@@ -222,10 +214,7 @@
     $('roundInfo').innerHTML = inGame() ? 'Round <b>' + g.round + '</b>' + (g.timed() ? ' \u00b7 <b>' + clock(Math.max(0, g.endsAt - g.now)) + '</b> left' : '') : '';
     $('potInfo').innerHTML = g.rules.jackpot && g.phase !== 'lobby' ? 'Dirt Lot pot <b>' + money(g.pot) + '</b>' : '';
     var wq = $('watchQr'), showQ = inGame() && net && net.status === 'online';
-    if (wq.hidden === !!showQ) { wq.hidden = !showQ; if (showQ && wq._code !== net.code) { wq._code = net.code; drawQr(controllerUrl(net.code) + '&watch=1', $('qrSmall'), 4, 'L'); } }
-    $('side').classList.toggle('crowd', g.players.length > 6);
-    var rq = $('resQr'), showR = g.phase === 'over' && net && net.status === 'online';
-    if (rq.hidden === !!showR) { rq.hidden = !showR; if (showR && rq._code !== net.code) { rq._code = net.code; drawQr(controllerUrl(net.code), $('qrRes'), 4, 'L'); } }
+    if (wq.hidden === !!showQ) { wq.hidden = !showQ; if (showQ && wq._code !== net.code) { wq._code = net.code; drawQr(controllerUrl(net.code) + '&watch=1', $('qrSmall')); } }
     $('joinInfo').innerHTML = net && net.status === 'online' && g.phase !== 'lobby' ? 'Join: <b>' + net.code + '</b>' : '';
     $('lightInfo').innerHTML = lightsOn() ? '\uD83D\uDCA1 <b>Hue</b>' : '';
     $('fxInfo').textContent = 'FX ' + (crush.rung ? 'crush ' + crush.rung : 'full') + (crush.auto ? '' : ' (manual)') + ' \u00b7 ' + Math.round(crush.fps) + ' fps';
@@ -293,9 +282,7 @@
     requestWake(); dirty = phoneDirty = true;
   }
   function toLobby() {
-    game.phase = 'lobby'; game.turn = null; game.resetBoard();
-    game.players.filter(function (p) { return p.left; }).forEach(function (p) { game.removePlayer(p.id); });   // people who left come back as themselves (observers below)
-    game.changed();
+    game.phase = 'lobby'; game.turn = null; game.resetBoard(); game.changed();
     for (var oc in clients) if (clients[oc].observer) {      // watchers join the next game automatically
       var np = game.addPlayer({ name: clients[oc].name, clientId: oc });
       if (np) { clients[oc] = { pid: np.id, conn: clients[oc].conn, seen: Date.now(), lastSent: '' }; send(clients[oc].conn, { t: 'welcome', pid: np.id, room: net.code }); }
@@ -389,12 +376,12 @@
     var base = location.protocol === 'file:' ? C.liveControllerUrl : location.href.replace(/[^/]*([?#].*)?$/, '') + 'controller.html';
     return base + '?room=' + code + (LOCAL ? '&local=1' : '');
   }
-  function drawQr(text, cvEl, quiet, ecc) {     // quiet = white border in modules (4 is the spec; projectors like it); ecc 'L' = fewer, bigger modules
+  function drawQr(text, cvEl) {
     var cv = cvEl || $('qr'), ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
     try {
-      var qr = window.qrcode(0, ecc || 'M'); qr.addData(text); qr.make();
-      var n = qr.getModuleCount(), cell = Math.floor(cv.width / (n + 2 * (quiet || 2))), off = Math.floor((cv.width - cell * n) / 2);
-      ctx.fillStyle = quiet ? '#000' : '#14121b';
+      var qr = window.qrcode(0, 'M'); qr.addData(text); qr.make();
+      var n = qr.getModuleCount(), cell = Math.floor(cv.width / (n + 4)), off = Math.floor((cv.width - cell * n) / 2);
+      ctx.fillStyle = '#14121b';
       for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (qr.isDark(r, c)) ctx.fillRect(off + c * cell, off + r * cell, cell, cell);
     } catch (e) { ctx.fillStyle = '#000'; ctx.fillText('QR unavailable', 20, 150); }
   }
@@ -450,12 +437,6 @@
     var isVip = vip() === pl, lobbyish = game.phase === 'lobby' || game.phase === 'over';
     if (m.t === 'start') { if (isVip && lobbyish) startGame(); return; }
     if (m.t === 'toLobby') { if (isVip && game.phase === 'over') toLobby(); return; }
-    if (m.t === 'newGame') {        // v0.1.2: host phone ends the game early and takes everyone back to setup
-      if (!isVip || game.phase === 'lobby') return;
-      big('NEW GAME', (pl ? pl.name : 'The host') + ' started a new game: back to setup', '#fff');
-      if (game.phase !== 'over') game.addLog('The host ended the game: back to setup.');
-      toLobby(); return;
-    }
     if (m.t === 'leave') { if (lobbyish) { game.removePlayer(pl.id); delete clients[conn._cid]; dirty = phoneDirty = true; } return; }
     if (m.t === 'name') { if (lobbyish) { pl.name = String(m.name || '').replace(/[<>]/g, '').trim().slice(0, 12) || pl.name; game.changed(); } return; }
     if (m.t === 'hue') { if (isVip) hueIntent(m); return; }
@@ -727,6 +708,6 @@
   }
   if (Q.has('autostart') && game.players.length >= 2) setTimeout(startGame, 300);
   window.RDR.startGame = startGame; window.RDR.addAI = addAI; window.RDR.toLobby = toLobby; window.RDR.crush = crush; window.RDR.setRung = setRung;
-  window.RDR.net = function () { return net; }; window.RDR.lights = function () { return lights; }; window.RDR.clients = clients; window.RDR.phoneState = phoneState; window.RDR.controllerUrl = controllerUrl;
+  window.RDR.net = function () { return net; }; window.RDR.lights = function () { return lights; }; window.RDR.clients = clients; window.RDR.phoneState = phoneState;
   requestAnimationFrame(loop);
 })();

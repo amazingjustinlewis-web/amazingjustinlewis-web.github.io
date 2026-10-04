@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Red Deer Rich - TV | Zero to Phi</title>
-<meta name="description" content="Red Deer Rich: a Red Deer property-trading board game for the TV with phones as controllers. First playable v0.1.2 by Zero to Phi.">
+<meta name="description" content="Red Deer Rich: a Red Deer property-trading board game for the TV with phones as controllers. First playable v0.1.1 by Zero to Phi.">
 <meta name="theme-color" content="#14121b">
 <meta name="robots" content="noindex">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
@@ -15,14 +15,14 @@
 
 <header id="top">
   <div class="brand"><img src="assets/logo.svg" alt="" width="49" height="40"><span>ZERO&nbsp;TO&nbsp;PHI</span></div>
-  <div class="title">RED DEER <span class="rich">RICH</span><span class="proto">FIRST PLAYABLE v0.1.2</span></div>
+  <div class="title">RED DEER <span class="rich">RICH</span><span class="proto">FIRST PLAYABLE v0.1.1</span></div>
   <div class="top-right"><span id="roundInfo"></span><span id="potInfo"></span><span id="joinInfo"></span><span id="lightInfo"></span><span id="fxInfo"></span></div>
 </header>
 
 <aside id="side">
   <div id="cards"></div>
   <div id="log"></div>
-  <div id="watchQr" hidden><span>Scan to <b>watch</b><br>or take over<br>an AI seat</span><canvas id="qrSmall" width="450" height="450"></canvas></div>
+  <div id="watchQr" hidden><canvas id="qrSmall" width="160" height="160"></canvas><span>Scan to <b>watch</b><br>or take over an AI seat</span></div>
 </aside>
 
 <div id="banner" hidden><canvas id="bannerDice" width="200" height="100"></canvas><div class="btxt"><div class="who" id="bWho"></div><div class="what" id="bWhat"></div></div></div>
@@ -73,7 +73,6 @@
   <div id="ground"></div>
   <p class="res-key">Net worth = cash + property + shops</p>
   <div class="res-btns"><button id="againBtn" class="start">PLAY AGAIN</button><button id="lobbyBtn" class="ghost">CHANGE PLAYERS</button></div>
-  <div id="resQr" hidden><span>Scan to join<br>the next game</span><canvas id="qrRes" width="300" height="300"></canvas></div>
   <p class="res-note">Press Enter to play again &middot; the first player can also restart from their phone.</p>
 </section>
 
