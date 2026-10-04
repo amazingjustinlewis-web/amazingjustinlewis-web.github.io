@@ -1,5 +1,5 @@
 /* =====================================================================
-   RED DEER RICH - TUNABLE NUMBERS  v0.1.1 (first playable, placeholder art)
+   RED DEER RICH - TUNABLE NUMBERS  v0.1 (first playable, placeholder art)
    ---------------------------------------------------------------------
    Every rule number lives here. Change a value, save, refresh the TV.
    Phones read the same file (colours, labels, characters).
@@ -31,31 +31,15 @@
 
     // ---- PAY UP race ----
     payup: {
-      graceMs: 3000,             // v0.1.1: PASS DICE (and ROLL AGAIN) is locked this long after every landing / finished move
+      graceMs: 1500,             // PASS DICE is disabled this long after landing
       kidGraceMs: 4000,          // Kid Mode grace
       loudAmpMs: 1000,           // Mike's perk: his window stays open this much longer after PASS DICE
       aiReflexMs: { easy: [4000, 7000], normal: [2000, 4000], ruthless: [800, 1500] },
-      aiPassDiceMs: [3000, 5500] // AI movers pass the dice after a random pause in this range (never before graceMs)
+      aiPassDiceMs: [2200, 4800] // AI movers pass the dice after a random pause in this range
     },
-
-    // ---- TV presentation (v0.1.1) ----
-    tradeFadeMs: 10000,          // after a private deal, traded tiles drift from the old owner's colour to the new one
-    ownerTint: { fill: 0.30, fillHocked: 0.16, border: 0.95 },   // owned tiles: owner-colour wash + border
-    sky: { on: true, alpha: 0.2, sunR: 0.075, moonR: 0.06, sunLight: 0.16, moonLight: 0.12, horizon: 1.06, height: 0.86 },   // v0.1.1 sun + moon arc: ~80% transparent over the board
-    camera: { zoom: 1.32, zoomTauMs: 650, followTauMs: 420, outHoldMs: 1300, marginTiles: 1.3 },
-    boardDice: { holdMs: 1700, fadeMs: 350 },
-    tileText: { nameScale: 0.235, priceScale: 0.215, minPx: 12, cornerScale: 1.55 },   // v0.1 was 0.15 x tile width for names (and 0.135 for prices)
 
     // ---- modes ----
-    // v0.1.1: three game lengths. deal: 0 = nothing pre-dealt, 'some' = dealSmall/dealBig deeds each, 'all' = every ownable space dealt out
-    modes: {
-      regular: { label: 'Regular', blurb: 'Nothing pre-dealt', startCash: 1800, deal: 0, minutes: 0 },
-      medium:  { label: 'Medium', blurb: 'Some deeds pre-dealt, 45 min', startCash: 1500, deal: 'some', minutes: 45 },
-      quick:   { label: 'Quick', blurb: 'ALL deeds pre-dealt, 30 min', startCash: 1500, deal: 'all', minutes: 30 }
-    },
-    quick: { dealSmall: 3, dealBig: 2 },   // Medium: 3 deeds each for 2-3 players, 2 each for 4+
-    // v0.1.1 auctions: a deed nobody buys goes under the hammer
-    auction: { start: 10, steps: [20, 50, 100], ms: 8000, aiReactMs: [700, 2600] },
+    quick: { startCash: 1500, minutes: 45, dealSmall: 3, dealBig: 2 },   // 3 deeds each for 2-3 players, 2 each for 4+
     maxRounds: 250,              // safety net: after this many rounds the richest player wins (keeps AI-only games finite)
 
     // ---- house rules (lobby defaults) ----
@@ -66,8 +50,6 @@
       payupRace: true,           // off = classic automatic rent
       perks: true,               // character perks
       kidMode: false,            // 4 s PAY UP grace
-      auctions: true,            // a passed-on deed goes to auction (every phone can bid)
-      camera: true,              // TV camera gently follows the active player (also the C key on the TV)
       evenBuild: true,           // build evenly across a colour set
       shopShortage: true         // limited bank stock
     },
@@ -131,7 +113,6 @@
     living: {
       cycleMin: 12, nightShare: 1 / 3, blendSec: 30,   // 12-minute day/night cycle, 1/3 night, 30 s dawn/dusk blends
       walkersDay: 14, walkersNight: 9, cars: 4,
-      cityCars: 3, cityPegs: 8,                        // v0.1.1 mini city: extra little cars on the inner ring road + peg-people (capped; halved / dropped by Auto-Crush)
       crushBelowFps: 24, crushAfterSec: 5,            // Auto-Crush: drop a rung if fps < 24 for 5 s
       recoverAboveFps: 28, recoverAfterSec: 30,
       maxRung: 6

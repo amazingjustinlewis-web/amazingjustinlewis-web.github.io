@@ -46,7 +46,6 @@
     card: function (A, t) { hiss(A, out, t, 0.12, 0.25, 'bandpass', 2500, 1.5); tone(A, out, 'sine', NOTE(79), NOTE(86), t + 0.05, 0.15, 0.1); },
     whiteout: function (A, t) { var s = noise(A), f = A.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 2; f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(3000, t + 0.6); f.frequency.exponentialRampToValueAtTime(300, t + 1.4); s.connect(f); f.connect(env(A, out, t, 0.2, 0.45, 1.3)); s.start(t); s.stop(t + 1.6); },
     whistle: function (A, t) { [0, 0.45].forEach(function (d) { var o1 = tone(A, out, 'sawtooth', NOTE(74), 0, t + d, 0.35, 0.07, 0.03); var o2 = tone(A, out, 'sawtooth', NOTE(78), 0, t + d, 0.35, 0.06, 0.03); }); },
-    pop: function (A, t) { tone(A, out, 'sine', 260, 50, t, 0.3, 0.35); hiss(A, out, t, 0.25, 0.35, 'lowpass', 1500); for (var i = 0; i < 6; i++) hiss(A, out, t + 0.25 + Math.random() * 0.5, 0.03, 0.12, 'highpass', 4000); },
     boom: function (A, t) { tone(A, out, 'sine', 120, 30, t, 0.7, 0.9); hiss(A, out, t, 0.6, 0.7, 'lowpass', 1200); tone(A, out, 'square', 60, 30, t, 0.3, 0.3); },
     caught: function (A, t) { SOUNDS.cash(A, t); tone(A, out, 'sawtooth', NOTE(64), 0, t, 0.12, 0.15); tone(A, out, 'sawtooth', NOTE(71), 0, t + 0.1, 0.25, 0.15); },
     tiptoe: function (A, t) { [0, 0.22, 0.44, 0.66].forEach(function (d, i) { tone(A, out, 'triangle', NOTE(i % 2 ? 79 : 76), 0, t + d, 0.08, 0.12); }); },

@@ -1,6 +1,4 @@
-/* RED DEER RICH - TV board renderer (v0.1.1, placeholder art drawn in code).
-   v0.1.1: owner-colour wash on owned tiles (drawn per frame so private deals can crossfade slowly),
-   a gentle follow camera and dice that tumble across the board.
+/* RED DEER RICH - TV board renderer (v0.1, placeholder art drawn in code).
    Static tiles are cached on an offscreen canvas and only redrawn when ownership/Shops change.
    Per frame: living-board bits (walkers, cars, the Upper Level Youth Centre band), tokens, day/night tint.
    Graphics rung (Auto-Crush): 0 full ... 6 flat tiles. Gameplay visuals (tokens, highlights) are never crushed. */
@@ -16,7 +14,6 @@
     this.ycCv = document.createElement('canvas'); this.ycKey = '';
     this.walkers = []; this.cars = []; this.walkT = 0; this.cycleStart = Date.now() - 60000;
     this.dpr = 1; this.W = 0; this.H = 0;
-    this.fades = {}; this.cam = { z: 1, x: 0, y: 0, turnKey: '', turnAt: 0, init: false }; this.bd = null;
   }
   var P = R.prototype;
   P.layout = function (W, H, box, dprCap) {
@@ -55,11 +52,6 @@
     var pa = [parseInt(a.substr(1, 2), 16), parseInt(a.substr(3, 2), 16), parseInt(a.substr(5, 2), 16)], pb = [parseInt(b.substr(1, 2), 16), parseInt(b.substr(3, 2), 16), parseInt(b.substr(5, 2), 16)];
     return 'rgb(' + pa.map(function (v, k) { return Math.round(v + (pb[k] - v) * t); }).join(',') + ')';
   }
-  function hexRgb(h) { if (Array.isArray(h)) return h; h = String(h || '#888888'); if (h.length === 4) h = '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3]; return [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)]; }
-  function mixRgb(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
-  function rgba(c, a) { return 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + a + ')'; }
-  function smooth(t) { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }
-  R.hexRgb = hexRgb; R.mixRgb = mixRgb;
   P.money = function (n) { return '$' + Math.round(n).toLocaleString('en-US'); };
 
   // ------------------------------------------------------------------ static layer
@@ -84,134 +76,44 @@
     for (var i = 0; i < 40; i++) this.drawTile(c, i, flat);
     c.strokeStyle = '#1b1b1b'; c.lineWidth = 2; c.strokeRect(1, 1, S0 - 2, S0 - 2); c.strokeRect(cs, cs, inner, inner);
   };
-  // v0.1.1 mini city (first pass, placeholder art): a cartoony Red Deer crowds the inner perimeter right against the
-  // property ring, thins toward the middle (logo + card piles), with roads, sidewalks, the river and parks.
-  // Everything here is drawn once into the static board canvas; lit windows at night are one cached overlay.
-  function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-  var CITY = { walkIn: 0.088, cityIn: 0.098, ringRoad: 0.272, ringW: 0.022, spokes: [0.31, 0.5, 0.69], spokeW: 0.024 };
-  P.riverPts = function (x0, y0, k) {
-    if (this._rv && this._rv.k === k) return this._rv.pts;
-    var pts = [], seg = [[[-10 / k, 0.35], [0.3, 0.2], [0.25, 0.8], [0.55, 0.72]], [[0.55, 0.72], [0.8, 0.66], [0.75, 1.0], [1.05, 0.95]]];
-    seg.forEach(function (q) { for (var i = 0; i <= 24; i++) { var t = i / 24, u = 1 - t; pts.push([u * u * u * q[0][0] + 3 * u * u * t * q[1][0] + 3 * u * t * t * q[2][0] + t * t * t * q[3][0], u * u * u * q[0][1] + 3 * u * u * t * q[1][1] + 3 * u * t * t * q[2][1] + t * t * t * q[3][1]]); } });
-    this._rv = { k: k, pts: pts }; return pts;
-  };
-  P.cityLayout = function (k) {
-    if (this._city && this._city.k === k) return this._city;
-    var rnd = mulberry(1913), out = [], trees = [], self = this, rv = this.riverPts(0, 0, k);
-    var yc = this.ycBox(), ycx = (yc.x - this.cs) / k, ycy = (yc.y - this.cs) / k, ycw = yc.w / k, ych = yc.h / k;
-    function nearRiver(x, y, m) { for (var i = 0; i < rv.length; i++) { var dx = rv[i][0] - x, dy = rv[i][1] - y; if (dx * dx + dy * dy < m * m) return true; } return false; }
-    function blocked(x, y, w, h) {
-      if (x < ycx + ycw + 0.02 && x + w > ycx - 0.02 && y < ycy + ych + 0.05 && y + h > ycy - 0.02) return true;      // Upper Level + its street
-      var cx = x + w / 2, cy = y + h / 2;
-      if (nearRiver(cx, cy, 0.034 + Math.max(w, h) * 0.32)) return true;
-      for (var s = 0; s < CITY.spokes.length; s++) { var sp = CITY.spokes[s], hw = CITY.spokeW / 2 + 0.006;
-        if (x < sp + hw && x + w > sp - hw && (y < CITY.ringRoad || y + h > 1 - CITY.ringRoad)) return true;       // vertical cross streets (top/bottom bands)
-        if (y < sp + hw && y + h > sp - hw && (x < CITY.ringRoad || x + w > 1 - CITY.ringRoad)) return true; }     // horizontal (left/right bands)
-      for (var j = 0; j < out.length; j++) { var o = out[j]; if (x < o.x + o.w + 0.003 && x + w + 0.003 > o.x && y < o.y + o.h + 0.003 && y + h + 0.003 > o.y) return true; }
-      return false;
-    }
-    var pal = ['#c96a4a', '#d9b98a', '#a8b4c0', '#7aa0b8', '#e0d2b0', '#b85a5a', '#8fb08a', '#d8a860', '#9a8ab8', '#c0c8cc'];
-    var rows = [[CITY.cityIn + 0.004, 0.072, 1], [CITY.cityIn + 0.08, 0.052, 0.8], [CITY.cityIn + 0.136, 0.034, 0.45]];   // [depth from the ring, row depth, chance]
-    [0, 1, 2, 3].forEach(function (side) {
-      rows.forEach(function (r, ri) {
-        var u = side % 2 ? CITY.ringRoad : CITY.cityIn, end = 1 - u;
-        while (u < end - 0.02) {
-          var len = 0.026 + rnd() * 0.04, dep = r[1] * (0.75 + rnd() * 0.25);
-          if (u + len > end) len = end - u;
-          if (rnd() < r[2] && len > 0.018) {
-            var d0 = r[0] + rnd() * (r[1] - dep) * 0.5, x, y, w, h;
-            if (side === 0) { x = u; y = d0; w = len; h = dep; } else if (side === 2) { x = u; y = 1 - d0 - dep; w = len; h = dep; }
-            else if (side === 1) { x = 1 - d0 - dep; y = u; w = dep; h = len; } else { x = d0; y = u; w = dep; h = len; }
-            if (!blocked(x, y, w, h)) {
-              var downtown = x > 0.55 && y < 0.5, tall = (ri === 0 ? 0.4 : 0.25) + rnd() * 0.6 + (downtown ? 0.6 : 0);
-              out.push({ x: x, y: y, w: w, h: h, col: pal[Math.floor(rnd() * pal.length)], ht: tall, side: side, roof: rnd() });
-            } else if (ri > 0 && rnd() < 0.5 && !nearRiver(x + w / 2, y + h / 2, 0.03)) trees.push([x + w / 2, y + h / 2, 0.012 + rnd() * 0.008]);
-          } else if (rnd() < 0.55) { var tx = side % 2 ? (side === 1 ? 1 - r[0] - r[1] / 2 : r[0] + r[1] / 2) : u + len / 2, ty = side % 2 ? u + len / 2 : (side === 0 ? r[0] + r[1] / 2 : 1 - r[0] - r[1] / 2); if (!nearRiver(tx, ty, 0.03)) trees.push([tx, ty, 0.01 + rnd() * 0.01]); }
-          u += len + 0.005 + rnd() * 0.004;
-        }
-      });
-    });
-    for (var t = 0; t < 26; t++) {        // a sprinkle of trees in the open middle
-      var tx2 = 0.3 + rnd() * 0.4, ty2 = 0.3 + rnd() * 0.4;
-      if (tx2 > 0.18 && tx2 < 0.66 && ty2 > 0.42 && ty2 < 0.6) continue;     // keep the logo clear
-      if (!nearRiver(tx2, ty2, 0.035)) trees.push([tx2, ty2, 0.009 + rnd() * 0.009]);
-    }
-    this._city = { k: k, b: out, trees: trees }; return this._city;
-  };
   P.drawInnerArt = function (c, cs, inner) {
-    var x0 = cs, y0 = cs, k = inner, self = this, L = this.cityLayout(k);
+    var x0 = cs, y0 = cs, k = inner;
+    // the Red Deer River winding through the middle, parks along it
     c.save(); c.beginPath(); c.rect(x0, y0, k, k); c.clip();
-    // parks + the Red Deer River winding through
     c.fillStyle = '#9cc77a';
     [[0.18, 0.72, 0.13], [0.42, 0.58, 0.09], [0.7, 0.86, 0.11], [0.12, 0.25, 0.08]].forEach(function (p) { c.beginPath(); c.ellipse(x0 + p[0] * k, y0 + p[1] * k, p[2] * k * 1.4, p[2] * k, 0.4, 0, Math.PI * 2); c.fill(); });
-    c.fillStyle = 'rgba(214,206,184,0.55)';        // paved city blocks under the buildings band
-    [[CITY.cityIn, CITY.cityIn, 1 - 2 * CITY.cityIn, CITY.ringRoad - CITY.cityIn], [CITY.cityIn, 1 - CITY.ringRoad, 1 - 2 * CITY.cityIn, CITY.ringRoad - CITY.cityIn],
-     [CITY.cityIn, CITY.ringRoad, CITY.ringRoad - CITY.cityIn, 1 - 2 * CITY.ringRoad], [1 - CITY.ringRoad, CITY.ringRoad, CITY.ringRoad - CITY.cityIn, 1 - 2 * CITY.ringRoad]].forEach(function (q) { c.fillRect(x0 + q[0] * k, y0 + q[1] * k, q[2] * k, q[3] * k); });
-    var rv = this.riverPts(x0, y0, k);
-    c.strokeStyle = '#7fb06a'; c.lineWidth = k * 0.075; c.lineCap = 'round'; c.lineJoin = 'round';     // green banks
-    c.beginPath(); rv.forEach(function (p, i) { if (i) c.lineTo(x0 + p[0] * k, y0 + p[1] * k); else c.moveTo(x0 + p[0] * k, y0 + p[1] * k); }); c.stroke();
-    c.strokeStyle = '#5fa8d8'; c.lineWidth = k * 0.045; c.stroke();
+    c.strokeStyle = '#5fa8d8'; c.lineWidth = k * 0.045; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(x0 - 10, y0 + k * 0.35); c.bezierCurveTo(x0 + k * 0.3, y0 + k * 0.2, x0 + k * 0.25, y0 + k * 0.8, x0 + k * 0.55, y0 + k * 0.72);
+    c.bezierCurveTo(x0 + k * 0.8, y0 + k * 0.66, x0 + k * 0.75, y0 + k * 1.0, x0 + k * 1.05, y0 + k * 0.95); c.stroke();
     c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = k * 0.008; c.stroke();
-    // inner ring road + cross streets (bridges where they meet the river)
-    var road = function (ax, ay, bx, by, w) { c.strokeStyle = '#6a6a72'; c.lineWidth = w; c.lineCap = 'butt'; c.beginPath(); c.moveTo(x0 + ax * k, y0 + ay * k); c.lineTo(x0 + bx * k, y0 + by * k); c.stroke(); };
-    var ri0 = this.ringInset('road') / k, rr0 = CITY.ringRoad, sw = Math.max(3, CITY.spokeW * k);
-    CITY.spokes.forEach(function (s) { road(s, ri0, s, rr0, sw); road(s, 1 - rr0, s, 1 - ri0, sw); road(ri0, s, rr0, s, sw); road(1 - rr0, s, 1 - ri0, s, sw); });
-    c.strokeStyle = 'rgba(225,220,205,0.9)'; c.lineWidth = Math.max(2, k * 0.006); c.strokeRect(x0 + (rr0 - CITY.ringW * 0.95) * k, y0 + (rr0 - CITY.ringW * 0.95) * k, (1 - 2 * rr0 + CITY.ringW * 1.9) * k, (1 - 2 * rr0 + CITY.ringW * 1.9) * k);
-    c.strokeStyle = '#6a6a72'; c.lineWidth = Math.max(3, CITY.ringW * k); c.strokeRect(x0 + rr0 * k, y0 + rr0 * k, (1 - 2 * rr0) * k, (1 - 2 * rr0) * k);
-    c.strokeStyle = 'rgba(255,230,120,0.45)'; c.lineWidth = 1; c.setLineDash([5, 6]); c.strokeRect(x0 + rr0 * k, y0 + rr0 * k, (1 - 2 * rr0) * k, (1 - 2 * rr0) * k); c.setLineDash([]);
-    // outer road ring (cars) + sidewalks either side of it, between the property ring and the city
+    // little city grid downtown (right side) + road ring
+    c.strokeStyle = 'rgba(80,70,60,0.18)'; c.lineWidth = 1;
+    for (var gx = 0.62; gx < 0.98; gx += 0.06) { c.beginPath(); c.moveTo(x0 + gx * k, y0 + k * 0.08); c.lineTo(x0 + gx * k, y0 + k * 0.5); c.stroke(); }
+    for (var gy = 0.1; gy < 0.5; gy += 0.06) { c.beginPath(); c.moveTo(x0 + k * 0.6, y0 + gy * k); c.lineTo(x0 + k * 0.97, y0 + gy * k); c.stroke(); }
     var ri = this.ringInset('road');
-    c.strokeStyle = 'rgba(70,70,78,0.7)'; c.lineWidth = Math.max(4, k * 0.024); c.strokeRect(x0 + ri, y0 + ri, k - 2 * ri, k - 2 * ri);
-    c.strokeStyle = 'rgba(255,230,120,0.55)'; c.lineWidth = 1; c.setLineDash([6, 6]); c.strokeRect(x0 + ri, y0 + ri, k - 2 * ri, k - 2 * ri); c.setLineDash([]);
-    var si = this.ringInset('walk'), wi = CITY.walkIn * k;
-    c.strokeStyle = 'rgba(235,228,210,0.85)'; c.lineWidth = Math.max(3, k * 0.014); c.strokeRect(x0 + si, y0 + si, k - 2 * si, k - 2 * si);
-    c.lineWidth = Math.max(2, k * 0.009); c.strokeRect(x0 + wi, y0 + wi, k - 2 * wi, k - 2 * wi);
-    // trees
-    L.trees.forEach(function (t) { var x = x0 + t[0] * k, y = y0 + t[1] * k, r = t[2] * k; c.fillStyle = 'rgba(0,0,0,0.15)'; c.beginPath(); c.arc(x + r * 0.3, y + r * 0.35, r, 0, 7); c.fill(); c.fillStyle = '#4f8f45'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.fillStyle = '#6aab5a'; c.beginPath(); c.arc(x - r * 0.3, y - r * 0.3, r * 0.5, 0, 7); c.fill(); });
-    // buildings: footprint roof + a front face (fake 3D toward the viewer), soft shadow, rooftop bits
-    L.b.slice().sort(function (a, b) { return a.y + a.h - (b.y + b.h); }).forEach(function (bd) {
-      var x = x0 + bd.x * k, y = y0 + bd.y * k, w = bd.w * k, h = bd.h * k, face = Math.min(h * 0.55, k * 0.012 * (0.6 + bd.ht));
-      c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x + face * 0.6, y + face * 0.6, w, h);
-      c.fillStyle = shade(bd.col, -0.28); c.fillRect(x, y + h - face, w, face);                                  // front face
-      c.fillStyle = 'rgba(255,240,190,0.55)'; var nw = Math.max(1, Math.floor(w / Math.max(4, k * 0.012)));
-      for (var i = 0; i < nw; i++) c.fillRect(x + (i + 0.3) * w / nw, y + h - face * 0.72, w / nw * 0.4, face * 0.4);
-      c.fillStyle = bd.col; c.fillRect(x, y, w, h - face);                                                        // roof
-      c.strokeStyle = shade(bd.col, -0.45); c.lineWidth = 1; c.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-      c.strokeStyle = shade(bd.col, 0.25); c.strokeRect(x + 2.5, y + 2.5, Math.max(0, w - 5), Math.max(0, h - face - 4));
-      if (bd.roof > 0.55 && w > 8 && h > 10) { c.fillStyle = shade(bd.col, -0.15); c.fillRect(x + w * 0.55, y + h * 0.18, w * 0.28, h * 0.22); }
-    });
+    c.strokeStyle = 'rgba(70,70,78,0.55)'; c.lineWidth = Math.max(4, k * 0.022); c.lineCap = 'butt';
+    c.strokeRect(x0 + ri, y0 + ri, k - 2 * ri, k - 2 * ri);
+    c.strokeStyle = 'rgba(255,230,120,0.5)'; c.lineWidth = 1; c.setLineDash([6, 6]); c.strokeRect(x0 + ri, y0 + ri, k - 2 * ri, k - 2 * ri); c.setLineDash([]);
+    var si = this.ringInset('walk');
+    c.strokeStyle = 'rgba(235,228,210,0.8)'; c.lineWidth = Math.max(3, k * 0.014); c.strokeRect(x0 + si, y0 + si, k - 2 * si, k - 2 * si);
     c.restore();
-  };
-  function shade(hx, f) { var r = hexRgb(hx); return 'rgb(' + r.map(function (v) { return Math.round(f < 0 ? v * (1 + f) : v + (255 - v) * f); }).join(',') + ')'; }
-  // lit windows at night: one cached overlay faded in by darkness
-  P.cityNight = function () {
-    var S0 = this.S, key = [S0, this.dpr].join(); if (this._cnKey === key && this._cnCv) return this._cnCv;
-    var cv = this._cnCv || (this._cnCv = document.createElement('canvas')), d = this.dpr, k = S0 - 2 * this.cs, x0 = this.cs, y0 = this.cs;
-    cv.width = Math.round(S0 * d); cv.height = Math.round(S0 * d); var c = cv.getContext('2d'); c.setTransform(d, 0, 0, d, 0, 0);
-    var L = this.cityLayout(k), rnd = mulberry(77);
-    L.b.forEach(function (bd) {
-      var x = x0 + bd.x * k, y = y0 + bd.y * k, w = bd.w * k, h = bd.h * k, face = Math.min(h * 0.55, k * 0.012 * (0.6 + bd.ht)), nw = Math.max(1, Math.floor(w / Math.max(4, k * 0.012)));
-      for (var i = 0; i < nw; i++) if (rnd() < 0.7) { c.fillStyle = rnd() < 0.8 ? '#ffd27a' : '#bfe0ff'; c.fillRect(x + (i + 0.3) * w / nw, y + h - face * 0.72, w / nw * 0.4, face * 0.4); }
-      if (rnd() < 0.35) { c.fillStyle = 'rgba(255,210,120,0.35)'; c.fillRect(x + w * 0.2, y + h * 0.2, w * 0.6, (h - face) * 0.5); }
-    });
-    this._cnKey = key; return cv;
   };
   P.ringInset = function (kind) { var k = this.S - 2 * this.cs; return kind === 'road' ? k * 0.055 : k * 0.018; };
   P.drawCentre = function (c, cs, inner, flat) {
-    var cx = cs + inner * 0.44, cy = cs + inner * 0.48, k = inner;
+    var cx = cs + inner * 0.42, cy = cs + inner * 0.5, k = inner;
     c.save(); c.translate(cx, cy); c.rotate(-0.12);
     c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.font = '900 ' + Math.round(k * 0.092) + 'px Fredoka, system-ui, sans-serif';
+    c.font = '900 ' + Math.round(k * 0.105) + 'px Fredoka, system-ui, sans-serif';
     c.lineWidth = k * 0.022; c.strokeStyle = '#3a1a00'; c.lineJoin = 'round';
-    c.strokeText('RED DEER', 0, -k * 0.052); c.fillStyle = '#d8262f'; c.fillText('RED DEER', 0, -k * 0.052);
-    c.font = '900 ' + Math.round(k * 0.11) + 'px Fredoka, system-ui, sans-serif';
-    c.strokeText('RICH', 0, k * 0.056); c.fillStyle = '#f2c230'; c.fillText('RICH', 0, k * 0.056);
-    c.font = '700 ' + Math.round(k * 0.024) + 'px Fredoka, system-ui, sans-serif'; c.fillStyle = '#3a2a10';
-    c.fillText('a Zero to Phi game \u00b7 first playable v0.1.1', 0, k * 0.125);
+    c.strokeText('RED DEER', 0, -k * 0.06); c.fillStyle = '#d8262f'; c.fillText('RED DEER', 0, -k * 0.06);
+    c.font = '900 ' + Math.round(k * 0.125) + 'px Fredoka, system-ui, sans-serif';
+    c.strokeText('RICH', 0, k * 0.065); c.fillStyle = '#f2c230'; c.fillText('RICH', 0, k * 0.065);
+    c.font = '600 ' + Math.round(k * 0.026) + 'px Fredoka, system-ui, sans-serif'; c.fillStyle = '#3a2a10';
+    c.fillText('a Zero to Phi game \u00b7 first playable v0.1', 0, k * 0.15);
     c.restore();
     // card decks
-    var dw = k * 0.14, dh = k * 0.09;      // v0.1.1: the card piles sit in the open middle of the mini city
-    [['HAILSTONE', '#4a6a8a', '#cfe4f5', cs + k * 0.29, cs + k * 0.28, 0.2], ['POTLUCK', '#c8642a', '#ffe1b8', cs + k * 0.48, cs + k * 0.615, -0.15]].forEach(function (d) {
+    var dw = k * 0.17, dh = k * 0.11;
+    [['HAILSTONE', '#4a6a8a', '#cfe4f5', cs + k * 0.14, cs + k * 0.12, 0.2], ['POTLUCK', '#c8642a', '#ffe1b8', cs + k * 0.48, cs + k * 0.8, -0.15]].forEach(function (d) {
       c.save(); c.translate(d[3] + dw / 2, d[4] + dh / 2); c.rotate(d[5]);
       for (var s = 2; s >= 0; s--) { rr(c, -dw / 2 + s * 2, -dh / 2 + s * 2, dw, dh, 6); c.fillStyle = s ? 'rgba(0,0,0,0.25)' : d[1]; c.fill(); }
       c.strokeStyle = d[2]; c.lineWidth = 2; rr(c, -dw / 2 + 4, -dh / 2 + 4, dw - 8, dh - 8, 4); c.stroke();
@@ -239,32 +141,30 @@
     if (s.type === 'prop') { c.fillStyle = gcol; c.fillRect(band[0], band[1], band[2], band[3]); c.strokeRect(band[0] + .5, band[1] + .5, band[2] - 1, band[3] - 1); }
     // text area
     var ta = r.side === 'b' ? [0, bt, r.w, r.h - bt] : r.side === 't' ? [0, 0, r.w, r.h - bt] : r.side === 'l' ? [0, 0, r.w - bt, r.h] : [bt, 0, r.w - bt, r.h];
-    // v0.1.1: keep the owner strip on the outer edge clear of the lettering
-    var th = Math.max(4, this.w * 0.1);
-    if (r.side === 'b') ta[3] -= th; else if (r.side === 't') { ta[1] += th; ta[3] -= th; } else if (r.side === 'l') { ta[0] += th; ta[2] -= th; } else ta[2] -= th;
-    // v0.1.1: lettering ~55% bigger (readable on a wall projector), wrapped over as many lines as fit;
-    // a long single word is squeezed horizontally (fillText maxWidth) rather than shrunk
-    var TT = C.tileText, fs = Math.max(TT.minPx, Math.round(this.w * TT.nameScale)), pfs = Math.max(TT.minPx, Math.round(this.w * TT.priceScale));
-    var priceTxt = s.price ? this.money(s.price) : s.type === 'tax' ? 'PAY ' + this.money(s.amount) : '';
-    var label = s.type === 'potluck' ? 'POTLUCK' : s.type === 'hail' ? 'HAIL-STONE' : s.short;
-    var maxW = ta[2] - 4, iconH = (s.type === 'prop') ? 0 : Math.min(ta[2], ta[3]) * 0.3, lh = 1.0;
+    var fs = Math.max(8, Math.round(this.w * 0.15));
+    c.fillStyle = '#1d1d1d'; c.textAlign = 'center'; c.textBaseline = 'top';
     c.font = '700 ' + fs + 'px Fredoka, system-ui, sans-serif';
-    var lines = wrap(c, label, maxW);
-    var room = ta[3] - (priceTxt ? pfs + 4 : 0) - 6;
-    if (lines.length * fs * lh + iconH > room) iconH = Math.max(0, room - lines.length * fs * lh);
-    c.fillStyle = '#141414'; c.textAlign = 'center'; c.textBaseline = 'top';
-    var ty = ta[1] + (horiz ? 4 : Math.max(2, (ta[3] - lines.length * fs * lh - iconH - (priceTxt ? pfs : 0)) / 2));
-    lines.forEach(function (ln, k) { c.fillText(ln, ta[0] + ta[2] / 2, ty + k * fs * lh, maxW); });
+    var label = s.type === 'potluck' ? 'POTLUCK' : s.type === 'hail' ? 'HAIL-STONE' : s.short;
+    var lines = wrap(c, label, ta[2] - 6).slice(0, 3);
+    var iconH = (s.type === 'prop') ? 0 : Math.min(ta[2], ta[3]) * 0.34;
+    var ty = ta[1] + (horiz ? 5 : (ta[3] - lines.length * fs * 1.05 - iconH - fs) / 2);
+    lines.forEach(function (ln, k) { c.fillText(ln, ta[0] + ta[2] / 2, ty + k * fs * 1.05); });
     // icon for special spaces
-    var icx = ta[0] + ta[2] / 2, icy = ty + lines.length * fs * lh + iconH * 0.55;
-    if (!flat && iconH > 6) this.icon(c, s, icx, icy, iconH);
-    // price / amount: bold, at the outer side of the text area
-    c.font = '800 ' + pfs + 'px Fredoka, sans-serif'; c.textBaseline = 'bottom'; c.fillStyle = '#111';
-    var py = ta[1] + ta[3] - 2;
-    if (priceTxt) c.fillText(priceTxt, ta[0] + ta[2] / 2, py, maxW);
+    var icx = ta[0] + ta[2] / 2, icy = ty + lines.length * fs * 1.05 + iconH * 0.62;
+    if (!flat) this.icon(c, s, icx, icy, iconH);
+    // price / amount at the outer side
+    c.font = '600 ' + Math.max(7, Math.round(fs * 0.9)) + 'px Fredoka, sans-serif'; c.textBaseline = 'bottom'; c.fillStyle = '#333';
+    var priceTxt = s.price ? this.money(s.price) : s.type === 'tax' ? 'PAY ' + this.money(s.amount) : '';
+    var py = horiz ? (r.side === 'b' ? r.h - 3 : ta[1] + ta[3] - 3) : ta[3] - 3;
+    if (r.side === 't') py = ta[3] - 3;
+    if (priceTxt) c.fillText(priceTxt, ta[0] + ta[2] / 2, py);
     // ownership: owner-colour strip on the outer edge + Shops on the band
     if (pr && pr.owner >= 0) {
-      c.strokeStyle = '#fff'; c.lineWidth = 1;   // (owner colour itself is drawn per frame in drawOwners)
+      var o = g.byId(pr.owner), oc = o ? o.color : '#888', th = Math.max(4, this.w * 0.09);
+      c.fillStyle = oc;
+      if (r.side === 'b') c.fillRect(0, r.h - th, r.w, th); else if (r.side === 't') c.fillRect(0, 0, r.w, th);
+      else if (r.side === 'l') c.fillRect(0, 0, th, r.h); else c.fillRect(r.w - th, 0, th, r.h);
+      c.strokeStyle = '#fff'; c.lineWidth = 1;
       if (pr.shops > 0) this.drawShops(c, band, pr.shops, horiz);
       if (pr.hocked) {
         c.fillStyle = 'rgba(40,40,50,0.55)'; c.fillRect(0, 0, r.w, r.h);
@@ -316,18 +216,18 @@
     c.restore();
   };
   P.drawCorner = function (c, i, r, flat) {
-    var w = r.w, fs = Math.max(13, Math.round(w * 0.105 * C.tileText.cornerScale)), mw = w * 0.94;
+    var w = r.w, fs = Math.max(9, Math.round(w * 0.105));
     c.textAlign = 'center'; c.textBaseline = 'middle';
     if (i === 0) {        // THE HALFWAY: highway sign
       c.fillStyle = '#e9f0e0'; c.fillRect(1, 1, w - 2, w - 2);
       c.fillStyle = '#1f6f3a'; rr(c, w * 0.08, w * 0.2, w * 0.84, w * 0.42, 6); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 2; rr(c, w * 0.11, w * 0.23, w * 0.78, w * 0.36, 4); c.stroke();
       c.fillStyle = '#fff'; c.font = '700 ' + Math.round(fs * 0.62) + 'px Fredoka, sans-serif';
-      c.fillText('\u2190 Calgary    Edmonton \u2192', w / 2, w * 0.3, w * 0.76);
-      c.font = '900 ' + Math.round(fs * 1.05) + 'px Fredoka, sans-serif'; c.fillText('RED DEER', w / 2, w * 0.46, w * 0.74);
+      c.fillText('\u2190 Calgary    Edmonton \u2192', w / 2, w * 0.3);
+      c.font = '900 ' + Math.round(fs * 1.05) + 'px Fredoka, sans-serif'; c.fillText('RED DEER', w / 2, w * 0.46);
       c.fillStyle = '#5a4a30'; c.fillRect(w * 0.3, w * 0.62, w * 0.05, w * 0.1); c.fillRect(w * 0.65, w * 0.62, w * 0.05, w * 0.1);
-      c.fillStyle = '#1d1d1d'; c.font = '900 ' + fs + 'px Fredoka, sans-serif'; c.fillText('THE HALFWAY', w / 2, w * 0.1, mw);
-      c.font = '700 ' + Math.round(fs * 0.8) + 'px Fredoka, sans-serif'; c.fillStyle = '#1f6f3a'; c.fillText('COLLECT $250', w / 2, w * 0.79, mw);
-      c.fillStyle = '#d8262f'; c.font = '900 ' + Math.round(fs * 1.2) + 'px Fredoka, sans-serif'; c.fillText('\u2190', w / 2, w * 0.94);
+      c.fillStyle = '#1d1d1d'; c.font = '900 ' + fs + 'px Fredoka, sans-serif'; c.fillText('THE HALFWAY', w / 2, w * 0.1);
+      c.font = '700 ' + Math.round(fs * 0.8) + 'px Fredoka, sans-serif'; c.fillStyle = '#1f6f3a'; c.fillText('COLLECT $250', w / 2, w * 0.82);
+      c.fillStyle = '#d8262f'; c.font = '900 ' + Math.round(fs * 1.2) + 'px Fredoka, sans-serif'; c.fillText('\u2190', w / 2, w * 0.93);
     } else if (i === 10) {   // STUCK IN THE SNOWBANK / Just Driving By (outer strip on the left and bottom)
       var st = w * 0.27;
       c.fillStyle = '#f2ead6'; c.fillRect(0, 0, w, w);
@@ -338,31 +238,31 @@
         c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(st + (w - st) * 0.62, w * 0.6, w * 0.22, w * 0.08, -0.2, 0, 7); c.fill();
       }
       c.strokeStyle = '#2a2a2a'; c.strokeRect(st, 0, w - st, w - st);
-      c.fillStyle = '#103a6a'; c.font = '900 ' + Math.round(fs * 0.8) + 'px Fredoka, sans-serif'; c.fillText('STUCK IN THE', st + (w - st) / 2, w * 0.1, w - st - 4); c.fillText('SNOWBANK', st + (w - st) / 2, w * 0.235, w - st - 4);
-      c.save(); c.translate(st / 2, (w - st) / 2); c.rotate(-Math.PI / 2); c.fillStyle = '#333'; c.font = 'italic 700 ' + Math.round(fs * 0.7) + 'px Fredoka, sans-serif'; c.fillText('Just', 0, 0, w - st); c.restore();
-      c.font = 'italic 700 ' + Math.round(fs * 0.7) + 'px Fredoka, sans-serif'; c.fillStyle = '#333'; c.fillText('Driving By', w * 0.6, w - st / 2, w - st - 4);
+      c.fillStyle = '#103a6a'; c.font = '900 ' + Math.round(fs * 0.8) + 'px Fredoka, sans-serif'; c.fillText('STUCK IN THE', st + (w - st) / 2, w * 0.1); c.fillText('SNOWBANK', st + (w - st) / 2, w * 0.2);
+      c.save(); c.translate(st / 2, (w - st) / 2); c.rotate(-Math.PI / 2); c.fillStyle = '#333'; c.font = 'italic 700 ' + Math.round(fs * 0.7) + 'px Fredoka, sans-serif'; c.fillText('Just', 0, 0); c.restore();
+      c.font = 'italic 700 ' + Math.round(fs * 0.7) + 'px Fredoka, sans-serif'; c.fillStyle = '#333'; c.fillText('Driving By', w * 0.58, w - st / 2);
     } else if (i === 20) {   // THE SECRET DIRT LOT
       c.fillStyle = '#d9cfae'; c.fillRect(1, 1, w - 2, w - 2);
-      c.fillStyle = '#1d1d1d'; c.font = '900 ' + Math.round(fs * 0.85) + 'px Fredoka, sans-serif'; c.fillText('THE SECRET', w / 2, w * 0.1, mw); c.fillText('DIRT LOT', w / 2, w * 0.235, mw);
+      c.fillStyle = '#1d1d1d'; c.font = '900 ' + Math.round(fs * 0.85) + 'px Fredoka, sans-serif'; c.fillText('THE SECRET', w / 2, w * 0.1); c.fillText('DIRT LOT', w / 2, w * 0.2);
       if (!flat) {
         c.fillStyle = '#5f8f3a'; [[0.12, 0.5], [0.88, 0.45], [0.1, 0.85], [0.9, 0.86]].forEach(function (p) { c.beginPath(); c.arc(p[0] * w, p[1] * w, w * 0.1, 0, 7); c.fill(); });
         c.fillStyle = '#8a6a42'; c.beginPath(); c.ellipse(w / 2, w * 0.62, w * 0.3, w * 0.2, 0, 0, 7); c.fill();
         c.strokeStyle = 'rgba(60,40,20,0.5)'; c.lineWidth = 2; c.beginPath(); c.moveTo(w * 0.3, w * 0.7); c.lineTo(w * 0.65, w * 0.5); c.moveTo(w * 0.35, w * 0.76); c.lineTo(w * 0.7, w * 0.56); c.stroke();
         c.fillStyle = '#9a3a20'; c.fillRect(w * 0.48, w * 0.6, w * 0.2, w * 0.08); c.fillStyle = '#5a2a10'; c.fillRect(w * 0.5, w * 0.56, w * 0.1, w * 0.05);   // the rusted truck
         c.strokeStyle = '#2a6aa8'; c.lineWidth = 1.5; c.strokeRect(w * 0.3, w * 0.58, w * 0.08, w * 0.07);            // lawn chair
-        [[0.22, 0.42], [0.5, 0.38], [0.78, 0.42], [0.2, 0.8], [0.8, 0.78]].forEach(function (p) {          // looming digital meters, red eyes
+        [[0.24, 0.32], [0.5, 0.28], [0.76, 0.32], [0.2, 0.78], [0.8, 0.76]].forEach(function (p) {          // looming digital meters, red eyes
           var mx = p[0] * w, my = p[1] * w; c.fillStyle = '#333'; c.fillRect(mx - 1.5, my, 3, w * 0.1); c.fillRect(mx - w * 0.05, my - w * 0.08, w * 0.1, w * 0.09);
           c.fillStyle = '#ff2a2a'; c.fillRect(mx - w * 0.03, my - w * 0.06, w * 0.02, w * 0.015); c.fillRect(mx + w * 0.01, my - w * 0.06, w * 0.02, w * 0.015);
         });
         c.fillStyle = '#fff6d6'; c.fillRect(w * 0.06, w * 0.62, w * 0.17, w * 0.08); c.fillStyle = '#5a3a1a'; c.font = '700 ' + Math.round(fs * 0.55) + 'px Fredoka, sans-serif'; c.fillText('Shhh.', w * 0.145, w * 0.66);
       }
-      c.fillStyle = '#5a3a1a'; c.font = '700 ' + Math.round(fs * 0.62) + 'px Fredoka, sans-serif'; c.fillText(this.g.rules.jackpot ? 'JACKPOT ' + this.money(this.g.pot) : 'FREE REST STOP', w / 2, w * 0.94, mw);
+      c.fillStyle = '#5a3a1a'; c.font = '700 ' + Math.round(fs * 0.62) + 'px Fredoka, sans-serif'; c.fillText(this.g.rules.jackpot ? 'JACKPOT ' + this.money(this.g.pot) : 'FREE REST STOP', w / 2, w * 0.94);
     } else if (i === 30) {   // WHITEOUT! HIT THE DITCH
       c.fillStyle = '#dfe9f5'; c.fillRect(1, 1, w - 2, w - 2);
       if (!flat) { c.strokeStyle = 'rgba(255,255,255,0.95)'; c.lineWidth = 3; for (var s2 = 0; s2 < 7; s2++) { c.beginPath(); c.arc(w / 2, w * 0.55, w * (0.06 + s2 * 0.045), s2, s2 + 3.6); c.stroke(); } c.fillStyle = '#7c8fa8'; c.fillRect(w * 0.2, w * 0.82, w * 0.6, 3); }
-      c.fillStyle = '#103a6a'; c.font = '900 ' + Math.round(fs * 1.0) + 'px Fredoka, sans-serif'; c.fillText('WHITEOUT!', w / 2, w * 0.12, mw);
-      c.font = '800 ' + Math.round(fs * 0.75) + 'px Fredoka, sans-serif'; c.fillText('HIT THE DITCH', w / 2, w * 0.255, mw);
-      c.font = '600 ' + Math.round(fs * 0.6) + 'px Fredoka, sans-serif'; c.fillStyle = '#333'; c.fillText('Go to the Snowbank', w / 2, w * 0.92, mw);
+      c.fillStyle = '#103a6a'; c.font = '900 ' + Math.round(fs * 1.0) + 'px Fredoka, sans-serif'; c.fillText('WHITEOUT!', w / 2, w * 0.13);
+      c.font = '800 ' + Math.round(fs * 0.75) + 'px Fredoka, sans-serif'; c.fillText('HIT THE DITCH', w / 2, w * 0.25);
+      c.font = '600 ' + Math.round(fs * 0.6) + 'px Fredoka, sans-serif'; c.fillStyle = '#333'; c.fillText('Go to the Snowbank', w / 2, w * 0.92);
     }
   };
 
@@ -492,9 +392,6 @@
     this.walkers = []; this.cars = [];
     var kinds = ['jogger', 'stroller', 'hivis', 'dog', 'shopper', 'kid', 'barhop', 'scrubs', 'rig', 'cat'];
     for (var i = 0; i < 18; i++) this.walkers.push({ u: rnd(), v: (rnd() < 0.5 ? 1 : -1) * (0.004 + rnd() * 0.006), kind: kinds[i % kinds.length], frame: 0, col: ['#e85a5a', '#5a9ae8', '#e8c35a', '#7ad87a', '#c87ae8', '#f08a3a'][i % 6], night: i % 10 >= 6 });
-    this.cityCars = []; this.pegs = [];
-    for (var q = 0; q < 4; q++) this.cityCars.push({ u: q / 4 + rnd() * 0.08, v: (q % 2 ? -1 : 1) * (0.008 + rnd() * 0.006), col: ['#f2c230', '#5a8ad8', '#e85a5a', '#eaeaea'][q] });
-    for (var m = 0; m < 10; m++) this.pegs.push({ u: rnd(), v: (rnd() < 0.5 ? 1 : -1) * (0.002 + rnd() * 0.003), ring: m % 2, col: ['#e85a5a', '#5a9ae8', '#e8c35a', '#7ad87a', '#c87ae8', '#f08a3a', '#4ac8c0', '#f2f2f2', '#d86aa8', '#8a6a4a'][m], ph: rnd() * 6 });
     for (var k = 0; k < 6; k++) this.cars.push({ u: k / 6 + rnd() * 0.05, v: 0.012 + rnd() * 0.008, col: ['#d8262f', '#2a6ad8', '#f2f2f2', '#2b2b2b', '#e8b02a', '#3aa85a'][k] });
   };
   P.ringPos = function (u, inset) {      // point on a rectangle ring inside the tiles
@@ -509,8 +406,6 @@
     this.walkT += dt; if (this.walkT < 100) return; var steps = this.walkT / 100; this.walkT = 0;
     this.walkers.forEach(function (w) { w.u += w.v * steps * 0.12; w.frame = (w.frame + 1) % 4; });
     this.cars.forEach(function (cr) { cr.u += cr.v * steps * 0.12; });
-    (this.cityCars || []).forEach(function (cr) { cr.u += cr.v * steps * 0.12; });
-    (this.pegs || []).forEach(function (pg) { pg.u += pg.v * steps * 0.12; pg.ph += steps * 0.9; });
   };
   P.drawLiving = function (c, dark, paused) {
     if (this.rung >= 5) return;
@@ -524,21 +419,6 @@
       c.fillStyle = 'rgba(160,210,255,0.9)'; c.fillRect(x - (horiz ? L * 0.15 : Wd * 0.35), y - (horiz ? Wd * 0.35 : L * 0.15), horiz ? L * 0.3 : Wd * 0.7, horiz ? Wd * 0.7 : L * 0.3);
       if (night) { c.fillStyle = 'rgba(255,240,170,0.9)'; var hx = [L / 2, 0, -L / 2, 0][p.dir], hy = [0, L / 2, 0, -L / 2][p.dir]; c.beginPath(); c.arc(x + hx, y + hy, sz * 0.25, 0, 7); c.fill(); }
     });
-    // v0.1.1 mini city: little cars on the inner ring road, peg-people on the city sidewalks
-    var kk = this.S - 2 * this.cs, rIn = CITY.ringRoad * kk, wIn = CITY.walkIn * kk, csz = sz * 0.8;
-    if (this.rung < 2) (this.cityCars || []).slice(0, LV.cityCars || 3).forEach(function (cr) {
-      var p = self.ringPos(cr.u, rIn), horiz = p.dir % 2 === 0, L2 = csz * 1.5, W2 = csz * 0.8, off = csz * 0.35 * (cr.v > 0 ? 1 : -1) * (p.dir < 2 ? 1 : -1);
-      var x = p.x + (horiz ? 0 : off), y = p.y + (horiz ? off : 0);
-      c.fillStyle = cr.col; c.fillRect(x - (horiz ? L2 : W2) / 2, y - (horiz ? W2 : L2) / 2, horiz ? L2 : W2, horiz ? W2 : L2);
-      c.fillStyle = 'rgba(160,210,255,0.85)'; c.fillRect(x - (horiz ? L2 * 0.12 : W2 * 0.3), y - (horiz ? W2 * 0.3 : L2 * 0.12), horiz ? L2 * 0.24 : W2 * 0.6, horiz ? W2 * 0.6 : L2 * 0.24);
-      if (night) { c.fillStyle = 'rgba(255,240,170,0.85)'; c.beginPath(); c.arc(x, y, csz * 0.18, 0, 7); c.fill(); }
-    });
-    var pegN = Math.min((this.pegs || []).length, LV.cityPegs || 8); if (this.rung >= 1) pegN = Math.ceil(pegN / 2); if (night) pegN = Math.ceil(pegN * 0.6);
-    for (var pi = 0; pi < pegN; pi++) {
-      var pg = this.pegs[pi], pp = this.ringPos(pg.u, pg.ring ? rIn + CITY.ringW * kk * 0.95 : wIn), ps = sz * 0.5, bob = paused ? 0 : Math.abs(Math.sin(pg.ph)) * ps * 0.25;
-      c.fillStyle = pg.col; rr(c, pp.x - ps * 0.32, pp.y - ps * 0.7 - bob, ps * 0.64, ps * 0.9, ps * 0.3); c.fill();      // peg body
-      c.fillStyle = '#f0c8a0'; c.beginPath(); c.arc(pp.x, pp.y - ps * 0.95 - bob, ps * 0.3, 0, 7); c.fill();               // round head
-    }
     var n = 0;
     for (var i = 0; i < this.walkers.length && n < want; i++) {
       var w = this.walkers[i]; if (w.night !== night && i % 3 !== 0) continue; n++;
@@ -621,44 +501,6 @@
     if (this.rung >= 4) d = Math.round(d * 3) / 3;
     return Math.max(0, Math.min(1, d));
   };
-  // v0.1.1: a soft sun arcs over the board by day, a soft moon by night (same clock as darkness()). u = 0..1 along the arc.
-  P.skyBodies = function () {
-    var cyc = LV.cycleMin * 60, night = cyc * LV.nightShare, day = cyc - night, bl = LV.blendSec;
-    var t = ((Date.now() - this.cycleStart) / 1000 + (this.cycleOffset || 0)) % cyc, out = [];
-    var us = ((t + bl) % cyc) / (day + 2 * bl);                 // sun: rises in the dawn blend, sets in the dusk blend
-    if (us >= 0 && us <= 1) out.push({ kind: 'sun', u: us });
-    if (t >= day) out.push({ kind: 'moon', u: (t - day) / night });
-    return out;
-  };
-  P.arcXY = function (u) {
-    var S = this.S, K = C.sky || {};
-    return { x: this.bx - S * 0.08 + u * S * 1.16, y: this.by + S * ((K.horizon || 1.06) - (K.height || 0.86) * Math.sin(Math.PI * u)) };
-  };
-  P.drawSky = function (c, dark) {
-    var K = C.sky || {}, S = this.S, self = this, low = this.rung >= 4;
-    if (K.on === false) return;
-    this.skyBodies().forEach(function (b) {
-      var p = self.arcXY(b.u), edge = Math.max(0, Math.min(1, Math.min(b.u, 1 - b.u) * 7));   // fade in/out at the horizon
-      var sun = b.kind === 'sun', r = S * (sun ? (K.sunR || 0.075) : (K.moonR || 0.06));
-      // 1) the light follows the arc: a broad soft glow on the board (warm by day, low and orange near the horizon, cool by night)
-      if (!low) {
-        var warm = Math.min(1, Math.min(b.u, 1 - b.u) * 4), col = sun ? (warm < 1 ? '255,' + Math.round(170 + 70 * warm) + ',' + Math.round(110 + 110 * warm) : '255,240,215') : '175,195,255';
-        var g = c.createRadialGradient(p.x, p.y, r, p.x, p.y, S * 0.95);
-        g.addColorStop(0, 'rgba(' + col + ',' + ((sun ? K.sunLight || 0.16 : K.moonLight || 0.12) * edge).toFixed(3) + ')'); g.addColorStop(1, 'rgba(' + col + ',0)');
-        c.globalCompositeOperation = 'screen'; c.fillStyle = g; c.fillRect(self.bx, self.by, S, S); c.globalCompositeOperation = 'source-over';
-      }
-      // 2) the body itself: soft, about 80% transparent wherever it crosses the board and its lettering
-      var a = (K.alpha || 0.2) * edge;
-      c.save(); c.beginPath(); c.rect(self.bx, self.by, S, S); c.clip();
-      if (!low) { var halo = c.createRadialGradient(p.x, p.y, r * 0.6, p.x, p.y, r * 2.4); halo.addColorStop(0, sun ? 'rgba(255,225,120,' + (a * 0.7).toFixed(3) + ')' : 'rgba(210,225,255,' + (a * 0.55).toFixed(3) + ')'); halo.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = halo; c.beginPath(); c.arc(p.x, p.y, r * 2.4, 0, 7); c.fill(); }
-      var core = c.createRadialGradient(p.x - r * 0.25, p.y - r * 0.25, r * 0.1, p.x, p.y, r);
-      if (sun) { core.addColorStop(0, 'rgba(255,252,225,' + a + ')'); core.addColorStop(0.75, 'rgba(255,214,90,' + a + ')'); core.addColorStop(1, 'rgba(255,190,60,' + (a * 0.6) + ')'); }
-      else { core.addColorStop(0, 'rgba(250,252,255,' + a + ')'); core.addColorStop(1, 'rgba(200,212,240,' + (a * 0.8) + ')'); }
-      c.fillStyle = core; c.beginPath(); c.arc(p.x, p.y, r, 0, 7); c.fill();
-      if (!sun) { c.fillStyle = 'rgba(120,135,175,' + (a * 0.45).toFixed(3) + ')'; [[-0.3, -0.15, 0.2], [0.25, 0.2, 0.15], [0.05, -0.4, 0.1]].forEach(function (q) { c.beginPath(); c.arc(p.x + q[0] * r, p.y + q[1] * r, q[2] * r, 0, 7); c.fill(); }); }
-      c.restore();
-    });
-  };
   P.tint = function (d) { return d < 0.4 ? lerpC('#ffffff', '#f2b583', d / 0.4) : lerpC('#f2b583', '#4a568f', (d - 0.4) / 0.6); };
 
   // ------------------------------------------------------------------ frame
@@ -670,10 +512,7 @@
     c.fillStyle = '#14121b'; c.fillRect(0, 0, this.W, this.H);
     if (!this.S) return;
     this.drawStatic();
-    var cam = this.camStep(now, dt), camOn = cam.z > 1.002;
-    if (camOn) { c.save(); c.beginPath(); c.rect(this.bx, this.by, this.S, this.S); c.clip(); c.translate(this.bx + this.S / 2, this.by + this.S / 2); c.scale(cam.z, cam.z); c.translate(-cam.x, -cam.y); }
     c.drawImage(this.staticCv, this.bx, this.by, this.S, this.S);
-    this.drawOwners(c, now);
     var dark = this.darkness();
     if (!opts.paused) this.stepLiving(dt);
     this.drawLiving(c, dark, opts.paused);
@@ -688,9 +527,7 @@
     if (dark > 0.01) {
       c.globalCompositeOperation = 'multiply'; c.fillStyle = this.tint(dark); c.fillRect(this.bx, this.by, this.S, this.S); c.globalCompositeOperation = 'source-over';
       if (dark > 0.4) this.nightLights(c, dark, now);
-      if (dark > 0.3 && this.rung < 4) { c.globalAlpha = Math.min(1, (dark - 0.3) / 0.5) * 0.9; c.drawImage(this.cityNight(), this.bx, this.by, this.S, this.S); c.globalAlpha = 1; }
     }
-    this.drawSky(c, dark);
     // tokens (never crushed)
     var self = this, r = this.tokenR(), cur = g.turn ? g.turn.pid : -1;
     var list = g.players.filter(function (p) { return !p.bankrupt; });
@@ -705,104 +542,7 @@
     // speech bubbles
     var tnow = Date.now();
     this.bubbles = this.bubbles.filter(function (b) { return b.until > tnow; });
-    this.drawBoardDice(c, now);
     this.bubbles.forEach(function (b) { var v = self.vis[b.pid]; if (v) self.drawBubble(c, v.x, v.y - r * 1.8, b.text, b.color); });
-    if (camOn) c.restore();
-  };
-
-  // ------------------------------------------------------------------ owner colours (+ slow crossfade after private deals)
-  P.ownerRgb = function (i, now) {
-    var pr = this.g.props[i], o = pr && pr.owner >= 0 ? this.g.byId(pr.owner) : null; if (!o) return null;
-    var to = hexRgb(o.color), f = this.fades[i];
-    if (!f) return to;
-    if (f.t0 == null) f.t0 = now;
-    var k = (now - f.t0) / f.dur;
-    if (k >= 1) { delete this.fades[i]; return to; }
-    return mixRgb(f.from, to, smooth(k));
-  };
-  // a private deal moved these tiles: start each from its old owner's colour
-  P.tradeFade = function (list) {
-    var self = this;
-    list.forEach(function (x) { var cur = self.fades[x.sp]; self.fades[x.sp] = { from: cur && cur.t0 != null ? self.ownerRgbFrom(x.sp, cur, x.from) : hexRgb(x.from), t0: null, dur: x.dur || C.tradeFadeMs }; });
-  };
-  P.ownerRgbFrom = function (sp, f, fallback) { var k = (performance.now() - f.t0) / f.dur; return k >= 1 ? hexRgb(fallback) : mixRgb(f.from, hexRgb(fallback), smooth(k)); };
-  P.drawOwners = function (c, now) {
-    var g = this.g, T = C.ownerTint, lw = Math.max(3, this.w * 0.075), th = Math.max(4, this.w * 0.1);
-    for (var i = 0; i < 40; i++) {
-      var pr = g.props[i]; if (!pr || pr.owner < 0) continue;
-      var col = this.ownerRgb(i, now); if (!col) continue;
-      var r = this.rect(i), x = this.bx + r.x, y = this.by + r.y;
-      c.fillStyle = rgba(col, pr.hocked ? T.fillHocked : T.fill); c.fillRect(x, y, r.w, r.h);
-      // solid strip on the outer edge + a border all round, so ownership reads from across the room
-      c.fillStyle = rgba(col, 1);
-      if (r.side === 'b') c.fillRect(x, y + r.h - th, r.w, th); else if (r.side === 't') c.fillRect(x, y, r.w, th);
-      else if (r.side === 'l') c.fillRect(x, y, th, r.h); else c.fillRect(x + r.w - th, y, th, r.h);
-      c.strokeStyle = rgba(col, T.border); c.lineWidth = lw; c.strokeRect(x + lw / 2 + 0.5, y + lw / 2 + 0.5, r.w - lw - 1, r.h - lw - 1);
-      if (col[0] + col[1] + col[2] < 160) { c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1; c.strokeRect(x + lw + 0.5, y + lw + 0.5, r.w - 2 * lw - 1, r.h - 2 * lw - 1); }
-    }
-  };
-
-  // ------------------------------------------------------------------ follow camera (gentle; off at the lowest graphics rung)
-  P.camStep = function (now, dt) {
-    var g = this.g, cam = this.cam, K = C.camera, S0 = this.S, cx0 = this.bx + S0 / 2, cy0 = this.by + S0 / 2;
-    if (!cam.init) { cam.x = cx0; cam.y = cy0; cam.z = 1; cam.init = true; }
-    var t = g.turn, want = 1, fx = cx0, fy = cy0, v = null;
-    var on = g.rules.camera && this.rung < C.living.maxRung && g.phase === 'play' && t;
-    if (on) {
-      var key = t.pid + ':' + g.turnCount;
-      if (key !== cam.turnKey) { cam.turnKey = key; cam.turnAt = now; cam.outDone = cam.z < 1.03; }
-      if (cam.z < 1.03) cam.outDone = true;
-      v = this.vis[t.pid];
-      // ease out to the full board after PASS DICE (always all the way, even on a slow TV), hold a moment, then ease in on the next player
-      if (v && t.stage !== 'ended' && cam.outDone && now - cam.turnAt > K.outHoldMs) { want = K.zoom; fx = v.x; fy = v.y; }
-    }
-    var a = 1 - Math.exp(-dt / K.zoomTauMs), b = 1 - Math.exp(-dt / K.followTauMs);
-    cam.z += (want - cam.z) * a;
-    if (Math.abs(cam.z - want) < 0.001) cam.z = want;
-    // target: blend from board centre toward the token as we zoom (so zooming out returns to the middle)
-    var zk = Math.max(0, Math.min(1, (cam.z - 1) / Math.max(0.001, K.zoom - 1)));
-    var tx = cx0 + (fx - cx0) * (want > 1 ? 1 : zk), ty = cy0 + (fy - cy0) * (want > 1 ? 1 : zk);
-    cam.x += (tx - cam.x) * b; cam.y += (ty - cam.y) * b;
-    // keep the view inside the board, and the active token always well inside the view
-    var half = S0 / (2 * cam.z);
-    if (v && cam.z > 1.002) {
-      var m = Math.min(half * 0.8, this.w * K.marginTiles);
-      cam.x = Math.max(v.x - half + m, Math.min(v.x + half - m, cam.x)); cam.y = Math.max(v.y - half + m, Math.min(v.y + half - m, cam.y));
-    }
-    cam.x = Math.max(this.bx + half, Math.min(this.bx + S0 - half, cam.x)); cam.y = Math.max(this.by + half, Math.min(this.by + S0 - half, cam.y));
-    return cam;
-  };
-
-  // ------------------------------------------------------------------ dice that tumble across the board
-  P.rollDice = function (d, pid, dur) { this.bd = { d: d.slice(), pid: pid, dur: Math.max(250, dur || 900), t0: null, seed: Math.random() * 1000 }; };
-  P.drawBoardDice = function (c, now) {
-    var bd = this.bd; if (!bd) return;
-    if (bd.t0 == null) {
-      bd.t0 = now;
-      var v = this.vis[bd.pid], cx = this.bx + this.S / 2, cy = this.by + this.S / 2;
-      var sx = v ? v.x : cx, sy = v ? v.y : cy, dx = cx - sx, dy = cy - sy, L = Math.max(1, Math.sqrt(dx * dx + dy * dy)); dx /= L; dy /= L;
-      bd.sx = sx + dx * this.w * 0.9; bd.sy = sy + dy * this.w * 0.9; bd.ex = sx + dx * this.w * 2.7; bd.ey = sy + dy * this.w * 2.7; bd.px = -dy; bd.py = dx;
-    }
-    var D = C.boardDice, el = now - bd.t0, k = Math.min(1, el / bd.dur), end = bd.dur + D.holdMs + D.fadeMs;
-    if (el > end) { this.bd = null; return; }
-    var alpha = el > bd.dur + D.holdMs ? 1 - (el - bd.dur - D.holdMs) / D.fadeMs : 1;
-    var p = this.g.byId(bd.pid), face = p ? p.color : '#ffffff', ink = p ? charById(p.charId).ink : '#000';
-    var sz = Math.max(14, this.w * 0.5), ease = 1 - Math.pow(1 - k, 2.2);
-    c.save(); c.globalAlpha = Math.max(0, alpha);
-    for (var n = 0; n < 2; n++) {
-      var off = (n ? 0.45 : -0.45) * this.w, x = bd.sx + (bd.ex - bd.sx) * ease + bd.px * off, y = bd.sy + (bd.ey - bd.sy) * ease + bd.py * off;
-      var hop = Math.abs(Math.sin(Math.PI * (k * 3.2 + n * 0.3))) * (1 - k) * this.w * 0.55;
-      var rot = (1 - k) * (1 - k) * (n ? -11 : 13) + (n ? 0.12 : -0.08);
-      var val = k < 1 ? 1 + (Math.floor(el / 75 + n * 3 + bd.seed) % 6) : bd.d[n];
-      c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(x + 3, y + sz * 0.42, sz * 0.5 * (1 - hop / (this.w * 1.6)), sz * 0.16, 0, 0, Math.PI * 2); c.fill();
-      c.save(); c.translate(x, y - hop); c.rotate(rot);
-      rr(c, -sz / 2, -sz / 2, sz, sz, sz * 0.18); c.fillStyle = face; c.fill(); c.lineWidth = Math.max(1.5, sz * 0.06); c.strokeStyle = '#fff'; c.stroke();
-      c.fillStyle = ink; var q = sz * 0.26, pr = Math.max(1.5, sz * 0.085);
-      var pips = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]], 4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]], 6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]] }[val];
-      pips.forEach(function (pp) { c.beginPath(); c.arc(pp[0] * q, pp[1] * q, pr, 0, Math.PI * 2); c.fill(); });
-      c.restore();
-    }
-    c.restore();
   };
   P.hl = function (c, sp, col, a, lw) {
     var rc = this.rect(sp); c.save(); c.globalAlpha = a; c.strokeStyle = col; c.lineWidth = lw; c.strokeRect(this.bx + rc.x + lw / 2, this.by + rc.y + lw / 2, rc.w - lw, rc.h - lw); c.restore();

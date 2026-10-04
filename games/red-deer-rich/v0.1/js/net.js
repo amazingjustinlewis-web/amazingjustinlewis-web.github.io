@@ -141,12 +141,11 @@
     if (o.onStatus) o.onStatus('connecting');
     this.hello = setInterval(function () { if (self.status !== 'online') self.bc.postMessage({ k: 'hello', cid: self.cid }); else clearInterval(self.hello); }, 400);
     this.bc.postMessage({ k: 'hello', cid: this.cid });
-    this.ping = setInterval(function () { if (self.status === 'online') self.send({ t: 'ping' }); }, 4000);   // same heartbeat as the PeerJS client
     if (typeof window !== 'undefined') window.addEventListener('beforeunload', function () { self.bc.postMessage({ k: 'bye', cid: self.cid }); });
   }
   LocalClient.prototype.send = function (d) { if (this.status !== 'online') return false; this.bc.postMessage({ k: 'data', cid: this.cid, d: d }); return true; };
   LocalClient.prototype.reconnect = function () {};
-  LocalClient.prototype.destroy = function () { clearInterval(this.ping); this.bc.postMessage({ k: 'bye', cid: this.cid }); this.bc.close(); };
+  LocalClient.prototype.destroy = function () { this.bc.postMessage({ k: 'bye', cid: this.cid }); this.bc.close(); };
 
   root.RDRNet = { Host: Host, Client: Client, makeCode: makeCode, LocalHost: LocalHost, LocalClient: LocalClient };
 })(typeof window !== 'undefined' ? window : globalThis);

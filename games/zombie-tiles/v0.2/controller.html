@@ -50,6 +50,7 @@
 </section>
 
 <script src="js/vendor/peerjs.min.js"></script>
+<script>/* old TV browsers (e.g. Samsung Tizen, Chromium < 80) cannot run the modern PeerJS build: load the transpiled one */ if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
 <script src="js/config.js"></script>
 <script src="js/dice.js"></script>
 <script src="js/net.js"></script>

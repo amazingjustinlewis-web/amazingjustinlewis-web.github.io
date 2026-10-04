@@ -103,7 +103,7 @@ window.GAMES = [
         name: 'Traps & TNT',
         current: true,
         play: 'games/zombie-tiles/index.html',
-        notes: 'Pick up trap boxes and dynamite and drop them from your phone. Zombies that step on a trap get caught in a cartoon rope snare; lit dynamite goes off at the end of the round (or when you press DETONATE) and clears the zombies around it, but it hurts players standing too close. New phone buttons: RESET MOVES and END TURN. Players and zombies are now little animated characters that walk square by square (you can draw your own). Computer players use traps and dynamite too. v0.4.1: weapons hit harder (pipe +2, pistol +3, machine gun +5; bare hands unchanged), and a player on their last heart leaves a few cartoon drops behind them.'
+        notes: 'Pick up trap boxes and dynamite and drop them from your phone. Zombies that step on a trap get caught in a cartoon rope snare; lit dynamite goes off at the end of the round (or when you press DETONATE) and clears the zombies around it, but it hurts players standing too close. New phone buttons: RESET MOVES and END TURN. Players and zombies are now little animated characters that walk square by square (you can draw your own). Computer players use traps and dynamite too. v0.4.1: weapons hit harder (pipe +2, pistol +3, machine gun +5; bare hands unchanged), and a player on their last heart leaves a few cartoon drops behind them. v0.4.2: phones can now join on older smart-TV browsers (such as Samsung TVs) that used to say "PeerJS did not load" (all versions got this fix).'
       },
       {
         id: 'v0.3',
@@ -145,16 +145,24 @@ window.GAMES = [
       'PAY UP is a reaction race: a big button pops up on the owner\u2019s phone, with a cartoon BOOM on the payer\u2019s phone when they get caught.',
       'Phones carry private chat and deals between players (the TV never shows them).',
       'A faint, made-up punk band plays from the Upper Level Youth Centre and gets louder as tokens get close. Press M on the TV to mute.',
-      'Computer players can fill empty seats (Easy, Normal or Ruthless).',
+      'Computer players can fill empty seats (Easy, Normal or Ruthless), in the lobby or mid-game from the host phone.',
+      'Late arrivals can scan the small QR on the TV to watch, and ask to take over a computer player\u2019s seat.',
+      'Three game lengths: Regular (nothing pre-dealt), Medium (some deeds dealt, 45 min) and Quick (every deed dealt, 30 min).',
       'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi).',
       'Early test: placeholder art, and some character perks are still marked coming soon.'
     ],
     versions: [
       {
-        id: 'v0.1',
-        name: 'First playable',
+        id: 'v0.1.1',
+        name: 'Auctions + living city',
         current: true,
         play: 'games/red-deer-rich/index.html',
+        notes: 'Auctions on every passed deed (bid from any phone), Regular / Medium / Quick game lengths, AI players can fill empty seats mid-game, owner-colour tiles that drift slowly after private deals, a 3 s PASS DICE lock, a follow camera, tumbling dice, bigger tile names, a sun and moon arc, a first-pass mini city in the middle of the board, a zoomable phone board with player dots, AI stand-ins you can take back by rejoining, Leave Game (hand your seat to an AI, split your stuff, give it to one player or throw it in the pot), an Observer mode from a small QR on the TV (watch, then ask to take over an AI seat), an end-of-game podium with fun titles, fireworks and a Hue celebration, and phone play on older Samsung TV browsers.'
+      },
+      {
+        id: 'v0.1',
+        name: 'First playable',
+        play: 'games/red-deer-rich/v0.1/index.html',
         notes: 'Present Day board, dice, buying, rent with the PAY UP race, Shops and Mega-Plexes, hocking, the Snowbank, bankruptcy, trades and chat on phones, AI players, house rules, Full or Quick mode. Placeholder art.'
       }
     ]

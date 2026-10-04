@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Red Deer Rich - TV | Zero to Phi</title>
-<meta name="description" content="Red Deer Rich: a Red Deer property-trading board game for the TV with phones as controllers. First playable v0.1.1 by Zero to Phi.">
+<meta name="description" content="Red Deer Rich: a Red Deer property-trading board game for the TV with phones as controllers. First playable v0.1 by Zero to Phi.">
 <meta name="theme-color" content="#14121b">
 <meta name="robots" content="noindex">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
@@ -15,21 +15,19 @@
 
 <header id="top">
   <div class="brand"><img src="assets/logo.svg" alt="" width="49" height="40"><span>ZERO&nbsp;TO&nbsp;PHI</span></div>
-  <div class="title">RED DEER <span class="rich">RICH</span><span class="proto">FIRST PLAYABLE v0.1.1</span></div>
+  <div class="title">RED DEER <span class="rich">RICH</span><span class="proto">FIRST PLAYABLE v0.1</span></div>
   <div class="top-right"><span id="roundInfo"></span><span id="potInfo"></span><span id="joinInfo"></span><span id="lightInfo"></span><span id="fxInfo"></span></div>
 </header>
 
 <aside id="side">
   <div id="cards"></div>
   <div id="log"></div>
-  <div id="watchQr" hidden><canvas id="qrSmall" width="160" height="160"></canvas><span>Scan to <b>watch</b><br>or take over an AI seat</span></div>
 </aside>
 
 <div id="banner" hidden><canvas id="bannerDice" width="200" height="100"></canvas><div class="btxt"><div class="who" id="bWho"></div><div class="what" id="bWhat"></div></div></div>
 <div id="deedPop" class="pop" hidden></div>
 <div id="cardPop" class="pop" hidden></div>
 <div id="payupBar" hidden></div>
-<div id="auctionPop" hidden></div>
 <div id="big" aria-live="polite"></div>
 <div id="flash" aria-hidden="true"></div>
 
@@ -54,12 +52,12 @@
     <h2>PLAYERS <span id="pcount">0/8</span></h2>
     <ul id="lobbyPlayers"></ul>
     <div class="lb-box">
-      <div class="lb-title">Add a computer player (AI): click to pick the character and difficulty. During a game, the host phone (or the I key) can add an AI to an empty seat.</div>
+      <div class="lb-title">Add a computer player (AI): click to pick the character and difficulty</div>
       <div class="lb-row"><button id="aiChar" class="ghost wide">Character</button><button id="aiLevel" class="ghost">Normal</button><button id="aiAdd">+ ADD AI</button></div>
       <div class="lb-title">House rules</div>
       <div class="lb-row wrap" id="rulesRow"></div>
-      <div class="lb-title">Game length</div>
-      <div class="lb-row" id="modeRow"><button data-mode="regular" class="ghost">REGULAR<small>nothing pre-dealt</small></button><button data-mode="medium" class="ghost">MEDIUM<small>some deeds dealt · 45 min</small></button><button data-mode="quick" class="ghost">QUICK<small>ALL deeds dealt · 30 min</small></button></div>
+      <div class="lb-title">Mode</div>
+      <div class="lb-row" id="modeRow"><button data-mode="full" class="ghost">FULL GAME</button><button data-mode="quick" class="ghost">QUICK (pre-dealt, 45 min)</button></div>
     </div>
     <button id="startBtn" class="start" disabled>START GAME</button>
     <div class="howto">Phones: scan the code, type a name, swipe to pick a character. The first phone to join can also add AI, set rules and start.</div>
@@ -67,11 +65,8 @@
 </section>
 
 <section id="results" class="screen" hidden>
-  <canvas id="fireworks"></canvas>
   <h1 id="resTitle">WINNER!</h1>
-  <div id="podium"></div>
-  <div id="ground"></div>
-  <p class="res-key">Net worth = cash + property + shops</p>
+  <ol id="resList"></ol>
   <div class="res-btns"><button id="againBtn" class="start">PLAY AGAIN</button><button id="lobbyBtn" class="ghost">CHANGE PLAYERS</button></div>
   <p class="res-note">Press Enter to play again &middot; the first player can also restart from their phone.</p>
 </section>

@@ -1,4 +1,4 @@
-/* RED DEER RICH - AI players (v0.1.1: auction bidding): simple buy / build / trade valuation, PAY UP reflexes, canned chat.
+/* RED DEER RICH - AI players (v0.1): simple buy / build / trade valuation, PAY UP reflexes, canned chat.
    RDRAI.tick(game) is called by the host after game.tick(); bots act only through game.intent(), like phones. */
 (function (root) {
   'use strict';
@@ -59,19 +59,6 @@
     var reserve = L.reserve * (helps || blocks ? 0.35 : 1);
     if (g.rand() > L.buyBias && !helps) return false;
     return p.cash - price >= reserve;
-  }
-  // v0.1.1 auctions: what is this deed worth to the bot right now?
-  function auctionValue(g, p, sp) {
-    var s = S[sp], lv = (p.ai && p.ai.level) || 'normal', f = { easy: 0.7, normal: 0.9, ruthless: 1.05 }[lv] || 0.9;
-    var v = s.price * f;
-    if (s.group) {
-      var have = g.countOwned(p.id, s.group), size = groupSize(s.group);
-      if (have === size - 1) v *= 1.6;                      // completes my set
-      else if (have > 0 || s.type === 'whistle') v *= 1.2;  // helps
-      if (g.players.some(function (q) { return q !== p && !q.bankrupt && g.countOwned(q.id, s.group) === size - 1; })) v *= 1.3;   // blocks someone
-    }
-    var cap = g.maxBid(p) - lvl(p).reserve * 0.5;
-    return Math.max(0, Math.min(v, cap));
   }
   function manage(g, p) {                    // unhock, then build evenly while there's spare cash
     var L = lvl(p), did = false, reserve = L.reserve * 1.4;
@@ -168,17 +155,6 @@
       m.chatSeen = g.chats.length;
       if (m.replyAt && now >= m.replyAt) { say(g, p, m.replyTo, 'chat', false); m.replyAt = 0; }
 
-      // auction bidding (anyone, on or off turn)
-      var au = t && t.auction;
-      if (au && au.leader !== p.id) {
-        var key = au.seq + ':' + au.bids;
-        if (m.bidKey !== key) { m.bidKey = key; m.bidAt = now + g.ms(rnd(g, C.auction.aiReactMs)); }
-        else if (now >= m.bidAt) {
-          var val = auctionValue(g, p, au.sp), gap = val - au.bid, add = gap > 180 ? 50 : 20;
-          if (gap >= add && au.bid + add <= g.maxBid(p)) g.intent(p.id, { t: 'bid', add: add });
-          m.bidAt = Infinity;
-        }
-      }
       if (!t || t.pid !== p.id) return;
       // ---- my turn
       if (now < m.next) return;
@@ -197,7 +173,6 @@
         return;
       }
       if (t.stage === 'act') {
-        if (t.auction) return;
         if (t.tab) { g.intent(p.id, { t: 'raise' }); if (g.turn === t && t.tab) g.intent(p.id, { t: 'giveUp' }); m.next = now + think(g); return; }
         if (t.buy != null) {
           if (m.buySeen !== t.landedAt) { m.buySeen = t.landedAt; m.next = now + think(g); return; }
@@ -221,5 +196,5 @@
     bots.slice(0, 2).forEach(function (p) { say(g, p, 'all', 'greet', true); });
   }
   // coach-style hint for a human (not used yet by phones; handy for tests)
-  root.RDRAI = { tick: tick, auctionValue: auctionValue, greet: greet, evalTrade: evalTrade, wantBuy: wantBuy, worthTo: worthTo, say: say, line: line };
+  root.RDRAI = { tick: tick, greet: greet, evalTrade: evalTrade, wantBuy: wantBuy, worthTo: worthTo, say: say, line: line };
 })(typeof window !== 'undefined' ? window : globalThis);

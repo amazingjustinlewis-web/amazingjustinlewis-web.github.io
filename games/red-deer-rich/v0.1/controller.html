@@ -13,7 +13,7 @@
 </head>
 <body>
 <section id="join" class="screen">
-  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">RED DEER <b>RICH</b></div><div class="jsub">first playable v0.1.1 &middot; phone controller</div></div></header>
+  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">RED DEER <b>RICH</b></div><div class="jsub">first playable v0.1 &middot; phone controller</div></div></header>
   <label class="fld">Room code<input id="room" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD"></label>
   <label class="fld">Your name<input id="name" maxlength="12" autocomplete="nickname" placeholder="Name"></label>
   <button id="joinBtn" class="big-btn">JOIN GAME</button>
@@ -32,9 +32,8 @@
   <div id="hostBox" class="hostbox" hidden>
     <div class="hb-title">You're the host</div>
     <div class="row"><button id="hAiChar" class="ghost">Character</button><button id="hAiLevel" class="ghost">Normal</button><button id="hAiAdd" class="go">+ AI</button></div>
-    <div class="muted small">Add computer players here. Mid-game, you can fill an empty seat from the Board tab.</div>
     <div class="hb-title">House rules</div><div class="chips" id="hRules"></div>
-    <div class="hb-title">Game length</div><div class="chips" id="hMode"></div><div class="muted small" id="hModeInfo"></div>
+    <div class="hb-title">Mode</div><div class="chips" id="hMode"></div>
     <div id="hHue"></div>
     <button id="startBtn" class="big-btn red">START GAME</button>
   </div>
@@ -49,7 +48,6 @@
     <button data-tab="board"><span class="ti">&#128506;&#65039;</span><span class="tl">Board</span></button>
     <button data-tab="msgs"><span class="ti">&#128172;</span><span class="tl">Deals &amp; Chat</span><i class="dot" id="bMsgs"></i></button>
   </nav>
-  <div id="auctionBar" class="aucbar" hidden></div>
   <main class="panes">
     <section class="tab" id="tab-turn">
       <div class="pane-main" id="turnMain"></div>
@@ -60,7 +58,7 @@
       <div class="pane-side" id="stuffSide"></div>
     </section>
     <section class="tab" id="tab-board" hidden>
-      <div class="pane-main"><div class="mini-wrap" id="miniWrap"><div class="mini-zoom" id="miniZoom"><div class="mini" id="mini"></div><div class="mini-dots" id="miniDots"></div></div><div class="zbtns"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">&minus;</button><button data-z="fit" aria-label="Fit board">&#10530;</button></div></div><div class="muted center zhint">Pinch or use + / &minus; to zoom, drag to pan. Tap a space for details.</div><div id="seatBox"></div><div id="obsBox"></div></div>
+      <div class="pane-main"><div class="mini" id="mini"></div></div>
       <div class="pane-side" id="boardSide"></div>
     </section>
     <section class="tab" id="tab-msgs" hidden>
@@ -74,8 +72,6 @@
 
 <div id="payup" class="takeover" hidden><div class="pu-who" id="puWho"></div><button id="puBtn" class="pu-btn">PAY<br>UP!</button><div class="pu-sub" id="puSub"></div></div>
 <div id="boom" class="takeover boom" hidden><div class="boom-art">&#128165;</div><div class="boom-t">YOU GOT<br>CAUGHT!</div><div class="boom-s" id="boomSub"></div></div>
-<div id="leaveBox" class="leavebox" hidden></div>
-<div id="voteBar" class="votebar" hidden></div>
 <div id="toast" class="toast" hidden></div>
 
 <script src="js/vendor/peerjs.min.js"></script>

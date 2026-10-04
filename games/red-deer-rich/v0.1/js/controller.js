@@ -1,4 +1,4 @@
-/* RED DEER RICH - phone controller (v0.1.1). Four tabs (My Turn, My Stuff, Board, Deals & Chat) that adapt to
+/* RED DEER RICH - phone controller (v0.1). Four tabs (My Turn, My Stuff, Board, Deals & Chat) that adapt to
    portrait (bottom tab bar) and landscape (left rail + two panes). PAY UP and BOOM take over the whole screen. */
 (function () {
   'use strict';
@@ -13,7 +13,7 @@
   var Q = new URLSearchParams(location.search), LOCAL = Q.has('local');
   var clientId = (Q.get('cid') || store.get('rdr_client')) || ('P' + Math.random().toString(36).slice(2, 10)); if (!Q.get('cid')) store.set('rdr_client', clientId);
   var net = null, st = null, lastFx = null, tab = 'turn', joined = false;
-  var ui = { sel: 0, thread: null, builder: null, seen: JSON.parse(store.get('rdr_seen') || '{}'), carIdx: 0, aiChar: null, aiLevel: 'normal', lastRollSeq: -1, diceT: 0, graceUntil: 0, fades: {} };
+  var ui = { sel: 0, thread: null, builder: null, seen: JSON.parse(store.get('rdr_seen') || '{}'), carIdx: 0, aiChar: null, aiLevel: 'normal', lastRollSeq: -1, diceT: 0, graceUntil: 0 };
   function vib(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
   function send(m) { if (net) net.send(m); }
   function toast(t, ms) { var el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function () { el.hidden = true; }, ms || 2400); }
@@ -30,23 +30,22 @@
   $('joinBtn').onclick = join;
   function join() {
     var code = $('room').value.trim(), name = $('name').value.trim();
-    if (!name && Q.has('watch')) name = 'Guest';
     if (code.length !== 4) { $('joinStatus').textContent = 'Type the 4-letter room code from the TV.'; return; }
     if (!name) { $('joinStatus').textContent = 'Type your name.'; $('name').focus(); return; }
     store.set('rdr_room', code); store.set('rdr_name', name);
     SFX.unlock(); joined = true;
     $('joinStatus').textContent = 'Connecting\u2026';
-    var opts = { code: code, onOpen: function () { send({ t: 'hello', clientId: clientId, name: name, charId: store.get('rdr_char') || undefined, watch: Q.has('watch') && !ui.seated }); },
+    var opts = { code: code, onOpen: function () { send({ t: 'hello', clientId: clientId, name: name, charId: store.get('rdr_char') || undefined }); },
       onMessage: onMsg, onStatus: function (s) { var cls = s === 'online' ? 'conn on' : s === 'noroom' || s === 'offline' ? 'conn bad' : 'conn'; ['lConn', 'gConn'].forEach(function (k) { $(k).className = cls; });
         if (!st) $('joinStatus').textContent = s === 'noroom' ? 'No room ' + code + ' yet. Is the game open on the TV?' : s === 'online' ? 'Joined!' : 'Connecting\u2026'; } };
     if (net && net.destroy) net.destroy();
     net = LOCAL ? new window.RDRNet.LocalClient(opts) : new window.RDRNet.Client(opts);
   }
-  if (Q.get('room') && (($('name').value && Q.has('auto')) || Q.has('watch'))) setTimeout(join, 50);   // the TV's mid-game QR (&watch) opens straight into Observer mode
+  if (Q.get('room') && $('name').value && Q.has('auto')) setTimeout(join, 50);
 
   function onMsg(m) {
     if (!m) return;
-    if (m.t === 'welcome') { $('lRoom').textContent = m.room; if (!m.observer && ui.observer) { ui.seated = true; toast('You\'re in! Have fun.', 2600); vib([40, 40, 120]); setTimeout(function () { setTab('turn'); }, 0); } ui.observer = !!m.observer; return; }
+    if (m.t === 'welcome') { $('lRoom').textContent = m.room; return; }
     if (m.t === 'reject') { $('joinStatus').textContent = m.reason; show('join'); st = null; return; }
     if (m.t === 'toast') { toast(m.text); SFX.play('buzz'); return; }
     if (m.t === 'state') onState(m);
@@ -55,15 +54,12 @@
   // ------------------------------------------------------------------ state
   function onState(s) {
     var prev = st; st = s;
-    ui.graceUntil = s.turn && s.turn.graceLeft ? Date.now() + s.turn.graceLeft : 0;
-    (s.fades || []).forEach(function (f) { var cur = ui.fades[f[0]]; if (!cur || cur.from !== f[1] || Math.abs((Date.now() - f[2]) - cur.t0) > 1500) ui.fades[f[0]] = { from: f[1], t0: Date.now() - f[2] }; });
+    if (s.turn && s.turn.payup) ui.graceUntil = Date.now() + s.turn.payup.graceLeft; else ui.graceUntil = 0;
     handleFx(prev);
     if (s.phase === 'lobby') { show('lobby'); renderLobby(); return; }
     if (s.phase === 'over') { show('over'); renderOver(); hidePayup(); return; }
     show('game');
-    var obs = !!s.me.observer; document.body.classList.toggle('observer', obs);
-    if (obs && tab !== 'board') setTab('board');
-    renderHead(); renderAuction(); renderTab(); renderBadges(); payupOverlay(); renderVote();
+    renderHead(); renderTab(); renderBadges(); payupOverlay();
   }
   function handleFx(prev) {
     var f = st.fx || {};
@@ -76,7 +72,6 @@
     if (inc('offer')) { SFX.play('click'); vib(30); toast('\uD83E\uDD1D New deal offer'); }
     if (inc('deal')) { SFX.play('deal'); vib(60); toast('Deal CEMENTED!'); }
     if (inc('msg')) { vib(15); }
-    if (inc('auction') && !st.me.bankrupt) { SFX.play('click'); vib([50, 40, 50]); toast('\uD83D\uDD28 AUCTION! Bid with the buttons at the top', 2600); }
     if (inc('tab')) { vib([100, 50, 100]); }
     lastFx = JSON.parse(JSON.stringify(f));
   }
@@ -122,10 +117,9 @@
       if (!ui.aiChar || taken[ui.aiChar]) ui.aiChar = free.length ? free[0].id : null;
       $('hAiChar').textContent = ui.aiChar ? charById(ui.aiChar).name : 'full'; $('hAiLevel').textContent = C.ai.levels[ui.aiLevel].label;
       $('hAiAdd').disabled = !ui.aiChar || st.players.length >= C.maxPlayers;
-      var RULES = [['jackpot', 'Dirt Lot Jackpot'], ['feesToPot', 'Fees feed pot'], ['bullseye', 'Bullseye Halfway'], ['payupRace', 'PAY UP race'], ['perks', 'Perks'], ['kidMode', 'Kid Mode'], ['auctions', 'Auctions'], ['camera', 'TV camera']];
+      var RULES = [['jackpot', 'Dirt Lot Jackpot'], ['feesToPot', 'Fees feed pot'], ['bullseye', 'Bullseye Halfway'], ['payupRace', 'PAY UP race'], ['perks', 'Perks'], ['kidMode', 'Kid Mode']];
       setH($('hRules'), RULES.map(function (r) { return '<button data-rule="' + r[0] + '" class="' + (st.rules[r[0]] ? 'on' : '') + '">' + r[1] + '</button>'; }).join(''));
-      setH($('hMode'), ['regular', 'medium', 'quick'].map(function (k) { return '<button data-mode="' + k + '" class="' + (st.mode === k ? 'on' : '') + '">' + C.modes[k].label + '</button>'; }).join(''));
-      $('hModeInfo').textContent = C.modes[st.mode] ? C.modes[st.mode].label + ': ' + C.modes[st.mode].blurb + ' \u00b7 start with ' + money(C.modes[st.mode].startCash) : '';
+      setH($('hMode'), '<button data-mode="full" class="' + (st.mode === 'full' ? 'on' : '') + '">Full game</button><button data-mode="quick" class="' + (st.mode === 'quick' ? 'on' : '') + '">Quick (pre-dealt)</button>');
       $('startBtn').disabled = st.players.length < 2;
       var h = st.hue;
       $('hHue').innerHTML = h && h.ok ? '<div class="hb-title">\uD83D\uDCA1 Philips Hue found. Use lights?</div><div class="chips"><button data-hue="on" class="' + (h.enabled ? 'on' : '') + '">Yes</button><button data-hue="off" class="' + (!h.enabled ? 'on' : '') + '">No</button>' +
@@ -159,7 +153,7 @@
   function renderOver() {
     var r = st.results || [];
     $('oTitle').textContent = r.length ? r[0].name + ' is RED DEER RICH!' : 'GAME OVER';
-    setH($('oList'), r.map(function (x) { return '<li>' + esc(x.name) + ' \u2014 ' + (x.bankrupt ? (x.left ? 'left' : 'bankrupt') : money(x.worth)) + (x.title ? '<br><small class="otitle">' + esc(x.title) + '</small>' : '') + '</li>'; }).join(''));
+    setH($('oList'), r.map(function (x) { return '<li>' + esc(x.name) + ' \u2014 ' + (x.bankrupt ? 'bankrupt' : money(x.worth)) + '</li>'; }).join(''));
     $('againBtn').hidden = $('lobbyBtn').hidden = !st.me.vip; $('oWait').textContent = st.me.vip ? '' : 'Waiting for the host\u2026';
   }
   $('againBtn').onclick = function () { send({ t: 'start' }); }; $('lobbyBtn').onclick = function () { send({ t: 'toLobby' }); };
@@ -167,7 +161,6 @@
   // ------------------------------------------------------------------ header + tabs
   function renderHead() {
     var me = st.me, p = pById(me.id) || me;
-    if (me.observer) { $('myName').textContent = '\uD83D\uDC40 Watching'; var ob = $('myBadge'); ob.className = 'badge'; ob.textContent = 'OBSERVER \u00b7 ' + me.name; $('myCash').textContent = ''; return; }
     $('myChip').outerHTML = chip(p, 'mychip').replace('class="mychip"', 'class="mychip" id="myChip"');
     $('myName').textContent = me.name + (me.aiCover ? ' (AI covering)' : '');
     var b = $('myBadge'); b.className = 'badge ' + me.state; b.textContent = me.bankrupt ? 'BANKRUPT' : me.state === 'gold' ? 'GOLD' : me.state === 'good' ? 'DOING GOOD' : 'RAGS';
@@ -208,8 +201,7 @@
       } else if (t.stage === 'rolling' || t.stage === 'moving') h += '<div class="info">Moving\u2026</div>';
       else if (t.stage === 'card') h += '<div class="info">Reading the card\u2026</div>';
       else if (t.stage === 'act' || t.stage === 'closing') {
-        if (t.buy) { var s = S[t.buy.sp]; h += '<div class="info"><span class="sw" style="background:' + gcol(t.buy.sp) + '"></span><b>' + esc(s.name) + '</b> is for sale.</div><div class="twoup"><button class="act buy" data-act="buy"' + (me.cash < t.buy.price ? ' disabled' : '') + '>BUY ' + money(t.buy.price) + '</button><button class="act" data-act="skipBuy">' + (st.rules.auctions ? 'PASS (AUCTION)' : 'PASS') + '</button></div>'; }
-        if (t.auction) h += '<div class="info">\uD83D\uDD28 Auction running for <b>' + esc(S[t.auction.sp].name) + '</b>. Anyone can bid (you too!) with the buttons at the top.</div>';
+        if (t.buy) { var s = S[t.buy.sp]; h += '<div class="info"><span class="sw" style="background:' + gcol(t.buy.sp) + '"></span><b>' + esc(s.name) + '</b> is for sale.</div><div class="twoup"><button class="act buy" data-act="buy"' + (me.cash < t.buy.price ? ' disabled' : '') + '>BUY ' + money(t.buy.price) + '</button><button class="act" data-act="skipBuy">PASS</button></div>'; }
         if (t.payup && t.payup.open) { var o = pById(t.payup.owner); h += '<div class="info warn">You\'re on ' + esc(o ? o.name : '') + '\'s deed! Pass the dice before they hit PAY UP\u2026</div>'; }
         if (t.payup && t.payup.caught) h += '<div class="info warn">Caught! Rent ' + money(t.payup.amount) + '.</div>';
         if (t.stage === 'closing') h += '<div class="info">LOUD AMP: the window stays open a moment longer\u2026</div>';
@@ -219,8 +211,7 @@
     } else {
       var pu = t.payup;
       if (pu && pu.open) { var ow = pById(pu.owner), mv = pById(pu.mover); h += '<div class="info warn">' + esc(mv.name) + ' is on ' + esc(ow.name) + '\'s ' + esc(S[pu.sp].name) + '. ' + (pu.owner === me.id ? '<b>HIT PAY UP!</b>' : 'Will ' + esc(ow.name) + ' catch them?') + '</div>'; }
-      else if (t.buy) h += '<div class="info">' + esc(t.name) + ' is thinking about buying ' + esc(S[t.buy.sp].name) + '.' + (st.rules.auctions ? ' If they pass, it goes to auction.' : '') + '</div>';
-      if (t.auction) h += '<div class="info">\uD83D\uDD28 <b>' + esc(S[t.auction.sp].name) + '</b> is up for auction. Bid with the buttons at the top!</div>';
+      else if (t.buy) h += '<div class="info">' + esc(t.name) + ' is thinking about buying ' + esc(S[t.buy.sp].name) + '.</div>';
       h += '<div class="info">PAY UP zone: when someone lands on your deed, a giant button takes over this phone. Hit it before they pass the dice.</div>';
       if (me.snow) h += '<div class="info">\u2744 You\'re in the Snowbank, but you can still trade, build and hit PAY UP.</div>';
     }
@@ -228,7 +219,7 @@
     var side = '';
     if (t.card) { var cd = (t.card.deck === 'hail' ? B.HAIL : B.POT)[t.card.idx]; side += cardHtml(t.card.deck, cd); }
     side += '<div class="feed">' + st.feed.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('') + '</div>';
-    if (st.endsIn) side = '<div class="info">' + (C.modes[st.mode] ? C.modes[st.mode].label : '') + ' game: ' + clock(st.endsIn) + ' left</div>' + side;
+    if (st.mode === 'quick') side = '<div class="info">Quick game: ' + clock(st.endsIn) + ' left</div>' + side;
     setH($('turnSide'), side);
     if (t.roll && t.rollSeq !== ui.lastRollSeq) { ui.lastRollSeq = t.rollSeq; ui.diceT = Date.now(); }
     drawDice(); updatePass(); bindSwipe();
@@ -237,10 +228,9 @@
   function clock(ms) { var s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
   function updatePass() {
     var b = $('passBtn'); if (!b || !st.turn) return;
-    var left = ui.graceUntil - Date.now(), wait = st.turn.stage === 'act' && left > 0;   // v0.1.1: locked 3 s after every landing
-    b.disabled = !!st.turn.tab || wait || !!st.turn.auction;
-    if (st.turn.auction) b.textContent = 'AUCTION RUNNING\u2026';
-    else if (wait) b.textContent = (st.turn.canRollAgain ? 'ROLL AGAIN' : 'PASS DICE') + ' (' + (left / 1000).toFixed(1) + ')';
+    var left = ui.graceUntil - Date.now(), pu = st.turn.payup, wait = pu && pu.open && left > 0;
+    b.disabled = !!st.turn.tab || wait;
+    if (wait) b.textContent = (st.turn.canRollAgain ? 'ROLL AGAIN' : 'PASS DICE') + ' (' + (left / 1000).toFixed(1) + ')';
     else b.textContent = st.turn.canRollAgain ? 'DOUBLES! ROLL AGAIN' : 'PASS DICE';
   }
   setInterval(function () { if (tab === 'turn' && st && st.turn) updatePass(); }, 150);
@@ -297,9 +287,7 @@
       });
       out += '</div>';
     });
-    out = out || '<div class="info">No deeds yet. Land on one and hit BUY!</div>';
-    if (!me.bankrupt) out += '<button class="ghost leavebtn" data-act="leave">\uD83D\uDEAA Leave game\u2026</button>';
-    setH($('stuffSide'), out);
+    setH($('stuffSide'), out || '<div class="info">No deeds yet. Land on one and hit BUY!</div>');
   }
 
   // ------------------------------------------------------------------ Board / Info
@@ -308,18 +296,17 @@
     var h = '';
     for (var i = 0; i < 40; i++) {
       var s = S[i], rc = cellPos(i), pr = st.props[i], corner = i % 10 === 0;
-      h += '<div class="c' + (corner ? ' corner' : s.type !== 'prop' ? ' np' : '') + (ui.sel === i ? ' sel' : '') + '" data-sp="' + i + '" style="grid-row:' + rc[0] + ';grid-column:' + rc[1] + '">';
+      h += '<div class="c' + (corner ? ' corner' : '') + (ui.sel === i ? ' sel' : '') + '" data-sp="' + i + '" style="grid-row:' + rc[0] + ';grid-column:' + rc[1] + '">';
       if (corner) h += esc(['HALF-WAY', 'SNOW-BANK', 'DIRT LOT', 'WHITE-OUT'][i / 10]);
-      else {     // v0.1.1: clean info-only cells, names only (no icons)
-        if (s.type === 'prop') h += '<div class="band" style="background:' + gcol(i) + '"></div>';
-        h += '<span class="nm">' + esc(s.short) + '</span>';
-      }
-      if (pr && pr[0] >= 0) { h += '<div class="own"></div>'; if (pr[1]) h += '<b class="sh">' + (pr[1] === 5 ? 'MP' : pr[1] + 'S') + '</b>'; }
+      if (s.type === 'prop') h += '<div class="band" style="background:' + gcol(i) + '"></div>';
+      else if (!corner) h += '<span style="font-size:9px">' + ({ hail: '\uD83C\uDF28', potluck: '\uD83C\uDF72', tax: '$', whistle: '\uD83D\uDE82', juice: s.name === 'City Power' ? '\u26A1' : '\uD83D\uDCA7' }[s.type] || '') + '</span>';
+      if (pr && pr[0] >= 0) { var o = pById(pr[0]); h += '<div class="own" style="background:' + (o ? o.color : '#888') + ';opacity:' + (pr[2] ? 0.4 : 1) + '"></div>'; if (pr[1]) h += '<b style="position:absolute;left:1px;top:28%;font-size:8px">' + (pr[1] === 5 ? 'MP' : pr[1] + 'S') + '</b>'; }
+      var here = st.players.filter(function (p) { return !p.bankrupt && p.pos === i; });
+      here.slice(0, 4).forEach(function (p, k) { h += '<span class="tk" style="background:' + p.color + ';left:' + (k % 2 ? 55 : 5) + '%;top:' + (k < 2 ? 34 : 62) + '%"></span>'; });
       h += '</div>';
     }
     h += '<div class="mid">RED DEER<br>RICH<small>' + (st.rules.jackpot ? 'Dirt Lot pot ' + money(st.pot) : 'Round ' + st.round) + '</small></div>';
     setH($('mini'), h);
-    paintOwners(); renderDots(); renderSeats(); renderObserver();
     var s0 = S[ui.sel], pr0 = st.props[ui.sel], side = '';
     if (s0.price) {
       var o0 = pr0[0] >= 0 ? pById(pr0[0]) : null;
@@ -333,173 +320,11 @@
     side += '<h3>Standings</h3>' + st.players.slice().sort(function (a, b) { return (a.bankrupt - b.bankrupt) || (b.worth - a.worth); }).map(function (p) { return '<div class="standing">' + chip(p) + '<span class="nm">' + esc(p.name) + (p.ai ? ' <small class="muted">AI</small>' : '') + '</span><span>' + (p.bankrupt ? 'OUT' : money(p.cash) + ' \u00b7 <span class="badge ' + p.state + '">' + (p.state === 'gold' ? 'GOLD' : p.state === 'good' ? 'GOOD' : 'RAGS') + '</span>') + '</span></div>'; }).join('');
     var R2 = st.rules, on = [];
     if (R2.jackpot) on.push('Dirt Lot Jackpot (pot ' + money(st.pot) + ')'); if (R2.feesToPot) on.push('Fees feed the pot'); if (R2.bullseye) on.push('Bullseye Halfway $500');
-    on.push(R2.payupRace ? 'PAY UP race' + (R2.kidMode ? ' (Kid Mode 4 s)' : '') : 'Automatic rent'); if (R2.perks) on.push('Character perks'); if (R2.auctions) on.push('Auctions on passed deeds');
-    side += '<h3>House rules</h3><div class="info">' + on.map(esc).join('<br>') + '<br>Game length: ' + (C.modes[st.mode] ? C.modes[st.mode].label : st.mode) + (st.endsIn ? ' (' + clock(st.endsIn) + ' left)' : '') + '</div>';
+    on.push(R2.payupRace ? 'PAY UP race' + (R2.kidMode ? ' (Kid Mode 4 s)' : '') : 'Automatic rent'); if (R2.perks) on.push('Character perks');
+    side += '<h3>House rules</h3><div class="info">' + on.map(esc).join('<br>') + '<br>Mode: ' + (st.mode === 'quick' ? 'Quick (' + clock(st.endsIn) + ' left)' : 'Full game') + '</div>';
     setH($('boardSide'), side);
   }
-  // owned tiles get a wash + border in the owner's colour; after a private deal it drifts over ~10 s
-  function hexRgb(hx) { hx = String(hx || '#888888'); return [parseInt(hx.substr(1, 2), 16), parseInt(hx.substr(3, 2), 16), parseInt(hx.substr(5, 2), 16)]; }
-  function ownerRgb(i) {
-    var pr = st.props[i], o = pr && pr[0] >= 0 ? pById(pr[0]) : null; if (!o) return null;
-    var to = hexRgb(o.color), f = ui.fades[i]; if (!f) return to;
-    var k = (Date.now() - f.t0) / C.tradeFadeMs; if (k >= 1) { delete ui.fades[i]; return to; }
-    k = k * k * (3 - 2 * k); var a = hexRgb(f.from);
-    return [a[0] + (to[0] - a[0]) * k, a[1] + (to[1] - a[1]) * k, a[2] + (to[2] - a[2]) * k];
-  }
-  function paintOwners() {
-    var cells = $('mini').children;
-    for (var n = 0; n < cells.length; n++) {
-      var el = cells[n], sp = el.getAttribute('data-sp'); if (sp == null) continue;
-      var pr = st.props[+sp], col = ownerRgb(+sp);
-      if (!col) { el.style.backgroundImage = ''; el.style.boxShadow = ''; continue; }
-      var rgb = Math.round(col[0]) + ',' + Math.round(col[1]) + ',' + Math.round(col[2]);
-      el.style.backgroundImage = 'linear-gradient(rgba(' + rgb + ',' + (pr[2] ? 0.2 : 0.42) + '),rgba(' + rgb + ',' + (pr[2] ? 0.2 : 0.42) + '))';
-      el.style.boxShadow = 'inset 0 0 0 2px rgb(' + rgb + ')';
-      var own = el.querySelector('.own'); if (own) { own.style.background = 'rgb(' + rgb + ')'; own.style.opacity = pr[2] ? 0.45 : 1; }
-    }
-  }
-  setInterval(function () { if (tab === 'board' && st && st.phase === 'play' && Object.keys(ui.fades).length) paintOwners(); }, 250);
-  $('mini').addEventListener('click', function (e) { if (zm.dragged) { zm.dragged = false; return; } var c = e.target.closest('.c'); if (c) { ui.sel = +c.getAttribute('data-sp'); renderBoard(); } });
-
-  // v0.1.1: one small dot per player in their colour; the active one pulses and steps along its path while moving
-  var dotEls = {};
-  function dotPos(i, k, n) {
-    var rc = cellPos(i), cx = (rc[1] - 0.5) / 11 * 100, cy = (rc[0] - 0.5) / 11 * 100;
-    if (n > 1) { var off = [[-1.9, -1.9], [1.9, 1.9], [1.9, -1.9], [-1.9, 1.9], [0, -2.6], [0, 2.6], [-2.6, 0], [2.6, 0]][k % 8]; cx += off[0]; cy += off[1]; }
-    return [cx, cy];
-  }
-  function livePos(p) {
-    var mv = ui.mv; if (!mv || mv.pid !== p.id) return p.pos;
-    var idx = Math.floor((Date.now() - mv.start) / mv.stepMs);
-    if (idx >= mv.path.length + 3) { ui.mv = null; return p.pos; }
-    return idx <= 0 ? mv.from : mv.path[Math.min(idx, mv.path.length) - 1];
-  }
-  function renderDots() {
-    var box = $('miniDots'); if (!box || !st || !st.players) return;
-    var t = st.turn, m = t && t.move;
-    if (m && t.stage === 'moving') { var key = t.rollSeq + ':' + m.from + ':' + m.path.join(','); if (!ui.mv || ui.mv.key !== key) ui.mv = { key: key, pid: t.pid, from: m.from, path: m.path, stepMs: Math.max(60, m.stepMs), start: Date.now() - m.elapsed }; }
-    var live = st.players.filter(function (p) { return !p.bankrupt; }), at = {};
-    live.forEach(function (p) { var i = livePos(p); (at[i] = at[i] || []).push(p.id); p._lp = i; });
-    var seen = {};
-    live.forEach(function (p) {
-      var el = dotEls[p.id];
-      if (!el || el.parentNode !== box) { el = dotEls[p.id] = document.createElement('i'); el.className = 'pd'; box.appendChild(el); }
-      seen[p.id] = 1;
-      var list = at[p._lp], xy = dotPos(p._lp, list.indexOf(p.id), list.length);
-      var left = xy[0].toFixed(2) + '%', top = xy[1].toFixed(2) + '%';
-      if (el.style.left !== left) el.style.left = left; if (el.style.top !== top) el.style.top = top;
-      el.style.background = p.color;
-      var cls = 'pd' + (t && t.pid === p.id ? ' active' : '') + (ui.mv && ui.mv.pid === p.id ? ' moving' : '');
-      if (el.className !== cls) el.className = cls;
-      el.title = p.name;
-    });
-    for (var id in dotEls) if (!seen[id]) { if (dotEls[id].parentNode) dotEls[id].parentNode.removeChild(dotEls[id]); delete dotEls[id]; }
-  }
-  setInterval(function () { if (tab === 'board' && st && st.phase === 'play') renderDots(); }, 90);
-
-  // v0.1.1 Observer mode (from the TV's mid-game QR): clean board, standings, history, and ask to take over an AI seat
-  function renderObserver() {
-    var el = $('obsBox'); if (!el) return;
-    if (!st.me.observer) { if (el.innerHTML) el.innerHTML = ''; return; }
-    if (!$('obsSeats')) el.innerHTML = '<div class="obsbox"><b>Want to play?</b><div class="muted small">Take over an AI seat. The players get 5 seconds to say no.</div><input id="obsName" maxlength="12" placeholder="Your name"><div id="obsSeats"></div><h3>Game history</h3><div class="feed" id="obsFeed"></div></div>';
-    var inp = $('obsName'); if (!inp.value && document.activeElement !== inp && st.me.name !== 'Guest') inp.value = st.me.name;
-    var h;
-    if (st.asking) h = '<div class="info">Asking the players about <b>' + esc(st.asking.seat) + '</b>\u2026</div>';
-    else if (st.seats && st.seats.length) h = st.seats.map(function (s2) { return '<button class="big-btn obsreq" data-obs="' + s2[0] + '"' + (st.voteBusy ? ' disabled' : '') + '><span class="mini-chip" style="background:' + s2[3] + ';color:' + charById(s2[2]).ink + '">' + esc(initials(s2[1])) + '</span>PLAY AS ' + esc(s2[1]) + '</button>'; }).join('');
-    else h = '<div class="muted small">No AI seats right now. You\'ll join the next game automatically.</div>';
-    setH($('obsSeats'), h);
-    setH($('obsFeed'), st.feed.slice().reverse().map(function (l) { return '<div>' + esc(l) + '</div>'; }).join(''));
-  }
-  $('obsBox').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-obs]'); if (!b || b.disabled) return;
-    var nm = ($('obsName') ? $('obsName').value : '').trim();
-    if (!nm) { toast('Type your name first'); var i = $('obsName'); if (i) i.focus(); return; }
-    store.set('rdr_name', nm); send({ t: 'seatReq', pid: +b.getAttribute('data-obs'), name: nm }); vib(30); SFX.play('click');
-  });
-  // the 5-second yes/no prompt every player gets when an observer asks for an AI seat
-  function renderVote() {
-    var el = $('voteBar'), v = st.vote;
-    if (!v || v.mine || ui.voted === v.id) { if (!el.hidden) el.hidden = true; return; }
-    if (ui.voteId !== v.id) { ui.voteId = v.id; ui.voteEnd = Date.now() + v.left; vib(30); }
-    setH(el, '<div class="vb-t"><b>' + esc(v.name) + '</b> wants to take over <b>' + esc(v.seat) + '</b> (AI)</div><div class="vb-b"><button data-vote="1">YES</button><button data-vote="0">NO</button></div><div class="tbar"><i id="voteT"></i></div>');
-    el.hidden = false; tickVote();
-  }
-  function tickVote() { var f = $('voteT'), el = $('voteBar'); if (!f || el.hidden) return; var left = ui.voteEnd - Date.now(); if (left <= 0) { el.hidden = true; return; } f.style.width = (left / 50).toFixed(1) + '%'; }
-  setInterval(tickVote, 100);
-  $('voteBar').addEventListener('click', function (e) { var b = e.target.closest('[data-vote]'); if (!b) return; send({ t: 'vote', id: ui.voteId, yes: b.getAttribute('data-vote') === '1' }); ui.voted = ui.voteId; $('voteBar').hidden = true; vib(20); });
-
-  // v0.1.1: the host can fill an empty seat with an AI player mid-game
-  function renderSeats() {
-    var el = $('seatBox'); if (!el) return;
-    if (!st.me.vip) { setH(el, ''); return; }
-    var n = st.players.length, max = st.maxPlayers || C.maxPlayers, full = n >= max;
-    setH(el, '<div class="seatbox"><b>Seats ' + n + '/' + max + '</b> <span class="muted small">(host)</span><div class="row"><button class="ghost" data-seat="level">AI: ' + esc(C.ai.levels[ui.aiLevel].label) + '</button><button class="go" data-seat="add"' + (full ? ' disabled' : '') + '>+ ADD AI PLAYER</button></div><div class="muted small">' + (full ? 'The table is full.' : 'Fills an empty seat right now: the AI starts at The Halfway with starting cash and plays after everyone else.') + '</div></div>');
-  }
-  $('seatBox').addEventListener('click', function (e) {
-    var b = e.target.closest('button'); if (!b) return; var k = b.getAttribute('data-seat');
-    if (k === 'level') { var L = Object.keys(C.ai.levels); ui.aiLevel = L[(L.indexOf(ui.aiLevel) + 1) % L.length]; renderSeats(); }
-    if (k === 'add') { send({ t: 'addAI', level: ui.aiLevel }); vib(30); SFX.play('buy'); toast('Adding an AI player\u2026'); }
-  });
-
-  // v0.1.1: pinch-zoom + pan (touch), wheel (desktop), + / - / fit buttons; taps still select spaces
-  var zm = { s: 1, x: 0, y: 0, dragged: false, max: 4 };
-  function applyZoom(ease) {
-    var w = $('miniWrap'), el = $('miniZoom'), W = w.clientWidth || 1, Hh = w.clientHeight || W;
-    zm.s = Math.max(1, Math.min(zm.max, zm.s));
-    zm.x = Math.min(0, Math.max(W - W * zm.s, zm.x)); zm.y = Math.min(0, Math.max(Hh - Hh * zm.s, zm.y));
-    el.classList.toggle('ease', !!ease);
-    el.style.transform = 'translate(' + zm.x.toFixed(1) + 'px,' + zm.y.toFixed(1) + 'px) scale(' + zm.s.toFixed(3) + ')';
-    w.classList.toggle('zoomed', zm.s > 1.01);
-  }
-  function zoomAt(f, cx, cy, ease) { var ns = Math.max(1, Math.min(zm.max, zm.s * f)), k = ns / zm.s; zm.x = cx - (cx - zm.x) * k; zm.y = cy - (cy - zm.y) * k; zm.s = ns; applyZoom(ease); }
-  (function () {
-    var w = $('miniWrap'), tch = null;
-    function rel(t) { var r = w.getBoundingClientRect(); return [t.clientX - r.left, t.clientY - r.top]; }
-    function two(e) { var a = rel(e.touches[0]), b = rel(e.touches[1]); return { d: Math.max(10, Math.hypot(a[0] - b[0], a[1] - b[1])), c: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] }; }
-    function startOne(t) { var p = rel(t); tch = { pinch: false, p0: p, x: zm.x, y: zm.y }; }
-    w.addEventListener('touchstart', function (e) {
-      if (e.touches.length >= 2) { var g = two(e); tch = { pinch: true, d: g.d, c: g.c, s: zm.s, x: zm.x, y: zm.y }; zm.dragged = true; e.preventDefault(); }
-      else if (e.touches.length === 1) { startOne(e.touches[0]); zm.dragged = false; }
-    }, { passive: false });
-    w.addEventListener('touchmove', function (e) {
-      if (!tch) return;
-      if (tch.pinch && e.touches.length >= 2) {
-        var g = two(e), ns = Math.max(1, Math.min(zm.max, tch.s * g.d / tch.d)), k = ns / tch.s;
-        zm.s = ns; zm.x = g.c[0] - (tch.c[0] - tch.x) * k; zm.y = g.c[1] - (tch.c[1] - tch.y) * k; applyZoom(false); e.preventDefault();
-      } else if (!tch.pinch && zm.s > 1.01) {
-        var p = rel(e.touches[0]), dx = p[0] - tch.p0[0], dy = p[1] - tch.p0[1];
-        if (Math.abs(dx) + Math.abs(dy) > 6) zm.dragged = true;
-        zm.x = tch.x + dx; zm.y = tch.y + dy; applyZoom(false); e.preventDefault();
-      }
-    }, { passive: false });
-    w.addEventListener('touchend', function (e) { if (e.touches.length === 1) startOne(e.touches[0]); else if (!e.touches.length) tch = null; });
-    w.addEventListener('wheel', function (e) { e.preventDefault(); var p = rel(e); zoomAt(e.deltaY < 0 ? 1.18 : 1 / 1.18, p[0], p[1], false); }, { passive: false });
-    var md = null;
-    w.addEventListener('mousedown', function (e) { if (e.target.closest('.zbtns')) return; md = { p0: [e.clientX, e.clientY], x: zm.x, y: zm.y }; zm.dragged = false; });
-    window.addEventListener('mousemove', function (e) { if (!md || zm.s <= 1.01) return; var dx = e.clientX - md.p0[0], dy = e.clientY - md.p0[1]; if (Math.abs(dx) + Math.abs(dy) > 6) zm.dragged = true; zm.x = md.x + dx; zm.y = md.y + dy; applyZoom(false); });
-    window.addEventListener('mouseup', function () { md = null; });
-    w.querySelector('.zbtns').addEventListener('click', function (e) {
-      var b = e.target.closest('button'); if (!b) return; e.stopPropagation();
-      var k = b.getAttribute('data-z'), W = w.clientWidth, Hh = w.clientHeight;
-      if (k === 'in') zoomAt(1.5, W / 2, Hh / 2, true); else if (k === 'out') zoomAt(1 / 1.5, W / 2, Hh / 2, true); else { zm.s = 1; zm.x = zm.y = 0; applyZoom(true); }
-    });
-    window.addEventListener('resize', function () { applyZoom(false); });
-  })();
-
-  // ------------------------------------------------------------------ auctions (v0.1.1): sticky bar on every game tab
-  function renderAuction() {
-    var el = $('auctionBar'), a = st && st.phase === 'play' && st.turn ? st.turn.auction : null;
-    if (!a) { if (!el.hidden) el.hidden = true; ui.auc = null; return; }
-    if (!ui.auc || ui.auc.seq !== a.seq || ui.auc.bids !== a.bids) ui.auc = { seq: a.seq, bids: a.bids, end: Date.now() + a.left, total: Math.max(1, a.total) };
-    var me = st.me, room = me.cash - (me.lockedCash || 0), lead = a.leader === me.id, L = pById(a.leader), s = S[a.sp];
-    setH(el, '<div class="a1"><span class="sw" style="background:' + gcol(a.sp) + '"></span><span class="nm">\uD83D\uDD28 AUCTION: ' + esc(s.name) + '</span><span class="bd">' + money(a.bid) + '</span></div>' +
-      '<div class="a2">' + (lead ? '<b>You\'re winning!</b>' : L ? chip(L) + '<b>' + esc(L.name) + '</b> leads' : 'No bids yet') + ' \u00b7 list price ' + money(s.price) + (me.bankrupt ? '' : ' \u00b7 you can bid up to ' + money(room)) + '</div>' +
-      '<div class="tbar"><i id="aucT"></i></div><div class="bids">' + C.auction.steps.map(function (add) { return '<button data-bid="' + add + '"' + (me.bankrupt || lead || a.bid + add > room ? ' disabled' : '') + '>+$' + add + '</button>'; }).join('') + '</div>');
-    el.className = 'aucbar' + (lead ? ' leading' : ''); el.hidden = false; tickAuction();
-  }
-  function tickAuction() { var f = $('aucT'); if (!f || !ui.auc) return; var left = Math.max(0, ui.auc.end - Date.now()), k = left / ui.auc.total; f.style.width = (k * 100).toFixed(1) + '%'; f.style.background = k < 0.3 ? '#ff5a5a' : '#ffd23f'; }
-  setInterval(tickAuction, 100);
-  $('auctionBar').addEventListener('click', function (e) { var b = e.target.closest('button[data-bid]'); if (!b || b.disabled) return; send({ t: 'bid', add: +b.getAttribute('data-bid') }); vib(25); SFX.play('click'); });
+  $('mini').addEventListener('click', function (e) { var c = e.target.closest('.c'); if (c) { ui.sel = +c.getAttribute('data-sp'); renderBoard(); } });
 
   // ------------------------------------------------------------------ Messages & Trades
   var chatInput = document.createElement('div'); chatInput.className = 'chatbar'; chatInput.innerHTML = '<input id="chatText" maxlength="200" placeholder="Message\u2026" autocomplete="off"><button id="chatSend">SEND</button>';
@@ -618,7 +443,6 @@
       case 'buy': case 'skipBuy': case 'payTow': case 'usePass': case 'raise': case 'giveUp': send({ t: act }); vib(30); if (act === 'buy') SFX.play('buy'); break;
       case 'pass': send({ t: 'pass' }); vib(40); SFX.play('click'); break;
       case 'build': case 'sell': case 'hock': case 'unhock': send({ t: act, sp: +sp }); vib(25); if (act === 'build') SFX.play('build'); break;
-      case 'leave': openLeave(1); break;
       case 'newDeal': openBuilder(typeof ui.thread === 'number' ? ui.thread : null); break;
       case 'dealWith': openBuilder(+el.getAttribute('data-pid')); break;
       case 'closeBuilder': ui.builder = null; renderMsgs(); break;
@@ -631,34 +455,6 @@
         send(msg); SFX.play('deal'); vib([30, 30, 80]);
         ui.thread = b.partner; ui.builder = null; renderMsgs(); toast('CEMENTED! Offer sent.'); break;
     }
-  });
-  // v0.1.1 Leave game: strong confirm, then pick what happens to your stuff
-  function leaveBlock() {
-    var t = st && st.turn, me = st && st.me; if (!t || !me) return '';
-    if (t.payup && t.payup.open && (t.payup.mover === me.id || t.payup.owner === me.id)) return 'You can\'t leave during a PAY UP window.';
-    if (t.pid === me.id && t.tab) return 'Settle your debt first (sell, hock or make a deal).';
-    if (t.auction && t.auction.leader === me.id) return 'You can\'t leave while you lead an auction.';
-    if (t.pid === me.id && (t.stage === 'rolling' || t.stage === 'moving' || t.stage === 'card')) return 'Wait until your move finishes.';
-    return '';
-  }
-  function openLeave(step) {
-    var el = $('leaveBox'), others = st.players.filter(function (p) { return p.id !== st.me.id && !p.bankrupt; }), blk = leaveBlock(), h;
-    if (step === 1) h = '<div class="lv-t">Leave the game?</div><div class="lv-s">Are you sure? <b>You can\'t come back into this game</b> once you leave.</div>' + (blk ? '<div class="info warn">' + esc(blk) + '</div>' : '') +
-      '<button class="big-btn red" data-lv="sure"' + (blk ? ' disabled' : '') + '>YES, I WANT TO LEAVE</button><button class="big-btn ghostbtn" data-lv="cancel">CANCEL</button>';
-    else h = '<div class="lv-t">What happens to your stuff?</div><div class="lv-s">' + money(st.me.cash) + ' cash and ' + myDeeds().length + ' deeds.</div>' +
-      '<button class="lv-opt" data-lv="ai"><b>Hand my character to an AI</b><small>An AI keeps playing your seat with everything you own.</small></button>' +
-      '<button class="lv-opt" data-lv="split"' + (others.length ? '' : ' disabled') + '><b>Split it evenly</b><small>Cash and deeds shared among the ' + others.length + ' other players (Shops sold back to the bank first).</small></button>' +
-      '<div class="lv-opt lv-one"><b>Give everything to one player</b><small>' + others.map(function (p) { return '<button class="lv-pick" data-lv="one" data-to="' + p.id + '">' + chip(p) + esc(p.name) + '</button>'; }).join('') + '</small></div>' +
-      '<button class="lv-opt" data-lv="pot"><b>Throw it all into the Dirt Lot pot</b><small>Cash goes into the jackpot; deeds go back to the bank (Shops sold back).</small></button>' +
-      '<button class="big-btn ghostbtn" data-lv="cancel">CANCEL</button>';
-    el.innerHTML = '<div class="lv-card">' + h + '</div>'; el.hidden = false; vib(20);
-  }
-  $('leaveBox').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-lv]'); if (!b || b.disabled) { if (e.target === $('leaveBox')) $('leaveBox').hidden = true; return; }
-    var k = b.getAttribute('data-lv');
-    if (k === 'cancel') { $('leaveBox').hidden = true; return; }
-    if (k === 'sure') { openLeave(2); return; }
-    send({ t: 'leaveGame', how: k, to: k === 'one' ? +b.getAttribute('data-to') : null }); $('leaveBox').hidden = true; vib([40, 40, 120]);
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && document.activeElement && document.activeElement.id === 'chatText') sendChat(); });
   chatInput.addEventListener('click', function (e) { if (e.target.id === 'chatSend') sendChat(); });

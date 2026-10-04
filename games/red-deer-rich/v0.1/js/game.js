@@ -1,4 +1,4 @@
-/* RED DEER RICH - rules engine (v0.1.1: auctions, three game lengths, late seats, 3 s PASS lock). The TV is the authority: phones and AI only send intents.
+/* RED DEER RICH - rules engine (v0.1). The TV is the authority: phones and AI only send intents.
    Time-driven: the host calls game.tick(now) every frame; every delay (dice tumble, token steps, card reading,
    PAY UP grace) is a timestamp in the state, so the same engine runs in the browser and in node tests. */
 (function (root) {
@@ -20,7 +20,7 @@
     this.nextId = 1;
     this.players = [];
     this.rules = {}; for (var k in C.rules) this.rules[k] = C.rules[k];
-    this.mode = 'regular';
+    this.mode = 'full';
     this.phase = 'lobby';
     this.version = 0;                      // bumps on every change (host pushes phones when it moves)
     this.chats = []; this.trades = []; this.log = [];
@@ -28,7 +28,7 @@
   }
   var G = Game.prototype;
   G.on = function (fn) { this.listeners.push(fn); };
-  G.emit = function (type, d) { d = d || {}; d.type = type; this.version++; try { this.trackStat(type, d); } catch (e) {} for (var i = 0; i < this.listeners.length; i++) try { this.listeners[i](type, d, this); } catch (e) { if (root.console) console.error(e); } };
+  G.emit = function (type, d) { d = d || {}; d.type = type; this.version++; for (var i = 0; i < this.listeners.length; i++) try { this.listeners[i](type, d, this); } catch (e) { if (root.console) console.error(e); } };
   G.changed = function () { this.version++; };
   G.addLog = function (s) { this.log.push({ t: this.now, s: s }); if (this.log.length > 60) this.log.shift(); this.changed(); };
   G.ms = function (x) { return x / this.speed; };
@@ -72,42 +72,27 @@
     if (p.ai || (oldDefault && p.name === oldDefault.name)) p.name = ch.name;
     p.charId = charId; p.color = ch.color; p.ink = ch.ink; this.changed(); return true;
   };
-  G.setRule = function (k, v) { if (k in C.rules && (this.phase === 'lobby' || this.phase === 'over' || k === 'camera')) { this.rules[k] = !!v; if (k === 'feesToPot' && v) this.rules.jackpot = true; if (k === 'jackpot' && !v) this.rules.feesToPot = false; this.changed(); } };
-  G.setMode = function (m) { if (m === 'full') m = 'regular'; if (C.modes[m] && (this.phase === 'lobby' || this.phase === 'over')) { this.mode = m; this.changed(); } };
-  G.timed = function () { return !!(C.modes[this.mode] && C.modes[this.mode].minutes && this.endsAt); };
-  // v0.1.1: an AI (or a late phone) can take a seat in a running game: starting cash, at The Halfway, last in turn order
-  G.addLatePlayer = function (o) {
-    if (this.phase !== 'play') return this.addPlayer(o);
-    var p = this.addPlayer(o); if (!p) return null;
-    p.cash = C.modes[this.mode].startCash; p.pos = 0; p.state = 'rags'; p.place = 0;
-    this.order.push(p.id);
-    this.addLog(p.name + ' joins the game' + (p.ai ? ' (AI)' : '') + '.');
-    this.emit('joined', { pid: p.id }); this.updateStates();
-    return p;
-  };
+  G.setRule = function (k, v) { if (k in C.rules && (this.phase === 'lobby' || this.phase === 'over')) { this.rules[k] = !!v; if (k === 'feesToPot' && v) this.rules.jackpot = true; if (k === 'jackpot' && !v) this.rules.feesToPot = false; this.changed(); } };
+  G.setMode = function (m) { if (m === 'full' || m === 'quick') { this.mode = m; this.changed(); } };
   G.perk = function (p, charId) { return this.rules.perks && p.charId === charId; };
 
   G.start = function () {
     if (this.players.length < C.minPlayers) return false;
     this.resetBoard();
-    var self = this, MD = C.modes[this.mode] || C.modes.regular;
+    var self = this, quick = this.mode === 'quick';
     this.players.forEach(function (p) {
-      p.cash = MD.startCash; p.stats = null; p.pos = 0; p.snow = false; p.snowTries = 0; p.passes = []; p.bankrupt = false; p.skip = 0;
+      p.cash = quick ? C.quick.startCash : C.startCash; p.pos = 0; p.snow = false; p.snowTries = 0; p.passes = []; p.bankrupt = false; p.skip = 0;
       p.perk = {}; p.laps = 0; p.halfwayPasses = 0; p.preLap = -1; p.state = 'rags'; p.place = 0;
     });
     this.chats = []; this.trades = []; this.log = []; this.tradeSeq = 1;
     this.order = this.shuffle(this.players.map(function (p) { return p.id; }));
     this.players.sort(function (a, b) { return self.order.indexOf(a.id) - self.order.indexOf(b.id); });
-    this.endsAt = 0;
-    if (MD.deal === 'some') {
+    if (quick) {
       var deeds = this.shuffle(S.filter(function (s) { return s.type === 'prop'; }).map(function (s) { return s.i; }));
       var each = this.players.length <= 3 ? C.quick.dealSmall : C.quick.dealBig;
       this.players.forEach(function (p) { for (var k = 0; k < each; k++) { var sp = deeds.pop(); self.props[sp].owner = p.id; } });
-    } else if (MD.deal === 'all') {      // every ownable space (deeds, Whistle Stops, City Juice), round-robin
-      var all = this.shuffle(this.props.map(function (pr, i) { return pr ? i : -1; }).filter(function (i) { return i >= 0; }));
-      all.forEach(function (sp, k) { self.props[sp].owner = self.players[k % self.players.length].id; });
+      this.endsAt = this.now + C.quick.minutes * 60000 / (this.speed >= 20 ? this.speed : 1);
     }
-    if (MD.minutes) this.endsAt = this.now + MD.minutes * 60000 / (this.speed >= 20 ? this.speed : 1);
     this.phase = 'play'; this.startedAt = this.now; this.round = 1;
     this.addLog('Game on! Turn order: ' + this.players.map(function (p) { return p.name; }).join(', '));
     this.emit('start', { order: this.order.slice() });
@@ -223,74 +208,6 @@
     this.checkTrades(); this.updateStates();
     if (this.alive().length <= 1) this.finish('last');
   };
-  // ------------------------------------------------------------------ leaving mid-game (v0.1.1)
-  G.canLeave = function (p) {
-    if (this.phase !== 'play') return 'No game running';
-    if (!p || p.bankrupt) return 'You are already out of this game';
-    var t = this.turn, self = this;
-    if (t) {
-      if (t.payup && !t.payup.done && (t.payup.mover === p.id || t.payup.owner === p.id)) return 'Not during a PAY UP window: try again in a moment';
-      if (t.auction && t.auction.leader === p.id) return 'Not while you lead an auction';
-      if (t.pid === p.id) {
-        if (t.tab) return 'Settle your debt first (My Stuff: sell, hock or make a deal)';
-        if (t.stage === 'rolling' || t.stage === 'moving' || t.stage === 'card' || t.stage === 'closing') return 'Wait until your move finishes';
-        if (t.auction) return 'Wait for the auction to finish';
-      }
-      if (this.props.some(function (pr, i) { return pr && pr.owner === p.id && self.locked(i); })) return 'Some of your deeds are locked this turn: try again in a moment';
-    }
-    return '';
-  };
-  // how: 'ai' (an AI keeps playing the seat) | 'split' (cash + deeds shared evenly) | 'one' (everything to player `to`) | 'pot' (cash to the Dirt Lot pot, deeds back to the bank)
-  G.leaveGame = function (pid, how, to) {
-    var p = this.byId(pid), why = this.canLeave(p); if (why) return why;
-    var self = this, others = this.alive().filter(function (q) { return q !== p; }), r = null;
-    if (how === 'ai') {
-      p.ai = { level: 'normal' }; p.aiTakeover = null; p.clientId = null; p.connected = true; p.left = 'ai';
-      this.addLog(p.name + ' left the game. An AI plays their seat from here.');
-      this.emit('left', { pid: p.id, how: 'ai' }); this.changed(); return '';
-    }
-    if (how === 'one') { r = this.byId(+to); if (!r || r === p || r.bankrupt) return 'Pick a player to get everything'; }
-    else if (how !== 'split' && how !== 'pot') return 'Pick an option';
-    if (!others.length) return 'Nobody left to take it';
-    this.trades.forEach(function (t) { if (t.status === 'open' && (t.a === p.id || t.b === p.id)) { t.status = 'cancelled'; t.why = p.name + ' left the game'; } });
-    var mine = []; this.props.forEach(function (pr, i) { if (pr && pr.owner === p.id) mine.push(i); });
-    if (how !== 'one') mine.forEach(function (i) { var pr = self.props[i]; if (pr.shops) { p.cash += Math.floor(pr.shops * self.shopCost(i) * C.shopSellBack); self.returnShops(pr.shops); pr.shops = 0; } });   // the bank buys the Shops back first
-    var cash = Math.max(0, p.cash), detail;
-    if (how === 'one') {
-      r.cash += cash; mine.forEach(function (i) { self.props[i].owner = r.id; }); r.passes = r.passes.concat(p.passes);
-      detail = 'everything goes to ' + r.name;
-    } else if (how === 'split') {
-      var n = others.length, each = Math.floor(cash / n), got = {};
-      others.forEach(function (q) { q.cash += each; got[q.id] = 0; });
-      mine.sort(function (a, b) { return S[b].price - S[a].price; }).forEach(function (i) {    // deal the deeds out so everyone gets about the same value
-        var best = others.slice().sort(function (a, b) { return (got[a.id] - got[b.id]) || (a.cash - b.cash); })[0];
-        self.props[i].owner = best.id; got[best.id] += S[i].price;
-      });
-      p.passes.forEach(function (d, k) { others[k % n].passes.push(d); });
-      detail = money(each) + ' to each player and the deeds shared out';
-    } else {
-      this.rules.jackpot = true; this.pot += cash;
-      mine.forEach(function (i) { self.props[i].owner = -1; self.props[i].hocked = false; });
-      p.passes.forEach(function (d) { self.returnPass(d); });
-      detail = money(cash) + ' into the Dirt Lot pot, deeds back to the bank';
-    }
-    p.cash = 0; p.passes = []; p.bankrupt = true; p.left = how; p.snow = false; p.place = this.alive().length + 1; p.clientId = null;
-    this.addLog(p.name + ' left the game: ' + detail + '.');
-    this.emit('left', { pid: p.id, how: how, to: r ? r.id : null, amount: cash, detail: detail });
-    if (this.turn && this.turn.pid === p.id) { var t = this.turn; t.buy = null; t.tab = null; t.payup = null; t.canRollAgain = false; t.stage = 'ended'; t.endAt = this.now + this.ms(1200); }
-    this.checkTrades(); this.updateStates();
-    if (this.alive().length <= 1) this.finish('last');
-    this.changed(); return '';
-  };
-  // v0.1.1: an observer takes over an AI seat (after the players OK it)
-  G.handSeat = function (pid, name, clientId) {
-    var p = this.byId(pid); if (!p || !p.ai || p.bankrupt || this.phase !== 'play') return 'That seat is not an AI seat';
-    var old = p.name; p.ai = null; p.aiTakeover = null; p.clientId = clientId; p.connected = true; p.left = null;
-    p.name = clean(name) || p.name;
-    if (this.aiMem) delete this.aiMem[p.id];
-    this.addLog(p.name + ' takes over ' + old + '\'s seat.');
-    this.emit('seatTaken', { pid: p.id, from: old }); this.changed(); return '';
-  };
   G.returnShops = function (n) { if (n >= 5) { this.bankMegas++; } else this.bankShops += n; };
   G.returnPass = function (deck) { var d = this.decks[deck], src = deck === 'hail' ? B.HAIL : B.POT; for (var i = 0; i < src.length; i++) if (src[i].fx.k === 'pass' && d.indexOf(i) === -1) { d.push(i); return; } };
 
@@ -386,69 +303,10 @@
     for (var k = 1; k <= n; k++) { var j = (i + k) % n; if (j <= i) wrapped = true; if (!this.players[j].bankrupt) { next = this.players[j]; break; } }
     if (!next) { this.finish('last'); return; }
     if (wrapped) this.round++;
-    if (this.timed() && this.now >= this.endsAt) { this.finish('time'); return; }
+    if (this.mode === 'quick' && this.now >= this.endsAt) { this.finish('time'); return; }
     if (this.round > C.maxRounds) { this.finish('rounds'); return; }
     this.beginTurn(next);
   };
-
-  // ------------------------------------------------------------------ STATS (for the results podium)
-  G.statsOf = function (p) {
-    if (!p.stats) p.stats = { rent: 0, bigRent: 0, bigRentSp: -1, rentBy: {}, bestTrade: 0, caught: 0, missed: 0, auctions: 0, snow: 0 };
-    return p.stats;
-  };
-  G.sideValue = function (side) {
-    var v = (side && side.cash) || 0;
-    ((side && side.props) || []).forEach(function (sp) { v += S[sp].price || 0; });
-    return v + ((side && side.passes) || 0) * 50;
-  };
-  G.trackStat = function (type, d) {
-    var self = this, st = function (id) { var p = self.byId(id); return p ? self.statsOf(p) : null; }, s;
-    if (type === 'pay' && typeof d.to === 'number' && /^rent on /.test(d.reason || '')) {
-      s = st(d.to); if (!s) return;
-      var nm = d.reason.slice(8), sp = -1;
-      for (var i = 0; i < S.length; i++) if (S[i].name === nm) { sp = i; break; }
-      s.rent += d.amount; s.rentBy[sp] = (s.rentBy[sp] || 0) + d.amount;
-      if (d.amount > s.bigRent) { s.bigRent = d.amount; s.bigRentSp = sp; }
-    } else if (type === 'caught') { s = st(d.owner); if (s) s.caught++; }
-    else if (type === 'slipped') { s = st(d.owner); if (s) s.missed++; }
-    else if (type === 'auctionWon') { s = st(d.pid); if (s) s.auctions++; }
-    else if (type === 'whiteout') { s = st(d.pid); if (s) s.snow++; }
-    else if (type === 'tradeDone') {
-      var t = this.tradeById(d.id); if (!t) return;
-      var gainA = this.sideValue(t.bGives) - this.sideValue(t.aGives);
-      s = st(t.a); if (s && gainA > s.bestTrade) s.bestTrade = gainA;
-      s = st(t.b); if (s && -gainA > s.bestTrade) s.bestTrade = -gainA;
-    }
-  };
-  G.placeName = function (sp) { return sp >= 0 && S[sp] ? S[sp].short.replace(/ (Avenue|Street)$/, '') : ''; };
-  G.topSpot = function (s) {
-    var best = -1, amt = 0; Object.keys(s.rentBy).forEach(function (k) { if (+k >= 0 && s.rentBy[k] > amt) { amt = s.rentBy[k]; best = +k; } });
-    return best;
-  };
-  // one fun title each: the strongest claim on each title wins it, nobody gets two
-  G.awardTitles = function (list) {
-    var self = this, titled = {}, out = {};
-    var pick = function (title, metric, min) {
-      var best = null, bv = min - 1e-9;
-      list.forEach(function (p) { if (titled[p.id]) return; var v = metric(p); if (v >= min && v > bv) { bv = v; best = p; } });
-      if (best) { titled[best.id] = 1; out[best.id] = typeof title === 'function' ? title(best) : title; }
-    };
-    var S_ = function (p) { return self.statsOf(p); };
-    pick(function (p) { return 'Landlord of ' + self.placeName(self.topSpot(S_(p))); }, function (p) { return self.topSpot(S_(p)) >= 0 ? S_(p).rent : 0; }, 1);
-    pick('Snowbank Regular', function (p) { return S_(p).snow; }, 2);
-    pick('Quickest Draw in Red Deer', function (p) { return S_(p).caught; }, 3);
-    pick('Auction Hawk', function (p) { return S_(p).auctions; }, 2);
-    pick('Deal Maker', function (p) { return S_(p).bestTrade; }, 1);
-    pick('Asleep at the Till', function (p) { return S_(p).missed; }, 2);
-    list.forEach(function (p) {
-      if (titled[p.id]) return;
-      var s = S_(p), spot = self.topSpot(s);
-      out[p.id] = p.left ? 'Gone Fishin\'' : spot >= 0 ? 'Landlord of ' + self.placeName(spot)
-        : p.bankrupt ? 'Down but Not Out' : s.snow ? 'Snowbank Regular' : 'Just Passing Through';
-    });
-    return out;
-  };
-
   G.finish = function (why) {
     if (this.phase === 'over') return;
     var self = this; this.updateStates();
@@ -457,12 +315,7 @@
       if (a.bankrupt) return (a.place || 99) - (b.place || 99);
       return self.worthOf(b) - self.worthOf(a);
     });
-    var titles = this.awardTitles(ranked);
-    this.results = ranked.map(function (p, k) {
-      var st = self.statsOf(p);
-      return { pid: p.id, name: p.name, charId: p.charId, color: p.color, worth: p.bankrupt ? 0 : self.worthOf(p), bankrupt: p.bankrupt, left: p.left || null, place: k + 1, state: p.state,
-        title: titles[p.id], stats: { bigRent: st.bigRent, bigRentAt: self.placeName(st.bigRentSp), bestTrade: st.bestTrade, caught: st.caught, missed: st.missed, auctions: st.auctions, snow: st.snow, rent: st.rent } };
-    });
+    this.results = ranked.map(function (p, k) { return { pid: p.id, name: p.name, charId: p.charId, color: p.color, worth: p.bankrupt ? 0 : self.worthOf(p), bankrupt: p.bankrupt, place: k + 1, state: p.state }; });
     this.phase = 'over'; this.overWhy = why;
     if (this.turn) this.turn.stage = 'over';
     this.addLog(ranked[0].name + ' WINS!');
@@ -530,8 +383,7 @@
   };
   G.land = function (p) {
     var t = this.turn, s = S[p.pos], pr = this.props[p.pos];
-    t.stage = 'act'; t.landedAt = this.now;
-    t.graceUntil = this.now + this.ms(this.rules.kidMode ? C.payup.kidGraceMs : C.payup.graceMs);   // v0.1.1: no quick-tap sniping past PAY UP
+    t.stage = 'act'; t.landedAt = this.now; t.graceUntil = 0;
     this.emit('land', { pid: p.id, sp: p.pos });
     if (pr) {
       if (pr.owner < 0) { t.buy = p.pos; this.emit('offer', { pid: p.id, sp: p.pos }); }
@@ -541,7 +393,9 @@
         else if (owner && !owner.bankrupt) {
           if (this.rules.payupRace) {
             t.payupSeq = (t.payupSeq || 0) + 1;
+            var grace = this.rules.kidMode ? C.payup.kidGraceMs : C.payup.graceMs;
             t.payup = { owner: owner.id, sp: p.pos, mover: p.id, roll: t.roll ? t.roll.total : 7, dbl: !!t.dblRent, openedAt: this.now, caught: false, done: false, seq: t.payupSeq };
+            t.graceUntil = this.now + this.ms(grace);
             this.emit('payupOpen', { pid: p.id, owner: owner.id, sp: p.pos, rent: this.rentFor(p.pos, t.payup.roll, t.payup.dbl) });
           } else {
             var amt = this.rentFor(p.pos, t.roll ? t.roll.total : 7, t.dblRent);
@@ -749,9 +603,7 @@
           this.doRoll(p); return '';
         }
         if (t.stage === 'act' && t.canRollAgain && !t.tab) {
-          if (this.now < t.graceUntil) return 'wait';
-          if (t.auction) return 'Auction running';
-          if (t.buy != null) { this.passOnBuy(); if (t.auction) return 'Auction first!'; }
+          if (t.payup && !t.payup.done && this.now < t.graceUntil) return 'wait';
           this.closePayup(); t.canRollAgain = false; this.doRoll(p); return '';
         }
         return 'can\'t roll now';
@@ -774,15 +626,14 @@
         this.emit('buy', { pid: p.id, sp: p.pos, price: price }); this.updateStates(); return '';
       case 'skipBuy':
         if (!active || t.buy == null) return 'no';
-        this.emit('skipBuy', { pid: p.id }); this.passOnBuy(); return '';
+        t.buy = null; this.emit('skipBuy', { pid: p.id }); return '';
       case 'pass':
         if (!active) return 'not your turn';
         if (t.stage !== 'act') return 'not now';
         if (t.tab) return 'Settle your Tab first';
         if (t.canRollAgain) return 'You rolled doubles: roll again';
-        if (this.now < t.graceUntil) return 'wait';
-        if (t.auction) return 'Auction running';
-        if (t.buy != null) { this.passOnBuy(); if (t.auction) return 'Auction first!'; }
+        if (t.payup && !t.payup.done && this.now < t.graceUntil) return 'wait';
+        t.buy = null;
         if (t.payup && !t.payup.done) {
           var owner = this.byId(t.payup.owner);
           if (owner && this.perk(owner, 'mike')) { t.stage = 'closing'; t.closeAt = this.now + this.ms(C.payup.loudAmpMs); this.emit('loudAmp', { owner: owner.id }); return ''; }
@@ -792,7 +643,6 @@
         this.emit('passDice', { pid: pid });
         return '';
       case 'payup': return this.payup(pid) ? '' : 'too late';
-      case 'bid': return this.bid(pid, +m.add);
       case 'build': r = this.build(p, +m.sp); return r;
       case 'sell': return this.sellShop(p, +m.sp);
       case 'hock': return this.hock(p, +m.sp);
@@ -811,47 +661,6 @@
     }
     return 'unknown';
   };
-  // ------------------------------------------------------------------ auctions (v0.1.1)
-  G.startAuction = function (sp) {
-    var t = this.turn; if (!t || t.auction || !this.props[sp] || this.props[sp].owner >= 0) return;
-    this.auctionSeq = (this.auctionSeq || 0) + 1;
-    t.auction = { sp: sp, bid: C.auction.start, leader: -1, bids: 0, endsAt: this.now + this.ms(C.auction.ms), seq: this.auctionSeq };
-    this.addLog(S[sp].name + ' goes to auction (from ' + money(C.auction.start) + ').');
-    this.emit('auctionStart', { sp: sp, bid: C.auction.start }); this.changed();
-  };
-  G.maxBid = function (p) { return p.cash - this.lockedCash(p); };
-  G.bid = function (pid, add) {
-    var t = this.turn, a = t && t.auction, p = this.byId(pid);
-    if (!a) return 'No auction running';
-    if (!p || p.bankrupt) return 'no';
-    if (C.auction.steps.indexOf(add) < 0) return 'Bad bid';
-    if (a.leader === pid) return 'You\'re already the top bidder';
-    var amt = a.bid + add;
-    if (amt > this.maxBid(p)) return 'Not enough cash for ' + money(amt);
-    a.bid = amt; a.leader = pid; a.bids++; a.endsAt = this.now + this.ms(C.auction.ms);
-    this.emit('bid', { pid: pid, amount: amt, sp: a.sp }); this.changed();
-    return '';
-  };
-  G.endAuction = function () {
-    var t = this.turn, a = t && t.auction; if (!a) return;
-    t.auction = null;
-    var w = a.leader >= 0 ? this.byId(a.leader) : null, s = S[a.sp];
-    if (w && !w.bankrupt && w.cash >= a.bid && this.props[a.sp].owner < 0) {
-      w.cash -= a.bid; this.props[a.sp].owner = w.id;
-      this.addLog(w.name + ' won ' + s.name + ' at auction for ' + money(a.bid) + '.');
-      this.emit('auctionWon', { pid: w.id, sp: a.sp, price: a.bid });
-      this.checkTrades(); this.updateStates();
-    } else {
-      this.addLog('No sale: the bank keeps ' + s.name + '.');
-      this.emit('auctionNone', { sp: a.sp });
-    }
-    this.changed();
-  };
-  // the active player declined (or walked past) a deed: hammer time
-  G.passOnBuy = function () {
-    var t = this.turn, sp = t.buy; t.buy = null;
-    if (sp != null && this.rules.auctions) this.startAuction(sp);
-  };
   G.priceFor = function (p, sp) {
     var price = S[sp].price;
     if (this.perk(p, 'priya') && p.preLap !== p.laps) price = Math.round(price * 0.9);
@@ -863,7 +672,6 @@
     this.now = now;
     if (this.phase !== 'play' || !this.turn) return;
     var t = this.turn, guard = 0;
-    if (t.auction && now >= t.auction.endsAt) this.endAuction();
     while (guard++ < 8) {
       var st = t.stage;
       if (st === 'rolling' && now >= t.rollEnd) this.afterRoll();
@@ -879,7 +687,7 @@
       t = this.turn;
     }
     if (t.tab) { var p = this.cur(); if (p && p.cash >= t.tab.amount) this.settleTab(); }
-    if (this.timed() && now >= this.endsAt && t.stage === 'roll') this.finish('time');
+    if (this.mode === 'quick' && now >= this.endsAt && t.stage === 'roll' && this.endsAt) this.finish('time');
   };
 
   Game.money = money; Game.charById = charById;
