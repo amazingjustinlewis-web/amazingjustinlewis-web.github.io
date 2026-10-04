@@ -131,11 +131,9 @@
   // speech bubble over a player (AI reactions); shout = charge / scream style
   R.bubble = function (pid, text, color, shout) { if (!text) return; this.bubbles[pid] = { text: text, color: color || '#fff', t: 0, dur: ((C.ai && C.ai.bubbleMs) || 2300) / 1000, shout: !!shout }; };
   // escape cinematic: chopper swoops in, the token hops aboard, lift-off, fly away; fireworks in the player's colour + confetti
-  R.cinematic = function (p, x, y, riders) {      // riders (v0.5 group take-off): [{ p, x, y }] incl. p; x, y = where the chopper hovers
+  R.cinematic = function (p, x, y) {
     var es = C.escapeShow || {};
-    riders = riders && riders.length ? riders : [{ p: p, x: x, y: y }];
-    var extra = riders.length > 1 ? (es.groupExtraMs || 900) / 1000 : 0;
-    this.cine = { p: p, riders: riders, x: x + 0.5, y: y + 0.5, t: 0, dur: (es.ms || 5200) / 1000 + extra, extra: extra, fwAt: (es.fireworks || []).slice(), fw: [], conf: [], confDone: false, dir: Math.random() < 0.5 ? -1 : 1 };
+    this.cine = { p: p, x: x + 0.5, y: y + 0.5, t: 0, dur: (es.ms || 5200) / 1000, fwAt: (es.fireworks || []).slice(), fw: [], conf: [], confDone: false, dir: Math.random() < 0.5 ? -1 : 1 };
   };
   // v0.4 effects: a rope snare yanking a zombie up, and a dynamite blast
   R.snare = function (x, y, color, removed) { (this.fx = this.fx || []).push({ k: 'snare', x: x, y: y, t: 0, dur: 1.1, removed: removed, color: color }); };
@@ -249,11 +247,9 @@
     // planned path
     var cur = g.curP && g.curP();
     if (cur && g.plan && g.plan.length && (g.phase === 'plan' || g.phase === 'exec' || g.phase === 'place')) {
-      var col = cur.color, mv = 0, drops = [];
+      var col = cur.color;
       g.plan.forEach(function (st, i) {
         var p = self.toScreen(st.x, st.y), last = i === g.plan.length - 1;
-        if (st.kind === 'drop') { drops.push(st); return; }      // v0.5 queued action: drawn on top below
-        mv++;
         ctx.globalAlpha = g.phase === 'plan' ? 0.85 : 0.5;
         if (st.kind === 'explore') {
           ctx.strokeStyle = '#ffd65a'; ctx.lineWidth = 3; ctx.setLineDash([6, 5]); ctx.strokeRect(p[0] + 3, p[1] + 3, sq - 6, sq - 6); ctx.setLineDash([]);
@@ -263,19 +259,13 @@
           ctx.fillStyle = hexA(col, 0.45); ctx.fillRect(p[0] + 2, p[1] + 2, sq - 4, sq - 4);
           ctx.strokeStyle = col; ctx.lineWidth = last ? 4 : 2; ctx.strokeRect(p[0] + 2, p[1] + 2, sq - 4, sq - 4);
           ctx.fillStyle = '#fff'; ctx.font = '700 ' + Math.round(sq * 0.38) + 'px Fredoka, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(st.kind === 'gate' ? 'GATE' : String(mv), p[0] + sq / 2, p[1] + sq / 2);
+          ctx.fillText(st.kind === 'gate' ? 'GATE' : String(i + 1), p[0] + sq / 2, p[1] + sq / 2);
           if (st.kind === 'step' && g.dangerAt(st.x, st.y)) {
             ctx.fillStyle = '#ff3b4e'; ctx.beginPath(); ctx.moveTo(p[0] + sq - 4, p[1] + 3); ctx.lineTo(p[0] + sq - 4, p[1] + sq * 0.42); ctx.lineTo(p[0] + sq * 0.6, p[1] + 3); ctx.fill();
             ctx.fillStyle = '#fff'; ctx.font = '700 ' + Math.round(sq * 0.24) + 'px Fredoka'; ctx.fillText('!', p[0] + sq * 0.86, p[1] + sq * 0.15);
           }
         }
         ctx.globalAlpha = 1;
-      });
-      drops.forEach(function (st) {           // where the trap / TNT will be dropped along the path
-        var p = self.toScreen(st.x + 0.78, st.y + 0.24), pul = 1 + 0.08 * Math.sin(now / 160);
-        ctx.fillStyle = st.item === 'trap' ? 'rgba(60,40,20,0.85)' : 'rgba(90,20,10,0.85)'; ctx.strokeStyle = st.item === 'trap' ? '#e0b070' : '#ff8a1a'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(p[0], p[1], sq * 0.27 * pul, 0, 7); ctx.fill(); ctx.stroke();
-        drawItem(ctx, st.item, p[0], p[1], sq * 0.4 * pul);
       });
     }
 
@@ -296,13 +286,6 @@
       ctx.lineWidth = 5; ctx.strokeStyle = '#ffd65a'; ctx.strokeRect(q2[0], q2[1], sq * S, sq * S);
     }
 
-    // v0.5 helipad: while someone waits, the squares at the fence pulse (that's where the swarm attacks from)
-    var padTiles = {};
-    g.players.forEach(function (p) { if (p.status === 'alive' && p.onPad) padTiles[p.onPad] = 1; });
-    Object.keys(padTiles).forEach(function (id) {
-      var pul = 0.18 + 0.14 * Math.sin(now / 220);
-      g.padRing(g.tileById(+id)).forEach(function (r) { var q = self.toScreen(r[0], r[1]); ctx.fillStyle = 'rgba(255,60,70,' + pul + ')'; ctx.fillRect(q[0] + 2, q[1] + 2, sq - 4, sq - 4); });
-    });
     // entities with smoothed positions
     var ents = [];
     g.players.forEach(function (p) {
@@ -335,11 +318,6 @@
     var fightZ = g.fight ? g.fight.zid : null, fightP = g.fight ? g.fight.pid : null;
     ents.forEach(function (e) {
       var p = self.toScreen(e.dx + 0.5 + (e.ox || 0), e.dy + 0.5 + (e.oy || 0));
-      if (e.p && e.p.status === 'alive') {
-        var s2 = sq * (e.sc || 1);
-        if (e.p.onPad) { ctx.strokeStyle = 'rgba(255,214,90,' + (0.55 + 0.35 * Math.sin(now / 200)) + ')'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p[0], p[1] + s2 * 0.3, s2 * 0.46, s2 * 0.2, 0, 0, 7); ctx.stroke(); }
-        if (g.teams && g.teams.on && C.teams) { ctx.strokeStyle = C.teams.colors[e.p.team % C.teams.colors.length]; ctx.lineWidth = Math.max(3, s2 * 0.08); ctx.beginPath(); ctx.ellipse(p[0], p[1] + s2 * 0.3, s2 * 0.36, s2 * 0.15, 0, 0, 7); ctx.stroke(); }
-      }
       if (e.z) drawZombie(ctx, p[0], p[1], sq, e.z, now, e.z.id === fightZ, e.anim);
       else if (e.p.status === 'dead') drawBody(ctx, p[0], p[1], sq, e.p);
       else drawPlayer(ctx, p[0], p[1], sq * (e.sc || 1), e.p, cur === e.p && g.phase !== 'over', now, e.p.id === fightP, e.anim);
@@ -424,28 +402,23 @@
   function drawCinematic(R, ctx, dt, now, sq) {
     var c = R.cine; c.t += dt;
     if (c.t > c.dur + 1.2) { R.cine = null; return; }
-    var ex = c.extra || 0, t = c.t < 1.4 ? c.t : Math.max(1.4, c.t - ex), a = R.area, base = R.toScreen(c.x, c.y), u = Math.max(sq * 0.17, 6);   // u = one helicopter "pixel"; group: longer hover while everyone climbs in
+    var t = c.t, a = R.area, base = R.toScreen(c.x, c.y), u = Math.max(sq * 0.17, 6);   // u = one helicopter "pixel"
     var hoverX = base[0], hoverY = base[1] - Math.max(sq * 1.25, u * 9), hx, hy, tilt = 0;
     var startX = c.dir > 0 ? a.x - u * 30 : a.x + a.w + u * 30, startY = a.y - u * 12;
     var endX = c.dir > 0 ? a.x + a.w + u * 40 : a.x - u * 40, endY = a.y - u * 25;
     if (t < 1.4) { var k = ease(t / 1.4); hx = startX + (hoverX - startX) * k; hy = startY + (hoverY - startY) * k + Math.sin(t * 5) * u * (1 - k); tilt = c.dir * 0.25 * (1 - k); }
     else if (t < 2.6) { hx = hoverX; hy = hoverY + Math.sin(t * 6) * u * 0.6 - (t > 2.1 ? (t - 2.1) * u * 4 : 0); }
     else { var k2 = Math.pow(Math.min(1, (t - 2.6) / 1.8), 1.8); hx = hoverX + (endX - hoverX) * k2; hy = hoverY - u * 2 + (endY - hoverY) * k2; tilt = c.dir * 0.3 * Math.min(1, (t - 2.6) * 2); }
-    // tokens: bounce where they stand, then hop up into the chopper one after another (between 1.4 s and 2.0 s + stagger)
-    var p = c.p, r = Math.max(sq * 0.38, 15), aboard = [], gap = c.riders.length > 1 ? ex / (c.riders.length - 1 || 1) : 0;
-    c.riders.forEach(function (rd, i) {
-      var b0 = R.toScreen(rd.x + 0.5, rd.y + 0.5), t0 = 1.4 + i * gap, tt = c.t;
-      if (tt < t0) drawPlayer(ctx, b0[0], b0[1] - Math.abs(Math.sin(tt * 9 + i)) * sq * 0.18, sq, rd.p, false, now, false);
-      else if (tt < t0 + 0.6) { var h = (tt - t0) / 0.6, px = b0[0] + (hx - b0[0]) * h, py = b0[1] + (hy + u * 2 - b0[1]) * h - Math.sin(h * Math.PI) * sq * 0.9; ctx.save(); ctx.translate(px, py); ctx.scale(1 - h * 0.5, 1 - h * 0.5); drawPlayer(ctx, 0, 0, sq, rd.p, false, now, false); ctx.restore(); }
-      else aboard.push(rd.p.color);
-    });
-    if (t < 4.6) drawChopper(ctx, hx, hy, u, tilt, now, c.dir, aboard.length ? aboard : null);
+    // token: bounces on the gate square, hops up into the chopper between 1.4 and 2.0 s
+    var p = c.p, r = Math.max(sq * 0.38, 15);
+    if (t < 1.4) drawPlayer(ctx, base[0], base[1] - Math.abs(Math.sin(t * 9)) * sq * 0.18, sq, p, false, now, false);
+    else if (t < 2.0) { var h = (t - 1.4) / 0.6, px = base[0] + (hx - base[0]) * h, py = base[1] + (hy + u * 2 - base[1]) * h - Math.sin(h * Math.PI) * sq * 0.9; ctx.save(); ctx.translate(px, py); ctx.scale(1 - h * 0.5, 1 - h * 0.5); drawPlayer(ctx, 0, 0, sq, p, false, now, false); ctx.restore(); }
+    if (t < 4.6) drawChopper(ctx, hx, hy, u, tilt, now, c.dir, t >= 2.0 ? p.color : null);
     // fireworks in the player's colour (plus a few party colours)
     while (c.fwAt.length && t >= c.fwAt[0]) {
       c.fwAt.shift();
       var fx = a.x + a.w * (0.15 + Math.random() * 0.7), fy = a.y + a.h * (0.12 + Math.random() * 0.35), n = 42;
-      var fcol = c.riders[Math.floor(Math.random() * c.riders.length)].p.color;
-      for (var i = 0; i < n; i++) { var ang = i / n * Math.PI * 2, sp = (0.6 + Math.random() * 0.5) * Math.min(a.w, a.h) * 0.32; c.fw.push({ x: fx, y: fy, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 1.1 + Math.random() * 0.4, t: 0, col: Math.random() < 0.65 ? fcol : PARTY[i % PARTY.length] }); }
+      for (var i = 0; i < n; i++) { var ang = i / n * Math.PI * 2, sp = (0.6 + Math.random() * 0.5) * Math.min(a.w, a.h) * 0.32; c.fw.push({ x: fx, y: fy, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 1.1 + Math.random() * 0.4, t: 0, col: Math.random() < 0.65 ? p.color : PARTY[i % PARTY.length] }); }
     }
     c.fw = c.fw.filter(function (f) { return (f.t += dt) < f.life; });
     c.fw.forEach(function (f) {
@@ -455,9 +428,9 @@
     // confetti from the top once the token is aboard
     if (!c.confDone && t > 1.9) {
       c.confDone = true;
-      for (var j = 0; j < 140 + 40 * (c.riders.length - 1); j++) c.conf.push({ x: a.x + Math.random() * a.w, y: a.y - Math.random() * a.h * 0.5, vy: 90 + Math.random() * 120, ph: Math.random() * 6, w: u * (0.6 + Math.random() * 0.6), col: j % 3 === 0 ? c.riders[j % c.riders.length].p.color : PARTY[j % PARTY.length] });
+      for (var j = 0; j < 140; j++) c.conf.push({ x: a.x + Math.random() * a.w, y: a.y - Math.random() * a.h * 0.5, vy: 90 + Math.random() * 120, ph: Math.random() * 6, w: u * (0.6 + Math.random() * 0.6), col: j % 3 === 0 ? p.color : PARTY[j % PARTY.length] });
     }
-    var fade = Math.max(0, Math.min(1, (c.dur + 1.2 - c.t) / 1.0));
+    var fade = Math.max(0, Math.min(1, (c.dur + 1.2 - t) / 1.0));
     c.conf.forEach(function (q) {
       q.y += q.vy * dt; q.ph += dt * 6; var x = q.x + Math.sin(q.ph) * u * 2;
       ctx.globalAlpha = fade; ctx.fillStyle = q.col; ctx.fillRect(x, q.y, q.w, q.w * (0.4 + 0.6 * Math.abs(Math.sin(q.ph))));
@@ -472,9 +445,7 @@
     var tr = Math.abs(Math.sin(now / 25)); b(-13.5, -3 - tr * 2, 1, 1 + tr * 4, '#c9d3e6');        // tail rotor
     b(-4, -4, 9, 7, '#ffd23f'); b(-3, -5, 7, 1, '#ffd23f'); b(-4, 1, 9, 1, '#d9a400');               // body
     b(1, -3, 4, 3, '#9ae4ff'); b(2, -3, 1, 1, '#ffffff');                                             // cockpit window
-    var rs = rider ? (typeof rider === 'string' ? [rider] : rider) : [];                                // escapers in the side window(s)
-    if (rs.length > 1) { b(-4, -3, 1, 2, '#4a5a78'); rs.slice(0, 4).forEach(function (col, i) { b(-3.6 + i * (4 / Math.min(4, rs.length)), -3, 4 / Math.min(4, rs.length) - 0.2, 2, col); }); }
-    else if (rs.length) b(-2, -3, 2, 2, rs[0]);
+    if (rider) { b(-2, -3, 2, 2, rider); }                                                            // escaper in the side window
     else b(-2, -3, 2, 2, '#4a5a78');
     b(-3, 4, 8, 1, '#2b3a55'); b(-2, 3, 1, 1, '#2b3a55'); b(3, 3, 1, 1, '#2b3a55');                 // skids
     b(0, -6, 1, 1, '#2b3a55');                                                                         // mast

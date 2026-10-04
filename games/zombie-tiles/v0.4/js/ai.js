@@ -151,59 +151,13 @@
     if (!p.items || !C.items) return null;
     var b = brain(p), L = b.L, r = C.items.dynamite.radius;
     if (L.slip && rng() < L.slip) return null;
-    var threats = g.zombies.filter(function (z) { return !g.friendlyZombie(z, p) && !z.stunned; });
+    var threats = g.zombies.filter(function (z) { return z.owner !== p.id && !z.stunned; });
     var cheb = function (z) { return Math.max(Math.abs(z.x - p.x), Math.abs(z.y - p.y)); };
     var inB = threats.filter(function (z) { return cheb(z) <= r; }).length, near = threats.filter(function (z) { return cheb(z) <= r + 1; }).length;
     if (g.canDrop(p, 'dynamite') && (inB >= 2 || (inB >= 1 && near >= 2) || (b.P.w.fight > 1 && inB >= 1))) return 'dynamite';
     var t = g.tileAtSq(p.x, p.y);
     if (g.canDrop(p, 'trap') && threats.some(function (z) { return g.tileAtSq(z.x, z.y) === t && Math.abs(z.x - p.x) + Math.abs(z.y - p.y) <= 3; })) return 'trap';
     return null;
-  }
-
-  // v0.5 queued actions: drop a trap / light dynamite part-way along the planned path, then keep walking
-  // returns { after: n, item } = drop right after the n-th step, or null
-  function queuedDrop(g, p, dirs, rng) {
-    if (!p.items || !C.items || dirs.length < 2) return null;
-    var b = brain(p), L = b.L, r = C.items.dynamite.radius;
-    if (L.slip && rng() < L.slip) return null;
-    var threats = g.zombies.filter(function (z) { return !g.friendlyZombie(z, p) && !z.stunned; });
-    var end = endOf(p, dirs), x = p.x, y = p.y;
-    var cheb = function (a, q) { return Math.max(Math.abs(a.x - q.x), Math.abs(a.y - q.y)); };
-    for (var i = 0; i < dirs.length - 1; i++) {
-      x += DIRS[dirs[i]][0]; y += DIRS[dirs[i]][1];
-      var pt = { x: x, y: y };
-      if (!g.walkable(x, y) || g.trapAt(x, y) || g.bombAt(x, y)) continue;
-      if (p.items.dynamite > 0) {
-        var inB = threats.filter(function (z) { return cheb(z, pt) <= r; }).length;
-        var safe = cheb(end, pt) > r && !g.players.some(function (q) { return q !== p && q.status === 'alive' && cheb(q, pt) <= r; });
-        if (safe && (inB >= 2 || (b.P.w.fight > 1 && inB >= 1))) return { after: i + 1, item: 'dynamite' };
-      }
-      if (p.items.trap > 0) {
-        var t = g.tileAtSq(x, y);
-        if (threats.some(function (z) { var d = man(z, pt); return d >= 2 && d <= 3 && g.tileAtSq(z.x, z.y) === t; })) return { after: i + 1, item: 'trap' };
-      }
-    }
-    return null;
-  }
-
-  // v0.5 helipad: take off now, or wait for a teammate / partner who is close (and throw dynamite at the swarm meanwhile)
-  function padDecision(g, p, rng) {
-    var b = brain(p), P = b.P, L = b.L, PC = C.pad || {};
-    var tid = p.onPad || (g.padGate && g.padGate.tile), tile = g.tileById(tid);
-    var att = p.onPad ? g.padAttackers(p).length : 0;
-    var friends = g.players.filter(function (q) {
-      return q !== p && q.status === 'alive' && q.onPad !== tid && (g.teams && g.teams.on ? g.sameTeam(p, q) : q.id === p.allyPid);
-    });
-    var cx = tile ? (tile.tx + 0.5) * C.tileSize : p.x, cy = tile ? (tile.ty + 0.5) * C.tileSize : p.y;
-    var close = friends.filter(function (q) { return Math.abs(q.x - cx) + Math.abs(q.y - cy) <= (PC.aiWaitRange || 18); });
-    var loyal = g.teams && g.teams.on ? 1 : (b.ai.persona === 'buddy' ? 0.9 : 0.4 * Math.max(0, 1 - (P.betray || 0) * 1.5));
-    var odds = fightOdds(p).win, safe = p.hearts >= 3 || (p.hearts >= 2 && odds >= 0.75);
-    var waited = p.onPad ? p.padWaited : 0;
-    var wait = close.length > 0 && safe && waited < (PC.aiMaxWait || 3) && att <= 2 && rng() < loyal;
-    if (L.slip && rng() < L.slip * 0.5 && close.length) wait = !wait && p.hearts > 1;     // Easy sometimes gets it wrong
-    var tgt = wait && p.onPad && p.items.dynamite > 0 ? g.padThrowTarget(p) : null;
-    var throwTNT = !!(tgt && tgt.n >= (P.w.fight > 1 ? 1 : 2) && g.canDrop(p, 'dynamite'));        // only when the blast catches a bunch of them
-    return { go: !wait, throwTNT: !!throwTNT, friend: close[0] || friends[0] || null };
   }
 
   // ------------------------------------------------------------ tile placement: the explore spot, rotated for the most new exits.
@@ -233,8 +187,6 @@
     share: ['Here {ally}, take some ammo!', 'Ammo for my buddy {ally}!'],
     betray: ['Sorry {ally}, seats for one!', 'Bye {ally}! Ha ha!'],
     loyal: ['Hurry up, {ally}!', 'Save a seat for {ally}!'],
-    padWait: ['Waiting for you, {ally}!', 'Hurry, {ally}! Zombies!', "I'm holding the chopper!"],
-    group: ['All aboard!', 'Nobody gets left behind!', 'We did it together!'],
     escape: ['See ya, zombies!', 'Woo-hoo!'],
     death: ['Tell my mum...', 'Bleh...'],
     rise: ['Braaains... I mean, hi!', 'Grrr!'],
@@ -290,7 +242,7 @@
     g.players.forEach(function (p) {
       p.allyPid = null; p.betrayed = null; p.lastShare = -9;
       if (!p.ai) return;
-      var others = g.players.filter(function (q) { return q !== p && (!g.teams || !g.teams.on || g.sameTeam(p, q)); });   // teams on: partners are teammates
+      var others = g.players.filter(function (q) { return q !== p; });
       if (!others.length) return;
       var rng = self.rng(p), humans = others.filter(function (q) { return !q.ai; });
       var pool = p.ai.persona === 'buddy' && humans.length ? humans : others;
@@ -332,25 +284,13 @@
     } else if (ph === 'plan') {
       later(T.think, function () {
         if (g.plan.length) g.intent(pid, { t: 'clear' });
-        var r = plan(g, p, rng), i = 0, qd = queuedDrop(g, p, r.dirs, rng), dropped = false;
+        var r = plan(g, p, rng), i = 0;
         self.react(p, 'think', r);
         var next = function () {
-          if (qd && !dropped && i === qd.after) { dropped = true; if (g.intent(pid, { t: 'drop', item: qd.item })) self.react(p, 'drop', { item: qd.item, queued: true }); later(T.dirStep, next); return; }
           if (i < r.dirs.length) { g.intent(pid, { t: 'dir', d: r.dirs[i++] }); later(T.dirStep, next); return; }
           later(r.dirs.length ? T.showPlan : T.showPlan * 0.5, function () { g.intent(pid, { t: 'exec' }); done(); });
         };
         next();
-      });
-    } else if (ph === 'padChoice' || ph === 'padTurn') {
-      later(T.think * 1.5, function () {
-        var dc = padDecision(g, p, rng), finish = function () { g.intent(pid, { t: dc.go ? 'takeoff' : 'wait' }); done(); };
-        if (!dc.go) self.react(p, 'padWait', { ally: dc.friend });
-        if (dc.throwTNT && g.intent(pid, { t: 'drop', item: 'dynamite' })) {
-          self.react(p, 'drop', { item: 'dynamite' });
-          later(T.think, function () { g.intent(pid, { t: 'detonate' }); later(T.think, finish); });
-          return;
-        }
-        finish();
       });
     } else this.pending = null;
   };
@@ -362,5 +302,5 @@
     if (g.intent(p.id, { t: 'share', to: ally.id, n: n })) { p.lastShare = g.round; this.react(p, 'share', { ally: ally }); }
   };
 
-  root.ZTAI = { Driver: Driver, plan: plan, placeChoice: placeChoice, fightOdds: fightOdds, coach: coach, line: line, mulberry: mulberry, brain: brain, ARROW: ARROW, itemChoice: itemChoice, queuedDrop: queuedDrop, padDecision: padDecision };
+  root.ZTAI = { Driver: Driver, plan: plan, placeChoice: placeChoice, fightOdds: fightOdds, coach: coach, line: line, mulberry: mulberry, brain: brain, ARROW: ARROW, itemChoice: itemChoice };
 })(typeof window !== 'undefined' ? window : globalThis);

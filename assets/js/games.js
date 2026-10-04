@@ -93,16 +93,24 @@ window.GAMES = [
       'A player down to their last heart leaves a few small cartoon red drops on the board as they walk; they fade away after a few seconds.',
       'Each phone shows its own hearts and ammo, so a little secrecy is part of the fun.',
       'Short, cartoony sound effects from the TV (war cries, little screams, a crunch when a fight goes wrong): press M to mute.',
+      'Optional teams (2\u20134, colour-coded): teammates never fight each other and can wait for each other on the helipad. While anyone waits there, zombies swarm the pad, so it gets tense.',
       'Computer players (AI) can fill empty seats, each with its own personality and an Easy, Normal or Ruthless setting.',
       'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi). No phones? Play hot-seat on one screen.',
       'Optional Philips Hue lights: short colour flickers plus red, gold and orange flashes in fights, escapes and explosions. Leave them off if anyone is sensitive to flashing lights.'
     ],
     versions: [
       {
-        id: 'v0.4',
-        name: 'Traps & TNT',
+        id: 'v0.5',
+        name: 'Teams & Takeoff',
         current: true,
         play: 'games/zombie-tiles/index.html',
+        notes: 'Play in teams: the host turns on Teams in the lobby and puts players and AI into 2 to 4 colour-coded teams. Teammates never fight each other, and the results show the winning team. At the helipad you now choose TAKE OFF NOW or WAIT for the others: while anyone waits, zombies swarm the pad fence and attack, so you have to hold them off (weapons and thrown TNT help), then take off together. Plans can mix steps and drops: move 2, drop TNT, move 2 more, EXECUTE. AI players do all of this too. Fight balance unchanged.'
+      },
+      {
+        id: 'v0.4',
+        name: 'Traps & TNT',
+        current: false,
+        play: 'games/zombie-tiles/v0.4/index.html',
         notes: 'Pick up trap boxes and dynamite and drop them from your phone. Zombies that step on a trap get caught in a cartoon rope snare; lit dynamite goes off at the end of the round (or when you press DETONATE) and clears the zombies around it, but it hurts players standing too close. New phone buttons: RESET MOVES and END TURN. Players and zombies are now little animated characters that walk square by square (you can draw your own). Computer players use traps and dynamite too. v0.4.1: weapons hit harder (pipe +2, pistol +3, machine gun +5; bare hands unchanged), and a player on their last heart leaves a few cartoon drops behind them. v0.4.2: phones can now join on older smart-TV browsers (such as Samsung TVs) that used to say "PeerJS did not load" (all versions got this fix).'
       },
       {

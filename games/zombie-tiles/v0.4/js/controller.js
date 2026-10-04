@@ -68,7 +68,7 @@
   var coachOn = store.get('zt_coach') === '1';
   // turn reminder: gentle buzz every few seconds + an on-screen YOUR TURN pulse, from the start of your turn until you touch the phone
   var turnBuzzOn = store.get('zt_turnbuzz') !== '0', canVibrate = 'vibrate' in navigator;
-  var NEED = ['roll', 'fight', 'zturn', 'place', 'plan', 'padChoice', 'padTurn'], TURN = NEED.concat(['rolling', 'exec', 'fightview', 'zmoving']);
+  var NEED = ['roll', 'fight', 'zturn', 'place', 'plan'], TURN = NEED.concat(['rolling', 'exec', 'fightview', 'zmoving']);
   var nag = null;
   function nagStart() {
     if (nag) return;
@@ -117,7 +117,7 @@
   function render() {
     var s = state, y = s.you, mode = s.mode;
     document.documentElement.style.setProperty('--c', y.color);
-    $('meName').innerHTML = esc(y.name) + (s.teams && s.teams.on ? '<span class="tchip" style="--t:' + teamColor(y.team) + '">' + esc(teamName(y.team)) + '</span>' : '');
+    $('meName').textContent = y.name;
     $('hearts').innerHTML = heartsHtml(y.hearts, y.maxHearts);
     var wc = $('weapIcon').getContext('2d'); wc.clearRect(0, 0, 64, 64); if (y.weapon !== 'none') window.ZTRender.drawItem(wc, y.weapon, 32, 32, 54);
     $('weapName').textContent = W[y.weapon].short;
@@ -129,7 +129,7 @@
       case 'lobby':
         s1 = "You're in!"; s2 = y.vip ? 'Start when everyone has joined.' : 'Waiting for ' + esc((s.lobby[0] || {}).name || 'the first player') + ' to start...';
         s2 = y.vip ? 'Start when everyone has joined.' : 'Waiting for ' + esc(s.vipName || 'the first player') + ' to start...';
-        extra = lobbyList(s, y.vip) + (y.vip ? teamsCard(s) : '') + (y.vip ? aiPicker(s) : '') +
+        extra = lobbyList(s, y.vip) + (y.vip ? aiPicker(s) : '') +
           hueHtml(s.hue, y.vip) +
           (y.vip ? '<button class="big-btn" id="startGame">START GAME</button>' : '') + '<button class="small" id="changeDice">Change dice (' + esc(window.ZTDice.style(y.dice).name) + ')</button>' + coachBtn() + (canVibrate ? buzzBtn() : '');
         break;
@@ -156,29 +156,17 @@
         s1 = 'LEFT FOR DEAD'; s2 = 'You rise after ' + C.riseAfterRounds + ' full round' + (C.riseAfterRounds > 1 ? 's' : '') + '. Then:';
         extra = '<div class="choice"><button data-v="zombie" class="' + (y.deadChoice === 'zombie' ? 'on' : '') + '">Play as zombie</button><button data-v="spectate" class="' + (y.deadChoice === 'spectate' ? 'on' : '') + '">Spectate</button></div>';
         break;
-      case 'escaped': s1 = 'YOU ESCAPED!'; s2 = 'Place: ' + ordinal(y.place) + (y.flight > 1 ? ' (group take-off!)' : '') + '. Enjoy the chopper ride.'; break;
-      case 'padChoice': case 'padTurn':     // v0.5 helipad: take off now (carrying everyone on the pad) or wait for the others
-        var pd = s.pad || { riders: [], others: [], attackers: 0 }, withW = pd.riders.length ? ' with ' + pd.riders.map(esc).join(', ') : '';
-        s1 = mode === 'padChoice' ? 'THE CHOPPER!' : 'ON THE HELIPAD'; hot = true;
-        s2 = mode === 'padChoice' ? 'The guard says YES! Take off now, or wait for the others? Waiting brings the zombies to the fence.' : 'Zombies are swarming the fence. Take off now, or hold on a little longer?';
-        extra = '<div class="padbtns"><button class="go" id="padGo">\uD83D\uDE81 TAKE OFF NOW' + withW + '</button>' +
-          '<button class="wait" id="padWait">' + (mode === 'padChoice' ? '\u23F3 WAIT FOR OTHERS' : '\u23F3 KEEP WAITING') + '</button></div>' +
-          '<div class="padinfo">' + (pd.others.length ? 'Still out there: ' + pd.others.map(esc).join(', ') + '. ' : '') + (pd.attackers ? pd.attackers + ' zombie' + (pd.attackers > 1 ? 's' : '') + ' at the fence!' : '') + '</div>';
-        if (mode === 'padTurn' && ((y.items || {}).dynamite || y.myBombs)) extra += '<div class="acts">' + ((y.items || {}).dynamite ? '<button class="small act tnt" data-act="dynamite"' + (y.canTNT ? '' : ' disabled') + '>\uD83E\uDDE8 THROW TNT (' + y.items.dynamite + ')</button>' : '') + (y.myBombs ? '<button class="small act boom" data-act="detonate">\uD83D\uDCA5 DETONATE</button>' : '') + '</div>';
-        break;
+      case 'escaped': s1 = 'YOU ESCAPED!'; s2 = 'Place: ' + ordinal(y.place) + '. Enjoy the chopper ride.'; break;
       case 'spectate': s1 = 'Spectating'; s2 = 'Watch the TV. ' + (s.cur ? 'Turn: ' + esc(s.cur.name) : ''); break;
       case 'over':
         s1 = (s.results || []).some(function (r) { return r.pid === y.id && r.escaped; }) ? 'YOU MADE IT!' : 'GAME OVER';
         s2 = '';
-        var tr = s.teamResult;
-        if (tr) s2 = '<div class="teamwin" style="color:' + (tr.winner != null ? teamColor(tr.winner) : '#ff8a95') + '">' + (tr.winner != null ? (tr.winner === y.team ? '\uD83C\uDFC6 YOUR TEAM WINS! ' : '') + 'Team ' + esc(teamName(tr.winner)) + ' wins!' : 'The horde wins...') + '</div>';
         extra = '<ul class="plist">' + (s.results || []).map(function (r) { return '<li><span class="d" style="background:' + r.color + '"></span>' + esc(r.name) + '<span class="lab">' + esc(r.label) + '</span></li>'; }).join('') + '</ul>' +
           (y.vip ? '<button class="big-btn" id="again">PLAY AGAIN</button>' : '<div class="private">' + esc(s.vipName || 'The first player') + ' can start the next game.</div>');
         break;
       default:
         s1 = s.cur ? curName + (s.cur.zombie ? ' (zombie)' : '') + "'s turn" : 'Waiting...';
         if (y.status === 'zombie') s2 = 'You are a zombie. Your lurch comes on your turn.';
-        else if (y.onPad) s2 = 'You are waiting on the helipad. On your turn: fight off the zombies at the fence, then take off or keep waiting.';
     }
     if (mode === 'zturn' && y.status === 'zombie') extra = '<button class="small" id="toSpectate">Stop and spectate instead</button>';
     if (coachOn && s.coach && s.coach.text && (mode === 'plan' || mode === 'roll' || mode === 'fight')) extra = '<div class="coach"><span class="ci">\uD83E\uDDE0 Coach:</span> ' + esc(s.coach.text) + (s.coach.arrows && mode === 'plan' ? '<div class="carr">' + esc(s.coach.arrows) + '</div>' : '') + '</div>' + extra;
@@ -220,7 +208,7 @@
     if (TURN.indexOf(mode) === -1) nagStop();                                        // turn passed / game over
     else if (mode !== lastMode && NEED.indexOf(mode) !== -1 && TURN.indexOf(lastMode) === -1) nagStart();   // my turn (or a fight) just started
     if (mode !== lastMode) {
-      if (mode === 'roll' || mode === 'fight' || mode === 'zturn' || mode === 'place' || mode === 'padChoice' || mode === 'padTurn') buzz([60, 60, 120]);
+      if (mode === 'roll' || mode === 'fight' || mode === 'zturn' || mode === 'place') buzz([60, 60, 120]);
       if (mode === 'dead') buzz([300, 100, 300]);
       if (mode === 'escaped') buzz((C.escapeShow && C.escapeShow.buzz) || [90, 60, 90, 60, 300]);   // celebration buzz
       lastMode = mode;
@@ -248,8 +236,7 @@
   }
   function lobbyList(s, vip) {
     return '<ul class="plist">' + (s.lobby || []).map(function (q) {
-      var tc = s.teams && s.teams.on ? (vip ? '<button class="tchip" data-team="' + q.pid + ':' + q.team + '" style="--t:' + teamColor(q.team) + '">' + esc(teamName(q.team)) + ' \u25B8</button>' : '<span class="tchip" style="--t:' + teamColor(q.team) + '">' + esc(teamName(q.team)) + '</span>') : '';
-      return '<li><span class="d" style="background:' + q.color + '"></span>' + esc(q.name) + tc + '<span class="lab">' + (q.ai ? '\uD83E\uDD16 ' + esc(q.ai) : q.local ? 'hot-seat' : 'phone') + '</span>' +
+      return '<li><span class="d" style="background:' + q.color + '"></span>' + esc(q.name) + '<span class="lab">' + (q.ai ? '\uD83E\uDD16 ' + esc(q.ai) : q.local ? 'hot-seat' : 'phone') + '</span>' +
         (vip && q.ai ? '<button class="rmai" data-pid="' + q.pid + '" aria-label="Remove ' + esc(q.name) + '">\u2715</button>' : '') + '</li>';
     }).join('') + '</ul>';
   }
@@ -261,21 +248,13 @@
       '<div class="hchoice">' + AIC.levelOrder.map(function (k, i) { return '<button data-lv="' + i + '" class="' + (i === aiSel.l ? 'on' : '') + '">' + esc(AIC.levels[k].label) + '</button>'; }).join('') + '</div>' +
       '<button class="small addai" id="aiAddP">+ ADD ' + esc(lv.label.toUpperCase()) + ' AI</button></div>';
   }
-  function teamColor(t) { return C.teams.colors[(t || 0) % C.teams.colors.length]; }
-  function teamName(t) { return C.teams.names[(t || 0) % C.teams.names.length]; }
-  function teamsCard(s) {           // v0.5: host phone sets up teams (tap a player's chip above to move them)
-    var t = s.teams || { on: false, count: 2 }, h = '<div class="teamcard"><div class="ht">\uD83D\uDC65 Teams</div><div class="hchoice"><button data-teams="off" class="' + (t.on ? '' : 'on') + '">Every player for themselves</button><button data-teams="on" class="' + (t.on ? 'on' : '') + '">Teams</button></div>';
-    if (t.on) h += '<div class="hchoice">' + [2, 3, 4].map(function (n) { return '<button data-tcount="' + n + '" class="' + (t.count === n ? 'on' : '') + '">' + n + ' teams</button>'; }).join('') + '</div><div class="hs">Tap a team chip in the list to move that player. Teammates never fight; the team with the most escapes wins.</div>';
-    return h + '</div>';
-  }
   function coachBtn() { return '<button class="small coachb' + (coachOn ? ' on' : '') + '" id="coachT">\uD83E\uDDE0 Coach hints: ' + (coachOn ? 'ON' : 'OFF') + '</button>'; }
   // v0.4: drop items on your square, set off your dynamite, or stop here (unused moves are lost; tap twice so it can't happen by accident)
   var endArm = 0;
   function actionsHtml(y) {
     var it = y.items || {}, h = '<div class="acts">';
-    var at = state && state.mode === 'plan' && state.planLen ? ' AT STEP ' + state.planLen : '';      // v0.5: while planning, it's queued at the end of the path so far
-    if (it.trap) h += '<button class="small act" data-act="trap"' + (y.canTrap ? '' : ' disabled') + '>\uD83E\uDEA4 ' + (at ? '+ TRAP' + at : 'DROP TRAP') + ' (' + it.trap + ')</button>';
-    if (it.dynamite) h += '<button class="small act tnt" data-act="dynamite"' + (y.canTNT ? '' : ' disabled') + '>\uD83E\uDDE8 ' + (at ? '+ TNT' + at : 'DROP TNT') + ' (' + it.dynamite + ')</button>';
+    if (it.trap) h += '<button class="small act" data-act="trap"' + (y.canTrap ? '' : ' disabled') + '>\uD83E\uDEA4 DROP TRAP (' + it.trap + ')</button>';
+    if (it.dynamite) h += '<button class="small act tnt" data-act="dynamite"' + (y.canTNT ? '' : ' disabled') + '>\uD83E\uDDE8 DROP TNT (' + it.dynamite + ')</button>';
     if (y.myBombs) h += '<button class="small act boom" data-act="detonate">\uD83D\uDCA5 DETONATE</button>';
     h += '<button class="small act end" data-act="end">' + (Date.now() < endArm ? 'TAP AGAIN TO END TURN' : '\u23F9 END TURN') + '</button>';
     return h + '</div>';
@@ -294,11 +273,6 @@
         }
       });
     });
-    if ((b = $('padGo'))) press(b, function () { send({ t: 'takeoff' }); });
-    if ((b = $('padWait'))) press(b, function () { send({ t: 'wait' }); });
-    Array.prototype.forEach.call(document.querySelectorAll('#extra [data-teams]'), function (bt) { press(bt, function () { send({ t: 'teams', on: bt.getAttribute('data-teams') === 'on' }); }); });
-    Array.prototype.forEach.call(document.querySelectorAll('#extra [data-tcount]'), function (bt) { press(bt, function () { send({ t: 'teams', on: true, count: +bt.getAttribute('data-tcount') }); }); });
-    Array.prototype.forEach.call(document.querySelectorAll('#extra [data-team]'), function (bt) { press(bt, function () { var v = bt.getAttribute('data-team').split(':'); send({ t: 'setTeam', pid: +v[0], team: +v[1] + 1 }); }); });
     if ((b = $('buzzT'))) press(b, function () { turnBuzzOn = !turnBuzzOn; store.set('zt_turnbuzz', turnBuzzOn ? '1' : '0'); render(); });
     if ((b = $('coachT'))) press(b, function () { coachOn = !coachOn; store.set('zt_coach', coachOn ? '1' : '0'); send({ t: 'coach', on: coachOn }); render(); });
     if ((b = $('aiPer'))) press(b, function () { aiSel.p = (aiSel.p + 1) % AIC.order.length; render(); });

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Zombie Tiles (working title) - TV | Zero to Phi</title>
-<meta name="description" content="Zombie Tiles (working title): a zombie tile-laying board game for the TV. Up to 4 players use their phones as controllers. Prototype v0.5 by Zero to Phi.">
+<title>Zombie Tiles v0.4 (working title) - TV | Zero to Phi</title>
+<meta name="description" content="Zombie Tiles (working title): a zombie tile-laying board game for the TV. Up to 4 players use their phones as controllers. Prototype v0.4.2 by Zero to Phi.">
 <meta name="theme-color" content="#14121b">
 <meta name="robots" content="noindex">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
@@ -15,7 +15,7 @@
 
 <header id="top">
   <div class="brand"><img src="assets/logo.svg" alt="" width="49" height="40"><span>ZERO&nbsp;TO&nbsp;PHI</span></div>
-  <div class="title">ZOMBIE TILES <span class="wt">working title</span><span class="proto">PROTOTYPE v0.5</span></div>
+  <div class="title">ZOMBIE TILES <span class="wt">working title</span><span class="proto">PROTOTYPE v0.4.2</span></div>
   <div class="top-right"><span id="roundInfo"></span><span id="deckInfo"></span><span id="joinInfo"></span><span id="lightInfo"></span></div>
 </header>
 
@@ -31,7 +31,7 @@
       <button data-k="D" class="pd" aria-label="Down">&#9660;</button>
     </div>
     <div class="pad-row"><button data-k="roll" id="padRoll">ROLL</button><button data-k="undo">UNDO</button></div>
-    <div class="pad-keys">Keys: arrows, Enter = go/roll, Backspace = undo, Esc = reset moves, N = end turn, T = drop trap, B = drop dynamite (while planning: drops it at that point of the path), X = detonate, Q/E rotate, M mute, L lights. Helipad: Enter = take off, N = wait</div>
+    <div class="pad-keys">Keys: arrows, Enter = go/roll, Backspace = undo, Esc = reset moves, N = end turn, T = drop trap, B = drop dynamite, X = detonate, Q/E rotate, M mute, L lights</div>
   </div>
   <div id="log"></div>
 </aside>
@@ -54,7 +54,7 @@
 
 <section id="lobby" class="screen">
   <div class="lobby-left">
-    <div class="presents"><img src="assets/logo.svg" alt="" width="49" height="40"> ZERO TO PHI presents <a id="backLink" class="back" href="../zombie-tiles.html">&larr; game page</a></div>
+    <div class="presents"><img src="assets/logo.svg" alt="" width="49" height="40"> ZERO TO PHI presents <a id="backLink" class="back" href="../../zombie-tiles.html">&larr; game page</a></div>
     <div id="phoneHint" class="phone-hint" hidden>On a phone? This is the <b>TV screen</b>. Open it on the TV, then join with the <a href="controller.html">phone controller</a>.</div>
     <h1>ZOMBIE TILES <small>working title</small></h1>
     <p class="tagline">Explore the city tile by tile. Find the helipad. Hope the guard says <b>YES</b>.</p>
@@ -72,7 +72,6 @@
   <div class="lobby-right">
     <h2>PLAYERS <span id="pcount">0/4</span></h2>
     <ul id="lobbyPlayers"></ul>
-    <div class="teams-row"><button id="teamsBtn" class="ghost">&#128101; Teams: OFF</button><button id="teamCount" class="ghost" hidden>2 teams &#9656;</button><span id="teamsHint" class="teams-hint"></span></div>
     <div class="hotseat">
       <div class="hs-title">No phones? Add a hot-seat player (plays on this screen)</div>
       <div class="hs-row"><input id="hsName" maxlength="12" placeholder="Name" aria-label="Hot-seat player name"><button id="hsDice" class="ghost">Dice: Bone</button><button id="hsAdd">+ ADD</button></div>
@@ -86,7 +85,6 @@
 
 <section id="results" class="screen" hidden>
   <h1 id="resTitle">THE CHOPPER LIFTS OFF!</h1>
-  <div id="resTeams" class="res-teams" hidden></div>
   <ol id="resList"></ol>
   <div class="res-btns"><button id="againBtn" class="start">PLAY AGAIN</button><button id="lobbyBtn" class="ghost">CHANGE PLAYERS</button></div>
   <p class="res-note">Press Enter to play again &middot; the first player can also restart from their phone.</p>

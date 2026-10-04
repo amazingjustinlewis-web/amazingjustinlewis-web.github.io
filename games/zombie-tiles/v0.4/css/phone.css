@@ -139,16 +139,3 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; touch-action
 #extra .acts .tnt { background: #5a2a14; }
 #extra .acts .boom { background: #b8420e; }
 #extra .acts .end { background: #3a3354; grid-column: 1 / -1; }
-
-/* v0.5 helipad choice, teams */
-.padbtns { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
-.padbtns .go { background: #ffd23f; color: #111; font-weight: 700; font-size: 20px; padding: 16px; border-radius: 14px; }
-.padbtns .wait { background: #2b2540; color: #fff; font-weight: 700; font-size: 17px; padding: 14px; border-radius: 14px; border: 2px solid #ffd65a; }
-.padinfo { font-size: 14px; opacity: .9; margin-top: 6px; }
-.tchip { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #111; background: var(--t); border: 0; }
-button.tchip { cursor: pointer; padding: 4px 10px; }
-#extra .teamcard { background: rgba(61,220,132,.07); border: 2px solid rgba(61,220,132,.45); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
-#extra .teamcard .ht { font-weight: 700; font-size: 16px; color: #8ff0b8; }
-#extra .teamcard .hs { font-size: 14px; opacity: .85; }
-#extra .teamcard .hchoice button.on { border-color: #3ddc84; }
-.teamwin { font-weight: 700; font-size: 18px; margin: 6px 0; }

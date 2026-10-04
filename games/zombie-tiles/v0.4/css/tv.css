@@ -182,16 +182,3 @@ button:focus-visible { outline: .5vh solid var(--gold); outline-offset: .4vh; }
 /* escape cinematic: banner sits low and stays longer so the helicopter stays visible */
 #big.esc { top: 68%; }
 #big.esc .b { animation-duration: 4.8s; }
-
-/* v0.5 teams + helipad waiting */
-.tchip { display: inline-block; margin-left: .5em; padding: 1px 8px; border-radius: 999px; font-size: .62em; font-weight: 700; color: #111; background: var(--t); vertical-align: middle; letter-spacing: .03em; border: 0; }
-.tchip.big { font-size: 1.6vh; padding: .4vh 1.2vh; margin: 0 .8vh; cursor: pointer; }
-.tchip.win { box-shadow: 0 0 0 .3vh #fff, 0 0 2vh var(--t); }
-#lobbyPlayers li .tchip.big { flex: none; }
-.teams-row { display: flex; align-items: center; gap: 1.2vh; margin: 1vh 0 1.4vh; flex-wrap: wrap; }
-.teams-row .ghost.on { background: #3ddc84; color: #111; border-color: #3ddc84; }
-.teams-hint { font-size: 1.5vh; opacity: .8; flex: 1 1 20vh; }
-.res-teams { display: flex; justify-content: center; gap: 1.2vh; flex-wrap: wrap; margin: -1vh 0 2vh; }
-.res-teams .tchip.big { cursor: default; font-size: 2vh; }
-.cstat.pad { color: #ffd65a; }
-.teams-row .ghost { font-size: 1.8vh; padding: .7vh 1.6vh; border-radius: 1vh; }

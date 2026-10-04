@@ -1,4 +1,4 @@
-# Zombie Tiles (working title) - prototype v0.4.1
+# Zombie Tiles (working title) - prototype v0.5
 
 A zombie tile-laying board game for a TV or big screen. Up to 4 players use their
 phones as controllers (Jackbox-style), or play hot-seat on one screen.
@@ -13,6 +13,23 @@ Plain HTML5 + JavaScript (canvas). No build step, no server of our own.
 TV keys: arrows plan a path, Enter = roll / execute / place, Backspace = undo,
 Esc = reset moves, N = end turn, T = drop a trap box, B = drop dynamite, X = detonate your dynamite,
 Q/E = rotate a tile, M = mute, L = Hue lights off/on.
+On the helipad: Enter = take off, N = wait.
+
+## Queued actions, helipad waiting and teams (new in v0.5)
+- **Queued actions:** while planning a path you can add DROP TRAP / DROP TNT at any point (phone buttons read
+  "+ TRAP AT STEP n"; T / B in hot-seat), e.g. 2 steps, TNT, 2 more steps, EXECUTE. It all plays out in order.
+  The path preview shows a trap / TNT icon where the drop happens. A zombie fight still cuts the plan off mid-way, as before
+  (drops still to come stay queued for after a won fight). AI players queue drops too.
+- **Helipad choice:** when the guard says YES, the phone asks TAKE OFF NOW or WAIT FOR OTHERS (Enter / N in hot-seat).
+  Waiting players stand on the pad. While anyone waits, the zombies get desperate: they swarm toward the pad fence (`pad.swarmSteps`,
+  `pad.swarmRange`), new ones appear nearby (`pad.spawnPerRound`), and at the start of each waiting player's turn
+  up to `pad.attacksPerTurn` zombies at the fence attack (normal fights, weapons count; TNT can be thrown onto the fence).
+  On any later turn a waiting player can TAKE OFF, carrying everyone on the pad (shared place, group celebration).
+  If nobody else could still reach the pad, the chopper just takes off. AI players wait for a teammate / buddy when it looks safe.
+- **Teams:** in the lobby the host (TV: "Teams" button and the team chips; host phone: Teams card + tap a chip) turns teams on
+  and puts players and AI into 2-4 colour-coded teams. Teammates never fight each other, AI only allies with teammates,
+  and the results screen shows the winning team (most players escaped, then the earliest escape). `teams` in `js/config.js`.
+- Fight balance is unchanged (fists +0, pipe +2, pistol +3, machine gun +5).
 
 ## Stronger weapons and a last-heart trail (v0.4.1)
 - Weapons give a bigger edge in zombie fights (your 2 dice + weapon bonus vs the zombie's 2 dice):

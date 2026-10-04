@@ -69,34 +69,24 @@
         break;
       case 'gate': if (!d.yes) { big('NO!', 'The guard shakes his head. Try another gate.', '#ff3b4e'); tone(110, 0.4, 'square', 0.06); if (p && p.ai) say(p, 'gateNo'); } break;
       case 'escape':
-        var riders = (d.riders || [d.pid]).map(playerById).filter(Boolean), grp = riders.length > 1;
-        var rnames = riders.map(function (q) { return q.name; }), joined = rnames.length > 1 ? rnames.slice(0, -1).join(', ') + ' & ' + rnames[rnames.length - 1] : rnames[0];
-        big(grp ? joined + ' ESCAPE TOGETHER!' : p.name + ' ESCAPED!', grp ? 'Group take-off! Everyone on the pad climbs aboard (' + Ordinal(d.place) + ' chopper out).' : Ordinal(d.place) + ' place. The chopper takes them aboard.', p.color, 'esc');
-        // helicopter swoops in (over the pad for a group), everyone hops aboard, lift-off + fireworks
-        rnd.cinematic(p, grp && d.padX != null ? d.padX - 0.5 : p.x, grp && d.padY != null ? d.padY - 0.5 : p.y, riders.map(function (q) { return { p: q, x: q.x, y: q.y }; }));
-        var gx = grp ? ((C.escapeShow && C.escapeShow.groupExtraMs) || 900) : 0;
-        SFX.play('rotor', { dur: 4.4 + gx / 1000 }); setTimeout(function () { SFX.play('fanfare'); }, 1900 + gx);
-        if (grp) setTimeout(function () { SFX.play('fanfare', { pitch: 1.26 }); }, 2900 + gx);
-        ((C.escapeShow && C.escapeShow.fireworks) || []).forEach(function (s, i) { setTimeout(function () { SFX.play('pop', { pitch: 0.8 + (i % 3) * 0.2 }); flash(i % 2 ? riders[i % riders.length].color : '#ffffff', 0.18); }, s * 1000 + gx); });
+        big(p.name + ' ESCAPED!', Ordinal(d.place) + ' place. The chopper takes them aboard.', p.color, 'esc');
+        rnd.cinematic(p, p.x, p.y);                       // helicopter swoops in, token hops aboard, lift-off + fireworks
+        SFX.play('rotor', { dur: 4.4 }); setTimeout(function () { SFX.play('fanfare'); }, 1900);
+        ((C.escapeShow && C.escapeShow.fireworks) || []).forEach(function (s, i) { setTimeout(function () { SFX.play('pop', { pitch: 0.8 + (i % 3) * 0.2 }); flash(i % 2 ? p.color : '#ffffff', 0.18); }, s * 1000); });
         flash('#ffd23f', 0.4);
-        riders.forEach(function (q, i) {
-          if (!q.ai) return;
-          if (grp) { setTimeout(function () { say(q, 'group'); }, 300 + i * 700); return; }
-          var al = q.allyPid && game.byId(q.allyPid);
-          if (al && al.status === 'alive') {      // light betrayal: ditch the partner at the helipad (or cheer them on); never your own team
-            var b = AIC.personas[q.ai.persona] || {};
-            if (!game.sameTeam(q, al) && Math.random() < (b.betray || 0)) { q.betrayed = al.id; say(q, 'betray', { ally: al.name }); } else say(q, 'loyal', { ally: al.name });
-          } else say(q, 'escape');
-        });
+        if (p.ai) {
+          var al = p.allyPid && game.byId(p.allyPid);
+          if (al && al.status === 'alive') {      // light betrayal: ditch the partner at the helipad (or cheer them on)
+            var b = AIC.personas[p.ai.persona] || {};
+            if (Math.random() < (b.betray || 0)) { p.betrayed = al.id; say(p, 'betray', { ally: al.name }); } else say(p, 'loyal', { ally: al.name });
+          } else say(p, 'escape');
+        }
         break;
-      case 'padReach': big('YES! THE CHOPPER!', 'TAKE OFF now... or WAIT for the others while the zombies swarm?', '#ffd65a'); tone(523, 0.12, 'square', 0.05); setTimeout(function () { tone(784, 0.2, 'square', 0.05); }, 130); break;
-      case 'padWait': big(p.name + ' HOLDS THE CHOPPER', 'The zombies smell it... defend the helipad until the others arrive!', p.color); tone(140, 0.5, 'sawtooth', 0.05, 90); break;
-      case 'swarm': rnd.shake = Math.max(rnd.shake, 0.5); tone(95, 0.45, 'sawtooth', 0.06, 70); if (d.spawned) setTimeout(function () { tone(80, 0.3, 'sawtooth', 0.05, 60); }, 250); break;
       case 'death': big('LEFT FOR DEAD', p.name + ' will rise in ' + C.riseAfterRounds + ' full round' + (C.riseAfterRounds > 1 ? 's' : '') + '...', '#ff3b4e'); rnd.shake = 1.2; tone(70, 0.8, 'sawtooth', 0.08, 40); setTimeout(function () { sfx('scream', p); }, 60); if (p.ai) say(p, 'death'); break;
       case 'rise': big(p.name + ' RISES!', p.status === 'zombie' ? 'Now playing as a zombie' : 'A new zombie joins the horde', '#b6ff7a'); tone(60, 0.9, 'sawtooth', 0.08, 120); if (p.ai && p.status === 'zombie') say(p, 'rise'); break;
       case 'share': var to = game.byId(d.to); if (to) { rnd.pop('+' + d.n + ' AMMO', to.x, to.y, '#ffd65a', true); tone(880, 0.08, 'square', 0.05, 1320); } break;
       case 'drop':
-        rnd.pop(d.kind === 'trap' ? 'TRAP SET' : d.thrown ? 'THROWN!' : 'LIT!', d.x, d.y, d.kind === 'trap' ? '#e0b070' : '#ff8a1a', true);
+        rnd.pop(d.kind === 'trap' ? 'TRAP SET' : 'LIT!', d.x, d.y, d.kind === 'trap' ? '#e0b070' : '#ff8a1a', true);
         if (d.kind === 'trap') { tone(520, 0.06, 'square', 0.05); setTimeout(function () { tone(380, 0.08, 'square', 0.05); }, 70); } else SFX.play('fuse');
         break;
       case 'snare':
@@ -136,7 +126,6 @@
       rnd.bubble(p.id, window.ZTAI.line(p, 'think', info.why, vars), p.color, false);
     } else if (kind === 'share') say(p, 'share', { ally: info.ally.name });
     else if (kind === 'drop') rnd.bubble(p.id, window.ZTAI.line(p, 'drop', info.item), p.color, info.item === 'dynamite');
-    else if (kind === 'padWait') rnd.bubble(p.id, window.ZTAI.line(p, 'padWait', null, { ally: info.ally ? info.ally.name : 'everyone' }), p.color, false);
   }
   function flash(color, a) {
     var el = $('flash'); if (!el) return;
@@ -196,14 +185,12 @@
       el.className = 'card' + (p === cur && ph !== 'over' ? ' cur' : '') + (out ? ' out' : '');
       el.style.setProperty('--c', p.color);
       var tag = isAI(p) ? aiTag(p) : p.local ? 'HOT-SEAT' : (p.connected ? 'PHONE' : 'RECONNECTING');
-      var stat = p.status === 'escaped' ? '<div class="cstat esc">ESCAPED ' + Ordinal(p.place).toUpperCase() + (p.flight > 1 ? ' (GROUP)' : '') + '!</div>'
-        : p.status === 'alive' && p.onPad ? '<div class="cstat pad">\uD83D\uDE81 On the helipad, waiting</div>'
+      var stat = p.status === 'escaped' ? '<div class="cstat esc">ESCAPED ' + Ordinal(p.place).toUpperCase() + '!</div>'
         : p.status === 'dead' ? '<div class="cstat dead">Left for dead (rises soon)</div>'
         : p.status === 'zombie' ? '<div class="cstat zom">Zombie (hunting)</div>'
         : p.status === 'spectator' ? '<div class="cstat dead">Spectating</div>' : '';
       var ally = p.ai && p.allyPid && g.byId(p.allyPid), rel = ally ? (p.betrayed === ally.id ? '<div class="cally bad">\uD83D\uDC94 ditched ' + esc(ally.name) + '</div>' : '<div class="cally">\uD83E\uDD1D teamed with ' + esc(ally.name) + '</div>') : '';
-      var tchip = g.teams && g.teams.on ? '<span class="tchip" style="--t:' + teamColor(p.team) + '">' + esc(teamName(p.team)) + '</span>' : '';
-      el.innerHTML = '<div class="cname"><canvas class="cport" width="56" height="56"></canvas>' + esc(p.name) + tchip + '<span class="tag' + (isAI(p) ? ' ai' : p.local || p.connected ? '' : ' off') + '">' + tag + '</span></div>' +
+      el.innerHTML = '<div class="cname"><canvas class="cport" width="56" height="56"></canvas>' + esc(p.name) + '<span class="tag' + (isAI(p) ? ' ai' : p.local || p.connected ? '' : ' off') + '">' + tag + '</span></div>' +
         (p.status === 'alive' ? '<div class="crow">' + (C.showHeartsOnTV ? '<span class="hearts">' + heartsHtml(p.hearts) + '</span>' : '') + '<span class="weap"></span></div>' : '') + stat + rel;
       window.ZTRender.portrait(el.querySelector('.cport'), p);
       var wp = el.querySelector('.weap');
@@ -218,17 +205,15 @@
     var key = function (k, phone) { return tv ? '<kbd>' + k + '</kbd>' : phone; };
     var aiNow = isAI(cur) && ph !== 'over';
     if (aiNow) {
-      what = { roll: 'Getting ready to roll...', rolling: 'Rolling...', plan: g.plan.length ? 'Planned route: <b>' + g.planMoves() + '</b> / ' + g.movesLeft + ' squares' : 'Thinking...', exec: 'Moving... ' + g.movesLeft + ' left',
-        place: 'Placing the new tile...', fight: 'FIGHT!', zturn: 'Zombie turn...', zmoving: 'Lurching...', escape: 'ESCAPED!', padChoice: 'At the chopper: take off or wait?', padTurn: 'Holding the helipad...' }[ph] || '';
+      what = { roll: 'Getting ready to roll...', rolling: 'Rolling...', plan: g.plan.length ? 'Planned route: <b>' + g.plan.length + '</b> / ' + g.movesLeft + ' squares' : 'Thinking...', exec: 'Moving... ' + g.movesLeft + ' left',
+        place: 'Placing the new tile...', fight: 'FIGHT!', zturn: 'Zombie turn...', zmoving: 'Lurching...', escape: 'ESCAPED!' }[ph] || '';
       sub = cur.aiTakeover ? 'The AI plays for ' + cur.name + ' until their phone reconnects.' : '';
       ph = '_ai';
     }
     switch (ph) {
       case 'roll': what = 'Roll to move: ' + key('ENTER', 'press ROLL on your phone'); break;
       case 'rolling': what = 'Rolling...'; break;
-      case 'plan': what = 'Plan your path: <b>' + g.planMoves() + '</b> / ' + g.movesLeft + ' squares, then ' + key('ENTER', 'EXECUTE'); sub = 'Press the opposite direction to back up. DROP TRAP / TNT while planning drops it at that point of the path.'; break;
-      case 'padChoice': what = 'The chopper! ' + (tv ? '<kbd>ENTER</kbd> TAKE OFF now &middot; <kbd>N</kbd> WAIT for the others' : 'TAKE OFF now or WAIT for the others? (on your phone)'); sub = 'Waiting brings the zombies to the helipad fence. Taking off later carries everyone on the pad.'; break;
-      case 'padTurn': what = 'On the helipad: ' + (tv ? '<kbd>ENTER</kbd> TAKE OFF with everyone on the pad &middot; <kbd>N</kbd> keep waiting &middot; <kbd>B</kbd> throw TNT' : 'TAKE OFF or keep waiting (on your phone)'); break;
+      case 'plan': what = 'Plan your path: <b>' + g.plan.length + '</b> / ' + g.movesLeft + ' squares, then ' + key('ENTER', 'EXECUTE'); sub = 'Press the opposite direction to back up. Execute with 0 squares to stay put.'; break;
       case 'exec': what = 'Moving... ' + g.movesLeft + ' left'; break;
       case 'place': what = 'New tile! ' + (tv ? '<kbd>\u25C0 \u25B6</kbd> rotate &middot; <kbd>\u25B2 \u25BC</kbd> other spot &middot; <kbd>ENTER</kbd> place' : '\u25C0 \u25B6 rotate \u00b7 \u25B2 \u25BC other spot \u00b7 EXECUTE places it'); sub = g.place && g.place.slots.length > 1 ? g.place.slots.length + ' places it could go' : ''; break;
       case 'fight': what = 'FIGHT!'; break;
@@ -250,9 +235,8 @@
     $('pad').hidden = !(a && tv);
     if (a && tv) {
       $('padWho').innerHTML = '<span style="color:' + a.color + '">' + esc(a.name) + '</span>';
-      var padPh = ph === 'padChoice' || ph === 'padTurn';
-      $('padRoll').textContent = padPh ? 'TAKE OFF' : ph === 'zturn' ? 'LURCH' : ph === 'fight' ? 'FIGHT' : 'ROLL';
-      $('padExec').textContent = padPh ? 'WAIT' : ph === 'place' ? 'PLACE' : ph === 'plan' ? 'GO' : ph === 'roll' || ph === 'fight' || ph === 'zturn' ? 'ROLL' : 'GO';
+      $('padRoll').textContent = ph === 'zturn' ? 'LURCH' : ph === 'fight' ? 'FIGHT' : 'ROLL';
+      $('padExec').textContent = ph === 'place' ? 'PLACE' : ph === 'plan' ? 'GO' : ph === 'roll' || ph === 'fight' || ph === 'zturn' ? 'ROLL' : 'GO';
     }
     renderFight();
   }
@@ -305,12 +289,6 @@
       window.ZTRender.portrait(li.querySelector('.lport'), p);
       var cv = document.createElement('canvas'); cv.width = 240; cv.height = 120; li.appendChild(cv);
       window.ZTDice.still(cv, [5, 6], p.dice);
-      if (game.teams.on) {               // v0.5: click the chip to move this player to the next team
-        var tb = document.createElement('button'); tb.className = 'tchip big'; tb.style.setProperty('--t', teamColor(p.team)); tb.textContent = 'Team ' + teamName(p.team);
-        tb.setAttribute('aria-label', 'Change team for ' + p.name);
-        tb.onclick = (function (id, t) { return function () { game.setTeam(id, t + 1); }; })(p.id, p.team);
-        li.appendChild(tb);
-      }
       var rm = document.createElement('button'); rm.className = 'rm'; rm.innerHTML = '&times;'; rm.setAttribute('aria-label', 'Remove ' + p.name);
       rm.onclick = (function (id) { return function () { game.removePlayer(id); }; })(p.id);
       li.appendChild(rm);
@@ -323,15 +301,8 @@
     $('aiAdd').disabled = game.players.length >= C.maxPlayers;
     $('aiPersona').textContent = AIC.personas[AIC.order[aiPick.p]].label;
     $('aiLevel').textContent = AIC.levels[AIC.levelOrder[aiPick.l]].label;
-    $('teamsBtn').textContent = '\uD83D\uDC65 Teams: ' + (game.teams.on ? 'ON' : 'OFF'); $('teamsBtn').classList.toggle('on', game.teams.on);
-    $('teamCount').hidden = !game.teams.on; $('teamCount').textContent = game.teams.count + ' teams \u25B8';
-    $('teamsHint').textContent = game.teams.on ? 'Click a player\'s team chip to move them. Teammates never fight; the team with the most escapes wins.' : 'Everyone for themselves (switch Teams on to play in teams).';
     renderHuePanel();
   }
-  function teamColor(t) { return C.teams.colors[(t || 0) % C.teams.colors.length]; }
-  function teamName(t) { return C.teams.names[(t || 0) % C.teams.names.length]; }
-  $('teamsBtn').onclick = function () { game.setTeams(!game.teams.on); };
-  $('teamCount').onclick = function () { game.setTeams(true, game.teams.count >= (C.teams.max || 4) ? 2 : game.teams.count + 1); };
   $('hsDice').onclick = function () { hsDice = (hsDice + 1) % C.dice.length; dirty = true; };
   function addHotseat(name) {
     var p = game.addPlayer({ name: name || $('hsName').value || ('Player ' + (game.players.length + 1)), dice: C.dice[hsDice].id, local: true });
@@ -356,14 +327,9 @@
 
   function renderResults() {
     var r = game.results || [];
-    var tr = game.teamResult, rt = $('resTitle');
-    rt.textContent = tr ? (tr.winner != null ? 'TEAM ' + teamName(tr.winner).toUpperCase() + ' WINS!' : 'THE HORDE WINS...') : r.some(function (x) { return x.escaped; }) ? 'THE CHOPPER LIFTS OFF!' : 'THE HORDE WINS...';
-    rt.style.color = tr && tr.winner != null ? teamColor(tr.winner) : '';
-    $('resTeams').hidden = !tr;
-    if (tr) $('resTeams').innerHTML = tr.teams.map(function (t) { return '<span class="tchip big' + (t.team === tr.winner ? ' win' : '') + '" style="--t:' + teamColor(t.team) + '">' + (t.team === tr.winner ? '\uD83C\uDFC6 ' : '') + 'Team ' + esc(teamName(t.team)) + ': ' + t.escaped + ' out</span>'; }).join('');
+    $('resTitle').textContent = r.some(function (x) { return x.escaped; }) ? 'THE CHOPPER LIFTS OFF!' : 'THE HORDE WINS...';
     $('resList').innerHTML = r.map(function (x) {
-      return '<li class="' + (x.escaped ? 'esc' : '') + '" style="--c:' + x.color + '"><span class="pl' + (x.escaped ? '' : ' skull') + '">' + (x.escaped ? Ordinal(x.place) : '\u2620') + '</span>' + esc(x.name) +
-        (x.team != null ? '<span class="tchip" style="--t:' + teamColor(x.team) + '">' + esc(teamName(x.team)) + '</span>' : '') + '<span class="lab">' + esc(x.label) + '</span></li>';
+      return '<li class="' + (x.escaped ? 'esc' : '') + '" style="--c:' + x.color + '"><span class="pl' + (x.escaped ? '' : ' skull') + '">' + (x.escaped ? Ordinal(x.place) : '\u2620') + '</span>' + esc(x.name) + '<span class="lab">' + esc(x.label) + '</span></li>';
     }).join('');
   }
 
@@ -397,8 +363,7 @@
   Array.prototype.forEach.call(document.querySelectorAll('#pad button'), function (b) {
     b.addEventListener('click', function () {
       var k = b.getAttribute('data-k');
-      var padPh = game.phase === 'padChoice' || game.phase === 'padTurn';
-      act(padPh && (k === 'exec' || k === 'roll') ? { t: k === 'exec' ? 'wait' : 'takeoff' } : k === 'exec' ? { t: 'exec' } : k === 'roll' ? { t: game.phase === 'plan' ? 'exec' : 'roll' } : k === 'undo' ? { t: 'undo' } : { t: 'dir', d: k });
+      act(k === 'exec' ? { t: 'exec' } : k === 'roll' ? { t: game.phase === 'plan' ? 'exec' : 'roll' } : k === 'undo' ? { t: 'undo' } : { t: 'dir', d: k });
       b.blur();
     });
   });
@@ -474,11 +439,6 @@
     if (m.t === 'leave') { if (game.phase === 'lobby') { game.removePlayer(pl.id); delete clients[conn._cid]; } return; }
     if (m.t === 'hue') { if (vip() === pl) hueIntent(m); return; }
     if (m.t === 'coach') { pl.coach = !!m.on; phoneDirty = true; return; }
-    if (m.t === 'teams' || m.t === 'setTeam') {          // v0.5: the host phone sets up teams in the lobby
-      if (vip() !== pl || (game.phase !== 'lobby' && game.phase !== 'over')) return;
-      if (m.t === 'teams') game.setTeams(m.on, m.count); else game.setTeam(+m.pid, +m.team);
-      return;
-    }
     if (m.t === 'addAI' || m.t === 'removeAI') {        // the host phone manages computer players in the lobby
       if (vip() !== pl || (game.phase !== 'lobby' && game.phase !== 'over')) return;
       if (m.t === 'addAI') addAI(AIC.personas[m.persona] ? m.persona : null, AIC.levels[m.level] ? m.level : null);
@@ -535,23 +495,19 @@
       t: 'state', phase: g.phase, mode: mode, round: g.round || 1,
       you: { id: p.id, name: p.name, color: p.color, dice: p.dice, hearts: p.hearts, maxHearts: C.maxHearts, ammo: p.ammo, weapon: p.weapon,
         status: p.status, place: p.place, deadChoice: p.deadChoice, vip: vip() === p, coach: !!p.coach, aiCover: !!p.aiTakeover,
-        items: p.items || { trap: 0, dynamite: 0 }, canTrap: g.canDropOrQueue ? g.canDropOrQueue(p, 'trap') : false, canTNT: g.canDropOrQueue ? g.canDropOrQueue(p, 'dynamite') : false,
-        onPad: !!p.onPad, team: p.team, flight: p.flight || 0,
+        items: p.items || { trap: 0, dynamite: 0 }, canTrap: g.canDrop ? g.canDrop(p, 'trap') : false, canTNT: g.canDrop ? g.canDrop(p, 'dynamite') : false,
         myBombs: (g.bombs || []).filter(function (b) { return b.owner === p.id; }).length },
       coach: p.coach && !p.aiTakeover && (mode === 'plan' || mode === 'fight' || mode === 'roll') ? coachFor(p) : null,
       full: g.players.length >= C.maxPlayers, vipName: vip() ? vip().name : '',
       cur: cur ? { id: cur.id, name: cur.name, color: cur.color, zombie: cur.status === 'zombie' } : null,
-      movesLeft: g.movesLeft || 0, planLen: g.plan && g.planMoves ? g.planMoves() : 0, planItems: (g.plan || []).filter(function (s2) { return s2.kind === 'drop'; }).length,
-      teams: { on: !!(g.teams && g.teams.on), count: g.teams ? g.teams.count : 2 },
-      pad: (g.phase === 'padChoice' || g.phase === 'padTurn') && cur === p ? { riders: g.players.filter(function (q) { return q !== p && q.status === 'alive' && q.onPad && q.onPad === (p.onPad || (g.padGate && g.padGate.tile)); }).map(function (q) { return q.name; }),
-        attackers: g.padAttackers ? g.padAttackers(p).length : 0, others: g.players.filter(function (q) { return q !== p && q.status === 'alive' && !q.onPad; }).map(function (q) { return q.name; }) } : null,
+      movesLeft: g.movesLeft || 0, planLen: g.plan ? g.plan.length : 0,
       roll: g.roll && g.roll.pid === p.id ? { seq: g.roll.seq, d: g.roll.d, total: g.roll.total, kind: g.roll.kind } : null,
       fight: f && f.pid === p.id ? { seq: f.seq, stage: f.stage, p: f.stage !== 'await' ? f.p : null, z: f.stage !== 'await' ? f.z : null, bonus: f.bonus, ptotal: f.ptotal, ztotal: f.ztotal,
         outcome: f.stage === 'result' ? f.outcome : null, text: f.stage === 'result' ? f.text : null, title: f.title || null, attacker: f.attackerPid ? (g.byId(f.attackerPid) || {}).name : null } : null,
       place: g.phase === 'place' && g.place ? { slots: g.place.slots.length, tile: window.ZT_TILES.byId[g.place.tpl].name } : null,
       msg: g.lastMsg || '',
-      lobby: g.phase === 'lobby' || g.phase === 'over' ? g.players.map(function (q) { return { pid: q.id, name: q.name, color: q.color, dice: q.dice, local: q.local, team: q.team, ai: q.ai ? AIC.personas[q.ai.persona].short + ' \u00b7 ' + AIC.levels[q.ai.level].label : null }; }) : null,
-      results: g.phase === 'over' ? g.results : null, teamResult: g.phase === 'over' ? g.teamResult || null : null,
+      lobby: g.phase === 'lobby' || g.phase === 'over' ? g.players.map(function (q) { return { pid: q.id, name: q.name, color: q.color, dice: q.dice, local: q.local, ai: q.ai ? AIC.personas[q.ai.persona].short + ' \u00b7 ' + AIC.levels[q.ai.level].label : null }; }) : null,
+      results: g.phase === 'over' ? g.results : null,
       hue: g.phase === 'lobby' ? hueView(p) : null
     };
     return st;
@@ -654,8 +610,6 @@
       case 'escape': lightFx('escape', { color: p ? p.color : '#ffd65a' }); break;
       case 'pickup': lightFx('pickup', { color: d.kind === 'heart' ? '#ff6b88' : '#ffd65a' }); break;
       case 'draw': if (d.tpl === 'helipad') lightFx('helipad'); break;
-      case 'padWait': lightFx('helipad'); break;                         // someone holds the chopper: gold glow
-      case 'swarm': lightFx('lunge'); break;                             // the horde rushes the fence
       case 'gate': if (!d.yes) lightFx('gateNo'); break;
       case 'lunge': lightFx('lunge'); break;
       case 'over': lightFx('over', { escaped: (game.results || []).some(function (r) { return r.escaped; }) }); break;

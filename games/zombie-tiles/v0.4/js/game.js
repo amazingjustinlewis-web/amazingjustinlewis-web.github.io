@@ -39,7 +39,6 @@
     this.messages = [];
     this.tiles = []; this.tileMap = {}; this.zombies = []; this.pickups = []; this.gates = {};
     this.plan = []; this.roll = null; this.fight = null; this.place = null;
-    this.teams = { on: false, count: 2 };      // v0.5 lobby setting (kept between games)
   }
   var G = Game.prototype;
 
@@ -62,7 +61,6 @@
     p.hearts = C.startHearts; p.weapon = 'none'; p.ammo = 0;
     p.status = 'alive'; p.place = 0; p.deathRound = null; p.deadOrder = 0; p.zid = null; p.kills = 0;
     p.items = { trap: 0, dynamite: 0 };
-    p.onPad = null; p.padWaited = 0; p.flight = 0;      // v0.5 helipad waiting
     if (!p.deadChoice) p.deadChoice = 'zombie';
   }
   G.addPlayer = function (o) {
@@ -83,7 +81,7 @@
     var name = String(o.name || '').replace(/[^\w \-'!.?]/g, '').trim().slice(0, 12) || ('Player ' + (this.players.length + 1));
     var dice = C.dice.some(function (d) { return d.id === o.dice; }) ? o.dice : C.dice[this.players.length % C.dice.length].id;
     var p = { id: ++this.pidSeq, name: name, dice: dice, local: !!o.local, clientId: o.clientId || null, connected: true,
-      colorIdx: ci, color: C.playerColors[ci], x: 0, y: 0, ai: ai, team: this.players.length % this.teams.count };
+      colorIdx: ci, color: C.playerColors[ci], x: 0, y: 0, ai: ai };
     freshStats(p);
     this.players.push(p);
     this.changed();
@@ -98,23 +96,6 @@
   G.curP = function () { return this.players[this.cur]; };
   G.vip = function () { return this.players[0] || null; };
 
-  // ------------------------------------------------------------ v0.5 teams (lobby toggle; teammates never fight each other)
-  G.setTeams = function (on, count) {
-    if (this.phase !== 'lobby' && this.phase !== 'over') return false;
-    if (on != null) this.teams.on = !!on;
-    var n0 = this.teams.count;
-    if (count != null) this.teams.count = Math.max(2, Math.min((C.teams && C.teams.max) || 4, count | 0));
-    var n = this.teams.count;
-    this.players.forEach(function (p, i) { if (n !== n0 || p.team == null || p.team >= n) p.team = i % n; });   // a new team count deals players out again
-    this.changed(); return true;
-  };
-  G.setTeam = function (pid, team) {
-    var p = this.byId(pid); if (!p || (this.phase !== 'lobby' && this.phase !== 'over')) return false;
-    p.team = ((team | 0) % this.teams.count + this.teams.count) % this.teams.count; this.changed(); return true;
-  };
-  G.sameTeam = function (a, b) { return !!(this.teams && this.teams.on && a && b && a !== b && a.team === b.team); };
-  G.friendlyZombie = function (z, p) { return !!(z.owner && p && (z.owner === p.id || this.sameTeam(this.byId(z.owner), p))); };
-
   // ------------------------------------------------------------ setup
   G.start = function (seed) {
     if (!this.players.length) return;
@@ -123,7 +104,7 @@
     this.seed = seed == null ? Math.floor(Math.random() * 1e9) : seed;
     this.rand = mulberry(this.seed);
     this.tiles = []; this.tileMap = {}; this.zombies = []; this.pickups = []; this.gates = {}; this.gateSides = [];
-    this.traps = []; this.bombs = []; this.itemSeq = 0; this.padRingCache = {}; this.padGate = null; this.padFights = 0; this.teamResult = null;
+    this.traps = []; this.bombs = []; this.itemSeq = 0;
     this.zSeq = 0; this.puSeq = 0; this.tileSeq = 0; this.rollSeq = 0; this.fightSeq = 0;
     this.round = 1; this.escaped = 0; this.deadSeq = 0; this.messages = []; this.lastMsg = '';
     this.plan = []; this.roll = null; this.fight = null; this.lastFight = null; this.place = null; this.movesLeft = 0;
@@ -162,10 +143,9 @@
   G.livingAt = function (x, y) { return this.players.filter(function (p) { return p.status === 'alive' && p.x === x && p.y === y; }); };
   G.adjacentZombie = function (p) {
     var best = null;
-    if (p.onPad) return null;               // v0.5: waiting on the helipad, only the swarm at the fence can reach you (see padAttackers)
     for (var i = 0; i < this.zombies.length; i++) {
       var z = this.zombies[i];
-      if (man(z, p) === 1 && !this.friendlyZombie(z, p) && !z.stunned) { if (!best || z.hp < best.hp) best = z; }
+      if (man(z, p) === 1 && z.owner !== p.id && !z.stunned) { if (!best || z.hp < best.hp) best = z; }
     }
     return best;
   };
@@ -182,7 +162,6 @@
     if (!this.deck.length || !this.isExitSquare(x, y, d)) return false;
     return !this.tileAtSq(x + DIRS[d][0], y + DIRS[d][1]);
   };
-  G.tileById = function (id) { for (var i = 0; i < this.tiles.length; i++) if (this.tiles[i].id === id) return this.tiles[i]; return null; };
   G.livingCount = function () { return this.players.filter(function (p) { return p.status === 'alive'; }).length; };
 
   // ------------------------------------------------------------ tiles
@@ -307,12 +286,6 @@
       this.changed();
       return;
     }
-    if (p.onPad) {                       // v0.5: waiting on the helipad: fight off the swarm, then TAKE OFF or keep waiting
-      this.padFights = 0;
-      this.event('turn', { pid: p.id });
-      this.padNext(p);
-      return;
-    }
     var z = this.adjacentZombie(p);
     if (z) {
       this.say('A zombie grabs ' + p.name + '! Fight first.');
@@ -371,10 +344,10 @@
   G.endRound = function () {
     var self = this, moved = 0;
     this.bombs.slice().forEach(function (b) { self.detonate(b); });      // lit dynamite goes off at the end of the round
-    var occupied = {}, swarmed = this.padSwarm();          // v0.5: zombies rush the helipad while someone waits there
+    var occupied = {};
     this.players.forEach(function (p) { if (p.status === 'alive') { var t = self.tileAtSq(p.x, p.y); if (t) occupied[t.id] = 1; } });
     this.zombies.forEach(function (z) {
-      if (z.owner || swarmed[z.id]) return;
+      if (z.owner) return;
       if (z.stunned) { z.stunned--; return; }
       var t = self.tileAtSq(z.x, z.y);
       if (t && occupied[t.id]) return;
@@ -432,23 +405,11 @@
     var esc = this.players.filter(function (p) { return p.status === 'escaped'; }).sort(function (a, b) { return a.place - b.place; });
     var rest = this.players.filter(function (p) { return p.status !== 'escaped'; }).sort(function (a, b) { return b.deadOrder - a.deadOrder; });
     var out = [];
-    var tm = this.teams && this.teams.on;
-    esc.forEach(function (p) { out.push({ pid: p.id, name: p.name, color: p.color, place: p.place, label: ordinal(p.place) + (p.flight > 1 ? ' - escaped together!' : ' - escaped!'), escaped: true, team: tm ? p.team : null }); });
+    esc.forEach(function (p) { out.push({ pid: p.id, name: p.name, color: p.color, place: p.place, label: ordinal(p.place) + ' - escaped!', escaped: true }); });
     rest.forEach(function (p) {
-      out.push({ pid: p.id, name: p.name, color: p.color, place: 0, escaped: false, team: tm ? p.team : null,
+      out.push({ pid: p.id, name: p.name, color: p.color, place: 0, escaped: false,
         label: p.status === 'zombie' ? 'Joined the horde' : 'Left for dead' });
     });
-    // v0.5 teams: the team with the most survivors out wins (tie: the team that got out first)
-    this.teamResult = null;
-    if (tm) {
-      var T = {};
-      this.players.forEach(function (p) {
-        var t = T[p.team] || (T[p.team] = { team: p.team, escaped: 0, best: 999, members: [] });
-        t.members.push(p.id); if (p.status === 'escaped') { t.escaped++; t.best = Math.min(t.best, p.place); }
-      });
-      var arr = Object.keys(T).map(function (k) { return T[k]; }).sort(function (a, b) { return b.escaped - a.escaped || a.best - b.best || a.team - b.team; });
-      this.teamResult = { winner: arr.length && arr[0].escaped ? arr[0].team : null, teams: arr };
-    }
     return out;
   };
 
@@ -460,8 +421,8 @@
   G.addDir = function (d) {
     var last = this.plan[this.plan.length - 1];
     if (last && last.d === OPP[d]) { this.plan.pop(); return 'undo'; }
-    if (last && last.kind !== 'step' && last.kind !== 'drop') return false;
-    if (this.planMoves() >= this.movesLeft) return false;
+    if (last && last.kind !== 'step') return false;
+    if (this.plan.length >= this.movesLeft) return false;
     var f = this.planEnd(), nx = f.x + DIRS[d][0], ny = f.y + DIRS[d][1];
     var c = this.cell(nx, ny);
     if (c === null) {
@@ -477,28 +438,9 @@
     this.plan.push({ x: nx, y: ny, d: d, kind: 'step' });
     return true;
   };
-  // v0.5 queued actions: DROP TRAP / TNT while planning goes into the plan (no move used) and happens there during EXECUTE
-  G.planMoves = function () { var n = 0; for (var i = 0; i < this.plan.length; i++) if (this.plan[i].kind !== 'drop') n++; return n; };
-  G.canQueueDrop = function (p, kind, allowEmpty) {
-    if (!p || p.status !== 'alive' || p.onPad || !C.items[kind] || this.curP() !== p) return false;
-    var last = this.plan[this.plan.length - 1];
-    if (last ? last.kind !== 'step' : !allowEmpty) return false;        // only on a square you walk to (one drop per square)
-    var x = last ? last.x : p.x, y = last ? last.y : p.y, queued = 0;
-    for (var i = 0; i < this.plan.length; i++) if (this.plan[i].kind === 'drop' && this.plan[i].item === kind) queued++;
-    return p.items[kind] - queued > 0 && !this.trapAt(x, y) && !this.bombAt(x, y);
-  };
-  G.queueDrop = function (p, kind, allowEmpty) {
-    if (!this.canQueueDrop(p, kind, allowEmpty)) return false;
-    var e = this.planEnd(); this.plan.push({ x: e.x, y: e.y, kind: 'drop', item: kind });
-    this.changed(); return true;
-  };
-  G.canDropOrQueue = function (p, kind) {        // what the phone's DROP buttons do right now
-    if (this.phase === 'plan' && this.curP() === p && this.plan.length) return this.canQueueDrop(p, kind);
-    return this.canDrop(p, kind);
-  };
   G.dangerAt = function (x, y) {     // would stepping here start a fight (with zombies where they are now)?
     var p = this.curP();
-    for (var i = 0; i < this.zombies.length; i++) { var z = this.zombies[i]; if (!this.friendlyZombie(z, p) && !z.stunned && Math.abs(z.x - x) + Math.abs(z.y - y) === 1) return true; }
+    for (var i = 0; i < this.zombies.length; i++) { var z = this.zombies[i]; if (z.owner !== (p && p.id) && !z.stunned && Math.abs(z.x - x) + Math.abs(z.y - y) === 1) return true; }
     return false;
   };
   G.execute = function () {
@@ -511,10 +453,6 @@
     var p = this.curP();
     if (!this.plan.length) { this.endTurn(); return; }
     var s = this.plan.shift();
-    if (s.kind === 'drop') {                  // queued action: drop it here, then carry on along the path
-      if (!this.dropItem(p, s.item)) { this.say("Can't drop that here. Moving on."); this.changed(); }
-      this.later(C.timing.dropPause || 450, this.stepNext); return;
-    }
     if (s.kind === 'explore') { this.startPlacement(s); return; }
     if (s.kind === 'gate') { this.movesLeft--; this.tryGate(p, s); return; }
     if (this.zombieAt(s.x, s.y) || !this.walkable(s.x, s.y)) {
@@ -639,19 +577,14 @@
   // ------------------------------------------------------------ v0.4 items: trap boxes + dynamite
   G.trapAt = function (x, y) { for (var i = 0; i < this.traps.length; i++) if (this.traps[i].x === x && this.traps[i].y === y) return this.traps[i]; return null; };
   G.bombAt = function (x, y) { for (var i = 0; i < this.bombs.length; i++) if (this.bombs[i].x === x && this.bombs[i].y === y) return this.bombs[i]; return null; };
-  G.canDrop = function (p, kind) {
-    if (!p || p.status !== 'alive' || !C.items[kind] || !(p.items[kind] > 0)) return false;
-    if (p.onPad) return kind === 'dynamite' && !!this.padThrowTarget(p);
-    return !this.trapAt(p.x, p.y) && !this.bombAt(p.x, p.y);
-  };
+  G.canDrop = function (p, kind) { return !!(p && p.status === 'alive' && C.items[kind] && p.items[kind] > 0 && !this.trapAt(p.x, p.y) && !this.bombAt(p.x, p.y)); };
   G.dropItem = function (p, kind) {
     if (!this.canDrop(p, kind)) return false;
     p.items[kind]--;
-    var at = p.onPad ? this.padThrowTarget(p) : { x: p.x, y: p.y };
-    var it = { id: ++this.itemSeq, x: at.x, y: at.y, owner: p.id, color: p.color, thrown: !!p.onPad };
+    var it = { id: ++this.itemSeq, x: p.x, y: p.y, owner: p.id, color: p.color };
     (kind === 'trap' ? this.traps : this.bombs).push(it);
-    this.say(kind === 'trap' ? p.name + ' sets a trap box.' : p.name + (it.thrown ? ' throws lit dynamite over the fence!' : ' lights some dynamite!') + ' It blows at the end of the round.');
-    this.event('drop', { pid: p.id, kind: kind, x: it.x, y: it.y, thrown: it.thrown });
+    this.say(kind === 'trap' ? p.name + ' sets a trap box.' : p.name + ' lights some dynamite! It blows at the end of the round.');
+    this.event('drop', { pid: p.id, kind: kind, x: p.x, y: p.y });
     this.changed();
     return true;
   };
@@ -708,135 +641,18 @@
     g.revealed = true;
     this.event('gate', { yes: g.yes, side: g.side, pid: p.id });
     if (g.yes) {
+      p.status = 'escaped'; p.place = ++this.escaped;
       p.x = s.x; p.y = s.y;
-      var tile = this.tileAtSq(s.x, s.y);
-      this.padGate = { pid: p.id, tile: tile.id, x: s.x, y: s.y }; this.plan = [];
-      if (!this.padCanWait(p)) {
-        this.say('The ' + SIDE_NAME[g.side] + ' guard says YES!');
-        this.takeOff(p); return;
-      }
-      this.say('The ' + SIDE_NAME[g.side] + ' guard says YES! ' + p.name + ': TAKE OFF now, or WAIT for the others?');
-      this.phase = 'padChoice';
-      this.event('padReach', { pid: p.id });
+      this.say('The ' + SIDE_NAME[g.side] + ' guard says YES! ' + p.name + ' escapes ' + ordinal(p.place) + '!');
+      this.event('escape', { pid: p.id, place: p.place });
+      this.phase = 'escape'; this.plan = [];
       this.changed();
+      this.later((C.escapeShow && C.escapeShow.ms) || C.timing.banner * 1.4, this.endTurn);   // the TV plays the helicopter cinematic meanwhile
     } else {
       this.say('The ' + SIDE_NAME[g.side] + ' guard says NO! Try another gate.');
       this.plan = []; this.phase = 'plan';
       this.changed();
     }
-  };
-
-  // ------------------------------------------------------------ v0.5 helipad: wait for the others while the zombies swarm the fence
-  G.padCanWait = function (p) {          // worth waiting only if someone else could still make it
-    if (!C.pad || C.pad.wait === false) return false;
-    return this.players.some(function (q) { return q !== p && q.status === 'alive' && !q.onPad; });
-  };
-  G.padRing = function (tile) {          // walkable squares of the helipad tile touching the fence / gates (where the swarm attacks from)
-    if (!tile) return [];
-    var c = this.padRingCache || (this.padRingCache = {});
-    if (c[tile.id]) return c[tile.id];
-    var out = [];
-    for (var ly = 0; ly < S; ly++) for (var lx = 0; lx < S; lx++) {
-      var x = tile.tx * S + lx, y = tile.ty * S + ly, ch = this.cell(x, y);
-      if (!TL.WALK[ch]) continue;
-      for (var d in DIRS) { var nc = this.cell(x + DIRS[d][0], y + DIRS[d][1]); if (nc === 'X' || nc === 'G') { out.push([x, y]); break; } }
-    }
-    return (c[tile.id] = out);
-  };
-  G.onPadRing = function (p, x, y) { var r = this.padRing(this.tileById(p.onPad)); for (var i = 0; i < r.length; i++) if (r[i][0] === x && r[i][1] === y) return true; return false; };
-  G.padAttackers = function (p) {        // zombies at the fence that can get at a waiting player
-    if (!p.onPad) return [];
-    var self = this;
-    return this.zombies.filter(function (z) { return !z.stunned && !self.friendlyZombie(z, p) && self.onPadRing(p, z.x, z.y); })
-      .sort(function (a, b) { return a.hp - b.hp || man(a, p) - man(b, p); });
-  };
-  G.padThrowTarget = function (p) {      // thrown dynamite lands on the fence square with the most zombies in its blast
-    var r = this.padRing(this.tileById(p.onPad)), self = this, best = null, rad = C.items.dynamite.radius;
-    r.forEach(function (q) {
-      if (self.bombAt(q[0], q[1]) || self.trapAt(q[0], q[1])) return;
-      var n = self.zombies.filter(function (z) { return !self.friendlyZombie(z, p) && Math.abs(z.x - q[0]) <= rad && Math.abs(z.y - q[1]) <= rad; }).length;
-      var hurt = self.players.some(function (o) { return o.status === 'alive' && !o.onPad && Math.abs(o.x - q[0]) <= rad && Math.abs(o.y - q[1]) <= rad; });
-      var sc = n * 10 - man({ x: q[0], y: q[1] }, p) * 0.1 - (hurt ? 100 : 0);
-      if (n > 0 && (!best || sc > best.sc)) best = { x: q[0], y: q[1], sc: sc, n: n };
-    });
-    return best ? { x: best.x, y: best.y, n: best.n } : null;
-  };
-  G.padNext = function (p) {
-    var att = this.padAttackers(p), max = (C.pad && C.pad.attacksPerTurn) || 2;
-    if (att.length && this.padFights < max) {
-      this.padFights++;
-      this.say('Zombies claw at the helipad! ' + p.name + ' has to fight them off.');
-      this.startFight(p, att[0], 'padDefend'); return;
-    }
-    this.phase = 'padTurn'; p.padWaited++;
-    var others = this.players.filter(function (q) { return q !== p && q.status === 'alive' && q.onPad === p.onPad; });
-    this.say(p.name + (others.length ? ' and ' + others.length + ' other' + (others.length > 1 ? 's' : '') : '') + ' waiting on the helipad. TAKE OFF or keep waiting?');
-    this.changed();
-  };
-  G.padWait = function (p) {             // climb onto the pad and hold the chopper
-    var gate = this.padGate || { x: p.x, y: p.y, tile: (this.tileAtSq(p.x, p.y) || {}).id }, tile = this.tileById(gate.tile), self = this, best = null;
-    for (var ly = 0; ly < S; ly++) for (var lx = 0; lx < S; lx++) {
-      var x = tile.tx * S + lx, y = tile.ty * S + ly;
-      if (this.cell(x, y) !== 'H' || this.players.some(function (q) { return q !== p && (q.status === 'alive' || q.status === 'dead') && q.x === x && q.y === y; })) continue;
-      var d = Math.abs(x - gate.x) + Math.abs(y - gate.y);
-      if (!best || d < best.d) best = { x: x, y: y, d: d };
-    }
-    if (best) { p.x = best.x; p.y = best.y; }
-    p.onPad = tile.id; p.padWaited = 0; this.padGate = null;
-    this.say(p.name + ' waits on the helipad. The zombies smell it... they are coming!');
-    this.event('padWait', { pid: p.id });
-    this.endTurn();
-    return true;
-  };
-  G.takeOff = function (p) {             // TAKE OFF: everyone on the pad flies out together
-    var tid = p.onPad || (this.padGate && this.padGate.tile), self = this;
-    var riders = [p].concat(this.players.filter(function (q) { return q !== p && q.status === 'alive' && q.onPad && q.onPad === tid; }));
-    var place = ++this.escaped;
-    riders.forEach(function (q) { q.status = 'escaped'; q.place = place; q.flight = riders.length; q.onPad = null; });
-    var names = riders.map(function (q) { return q.name; });
-    this.say(riders.length > 1 ? 'The chopper lifts off with ' + names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' aboard! (' + ordinal(place) + ')'
-      : p.name + ' escapes ' + ordinal(place) + '!');
-    var tile = this.tileById(tid), pad = tile ? { x: tile.tx * S + S / 2, y: tile.ty * S + S / 2 } : { x: p.x, y: p.y };
-    this.event('escape', { pid: p.id, place: place, riders: riders.map(function (q) { return q.id; }), padX: pad.x, padY: pad.y });
-    this.phase = 'escape'; this.plan = []; this.padGate = null;
-    this.changed();
-    var ms = (C.escapeShow && C.escapeShow.ms) || C.timing.banner * 1.4;
-    this.later(riders.length > 1 ? ms + ((C.escapeShow && C.escapeShow.groupExtraMs) || 900) : ms, this.endTurn);   // the TV plays the helicopter cinematic meanwhile
-    return true;
-  };
-  G.padSwarm = function () {             // end of round: zombies near a waiting player rush the fence; a few more turn up
-    var moved = {}, self = this, P = C.pad || {};
-    var tiles = {}; this.players.forEach(function (p) { if (p.status === 'alive' && p.onPad) tiles[p.onPad] = 1; });
-    var ids = Object.keys(tiles).map(Number); if (!ids.length) return moved;
-    var dist = {}, q = [];
-    ids.forEach(function (id) { self.padRing(self.tileById(id)).forEach(function (r) { var k = key(r[0], r[1]); if (dist[k] == null) { dist[k] = 0; q.push(r); } }); });
-    for (var qi = 0; qi < q.length; qi++) {
-      var c = q[qi], dc = dist[key(c[0], c[1])];
-      if (dc >= (P.swarmRange || 24)) continue;
-      for (var d in DIRS) { var nx = c[0] + DIRS[d][0], ny = c[1] + DIRS[d][1], kn = key(nx, ny); if (dist[kn] == null && this.walkable(nx, ny)) { dist[kn] = dc + 1; q.push([nx, ny]); } }
-    }
-    var free = function (x, y) { return self.walkable(x, y) && !self.zombieAt(x, y) && !self.anyPlayerAt(x, y); };
-    this.zombies.slice().sort(function (a, b) { return (dist[key(a.x, a.y)] || 99) - (dist[key(b.x, b.y)] || 99); }).forEach(function (z) {
-      if (z.owner || z.stunned || dist[key(z.x, z.y)] == null) return;
-      moved[z.id] = 1;
-      for (var st = 0; st < (P.swarmSteps || 2); st++) {
-        var here = dist[key(z.x, z.y)], best = null;
-        if (here === 0) break;
-        for (var d2 in DIRS) { var nx = z.x + DIRS[d2][0], ny = z.y + DIRS[d2][1], dn = dist[key(nx, ny)]; if (dn != null && dn < here && free(nx, ny)) { best = [nx, ny]; break; } }
-        if (!best) break;
-        z.x = best[0]; z.y = best[1];
-      }
-    });
-    var spawned = 0;                       // desperate reinforcements stagger in from a few squares out
-    for (var i = 0; i < (P.spawnPerRound || 0) * ids.length; i++) {
-      var cand = Object.keys(dist).filter(function (k) { var v = dist[k], xy = k.split(',').map(Number); return v >= 3 && v <= 6 && free(xy[0], xy[1]); });
-      if (!cand.length) break;
-      var xy = this.pick(cand).split(',').map(Number);
-      this.zombies.push({ id: ++this.zSeq, x: xy[0], y: xy[1], hp: C.zombie.hp, owner: null }); spawned++;
-    }
-    var n = Object.keys(moved).length;
-    if (n || spawned) { this.say('The horde swarms the helipad!'); this.event('swarm', { n: n, spawned: spawned }); }
-    return moved;
   };
 
   // ------------------------------------------------------------ fights
@@ -906,7 +722,6 @@
     var won = f.outcome === 'clean' || f.outcome === 'trade';
     if (p.hearts <= 0) { this.killPlayer(p); this.changed(); this.later(C.timing.banner, this.endTurn); return; }
     if (f.context === 'zombieAttack') { this.endTurn(); return; }
-    if (f.context === 'padDefend') { if (won) this.padNext(p); else this.endTurn(); return; }
     if (!won) { this.endTurn(); return; }
     var z = this.adjacentZombie(p);
     if (z) { this.startFight(p, z, f.context); return; }
@@ -914,11 +729,7 @@
     if (this.placedThisTurn) { this.endTurn(); return; }          // won on the tile you just placed: the turn still ends
     // won during a move: you get your remaining squares back (the old plan is restored where still valid)
     this.phase = 'plan'; this.plan = [];
-    for (var i = 0; i < f.savedPlan.length; i++) {
-      var sp = f.savedPlan[i];
-      if (sp.kind === 'drop') { if (!this.queueDrop(p, sp.item, true)) break; continue; }
-      if (this.addDir(sp.d) !== true) break;
-    }
+    for (var i = 0; i < f.savedPlan.length; i++) { if (this.addDir(f.savedPlan[i].d) !== true) break; }
     if (this.plan.length && this.plan[this.plan.length - 1].d !== f.savedPlan[this.plan.length - 1].d) this.plan.pop();
     this.say(p.name + ' has ' + this.movesLeft + ' moves left. EXECUTE to carry on.');
     this.changed();
@@ -933,7 +744,6 @@
     return true;
   };
   G.killPlayer = function (p) {
-    p.onPad = null;
     p.status = 'dead'; p.hearts = 0; p.deathRound = this.round; p.deadOrder = ++this.deadSeq; p.weapon = 'none';
     this.say(p.name + ' is left for dead...');
     this.event('death', { pid: p.id });
@@ -963,16 +773,12 @@
   };
   G.adjacentLiving = function (z) {
     if (z.stunned) return null;
-    var owner = z.owner && this.byId(z.owner);
-    for (var i = 0; i < this.players.length; i++) {
-      var q = this.players[i]; if (q.status !== 'alive' || this.sameTeam(owner, q)) continue;
-      if (q.onPad ? this.onPadRing(q, z.x, z.y) : man(q, z) === 1) return q;      // waiting on the pad: attacked from the squares around the fence
-    }
+    for (var i = 0; i < this.players.length; i++) { var q = this.players[i]; if (q.status === 'alive' && man(q, z) === 1) return q; }
     return null;
   };
   G.huntTarget = function (p, z) {
     var per = C.ai && p.ai && C.ai.personas[p.ai.persona], style = per ? per.hunt : 'nearest', W = C.weapons;
-    var self = this, living = this.players.filter(function (q) { return q.status === 'alive' && !self.sameTeam(p, q); });
+    var living = this.players.filter(function (q) { return q.status === 'alive'; });
     if (!living.length || style === 'nearest') return null;
     var score = style === 'weakest' ? function (q) { return -q.hearts * 10 - man(q, z) * 0.01; }
       : function (q) { return q.hearts + W[q.weapon].rank * 1.5 + q.kills - man(q, z) * 0.01; };
@@ -980,10 +786,9 @@
     return living[0].id;
   };
   G.pathToLiving = function (z, onlyPid) {
-    var self = this, goal = {}, owner = z.owner && this.byId(z.owner);
+    var self = this, goal = {};
     this.players.forEach(function (q) {
-      if (q.status !== 'alive' || (onlyPid && q.id !== onlyPid) || self.sameTeam(owner, q)) return;
-      if (q.onPad) { self.padRing(self.tileById(q.onPad)).forEach(function (r) { goal[key(r[0], r[1])] = 1; }); return; }
+      if (q.status !== 'alive' || (onlyPid && q.id !== onlyPid)) return;
       for (var d in DIRS) goal[key(q.x + DIRS[d][0], q.y + DIRS[d][1])] = 1;
     });
     var q = [[z.x, z.y]], prev = {}; prev[key(z.x, z.y)] = null;
@@ -1008,7 +813,7 @@
   G.actorId = function () {
     var p = this.curP();
     switch (this.phase) {
-      case 'roll': case 'plan': case 'place': case 'zturn': case 'padChoice': case 'padTurn': return p ? p.id : null;
+      case 'roll': case 'plan': case 'place': case 'zturn': return p ? p.id : null;
       case 'fight': return this.fight && this.fight.stage === 'await' ? this.fight.pid : null;
       default: return null;
     }
@@ -1033,14 +838,8 @@
       return mine && this.shareAmmo(p, this.byId(m.to), m.n);
     }
     if (m.t === 'drop' || m.t === 'detonate' || m.t === 'endTurn') {
-      if (this.phase === 'padChoice' || this.phase === 'padTurn') {
-        if (this.actorId() !== pid) return false;
-        if (m.t === 'endTurn') return this.phase === 'padChoice' ? this.padWait(p) : this.endTurnNow(p);
-        if (this.phase !== 'padTurn') return false;
-        return m.t === 'drop' ? this.dropItem(p, m.item) : this.detonateMine(p);
-      }
       if (this.actorId() !== pid || (this.phase !== 'roll' && this.phase !== 'plan') || p.status !== 'alive') return false;
-      if (m.t === 'drop') return this.phase === 'plan' && this.plan.length ? this.queueDrop(p, m.item) : this.dropItem(p, m.item);
+      if (m.t === 'drop') return this.dropItem(p, m.item);
       if (m.t === 'detonate') return this.detonateMine(p);
       return this.endTurnNow(p);
     }
@@ -1060,10 +859,6 @@
         return false;
       case 'fight': if (m.t === 'roll' || m.t === 'exec') { this.fightRoll(); return true; } return false;
       case 'zturn': if (m.t === 'roll' || m.t === 'exec') { this.zombieRoll(); return true; } return false;
-      case 'padChoice': case 'padTurn':
-        if (m.t === 'takeoff' || m.t === 'roll' || m.t === 'exec') return this.takeOff(p);
-        if (m.t === 'wait') { if (this.phase === 'padChoice') return this.padWait(p); this.say(p.name + ' keeps waiting...'); this.endTurn(); return true; }
-        return false;
     }
     return false;
   };

@@ -6,7 +6,7 @@
    ===================================================================== */
 (function (root) {
   root.ZT_CONFIG = {
-    version: '0.5',
+    version: '0.4.1',
 
     // ---- board ----
     tileSize: 8,                 // squares per tile side (data model keeps w/h per tile for later)
@@ -69,14 +69,7 @@
 
     // ---- display ----
     phone: { turnBuzzEveryMs: 3500, turnBuzzPattern: [40] },   // gentle 'your turn' reminder buzz on the phone until the player acts (phones can switch it off)
-    escapeShow: { ms: 5200, fireworks: [0.9, 1.7, 2.3, 2.9, 3.5, 4.1], buzz: [90, 60, 90, 60, 90, 120, 400], groupExtraMs: 900 },   // helicopter cinematic on the TV when someone escapes (the game waits for it)
-    // v0.5 helipad: a player at a YES gate can TAKE OFF now or WAIT for others. While someone waits, zombies within
-    // swarmRange squares rush the fence (swarmSteps squares per round), spawnPerRound extra zombies stagger in, and at the
-    // start of a waiting player's turn up to attacksPerTurn zombies at the fence attack (normal fights). Taking off carries
-    // everyone on the pad. AI waits for a teammate / partner within aiWaitRange squares for at most aiMaxWait turns.
-    pad: { wait: true, swarmSteps: 2, swarmRange: 24, spawnPerRound: 1, attacksPerTurn: 2, aiMaxWait: 3, aiWaitRange: 18 },
-    // v0.5 teams (lobby toggle): 2-4 colour-coded teams; teammates never fight each other; the team with most escapes wins
-    teams: { max: 4, colors: ['#3ddc84', '#ff9f1c', '#3fd0ff', '#ff5fd2'], names: ['Green', 'Orange', 'Sky', 'Pink'] },
+    escapeShow: { ms: 5200, fireworks: [0.9, 1.7, 2.3, 2.9, 3.5, 4.1], buzz: [90, 60, 90, 60, 90, 120, 400] },   // helicopter cinematic on the TV when someone escapes (the game waits for it)
     // v0.4 character sprites: walk cycles + idle bobs. Drop in your own sheets (format: js/sprites.js / assets/sprites/README.md)
     sprites: { enabled: true, frame: 32, player: '', zombie: '', walkFps: 12, idleMs: 520, stepSec: 0.22 },
     // v0.4.1: a badly hurt player leaves little cartoon blood drops on the squares they walk through (TV only, purely visual)

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Zombie Tiles v0.4 controller | Zero to Phi</title>
+<meta name="theme-color" content="#14121b">
+<meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/phone.css">
+</head>
+<body>
+<section id="join" class="screen">
+  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">ZOMBIE TILES</div><div class="jsub">working title &middot; phone controller</div></div></header>
+  <label class="fld">Room code<input id="room" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD"></label>
+  <label class="fld">Your name<input id="name" maxlength="12" autocomplete="nickname" placeholder="Name"></label>
+  <div class="fld">Pick your dice</div>
+  <div id="dicePick" class="dice-pick" role="radiogroup" aria-label="Dice style"></div>
+  <button id="joinBtn" class="big-btn">JOIN GAME</button>
+  <div id="joinStatus" class="jstatus" role="status"></div>
+</section>
+
+<section id="play" class="screen" hidden>
+  <div class="hud">
+    <div class="me"><span class="dot" id="meDot"></span><span id="meName"></span><span id="conn" class="conn"></span></div>
+    <div class="stats">
+      <span id="hearts" class="hearts" aria-label="Hearts"></span>
+      <span class="weap"><canvas id="weapIcon" width="64" height="64"></canvas><span id="weapName"></span></span>
+      <span id="ammo" class="ammo" title="Ammo (only you can see this)"></span>
+    </div>
+  </div>
+  <div class="status" id="status"><div class="s1" id="s1">Connecting&hellip;</div><div class="s2" id="s2"></div></div>
+  <div class="pad-wrap">
+    <div class="cross" id="cross">
+      <button data-d="U" class="dir up" aria-label="Up"><span>&#9650;</span></button>
+      <button data-d="L" class="dir left" aria-label="Left"><span>&#9664;</span></button>
+      <button id="exec" class="exec">EXECUTE</button>
+      <button data-d="R" class="dir right" aria-label="Right"><span>&#9654;</span></button>
+      <button data-d="D" class="dir down" aria-label="Down"><span>&#9660;</span></button>
+    </div>
+  </div>
+  <div class="side">
+    <div class="dicebox"><canvas id="dice" width="360" height="160"></canvas><div id="moves" class="moves"></div></div>
+    <button id="roll" class="roll">ROLL</button>
+    <div class="row" id="planRow"><button id="undo" class="small">UNDO</button><button id="clear" class="small">RESET MOVES</button></div>
+    <div id="extra"></div>
+  </div>
+</section>
+
+<script src="js/vendor/peerjs.min.js"></script>
+<script>/* old TV browsers (e.g. Samsung Tizen, Chromium < 80) cannot run the modern PeerJS build: load the transpiled one */ if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/config.js"></script>
+<script src="js/dice.js"></script>
+<script src="js/net.js"></script>
+<script src="js/render.js"></script>
+<script src="js/controller.js"></script>
+</body>
+</html>
