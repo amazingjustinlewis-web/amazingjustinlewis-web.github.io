@@ -166,5 +166,38 @@ window.GAMES = [
         notes: 'Present Day board, dice, buying, rent with the PAY UP race, Shops and Mega-Plexes, hocking, the Snowbank, bankruptcy, trades and chat on phones, AI players, house rules, Full or Quick mode. Placeholder art.'
       }
     ]
+  },
+  {
+    id: 'laser-range',
+    title: 'Laser Range',
+    pitch: 'Point your phone at the TV like a light gun. Pop cartoon targets, blow up barrels and don\u2019t shoot granny. 1 to 4 players, 90-second rounds.',
+    cover: 'assets/img/laser-range/cover-card.webp',
+    coverAlt: 'Laser Range on the TV: a desert shooting gallery with barrels, crates and brick walls, a pop-up target and a red crosshair firing a laser',
+    details: 'games/laser-range.html',
+    status: 'Early test',
+    tags: ['1\u20134 players', 'TV + phones', 'Motion aiming'],
+    accent: '#ff4fd8',
+    sections: ['family'],
+    intensity: 3,
+    goodToKnow: [
+      'Cartoon shooting gallery: round targets and silly bandits pop up from behind cover. Nothing gets hurt; targets just flip over.',
+      'There is a granny cut-out you should NOT shoot (it costs points).',
+      'Red barrels explode with a flash, a boom and a little screen shake (switched off in low-detail mode).',
+      'Aim by pointing your phone at the TV (motion sensor). iPhones ask for permission first. No sensor? Drag on the touchpad instead.',
+      'A quick 5-point calibration before you play: point at each target and tap. Re-centre any time if the cursor drifts.',
+      'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi).',
+      'Optional: works with the Zombie Tiles Lights Helper to flash Hue lights when barrels explode.',
+      'Laser zaps, pops and booms. Press M on the TV to mute.',
+      'Early test: placeholder art, and motion aiming has not been tried on many real phones yet.'
+    ],
+    versions: [
+      {
+        id: 'v0.1',
+        name: 'First test',
+        current: true,
+        play: 'games/laser-range/index.html',
+        notes: 'Motion aiming with 5-point calibration and Re-centre, a touchpad fallback, a 90-second shooting gallery with pop-up targets, a rail of ducks and gold runners, exploding barrels with chain reactions, a charge-cannon balloon power-up, swipe blasts, scores, awards and a results screen. Auto low detail for Chromecast. Placeholder art.'
+      }
+    ]
   }
 ];

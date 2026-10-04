@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Laser Range - TV | Zero to Phi</title>
+<meta name="description" content="Laser Range (working title): a light-gun shooting gallery for the TV. Point your phone at the screen to aim. Prototype v0.1 by Zero to Phi.">
+<meta name="theme-color" content="#0d0a18">
+<meta name="robots" content="noindex">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/tv.css">
+</head>
+<body>
+<canvas id="cv" aria-label="Shooting gallery"></canvas>
+
+<div id="hud" hidden>
+  <div id="scores"></div>
+  <div id="timer">1:30</div>
+</div>
+
+<section id="lobby">
+  <div class="lb-left">
+    <div class="presents"><img src="assets/logo.svg" alt="" width="49" height="40"> ZERO TO PHI <span class="proto">PROTOTYPE v0.1</span> <a id="backLink" class="back" href="../../family.html">&larr; games</a></div>
+    <h1>LASER <span>RANGE</span></h1>
+    <p class="tagline">Point your phone at the TV. Pop the targets, blow up the barrels, don't shoot granny.</p>
+    <div id="phoneHint" class="phone-hint" hidden>On a phone? This is the <b>TV screen</b>. Open it on the TV, then join with the <a href="controller.html">phone controller</a>.</div>
+    <div id="huePanel" class="hue-panel off"></div>
+  </div>
+  <div class="join-box">
+    <canvas id="qr" width="300" height="300" aria-label="QR code to join"></canvas>
+    <div class="join-text">
+      <div class="join-label">JOIN ON YOUR PHONE &middot; 1-4 players</div>
+      <div class="code" id="code">----</div>
+      <div class="url" id="joinUrl"></div>
+      <div class="netstatus" id="netStatus">Connecting to the room server&hellip;</div>
+      <ul id="lobbyPlayers"></ul>
+      <div class="start-hint" id="startHint">Waiting for players&hellip;</div>
+    </div>
+  </div>
+</section>
+
+<div id="strip" hidden><span>Join: <b id="stripCode">----</b></span><span id="stripMsg"></span></div>
+<div id="big" aria-live="polite"></div>
+
+<section id="results" hidden>
+  <h1 id="resTitle">RESULTS</h1>
+  <ol id="resList"></ol>
+  <div id="awards"></div>
+  <p class="res-note">Host phone: <b>PLAY AGAIN</b> or <b>LOBBY</b> &middot; or press Enter on the TV</p>
+</section>
+
+<div id="netBadge"></div>
+<div id="fxInfo"></div>
+
+<script src="js/vendor/peerjs.min.js"></script>
+<script>/* old TV browsers (e.g. Samsung Tizen, Chromium < 80) cannot run the modern PeerJS build: load the transpiled one */ if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/config.js"></script>
+<script src="js/aim.js"></script>
+<script src="js/game.js"></script>
+<script src="js/sfx.js"></script>
+<script src="js/net.js"></script>
+<script src="js/render.js"></script>
+<script src="js/host.js"></script>
+</body>
+</html>
