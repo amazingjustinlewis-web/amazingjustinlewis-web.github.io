@@ -71,7 +71,7 @@
     var inc = function (k) { return (f[k] || 0) > (lastFx[k] || 0); };
     if (inc('boom')) boom(f.boomData || {});
     if (inc('missed')) { SFX.play('trombone'); vib([60, 80, 60, 80, 300]); toast('\uD83C\uDFBA ' + ((f.missedData || {}).name || 'They') + ' slipped away\u2026 too slow!', 3200); }
-    if (inc('gotEm')) { SFX.play('cash'); vib([30, 40, 30]); toast('CAUGHT! +' + money((f.gotEmData || {}).amount), 2600); }   // cha-ching + light vibration for the catcher
+    if (inc('gotEm')) { SFX.play('cash'); vib([30, 40, 30]); toast('CAUGHT! +' + money((f.gotEmData || {}).amount), 2600); }
     if (inc('turn') && st.turn && st.turn.pid === st.me.id) { SFX.play('turn'); vib([40, 60, 40]); if (tab !== 'turn') { var busy = ui.builder || (document.activeElement && document.activeElement.id === 'chatText'); if (busy) toast('Your turn!'); else setTimeout(function () { setTab('turn'); }, 0); } }
     if (inc('offer')) { SFX.play('click'); vib(30); toast('\uD83E\uDD1D New deal offer'); }
     if (inc('deal')) { SFX.play('deal'); vib(60); toast('Deal CEMENTED!'); }
@@ -83,7 +83,7 @@
   function boom(d) {
     hidePayup();
     $('boomSub').innerHTML = esc(d.owner || 'The owner') + ' hit PAY UP first.<br>Rent: ' + money(d.amount) + (d.sp != null ? ' on ' + esc(S[d.sp].name) : '');
-    $('boom').hidden = false; SFX.play('boom'); setTimeout(function () { SFX.play('drain'); }, 220); vib([40, 50, 40]);   // v0.3: half-strength boom, a "funds removed" coin drain, light vibration
+    $('boom').hidden = false; SFX.play('boom'); vib([200, 60, 200, 60, 400]);
     clearTimeout(boom._t); boom._t = setTimeout(function () { $('boom').hidden = true; }, 2600);
   }
   $('boom').onclick = function () { $('boom').hidden = true; };
@@ -173,7 +173,6 @@
   function saveSetupSoon() { clearTimeout(saveT); saveT = setTimeout(function () { if (st && st.me && st.me.vip && st.phase !== 'play') store.set('rdr_setup', JSON.stringify(setupNow())); }, 700); }
   function restoreSetup() {
     if (ui.restored || !st || st.phase !== 'lobby') return; ui.restored = true;
-    if (st.setupEdited) return;     // v0.3: rejoining a room whose setup was already changed (TV or phone): the live settings win
     var saved = null; try { saved = JSON.parse(store.get('rdr_setup') || 'null'); } catch (e) {}
     if (!saved || !saved.rules) return;
     if (saved.level && C.ai.levels[saved.level]) ui.aiLevel = saved.level;
@@ -259,28 +258,14 @@
     }
     setH($('turnMain'), h);
     var side = '';
-    if (t.card) { var cd = B.DECKS[t.card.deck][t.card.idx]; side += cardHtml(t.card.deck, cd, t.card.idx); }
-    else if (st.lastFind && st.lastFind.fresh && B.FINDS[st.lastFind.idx]) side += cardHtml('finds', B.FINDS[st.lastFind.idx], st.lastFind.idx);
-    else if (st.lastFind) { var lf = B.FINDS[st.lastFind.idx]; if (lf) side += '<div class="lastfind"><span>\uD83D\uDCDC Latest Secret Find<br><b>' + esc(lf.h) + '</b></span><button data-act="readFind" data-idx="' + st.lastFind.idx + '">READ MORE</button></div>'; }
+    if (t.card) { var cd = (t.card.deck === 'hail' ? B.HAIL : B.POT)[t.card.idx]; side += cardHtml(t.card.deck, cd); }
     side += '<div class="feed">' + st.feed.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('') + '</div>';
     if (st.endsIn) side = '<div class="info">' + (C.modes[st.mode] ? C.modes[st.mode].label : '') + ' game: ' + clock(st.endsIn) + ' left</div>' + side;
     setH($('turnSide'), side);
     if (t.roll && t.rollSeq !== ui.lastRollSeq) { ui.lastRollSeq = t.rollSeq; ui.diceT = Date.now(); }
     drawDice(); updatePass(); bindSwipe();
   }
-  // v0.3 decks: Red Deer Randomness (playful) and Secret Finds (old paper; a true story, with READ MORE)
-  function cardHtml(deck, cd, idx) {
-    if (deck === 'finds') return '<div class="pcard finds"><div class="deck">\uD83D\uDCDC ' + esc(C.decks.finds.name) + '</div><div class="era">' + esc(cd.year) + ' \u00b7 ' + esc(C.eras[cd.era] || '') + '</div><div class="h">' + esc(cd.h) + '</div><div class="story">' + esc(cd.story) + '</div><div class="fxl">' + esc(cd.t) + '</div>' +
-      '<button class="readmore" data-act="readFind" data-idx="' + idx + '">READ MORE</button></div>';
-    return '<div class="pcard random"><div class="deck">\u2684 ' + esc(C.decks.random.name) + '</div><div class="h">' + esc(cd.h) + '</div><div>' + esc(cd.t) + '</div></div>';
-  }
-  function openFind(idx) {
-    var c = B.FINDS[idx]; if (!c) return;
-    $('fsEra').textContent = c.year + ' \u00b7 ' + (C.eras[c.era] || ''); $('fsH').textContent = c.h; $('fsStory').textContent = c.story; $('fsMore').textContent = c.more || '';
-    $('fsFx').textContent = 'Card: ' + c.t; $('fsSrc').textContent = c.src && c.src.length ? 'Source: ' + c.src.map(function (u) { return u.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]; }).join(', ') : '';
-    $('findSheet').hidden = false;
-  }
-  $('findSheet').onclick = function (e) { if (e.target === $('findSheet') || e.target === $('fsOk')) $('findSheet').hidden = true; };
+  function cardHtml(deck, cd) { return '<div class="pcard ' + deck + '"><div class="deck">' + (deck === 'hail' ? 'HAILSTONE' : 'POTLUCK') + '</div><div class="h">' + esc(cd.h) + '</div><div>' + esc(cd.t) + '</div><div class="fact">(' + esc(cd.fact) + ')</div></div>'; }
   function clock(ms) { var s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
   function updatePass() {
     var b = $('passBtn'); if (!b || !st.turn) return;
@@ -347,7 +332,7 @@
       groups[gr].forEach(function (sp) {
         var pr = st.props[sp], s = S[sp], shops = pr[1], lock = pr[3];
         var stat = pr[2] ? 'HOCKED (unhock ' + money(Math.ceil(s.hock * 1.1)) + ')' : shops === 5 ? 'MEGA-PLEX' : shops ? shops + ' Shop' + (shops > 1 ? 's' : '') : 'no Shops';
-        out += '<div class="deedrow' + (pr[2] ? ' hocked' : '') + '" data-act="pingTile" data-sp="' + sp + '" style="border-left-color:' + G2.color + '"><div class="dn">' + (lock ? '\uD83D\uDD12 ' : '') + esc(s.name) + '<small>' + stat + ' \u00b7 rent ' + (typeof rentNow(sp) === 'number' ? money(rentNow(sp)) : rentNow(sp)) + '</small></div>';
+        out += '<div class="deedrow' + (pr[2] ? ' hocked' : '') + '" style="border-left-color:' + G2.color + '"><div class="dn">' + (lock ? '\uD83D\uDD12 ' : '') + esc(s.name) + '<small>' + stat + ' \u00b7 rent ' + (typeof rentNow(sp) === 'number' ? money(rentNow(sp)) : rentNow(sp)) + '</small></div>';
         if (s.type === 'prop' && full && !pr[2]) out += '<button class="sbtn" data-act="build" data-sp="' + sp + '"' + (shops >= 5 ? ' disabled' : '') + '>+ ' + (shops === 4 ? 'MEGA' : 'SHOP') + '</button><button class="sbtn" data-act="sell" data-sp="' + sp + '"' + (shops ? '' : ' disabled') + '>\u2212 SELL</button>';
         out += pr[2] ? '<button class="sbtn" data-act="unhock" data-sp="' + sp + '">UNHOCK</button>' : '<button class="sbtn" data-act="hock" data-sp="' + sp + '"' + (groupShops || lock ? ' disabled' : '') + '>HOCK +' + money(s.hock) + '</button>';
         out += '</div>';
@@ -387,7 +372,7 @@
       else if (s0.type === 'whistle') side += '<br>Rent $30/$60/$120/$240 for 1-4 stops.<br><i>' + esc(B.STORIES[ui.sel] || '') + '</i>';
       else side += '<br>Rent: dice \u00d7 5 (one) or \u00d7 12 (both).';
       side += '</div></div>';
-    } else side += '<div class="info"><b>' + esc(s0.name) + '</b><br>' + esc({ halfway: 'Collect $250 when you pass or land.', snowbank: 'Stuck: roll doubles (3 tries), use a Tow Truck Pass or pay $60. Just Driving By otherwise.', dirtlot: st.rules.jackpot ? 'Land here exactly to win the pot (' + money(st.pot) + ').' : 'A free rest stop behind the caragana bushes. Shhh.', whiteout: 'Straight to the Snowbank. No $250.', tax: 'Pay ' + money(s0.amount) + '.', random: 'Draw a RED DEER RANDOMNESS card (weather, traffic, everyday chaos).', finds: 'Draw a SECRET FINDS card (a true story from Red Deer history).' }[s0.type] || '') + '</div>';
+    } else side += '<div class="info"><b>' + esc(s0.name) + '</b><br>' + esc({ halfway: 'Collect $250 when you pass or land.', snowbank: 'Stuck: roll doubles (3 tries), use a Tow Truck Pass or pay $60. Just Driving By otherwise.', dirtlot: st.rules.jackpot ? 'Land here exactly to win the pot (' + money(st.pot) + ').' : 'A free rest stop behind the caragana bushes. Shhh.', whiteout: 'Straight to the Snowbank. No $250.', tax: 'Pay ' + money(s0.amount) + '.', hail: 'Draw a HAILSTONE card (weather, traffic, chaos).', potluck: 'Draw a POTLUCK card (neighbours, family, community).' }[s0.type] || '') + '</div>';
     side += '<h3>Standings</h3>' + st.players.slice().sort(function (a, b) { return (a.bankrupt - b.bankrupt) || (b.worth - a.worth); }).map(function (p) { return '<div class="standing">' + chip(p) + '<span class="nm">' + esc(p.name) + (p.ai ? ' <small class="muted">AI</small>' : '') + '</span><span>' + (p.bankrupt ? 'OUT' : money(p.cash) + ' \u00b7 <span class="badge ' + p.state + '">' + (p.state === 'gold' ? 'GOLD' : p.state === 'good' ? 'GOOD' : 'RAGS') + '</span>') + '</span></div>'; }).join('');
     var R2 = st.rules, on = [];
     if (R2.jackpot) on.push('Dirt Lot Jackpot (pot ' + money(st.pot) + ')'); if (R2.feesToPot) on.push('Fees feed the pot'); if (R2.bullseye) on.push('Bullseye Halfway $500');
@@ -677,8 +662,6 @@
       case 'buy': case 'skipBuy': case 'payTow': case 'usePass': case 'raise': case 'giveUp': send({ t: act }); vib(30); if (act === 'buy') SFX.play('buy'); break;
       case 'pass': send({ t: 'pass' }); vib(40); SFX.play('click'); break;
       case 'build': case 'sell': case 'hock': case 'unhock': send({ t: act, sp: +sp }); vib(25); if (act === 'build') SFX.play('build'); break;
-      case 'pingTile': send({ t: 'pingTile', sp: +sp }); vib(12); el.classList.add('pinged'); setTimeout(function () { el.classList.remove('pinged'); }, 350); break;   // v0.3: bounce my tile on the TV (changes nothing)
-      case 'readFind': openFind(+el.getAttribute('data-idx')); break;
       case 'leave': openLeave(1); break;
       case 'newgame': openNewGame(); break;
       case 'newDeal': openBuilder(typeof ui.thread === 'number' ? ui.thread : null); break;

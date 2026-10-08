@@ -43,7 +43,7 @@
     this.props = S.map(function (s) { return s.price ? { owner: -1, shops: 0, hocked: false } : null; });
     this.bankShops = C.bankShops; this.bankMegas = C.bankMegas;
     this.pot = C.jackpotSeed;
-    this.decks = { random: this.shuffle(B.deckCards('random', C.eraFilter)), finds: this.shuffle(B.deckCards('finds', C.eraFilter)) };   // v0.3 decks (era-filterable)
+    this.decks = { hail: this.shuffle(B.HAIL.map(function (_, i) { return i; })), pot: this.shuffle(B.POT.map(function (_, i) { return i; })) };
     this.turn = null; this.round = 0; this.turnCount = 0; this.results = null; this.endsAt = 0; this.order = [];
   };
 
@@ -321,7 +321,7 @@
     this.emit('seatTaken', { pid: p.id, from: old }); this.changed(); return '';
   };
   G.returnShops = function (n) { if (n >= 5) { this.bankMegas++; } else this.bankShops += n; };
-  G.returnPass = function (deck) { var d = this.decks[deck], src = B.DECKS[deck]; if (!d || !src) return; for (var i = 0; i < src.length; i++) if (src[i].fx.k === 'pass' && d.indexOf(i) === -1) { d.push(i); return; } };
+  G.returnPass = function (deck) { var d = this.decks[deck], src = deck === 'hail' ? B.HAIL : B.POT; for (var i = 0; i < src.length; i++) if (src[i].fx.k === 'pass' && d.indexOf(i) === -1) { d.push(i); return; } };
 
   // ------------------------------------------------------------------ building, hocking
   G.groupHasShops = function (group) { var self = this; return B.GROUP_MEMBERS[group].some(function (i) { return self.props[i].shops > 0; }); };
@@ -561,7 +561,7 @@
   G.land = function (p) {
     var t = this.turn, s = S[p.pos], pr = this.props[p.pos];
     t.stage = 'act'; t.landedAt = this.now;
-    t.graceUntil = 0;     // v0.3: no PASS DICE lockout on your own deed, an unowned one or a plain space (only where PAY UP can happen, below)
+    t.graceUntil = this.now + this.ms(this.rules.kidMode ? C.payup.kidGraceMs : C.payup.graceMs);   // v0.1.1: no quick-tap sniping past PAY UP
     this.emit('land', { pid: p.id, sp: p.pos });
     if (pr) {
       if (pr.owner < 0) { t.buy = p.pos; this.emit('offer', { pid: p.id, sp: p.pos }); }
@@ -572,7 +572,6 @@
           if (this.rules.payupRace) {
             t.payupSeq = (t.payupSeq || 0) + 1;
             t.payup = { owner: owner.id, sp: p.pos, mover: p.id, roll: t.roll ? t.roll.total : 7, dbl: !!t.dblRent, openedAt: this.now, caught: false, done: false, seq: t.payupSeq };
-            t.graceUntil = this.now + this.ms(this.rules.kidMode ? C.payup.kidGraceMs : C.payup.graceMs);   // v0.1.1: no quick-tap sniping past PAY UP
             this.emit('payupOpen', { pid: p.id, owner: owner.id, sp: p.pos, rent: this.rentFor(p.pos, t.payup.roll, t.payup.dbl) });
           } else {
             var amt = this.rentFor(p.pos, t.roll ? t.roll.total : 7, t.dblRent);
@@ -586,8 +585,8 @@
       this.addLog(p.name + ' hit ' + s.name + ': ' + money(s.amount));
       this.emit('tax', { pid: p.id, amount: s.amount });
       this.charge(p, s.amount, this.feeDest(), s.name); this.afterPay();
-    } else if (s.type === 'random' || s.type === 'finds') {
-      this.drawCard(p, s.type);
+    } else if (s.type === 'hail' || s.type === 'potluck') {
+      this.drawCard(p, s.type === 'hail' ? 'hail' : 'pot');
     } else if (s.type === 'whiteout') {
       this.sendToSnowbank(p, 'corner');
     } else if (s.type === 'dirtlot') {
@@ -613,17 +612,17 @@
     this.emit('whiteout', { pid: p.id, why: why });
   };
   G.drawCard = function (p, deck) {
-    var d = this.decks[deck], idx = d.shift(), card = B.DECKS[deck][idx];
+    var d = this.decks[deck], idx = d.shift(), card = (deck === 'hail' ? B.HAIL : B.POT)[idx];
     if (card.fx.k !== 'pass') d.push(idx);
     var t = this.turn; t.stage = 'card'; t.card = { deck: deck, idx: idx, until: this.now + this.ms(C.timing.card) };
-    this.addLog(p.name + ' drew ' + C.decks[deck].name + ': ' + card.h);
+    this.addLog(p.name + ' drew ' + (deck === 'hail' ? 'HAILSTONE' : 'POTLUCK') + ': ' + card.h);
     this.emit('card', { pid: p.id, deck: deck, idx: idx });
   };
   G.applyCard = function () {
-    var t = this.turn, p = this.cur(), c = t.card, card = B.DECKS[c.deck][c.idx], fx = card.fx, self = this;
+    var t = this.turn, p = this.cur(), c = t.card, card = (c.deck === 'hail' ? B.HAIL : B.POT)[c.idx], fx = card.fx, self = this;
     t.stage = 'act'; t.cardDone = c; t.card = null;
-    var capped = function (n) { return c.deck === 'random' && self.perk(p, 'doug') ? Math.min(n, 100) : n; };
-    var bless = function (n) { return c.deck === 'finds' && self.perk(p, 'grace') ? n + 25 : n; };
+    var capped = function (n) { return c.deck === 'hail' && self.perk(p, 'doug') ? Math.min(n, 100) : n; };
+    var bless = function (n) { return c.deck === 'pot' && self.perk(p, 'grace') ? n + 25 : n; };
     switch (fx.k) {
       case 'loseTurn':
         if (this.perk(p, 'lenore') && !p.perk.unbothered) { p.perk.unbothered = true; this.addLog('Unbothered. ' + p.name + ' ignores it.'); this.emit('perk', { pid: p.id, perk: 'Unbothered' }); }

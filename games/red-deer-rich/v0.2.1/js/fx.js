@@ -4,8 +4,7 @@
        RDRFx.useSprite('dollar', ['fx/dollar_0.png', 'fx/dollar_1.png', ...], { fps: 12, size: 1.0 })
    and the particle plays those frames over its life instead of the placeholder (tinted kinds stay untinted).
    Kinds: 'spark' (landing firework), 'dollar' (money earned), 'bill' (money lost, flies away),
-          'flybill' (a payment flying from one token to another),
-          'boombill' (v0.3 PAY UP catch: bills explode out of the caught token, then stream to the catcher).
+          'flybill' (a payment flying from one token to another).
    Cost: pre-rendered little sprites + drawImage only, capped particle count, fewer particles on low graphics rungs. */
 (function (root) {
   'use strict';
@@ -70,25 +69,11 @@
     for (var i = 0; i < n; i++) add({ kind: 'flybill', from: from, to: to, getPos: getPos, t: -i * 70, dur: 700 + Math.random() * 150, life: 1, max: 1, sz: 15 * F.scale, rot: Math.random() * 6, spin: (Math.random() - 0.5) * 0.02, arc: 0.25 + Math.random() * 0.2, jit: (Math.random() - 0.5) * 0.3 });
   }
 
-  // v0.3 PAY UP catch: a bigger burst of bills blasts OUTWARD from the caught player's token, hangs a beat, then every
-  // bill streams across to the catcher. o = { burstMs, flyMs, spread (burst radius in tiles), mult (bills vs a normal payment) }
-  function explode(from, to, amount, getPos, o) {
-    o = o || {}; var burstMs = o.burstMs || 420, flyMs = o.flyMs || 760, spread = o.spread || 2.3, mult = o.mult || 1.8, sc = F.scale;
-    var n = many(Math.min(40, Math.round(forAmount(amount) * mult) + 6)), tile = 48 * sc;
-    for (var i = 0; i < n; i++) {
-      var a = Math.PI * 2 * i / n + (Math.random() - 0.5) * 0.5;
-      add({ kind: 'boombill', from: from, to: to, getPos: getPos, t: -Math.random() * 60, burst: burstMs, fly: flyMs, wait: 90 + i * 22, dx: Math.cos(a), dy: Math.sin(a), dist: spread * tile * (0.5 + Math.random() * 0.5),
-        life: 1, max: 1, sz: 19 * sc, rot: Math.random() * 6, spin: (Math.random() - 0.5) * 0.03, arc: 0.12 + Math.random() * 0.18 });
-    }
-    var A = getPos(from); if (A) burst(A.x, A.y, ['#ffd84a', '#7dff7d', '#ffffff'], 1.4);
-  }
-
   function step(dt) {
     dt = Math.min(dt, 100);
     for (var i = parts.length - 1; i >= 0; i--) {
       var p = parts[i];
       if (p.kind === 'flybill') { p.t += dt; if (p.t > p.dur) parts.splice(i, 1); continue; }
-      if (p.kind === 'boombill') { p.t += dt; if (p.t > p.burst + p.wait + p.fly) parts.splice(i, 1); continue; }
       if (p.delay > 0) { p.delay -= dt; continue; }
       p.life -= dt; if (p.life <= 0) { parts.splice(i, 1); continue; }
       p.vy += p.g * dt; p.vx *= Math.pow(p.drag, dt); p.vy *= Math.pow(p.drag, dt); p.x += p.vx * dt; p.y += p.vy * dt; if (p.spin) p.rot += p.spin * dt;
@@ -98,16 +83,7 @@
     if (!parts.length) return;
     for (var i = 0; i < parts.length; i++) {
       var p = parts[i], sp = spriteFor(p), s = p.sz * sp.size, x, y, a;
-      if (p.kind === 'boombill') {
-        if (p.t < 0) continue;
-        var A2 = p.getPos(p.from), B2 = p.getPos(p.to); if (!A2 || !B2) continue;
-        var k1 = Math.min(1, p.t / p.burst), e1 = 1 - Math.pow(1 - k1, 3), sx = A2.x + p.dx * p.dist * e1, sy = A2.y + p.dy * p.dist * e1;
-        var k2 = Math.max(0, Math.min(1, (p.t - p.burst - p.wait) / p.fly)), e2 = k2 < 0.5 ? 2 * k2 * k2 : 1 - Math.pow(-2 * k2 + 2, 2) / 2;
-        var ddx = B2.x - sx, ddy = B2.y - sy, L2 = Math.sqrt(ddx * ddx + ddy * ddy);
-        x = sx + ddx * e2; y = sy + ddy * e2 - L2 * p.arc * Math.sin(k2 * Math.PI);
-        a = k2 > 0.85 ? (1 - k2) / 0.15 : 1; p.rot += p.spin * (k2 > 0 ? 8 : 24);
-        s = p.sz * sp.size * (k1 < 1 ? 0.7 + 0.5 * e1 : 1.2 - 0.35 * e2);
-      } else if (p.kind === 'flybill') {
+      if (p.kind === 'flybill') {
         if (p.t < 0) continue;
         var A = p.getPos(p.from), Bp = p.getPos(p.to); if (!A || !Bp) continue;
         var k = p.t / p.dur, e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2, dx = Bp.x - A.x, dy = Bp.y - A.y, L = Math.sqrt(dx * dx + dy * dy);
@@ -130,10 +106,8 @@
     sprites[kind] = s;
   }
   root.RDRFx = {
-    burst: burst, earn: earn, lose: lose, fly: fly, explode: explode, step: step, draw: draw, useSprite: useSprite, forAmount: forAmount,
-    count: function () { return parts.length; },
-    kinds: function () { var o = {}; parts.forEach(function (q) { o[q.kind] = (o[q.kind] || 0) + 1; }); return o; },   // v0.3: tests
-    clear: function () { parts.length = 0; },
+    burst: burst, earn: earn, lose: lose, fly: fly, step: step, draw: draw, useSprite: useSprite, forAmount: forAmount,
+    count: function () { return parts.length; }, clear: function () { parts.length = 0; },
     setRung: function (r) { F.rung = r; }, setScale: function (s) { F.scale = s; }
   };
 })(typeof window !== 'undefined' ? window : globalThis);

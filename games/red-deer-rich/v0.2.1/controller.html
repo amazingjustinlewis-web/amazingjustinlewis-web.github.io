@@ -13,7 +13,7 @@
 </head>
 <body>
 <section id="join" class="screen">
-  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">RED DEER <b>RICH</b></div><div class="jsub">v0.3 &middot; phone controller</div></div></header>
+  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">RED DEER <b>RICH</b></div><div class="jsub">v0.2.1 &middot; phone controller</div></div></header>
   <label class="fld">Room code<input id="room" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD"></label>
   <label class="fld">Your name<input id="name" maxlength="12" autocomplete="nickname" placeholder="Name"></label>
   <button id="joinBtn" class="big-btn">JOIN GAME</button>
@@ -88,7 +88,6 @@
 <div id="voteBar" class="votebar" hidden></div>
 <div id="toast" class="toast" hidden></div>
 
-<div id="findSheet" class="optsheet" hidden><div class="os-card fs-card"><div class="fs-deck">&#128220; SECRET FINDS</div><div class="fs-era" id="fsEra"></div><div class="fs-h" id="fsH"></div><div class="fs-story" id="fsStory"></div><div class="fs-more" id="fsMore"></div><div class="fs-fx" id="fsFx"></div><div class="fs-src" id="fsSrc"></div><button id="fsOk" class="big-btn">CLOSE</button></div></div>
 <div id="optSheet" class="optsheet" hidden><div class="os-card"><div class="os-h" id="osH"></div><div class="os-short" id="osShort"></div><div class="os-t" id="osT"></div><button id="osOk" class="big-btn">GOT IT</button></div></div>
 <script src="js/vendor/peerjs.min.js"></script>
 <script>/* old TV browsers (e.g. Samsung Tizen, Chromium < 80) cannot run the modern PeerJS build: load the transpiled one */ if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>

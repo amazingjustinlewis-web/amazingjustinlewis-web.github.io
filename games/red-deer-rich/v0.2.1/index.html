@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Red Deer Rich - TV | Zero to Phi</title>
-<meta name="description" content="Red Deer Rich: a Red Deer property-trading board game for the TV with phones as controllers. v0.3 by Zero to Phi.">
+<meta name="description" content="Red Deer Rich: a Red Deer property-trading board game for the TV with phones as controllers. v0.2.1 by Zero to Phi.">
 <meta name="theme-color" content="#14121b">
 <meta name="robots" content="noindex">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
@@ -15,7 +15,7 @@
 
 <header id="top">
   <div class="brand"><img src="assets/logo.svg" alt="" width="49" height="40"><span>ZERO&nbsp;TO&nbsp;PHI</span></div>
-  <div class="title">RED DEER <span class="rich">RICH</span><span class="proto">v0.3 · PLACEHOLDER ART</span></div>
+  <div class="title">RED DEER <span class="rich">RICH</span><span class="proto">v0.2.1 · PLACEHOLDER ART</span></div>
   <div class="top-right"><span id="roundInfo"></span><span id="potInfo"></span><span id="joinInfo"></span><span id="lightInfo"></span><span id="fxInfo"></span></div>
 </header>
 
@@ -36,7 +36,7 @@
 
 <section id="lobby" class="screen">
   <div class="lobby-left">
-    <div class="presents"><img src="assets/logo.svg" alt="" width="49" height="40"> ZERO TO PHI presents <a id="backLink" class="back" href="../../family.html">&larr; games</a></div>
+    <div class="presents"><img src="assets/logo.svg" alt="" width="49" height="40"> ZERO TO PHI presents <a id="backLink" class="back" href="../../../family.html">&larr; games</a></div>
     <div id="phoneHint" class="phone-hint" hidden>On a phone? This is the <b>TV screen</b>. Open it on the TV, then join with the <a href="controller.html">phone controller</a>.</div>
     <h1>RED DEER <span>RICH</span></h1>
     <p class="tagline">Ten broke Red Deerians. One city. Buy up Gasoline Alley, build Shops on Ross Street, and hit <b>PAY UP</b> before your friends sneak past.</p>
@@ -72,15 +72,13 @@
 
 <section id="results" class="screen" hidden>
   <canvas id="fireworks"></canvas>
-  <div id="resBody">
   <h1 id="resTitle">WINNER!</h1>
   <div id="podium"></div>
   <div id="ground"></div>
   <p class="res-key">Net worth = cash + property + shops</p>
   <div class="res-btns"><button id="againBtn" class="start">PLAY AGAIN</button><button id="lobbyBtn" class="ghost">CHANGE PLAYERS</button></div>
-  <p class="res-note">Press Enter to play again &middot; the first player can also restart from their phone.</p>
-  </div>
   <div id="resQr" hidden><span>Scan to join<br>the next game</span><canvas id="qrRes" width="300" height="300"></canvas></div>
+  <p class="res-note">Press Enter to play again &middot; the first player can also restart from their phone.</p>
 </section>
 
 <div id="netBadge"></div>

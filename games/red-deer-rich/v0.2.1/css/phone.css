@@ -91,27 +91,9 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .feed div { font-size: 14px; color: var(--muted); padding: 4px 0; border-top: 1px solid #2c2640; }
 .feed div:last-child { color: var(--ink); }
 .pcard { background: #fffaf0; color: #1d1d1d; border-radius: 12px; padding: 12px; border: 3px solid #1d1d1d; margin: 8px 0; }
-.pcard.random { background: linear-gradient(160deg, #b6e6ff, #d3c6ff); border-radius: 16px; transform: rotate(-.6deg); }
-.pcard.random .deck { display: inline-block; background: #ff4f8b; color: #fff; opacity: 1; border-radius: 12px; padding: 2px 8px; }
-.pcard.finds { background: radial-gradient(ellipse at 50% 45%, #f8efd6 0%, #f1e3c0 60%, #dcc395 100%); color: #2d1d08; border: 4px double #6b4a22; border-radius: 4px; box-shadow: inset 0 0 18px rgba(110,70,20,.3); }
-.pcard.finds .deck { color: #6b4a22; opacity: 1; } .pcard.finds .h, .pcard.finds .story { font-family: Georgia, 'Times New Roman', serif; }
-.pcard .era { font-size: 12px; font-style: italic; color: #7a5a2e; font-family: Georgia, serif; }
-.pcard .story { font-size: 15px; line-height: 1.35; margin-bottom: 6px; }
-.pcard .fxl { font-weight: 700; color: #5a1a0a; }
-.pcard .readmore { margin-top: 8px; background: #6b4a22; color: #fff8e6; border: 0; border-radius: 8px; padding: 7px 12px; font-size: 14px; font-weight: 700; }
-.lastfind { display: flex; align-items: center; background: radial-gradient(ellipse at 50% 45%, #f8efd6 0%, #e9d6aa 100%); color: #2d1d08; border: 3px double #6b4a22; border-radius: 6px; padding: 8px 10px; margin: 8px 0; font-family: Georgia, serif; }
-.lastfind span { flex: 1; font-size: 14px; } .lastfind b { font-size: 15px; }
-.lastfind button { background: #6b4a22; color: #fff8e6; border: 0; border-radius: 8px; padding: 7px 10px; font-size: 13px; font-weight: 700; font-family: Fredoka, system-ui, sans-serif; margin-left: 8px; }
-.optsheet .os-card.fs-card { background: radial-gradient(ellipse at 50% 40%, #f8efd6 0%, #f1e3c0 60%, #dcc395 100%); color: #2d1d08; border-top: 6px double #6b4a22; max-height: 88vh; overflow-y: auto; }
-.fs-deck { font-size: 12px; font-weight: 800; letter-spacing: 3px; color: #6b4a22; }
-.fs-era { font-size: 13px; font-style: italic; color: #7a5a2e; font-family: Georgia, serif; margin-top: 2px; }
-.fs-h { font-size: 22px; font-weight: 800; font-family: Georgia, serif; margin: 4px 0 8px; color: #3b2208; }
-.fs-story, .fs-more { font-size: 16px; line-height: 1.45; font-family: Georgia, serif; margin-bottom: 10px; }
-.fs-more:empty { display: none; }
-.fs-fx { font-weight: 700; color: #5a1a0a; border-top: 1px dashed rgba(107,74,34,.5); padding-top: 8px; margin-bottom: 8px; }
-.fs-src { font-size: 12px; color: #6b4a22; margin-bottom: 12px; word-break: break-all; }
-.deedrow.pinged { box-shadow: 0 0 0 3px #fff inset; }
+.pcard.hail { background: #dcebf8; } .pcard.pot { background: #ffe8c8; }
 .pcard .deck { font-size: 11px; font-weight: 800; letter-spacing: 2px; opacity: .6; } .pcard .h { font-size: 19px; font-weight: 800; margin: 2px 0 4px; }
+.pcard .fact { font-size: 11.5px; font-style: italic; color: #444; margin-top: 8px; border-top: 1px dashed rgba(0,0,0,.25); padding-top: 4px; }
 
 /* My Stuff */
 .bigcash { font-size: 54px; font-weight: 800; color: #9dff9d; line-height: 1; }
@@ -203,7 +185,7 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .boom { background: radial-gradient(circle, #ffcf3a, #ff5a1a 35%, #5a0d12 75%); animation: boomshake .5s 3; }
 .boom-art { font-size: 120px; } .boom-t { font-size: 48px; font-weight: 900; color: #fff; -webkit-text-stroke: 2px #3a0a00; line-height: 1; }
 .boom-s { font-size: 20px; font-weight: 700; margin-top: 12px; color: #fff; }
-@keyframes boomshake { 0%,100% { transform: none; } 20% { transform: translate(-6px, 3px) rotate(-1deg); } 40% { transform: translate(5px, -4px) rotate(1deg); } 60% { transform: translate(-4px, 2px); } 80% { transform: translate(3px, -1.5px); } }   /* v0.3: half amplitude */
+@keyframes boomshake { 0%,100% { transform: none; } 20% { transform: translate(-12px, 6px) rotate(-2deg); } 40% { transform: translate(10px, -8px) rotate(2deg); } 60% { transform: translate(-8px, 4px); } 80% { transform: translate(6px, -3px); } }
 .toast { position: fixed; left: 50%; bottom: calc(var(--tabh) + 16px); transform: translateX(-50%); background: #fff; color: #1a1420; padding: 10px 16px; border-radius: 14px; font-weight: 700; z-index: 60; max-width: 90vw; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
 #over h1 { text-align: center; color: var(--gold); }
 #oList { padding-left: 24px; font-size: 18px; } #oList li { margin: 6px 0; }

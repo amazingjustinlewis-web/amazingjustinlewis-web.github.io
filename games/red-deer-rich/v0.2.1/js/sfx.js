@@ -64,11 +64,7 @@
     whiteout: function (A, t) { var s = noise(A), f = A.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 2; f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(3000, t + 0.6); f.frequency.exponentialRampToValueAtTime(300, t + 1.4); var g = env(A, out, t, 0.2, 0.45, 1.3); s.connect(f); f.connect(g); track(s, [f, g]); s.start(t); s.stop(t + 1.6); },
     whistle: function (A, t) { [0, 0.45].forEach(function (d) { var o1 = tone(A, out, 'sawtooth', NOTE(74), 0, t + d, 0.35, 0.07, 0.03); var o2 = tone(A, out, 'sawtooth', NOTE(78), 0, t + d, 0.35, 0.06, 0.03); }); },
     pop: function (A, t) { tone(A, out, 'sine', 260, 50, t, 0.3, 0.35); hiss(A, out, t, 0.25, 0.35, 'lowpass', 1500); for (var i = 0; i < 6; i++) hiss(A, out, t + 0.25 + Math.random() * 0.5, 0.03, 0.12, 'highpass', 4000); },
-    boom: function (A, t) { tone(A, out, 'sine', 120, 30, t, 0.7, 0.45); hiss(A, out, t, 0.6, 0.35, 'lowpass', 1200); tone(A, out, 'square', 60, 30, t, 0.3, 0.15); },   // v0.3: half volume (was 0.9 / 0.7 / 0.3)
-    drain: function (A, t) {     // v0.3 "funds removed": coins draining away, a short descending run over a falling tone
-      for (var i = 0; i < 6; i++) tone(A, out, 'triangle', NOTE(91 - i * 3), 0, t + i * 0.055, 0.07, 0.11 - i * 0.012);
-      tone(A, out, 'sine', NOTE(79), NOTE(55), t + 0.05, 0.45, 0.12);
-    },
+    boom: function (A, t) { tone(A, out, 'sine', 120, 30, t, 0.7, 0.9); hiss(A, out, t, 0.6, 0.7, 'lowpass', 1200); tone(A, out, 'square', 60, 30, t, 0.3, 0.3); },
     caught: function (A, t) { SOUNDS.cash(A, t); tone(A, out, 'sawtooth', NOTE(64), 0, t, 0.12, 0.15); tone(A, out, 'sawtooth', NOTE(71), 0, t + 0.1, 0.25, 0.15); },
     tiptoe: function (A, t) { [0, 0.22, 0.44, 0.66].forEach(function (d, i) { tone(A, out, 'triangle', NOTE(i % 2 ? 79 : 76), 0, t + d, 0.08, 0.12); }); },
     trombone: function (A, t) { [67, 66, 65, 62].forEach(function (n, i) { var o = tone(A, out, 'sawtooth', NOTE(n), i === 3 ? NOTE(n) * 0.97 : 0, t + i * 0.32, i === 3 ? 0.8 : 0.3, 0.12, 0.03); }); },
@@ -82,7 +78,7 @@
     buzz: function (A, t) { tone(A, out, 'square', 180, 0, t, 0.12, 0.1); }
   };
   // identical sounds closer together than this are skipped (AI turns at speed fire a lot of them)
-  var MIN_GAP = { step: 70, click: 40, dice: 150, cash: 90, buy: 120, card: 120, build: 90, deal: 150, turn: 200, pop: 120, boom: 200, caught: 150, tiptoe: 300, drain: 200, payupAlarm: 300, tarnish: 300, gold: 300 };
+  var MIN_GAP = { step: 70, click: 40, dice: 150, cash: 90, buy: 120, card: 120, build: 90, deal: 150, turn: 200, pop: 120, boom: 200, caught: 150, tiptoe: 300, payupAlarm: 300, tarnish: 300, gold: 300 };
   function play(name) {
     if (S.muted || !SOUNDS[name]) return;
     var A = live(); if (!A) return;

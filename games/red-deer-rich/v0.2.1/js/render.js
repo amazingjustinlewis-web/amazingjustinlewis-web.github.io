@@ -228,20 +228,15 @@
     c.font = '900 ' + Math.round(k * 0.11) + 'px Fredoka, system-ui, sans-serif';
     c.strokeText('RICH', 0, k * 0.056); c.fillStyle = '#f2c230'; c.fillText('RICH', 0, k * 0.056);
     c.font = '700 ' + Math.round(k * 0.024) + 'px Fredoka, system-ui, sans-serif'; c.fillStyle = '#3a2a10';
-    c.fillText('a Zero to Phi game \u00b7 v0.3', 0, k * 0.125);
+    c.fillText('a Zero to Phi game \u00b7 v0.2.1', 0, k * 0.125);
     c.restore();
     // card decks
     var dw = k * 0.14, dh = k * 0.09;      // v0.1.1: the card piles sit in the open middle of the mini city
-    // v0.3: Red Deer Randomness (playful purple, two lines) and Secret Finds (old paper)
-    [[['RED DEER', 'RANDOMNESS'], '#5b45c9', '#e6ddff', cs + k * 0.29, cs + k * 0.28, 0.2, 'random'], [['SECRET', 'FINDS'], '#e9d7a8', '#6b4a22', cs + k * 0.48, cs + k * 0.615, -0.15, 'finds']].forEach(function (d) {
+    [['HAILSTONE', '#4a6a8a', '#cfe4f5', cs + k * 0.29, cs + k * 0.28, 0.2], ['POTLUCK', '#c8642a', '#ffe1b8', cs + k * 0.48, cs + k * 0.615, -0.15]].forEach(function (d) {
       c.save(); c.translate(d[3] + dw / 2, d[4] + dh / 2); c.rotate(d[5]);
-      for (var s = 2; s >= 0; s--) { rr(c, -dw / 2 + s * 2, -dh / 2 + s * 2, dw, dh, d[6] === 'finds' ? 2 : 6); c.fillStyle = s ? 'rgba(0,0,0,0.25)' : d[1]; c.fill(); }
-      c.strokeStyle = d[2]; c.lineWidth = 2; rr(c, -dw / 2 + 4, -dh / 2 + 4, dw - 8, dh - 8, d[6] === 'finds' ? 1 : 4); c.stroke();
-      if (d[6] === 'finds') { c.lineWidth = 1; rr(c, -dw / 2 + 7, -dh / 2 + 7, dw - 14, dh - 14, 1); c.stroke(); }
-      else { [[-0.38, -0.3, '#ffd84a'], [0.4, -0.28, '#ff5a96'], [0.36, 0.3, '#7dffb0'], [-0.4, 0.3, '#ffffff']].forEach(function (q) { c.fillStyle = q[2]; c.beginPath(); c.arc(q[0] * dw, q[1] * dh, dh * 0.05, 0, 7); c.fill(); }); }
-      c.fillStyle = d[2]; c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.font = (d[6] === 'finds' ? '700 ' + Math.round(dh * 0.22) + 'px Georgia, serif' : '800 ' + Math.round(dh * 0.2) + 'px Fredoka, sans-serif');
-      c.fillText(d[0][0], 0, -dh * 0.13, dw - 12); c.fillText(d[0][1], 0, dh * 0.15, dw - 12);
+      for (var s = 2; s >= 0; s--) { rr(c, -dw / 2 + s * 2, -dh / 2 + s * 2, dw, dh, 6); c.fillStyle = s ? 'rgba(0,0,0,0.25)' : d[1]; c.fill(); }
+      c.strokeStyle = d[2]; c.lineWidth = 2; rr(c, -dw / 2 + 4, -dh / 2 + 4, dw - 8, dh - 8, 4); c.stroke();
+      c.fillStyle = d[2]; c.font = '800 ' + Math.round(dh * 0.24) + 'px Fredoka, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(d[0], 0, 0);
       c.restore();
     });
     if (this.g.rules.jackpot) {
@@ -272,18 +267,14 @@
     // a long single word is squeezed horizontally (fillText maxWidth) rather than shrunk
     var TT = C.tileText, fs = Math.max(TT.minPx, Math.round(this.w * TT.nameScale)), pfs = Math.max(TT.minPx, Math.round(this.w * TT.priceScale));
     var priceTxt = s.price ? this.money(s.price) : s.type === 'tax' ? 'PAY ' + this.money(s.amount) : '';
-    var label = C.decks[s.type] ? C.decks[s.type].tile : s.short;     // v0.3 deck tiles: RANDOM- NESS / SECRET FINDS
+    var label = s.type === 'potluck' ? 'POTLUCK' : s.type === 'hail' ? 'HAIL-STONE' : s.short;
     var maxW = ta[2] - 4, iconH = (s.type === 'prop') ? 0 : Math.min(ta[2], ta[3]) * 0.3, lh = 1.0;
-    c.font = '600 ' + fs + 'px Fredoka, system-ui, sans-serif';      // v0.3: one step lighter than v0.2.1's 700 (same size)
+    c.font = '700 ' + fs + 'px Fredoka, system-ui, sans-serif';
     var lines = wrap(c, label, maxW);
     var room = ta[3] - (priceTxt ? pfs + 4 : 0) - 6;
     if (lines.length * fs * lh + iconH > room) iconH = Math.max(0, room - lines.length * fs * lh);
     c.fillStyle = '#141414'; c.textAlign = 'center'; c.textBaseline = 'top';
     var ty = ta[1] + (horiz ? 4 : Math.max(2, (ta[3] - lines.length * fs * lh - iconH - (priceTxt ? pfs : 0)) / 2));
-    // v0.3: a very mild light halo (thin round-joined white stroke under the ink) keeps names legible over building art,
-    // colour strips and owner washes. Drawn once into the cached board layer, so no per-frame cost.
-    c.lineJoin = 'round'; c.lineWidth = Math.max(1.5, Math.min(2.5, fs * 0.11)); c.strokeStyle = 'rgba(255,255,255,0.55)';
-    lines.forEach(function (ln, k) { c.strokeText(ln, ta[0] + ta[2] / 2, ty + k * fs * lh, maxW); });
     lines.forEach(function (ln, k) { c.fillText(ln, ta[0] + ta[2] / 2, ty + k * fs * lh, maxW); });
     // icon for special spaces
     var icx = ta[0] + ta[2] / 2, icy = ty + lines.length * fs * lh + iconH * 0.55;
@@ -353,14 +344,12 @@
     } else if (s.type === 'juice') {
       if (s.name === 'The Spheroid') { c.fillStyle = '#9fb3c4'; c.fillRect(-k * 0.12, -k * 0.1, k * 0.24, k * 1.05); c.beginPath(); c.arc(0, -k * 0.35, k * 0.6, 0, 7); c.fillStyle = '#c7d7e4'; c.fill(); c.strokeStyle = '#56708a'; c.lineWidth = 1.2; c.stroke(); }
       else { c.fillStyle = '#f2c230'; c.beginPath(); c.moveTo(k * 0.2, -k); c.lineTo(-k * 0.5, k * 0.1); c.lineTo(0, k * 0.1); c.lineTo(-k * 0.2, k); c.lineTo(k * 0.55, -k * 0.15); c.lineTo(k * 0.05, -k * 0.15); c.closePath(); c.fill(); c.strokeStyle = '#7a5a00'; c.lineWidth = 1; c.stroke(); }
-    } else if (s.type === 'random') {      // v0.3 Red Deer Randomness: a tumbling purple die with a confetti dot
-      c.save(); c.rotate(0.3); c.fillStyle = '#6a52e0'; rr(c, -k * 0.75, -k * 0.75, k * 1.5, k * 1.5, k * 0.3); c.fill(); c.strokeStyle = '#2a1458'; c.lineWidth = 1.2; c.stroke();
-      c.fillStyle = '#fff'; [[-0.38, -0.38], [0, 0], [0.38, 0.38]].forEach(function (p) { c.beginPath(); c.arc(p[0] * k, p[1] * k, k * 0.14, 0, 7); c.fill(); }); c.restore();
-      c.fillStyle = '#ff4f8b'; c.beginPath(); c.arc(k * 0.95, -k * 0.75, k * 0.16, 0, 7); c.fill(); c.fillStyle = '#ffd84a'; c.beginPath(); c.arc(-k * 0.95, k * 0.7, k * 0.13, 0, 7); c.fill();
-    } else if (s.type === 'finds') {       // v0.3 Secret Finds: an old rolled scroll
-      c.fillStyle = '#ecd9a6'; c.fillRect(-k * 0.75, -k * 0.62, k * 1.5, k * 1.24); c.strokeStyle = '#6b4a22'; c.lineWidth = 1.2; c.strokeRect(-k * 0.75, -k * 0.62, k * 1.5, k * 1.24);
-      c.fillStyle = '#c9a868'; [-1, 1].forEach(function (sg) { c.beginPath(); c.ellipse(0, sg * k * 0.68, k * 0.9, k * 0.16, 0, 0, 7); c.fill(); c.stroke(); });
-      c.fillStyle = '#8a6a3a'; for (var l2 = 0; l2 < 3; l2++) c.fillRect(-k * 0.5, -k * 0.3 + l2 * k * 0.28, k * (l2 === 2 ? 0.6 : 1), k * 0.08);
+    } else if (s.type === 'hail') {
+      c.fillStyle = '#7f95ab'; c.beginPath(); c.arc(-k * 0.35, -k * 0.2, k * 0.45, 0, 7); c.arc(k * 0.25, -k * 0.35, k * 0.55, 0, 7); c.arc(k * 0.6, -k * 0.05, k * 0.35, 0, 7); c.fill();
+      c.fillStyle = '#e8f4ff'; [[-0.5, 0.5], [0, 0.75], [0.45, 0.5], [-0.15, 0.95]].forEach(function (p) { c.beginPath(); c.arc(p[0] * k, p[1] * k, k * 0.14, 0, 7); c.fill(); });
+    } else if (s.type === 'potluck') {
+      c.fillStyle = '#c8642a'; rr(c, -k * 0.9, -k * 0.2, k * 1.8, k * 0.8, k * 0.25); c.fill(); c.fillStyle = '#ffd59a'; c.beginPath(); c.ellipse(0, -k * 0.2, k * 0.85, k * 0.25, 0, 0, 7); c.fill();
+      c.fillStyle = '#7a3a12'; c.fillRect(-k * 1.1, -k * 0.05, k * 0.25, k * 0.15); c.fillRect(k * 0.85, -k * 0.05, k * 0.25, k * 0.15);
     } else if (s.type === 'tax') {
       if (s.amount === 90) { c.fillStyle = '#444'; c.fillRect(-k * 0.08, -k * 0.2, k * 0.16, k * 1.1); rr(c, -k * 0.45, -k, k * 0.9, k * 0.9, 4); c.fill(); c.fillStyle = '#7cf0ff'; c.fillRect(-k * 0.3, -k * 0.85, k * 0.6, k * 0.35); c.fillStyle = '#ff3030'; c.beginPath(); c.arc(0, -k * 0.28, k * 0.1, 0, 7); c.fill(); }
       else { c.fillStyle = '#fff'; c.strokeStyle = '#333'; c.lineWidth = 1; c.fillRect(-k * 0.7, -k * 0.8, k * 1.4, k * 1.6); c.strokeRect(-k * 0.7, -k * 0.8, k * 1.4, k * 1.6); c.fillStyle = '#999'; for (var l = 0; l < 4; l++) c.fillRect(-k * 0.5, -k * 0.55 + l * k * 0.35, k * (l === 3 ? 0.5 : 1), k * 0.12); c.fillStyle = '#d8262f'; c.fillRect(k * 0.1, k * 0.5, k * 0.4, k * 0.15); }
@@ -677,28 +666,6 @@
     if (delta > 0) root.RDRFx.earn(v.x, v.y - this.tokenR() * 0.6, delta); else root.RDRFx.lose(v.x, v.y, -delta);
   };
   P.payFx = function (from, to, amount) { var self = this; if (root.RDRFx) root.RDRFx.fly(from, to, amount, function (pid) { return self.tokenPos(pid); }); };
-  // v0.3: PAY UP catch: the money EXPLODES out of the caught player's token, then streams to the catcher
-  P.payExplode = function (from, to, amount) { var self = this; if (root.RDRFx) root.RDRFx.explode(from, to, amount, function (pid) { return self.tokenPos(pid); }, C.payup.explode); };
-  // v0.3: a player tapped one of their deeds in My Stuff: the tile does a little bounce with a flash of their colour
-  P.pingTile = function (sp, col) { this.pings = (this.pings || []).filter(function (q) { return q.sp !== sp; }); this.pings.push({ sp: sp, col: hexRgb(col), t0: null }); };
-  P.drawPings = function (c, now) {
-    var list = this.pings; if (!list || !list.length) return;
-    var K = C.ping || {}, ms = K.ms || 1100, d = this.dpr, T = C.ownerTint, self = this;
-    this.pings = list.filter(function (q) {
-      if (q.t0 == null) q.t0 = now;
-      var k = (now - q.t0) / ms; if (k >= 1) return false;
-      var r = self.rect(q.sp), cx = self.bx + r.x + r.w / 2, cy = self.by + r.y + r.h / 2;
-      var hop = Math.abs(Math.sin(Math.PI * Math.min(1, k * 1.6) * 2)) * Math.pow(1 - Math.min(1, k * 1.6), 1.2);   // two hops, settling
-      var lift = hop * self.w * (K.lift || 0.22), sc = 1 + 0.14 * hop, w = r.w * sc, h = r.h * sc;
-      c.fillStyle = 'rgba(0,0,0,' + (0.3 * hop).toFixed(3) + ')'; c.fillRect(self.bx + r.x + 2, self.by + r.y + 3, r.w, r.h);
-      c.drawImage(self.staticCv, Math.round(r.x * d), Math.round(r.y * d), Math.round(r.w * d), Math.round(r.h * d), cx - w / 2, cy - h / 2 - lift, w, h);
-      var flashA = Math.max(T.fill, 0.62 * Math.pow(1 - k, 1.6));
-      c.fillStyle = rgba(q.col, flashA.toFixed(3)); c.fillRect(cx - w / 2, cy - h / 2 - lift, w, h);
-      c.strokeStyle = rgba(q.col, 1); c.lineWidth = Math.max(3, self.w * 0.08); c.strokeRect(cx - w / 2, cy - h / 2 - lift, w, h);
-      c.strokeStyle = 'rgba(255,255,255,' + (0.9 * (1 - k)).toFixed(3) + ')'; c.lineWidth = 1.5; c.strokeRect(cx - w / 2 - 2, cy - h / 2 - lift - 2, w + 4, h + 4);
-      return true;
-    });
-  };
   // v0.2: short zoom-ins on big moments (purchase, big rent, bankruptcy). Purely visual: the game never waits for it.
   P.camMoment = function (pid, ms, zoomMul) { this.cam.moment = { pid: pid, until: performance.now() + (ms || 1500), z: zoomMul || 1.25 }; };
   P.tokenR = function () { return Math.max(7, this.w * 0.26); };
@@ -823,7 +790,6 @@
       if (dark > 0.3 && this.rung < 4) { c.globalAlpha = Math.min(1, (dark - 0.3) / 0.5) * 0.9; c.drawImage(this.cityNight(), this.bx, this.by, this.S, this.S); c.globalAlpha = 1; }
     }
     this.drawSky(c, dark);
-    this.drawPings(c, now);      // v0.3 My Stuff tap: tile bounce (under the tokens)
     // tokens (never crushed)
     var self = this, r = this.tokenR(), cur = g.turn ? g.turn.pid : -1;
     var list = g.players.filter(function (p) { return !p.bankrupt; });

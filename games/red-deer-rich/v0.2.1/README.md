@@ -1,4 +1,6 @@
-# Red Deer Rich - v0.3 (placeholder art)
+> **Archived v0.2.1** (simple setup). This folder is a frozen copy for reference; the current version lives one folder up.
+
+# Red Deer Rich - v0.2.1 (placeholder art)
 
 A Red Deer-themed property trading board game by Zero to Phi. The spec is the design doc
 (`red-deer-rich/design-doc.md`, outside this repo). Same architecture as Zombie Tiles: plain
@@ -16,8 +18,8 @@ Live: https://amazingjustinlewis-web.github.io/games/red-deer-rich/
    the phone's Board tab (or press I on the TV).
 4. On your turn, swipe up on the dice (or tap ROLL), then BUY or PASS, then PASS DICE.
    When someone lands on your deed, a giant **PAY UP** button takes over your phone. Rent is only paid if you hit it
-   before they pass the dice. When you land on someone else's deed (with PAY UP on), PASS DICE (and ROLL AGAIN)
-   stays locked for 3 s (+1 s with Mike's Loud Amp). On your own deed, an unowned one or any other space there is no wait.
+   before they pass the dice. After every landing, PASS DICE (and ROLL AGAIN) stays locked for 3 s
+   (+1 s with Mike's Loud Amp).
 5. Pass on a deed (for any reason) and it goes to **auction** from $10: every phone gets +$20 / +$50 / +$100 buttons,
    and each bid resets an 8 s countdown. The top bidder pays when it runs out; with no bids the bank keeps it.
    You can never bid more than your cash.
@@ -28,30 +30,6 @@ Live: https://amazingjustinlewis-web.github.io/games/red-deer-rich/
 | Regular | nothing pre-dealt, $1,800 each | none (last one standing) |
 | Medium | 3 deeds each (2 each for 4+ players), $1,500 each | 45 min, then the richest wins |
 | Quick | ALL ownable spaces dealt out round-robin, $1,500 each | 30 min, then the richest wins |
-
-### What's new in v0.3 (Red Deer stories)
-Everything Justin loves is unchanged: sticky hops, token hops, money flows, dice from the token, podium awards, fast
-turns, QR rejoin, presets and the options drop-down, the phone-to-TV property display and the 10 s trade colour crossfade.
-- **New decks.** HAILSTONE is now **Red Deer Randomness** (a playful confetti card: quirky, kid-friendly local
-  happenings, 20 cards) and POTLUCK is now **Secret Finds** (an old-paper card: a short true Red Deer history story,
-  1 to 3 sentences, with an effect tied to the story, 20 cards). On the phone, Secret Finds cards have **READ MORE**
-  (a longer note plus the source sites), and the latest Secret Find stays one tap away. Every story is sourced in
-  `data/secret-finds-sources.md` (anything we couldn't confirm was left out or phrased loosely). Every card carries an
-  era tag (`pioneer`, `punk2000`, `present`, `future` or `any`) for the design-doc era skins:
-  `RDR_BOARD.deckCards(deck, era)` filters a deck, and `C.eraFilter` (default `null`, all cards) picks it for a game.
-  Story cards stay on the TV for 9 s (`C.storyHoldMs`).
-- **No pointless wait.** The 3 s PASS DICE lockout only happens where PAY UP can (someone else's deed, PAY UP on).
-- **Show off a deed.** Tap one of your deeds in My Stuff: that tile does a little bounce on the TV with a flash of your
-  colour. It changes nothing in the game (a few taps a second at most; only your own deeds).
-- **PAY UP boom at half strength:** half the volume, half the shake, half the red flash.
-- **PAY UP catch feedback.** The catcher's phone plays a cha-ching with a light buzz; the caught phone plays the boom
-  plus a "funds removed" coin drain with a light buzz. On the TV the money explodes out of the caught player's token,
-  then streams to the catcher. Normal rent (PAY UP off, or automatic) keeps the usual token-to-token flow.
-- **Podium fits.** The results screen scales itself to fit 2 to 8 players at 16:9 and 4:3, and the bottom row steps
-  aside for the join QR.
-- **Rejoining keeps the room's setup.** If the host phone reloads or rejoins a room whose setup was already changed
-  (TV or phone, or a game was played), the live room settings win over the phone's remembered setup.
-- **Tile names** are one weight lighter (600) with a soft light halo, drawn once into the cached board layer.
 
 ### What's new in v0.2.1 (simple setup)
 Everything from v0.2 is unchanged: sticky hops, money flows, the podium awards and the fast pace.
@@ -164,8 +142,7 @@ log, QR rejoin to your original seat, and the fast turn pace (the game never wai
 | `index.html`, `css/tv.css`, `js/host.js` | TV page: lobby, QR code, board, overlays, Auto-Crush, PeerJS host, Hue bridge |
 | `controller.html`, `css/phone.css`, `js/controller.js` | phone: join, character carousel, host settings, four tabs, PAY UP and BOOM takeovers |
 | `js/config.js` | all numbers: money, PAY UP timing, characters, AI levels, living board, Youth Centre, Hue |
-| `js/board.js` | the 40 Present Day spaces, groups, rents, the Red Deer Randomness and Secret Finds decks (era tags, sources, `deckCards` filter) |
-| `data/secret-finds-sources.md` | v0.3: the source for every Secret Finds story, plus the facts we checked and left out |
+| `js/board.js` | the 40 Present Day spaces, groups, rents, Hailstone and Potluck cards (each with a Red Deer fact) |
 | `js/game.js` | rules engine (pure, time-driven `tick(now)`; also runs in node for the simulations) |
 | `js/ai.js` | AI players: buying, building, unhocking, set-completing trades, PAY UP reflexes, chat lines |
 | `js/render.js` | canvas board: tiles, Youth Centre vignette, walkers and cars, day/night, tokens, camera |
@@ -219,13 +196,12 @@ helper's existing effects:
 | results podium | pickup / kill flashes in the winner's colour, a second escape wave, then over |
 | bankrupt | crunch |
 
-## Placeholder or not done yet (v0.3)
+## Placeholder or not done yet (v0.2.1)
 - Art is all placeholder: coloured tokens with initials and shapes, line-art buildings, simple particles, simple silhouettes.
 - Perks still coming: Justin's Count-In, Drew's High Kick and Walt's Shortcut.
 - No drag-and-drop in the trade builder (tap to toggle instead).
 - The mini city is a first pass: generic blocks, not real Red Deer landmarks yet.
-- Present Day era only: no era skins yet (cards are era-tagged and filterable, ready for them), and vignettes are icons rather than full stages.
-- No Future Red Deer history cards (a Future skin falls back to the whole deck).
+- Present Day era only: no era skins, and vignettes are icons rather than full stages.
 - Hue: no day/night base cycle and no new effect names (existing helper effects are reused).
 - Optional rules not built yet: Deal Ticker and the turn timer. No character voice stings.
 
@@ -253,10 +229,6 @@ helper's existing effects:
 - `e2e4.py` covers v0.1.2: watch QR size and corner, quiet zone, decoding from blurred 1080p / 720p screenshots, New Game (confirm, cancel, back to setup, restart), podium join QR.
 - `e2e5.py` covers v0.2: tokens stay on the landing tile, landing bursts, money floats / count-up / particles / token-to-token flights, private trades, notification shatter + 6 s hold + fade, log size and trimming, centre-only night lighting, building lean always outward + sprite swap, My Stuff board order, Go bust + plaques + owed title, the disconnect countdown and AI hand-back, camera moments, and turn pace against v0.1.2.
 - `e2e6.py` covers v0.2.1: owner-tint alpha × 0.8 (config and pixels), podium QR size, overlap and blurred decode, the collapsed options line, presets + Custom, press-and-hold details without toggling, remember-last-game (phone and TV), the START pickers, TV lobby chips, and no page errors.
-- `v03unit.js` (node) covers v0.3 decks (sizes, eras, effects, sources file, filter + fallback), the PASS DICE lockout only where PAY UP can happen, and the halved boom.
-- `e2e7.py` covers v0.3 in the browser: every card fits the TV at 16:9 / 720p / 4:3, the phone card + READ MORE sheet, the My Stuff tile bounce (colour, no game change, rate limit, own deeds only), the PAY UP explosion vs the normal rent flow, phone sounds and vibration, and rejoin keeping the live settings.
-- `podfit.py` checks the results screen for 2 to 8 players at 1920×1080 and 1024×768 (inside the screen, no overlaps, clear of the QR).
-- `tiletext.py` makes the tile-name before/after closeup and checks the lighter weight.
 - `oldsetup.py` checks the new setup screens and TV lobby on Chromium 62 / 74.
 - `bust.js` unit-tests "Go bust, pay what I can" in node (player and bank creditors, auction queue, owed, plaques data).
 - `audio.py` counts WebAudio nodes per minute in a live AI game, old engine vs new.

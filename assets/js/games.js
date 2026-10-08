@@ -161,10 +161,17 @@ window.GAMES = [
     ],
     versions: [
       {
-        id: 'v0.2.1',
-        name: 'Simple setup',
+        id: 'v0.3',
+        name: 'Red Deer stories',
         current: true,
         play: 'games/red-deer-rich/index.html',
+        notes: 'Two new card decks. Red Deer Randomness (the old Hailstone): chinooks, hail, orange cones on Gaetz, Westerner Days, skating at Bower Ponds, geese on the trail. Secret Finds (the old Potluck): every card is a short true story from Red Deer history, checked against real sources (a fort bought for $1, Laurier\u2019s sticky theatre seats, Francis the Pig, the official cookie), with a READ MORE on the phones. PAY UP catches now explode the money out of the caught token and stream it to the catcher, with a cha-ching on the catcher\u2019s phone and a coin-drain on the caught phone (the boom itself is half as loud). Tap a deed in My Stuff to bounce that tile on the TV. No more 3-second PASS DICE wait on your own or unowned deeds. Lighter tile names with a soft halo, an 8-player podium that fits 1080p and 4:3 screens, and the TV keeps its setup if the host phone reloads.'
+      },
+      {
+        id: 'v0.2.1',
+        name: 'Simple setup',
+        current: false,
+        play: 'games/red-deer-rich/v0.2.1/index.html',
         notes: 'Setup made simple: Classic, Chaos and Chill presets at the top, every game option folded into one “Game options (3 on)” line that opens into a checklist with one-line descriptions (press and hold any option for the full explanation), one big START button with the game length and number of computer players right beside it, the host phone and the TV remember the last game’s setup, and the TV lobby shows the active options as icons so everyone knows the rules before the first roll. Also: owner-colour tile washes 20% lighter so the board colours show through, and a bigger “Scan to join the next game” QR on the podium for blurry projectors.'
       },
       {

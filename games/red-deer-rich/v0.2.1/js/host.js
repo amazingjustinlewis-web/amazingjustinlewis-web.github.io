@@ -63,10 +63,6 @@
   }
 
   // ------------------------------------------------------------------ game events -> sound, overlays, lights, phones
-  var lastFind = null;       // v0.3: the latest Secret Finds card (phones offer "read more")
-  var setupEdited = false;   // v0.3: once this room's setup was changed (TV or phone) or a game was played, the live settings win over a reloading host phone's saved setup
-  var pingAt = {};           // v0.3: My Stuff tile taps, rate-limited per player
-  var caughtPay = null;      // v0.3: set by a PAY UP catch, consumed by the rent payment right after it
   var phoneFx = {};          // per-player one-shot counters the phones watch (boom, missed, alarm, toast)
   function pfx(pid, k, extra) { var f = phoneFx[pid] = phoneFx[pid] || {}; f[k] = (f[k] || 0) + 1; if (extra) f[k + 'Data'] = extra; phoneDirty = true; }
   game.onBubble = function (p, txt) { rnd.bubble(p.id, txt, p.color); };
@@ -84,12 +80,11 @@
       case 'offer': SFX.play('click'); showDeed(d.sp, true); break;
       case 'buy': SFX.play('buy'); rnd.camMoment(d.pid, 1600, 1.28); big('SOLD!', p.name + ' bought ' + S[d.sp].name, B.GROUPS[S[d.sp].group].color); break;
       case 'skipBuy': hideDeed(); break;
-      case 'card': SFX.play('card'); showCard(d.deck, d.idx); if (d.deck === 'finds') lastFind = { idx: d.idx, n: (lastFind ? lastFind.n : 0) + 1, at: Date.now() }; break;
+      case 'card': SFX.play('card'); showCard(d.deck, d.idx); break;
       case 'cardDone': break;      // v0.2: the card stays up (fading after a few seconds) until something replaces it
       case 'payupOpen': hideDeed(); payupBar('open', d); pfx(d.owner, 'alarm', { sp: d.sp }); break;
       case 'caught':
-        SFX.play('caught'); setTimeout(function () { SFX.play('boom'); }, 150); shake(true); flash('#ff3030', (C.payup.boom || {}).flash);   // v0.3: half-strength boom
-        caughtPay = { from: d.pid, to: d.owner, at: Date.now() };     // v0.3: the rent that follows explodes out of the caught token
+        SFX.play('caught'); setTimeout(function () { SFX.play('boom'); }, 150); shake(); flash('#ff3030');
         payupBar('caught', d); pfx(d.pid, 'boom', { amount: d.amount, owner: (game.byId(d.owner) || {}).name, sp: d.sp }); pfx(d.owner, 'gotEm', { amount: d.amount });
         break;
       case 'slipped': SFX.play('tiptoe'); payupBar('slipped', d); pfx(d.owner, 'missed', { sp: d.sp, name: p ? p.name : '' }); break;
@@ -99,9 +94,7 @@
       case 'pay':
         if (d.reason && /rent/.test(d.reason)) SFX.play('cash');
         if (typeof d.to === 'number') {      // player to player: the money flies token to token (trades never come through here)
-          var boomPay = caughtPay && caughtPay.from === d.from && caughtPay.to === d.to && Date.now() - caughtPay.at < 1000 && /rent/.test(d.reason || '');
-          if (boomPay) { caughtPay = null; rnd.payExplode(d.from, d.to, d.amount); flyCover[d.from] = flyCover[d.to] = performance.now() + 1500; }
-          else { rnd.payFx(d.from, d.to, d.amount); flyCover[d.from] = flyCover[d.to] = performance.now() + 900; }    // normal rent flow (unchanged)
+          rnd.payFx(d.from, d.to, d.amount); flyCover[d.from] = flyCover[d.to] = performance.now() + 900;
           if (/rent/.test(d.reason || '') && d.amount >= FX.bigRent) rnd.camMoment(d.from, 1700, 1.3);
         }
         break;
@@ -210,8 +203,8 @@
   }
   function big(a, b, col) { noteShow('big', '<div class="b1" style="color:' + (col || '#ffd23f') + '">' + esc(a) + '</div><div class="b2">' + esc(b || '') + '</div>'); }
   function hideBig() { if (NOTE.cur === 'big') noteFade('big', true); }
-  function shake(soft) { var b = document.body; b.classList.remove('shake'); b.classList.remove('shake-soft'); void b.offsetWidth; var k = soft ? 'shake-soft' : 'shake'; b.classList.add(k); setTimeout(function () { b.classList.remove(k); }, 500); }   // v0.3: soft = PAY UP boom at half amplitude
-  function flash(col, op) { var f = $('flash'); f.style.transition = 'none'; f.style.background = col; f.style.opacity = String(op || 0.55); void f.offsetWidth; f.style.transition = 'opacity .5s'; f.style.opacity = '0'; }
+  function shake() { document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); setTimeout(function () { document.body.classList.remove('shake'); }, 500); }
+  function flash(col) { var f = $('flash'); f.style.transition = 'none'; f.style.background = col; f.style.opacity = '0.55'; void f.offsetWidth; f.style.transition = 'opacity .5s'; f.style.opacity = '0'; }
   function deedHtml(sp, ask) {
     var s = S[sp], gcol = B.GROUPS[s.group].color, pr = game.props[sp], h = '<div class="deed"><div class="dtop" style="background:' + gcol + '">' + esc(s.name) + '<div class="dsub">' + esc(B.GROUPS[s.group].name) + '</div></div><div class="dbody">';
     if (s.type === 'prop') {
@@ -225,14 +218,11 @@
   }
   function showDeed(sp, ask) { noteShow('deedPop', deedHtml(sp, ask), ask); }
   function hideDeed() { if (NOTE.cur === 'deedPop') noteFade('deedPop', true); }
-  // v0.3 decks: Red Deer Randomness (playful) and Secret Finds (old paper, a true story + its effect)
   function cardHtml(deck, idx) {
-    var c = B.DECKS[deck][idx], D = C.decks[deck];
-    if (deck === 'finds') return '<div class="card finds"><div class="deck"><span class="seal">\uD83D\uDCDC</span> ' + esc(D.name) + '</div><div class="era">' + esc(c.year) + ' \u00b7 ' + esc(C.eras[c.era] || '') + '</div>' +
-      '<div class="h">' + esc(c.h) + '</div><div class="story">' + esc(c.story) + '</div><div class="t">' + esc(c.t) + '</div></div>';
-    return '<div class="card random"><div class="deck"><span class="dice">\u2684</span> ' + esc(D.name) + ' <span class="dice">\u2682</span></div><div class="h">' + esc(c.h) + '</div><div class="t">' + esc(c.t) + '</div></div>';
+    var c = (deck === 'hail' ? B.HAIL : B.POT)[idx];
+    return '<div class="card ' + deck + '"><div class="deck">' + (deck === 'hail' ? 'HAILSTONE' : 'POTLUCK') + '</div><div class="h">' + esc(c.h) + '</div><div class="t">' + esc(c.t) + '</div><div class="fact">(' + esc(c.fact) + ')</div></div>';
   }
-  function showCard(deck, idx) { noteShow('cardPop', cardHtml(deck, idx)); if (deck === 'finds') { clearTimeout(NOTE.t); NOTE.t = setTimeout(function () { noteFade('cardPop'); }, C.storyHoldMs || 9000); } }
+  function showCard(deck, idx) { noteShow('cardPop', cardHtml(deck, idx)); }
   function hideCard() { if (NOTE.cur === 'cardPop') noteFade('cardPop', true); }
   var puT = 0;
   function payupBar(kind, d) {
@@ -409,24 +399,16 @@
   }
   $('aiChar').onclick = function () { aiPick.ch = nextFreeChar(aiPick.ch); dirty = true; };
   $('aiLevel').onclick = function () { var L = Object.keys(C.ai.levels); aiPick.level = L[(L.indexOf(aiPick.level) + 1) % L.length]; dirty = true; };
-  $('aiAdd').onclick = function () { if (addAI(aiPick.ch, aiPick.level)) setupEdited = true; };
-  $('lobbyPlayers').onclick = function (e) { var b = e.target.closest('button'); if (b && b.getAttribute('data-rm')) { game.removePlayer(+b.getAttribute('data-rm')); setupEdited = true; dirty = phoneDirty = true; } };
-  O.hold($('rulesRow'), '.optrow', function (b) { var k = b.getAttribute('data-rule'); game.setRule(k, !game.rules[k]); setupEdited = true; dirty = phoneDirty = true; }, function (b) { showOptInfo(b.getAttribute('data-rule')); });
+  $('aiAdd').onclick = function () { addAI(aiPick.ch, aiPick.level); };
+  $('lobbyPlayers').onclick = function (e) { var b = e.target.closest('button'); if (b && b.getAttribute('data-rm')) { game.removePlayer(+b.getAttribute('data-rm')); dirty = phoneDirty = true; } };
+  O.hold($('rulesRow'), '.optrow', function (b) { var k = b.getAttribute('data-rule'); game.setRule(k, !game.rules[k]); dirty = phoneDirty = true; }, function (b) { showOptInfo(b.getAttribute('data-rule')); });
   $('optToggle').onclick = function () { optsOpen = !optsOpen; dirty = true; };
-  $('presetRow').onclick = function (e) { var b = e.target.closest('button'); if (b && C.presets[b.getAttribute('data-preset')]) { applyRules(C.presets[b.getAttribute('data-preset')].rules); setupEdited = true; dirty = phoneDirty = true; } };
+  $('presetRow').onclick = function (e) { var b = e.target.closest('button'); if (b && C.presets[b.getAttribute('data-preset')]) { applyRules(C.presets[b.getAttribute('data-preset')].rules); dirty = phoneDirty = true; } };
   $('optInfo').onclick = function () { $('optInfo').hidden = true; };
-  $('modeRow').onclick = function (e) { var b = e.target.closest('button'); if (b) { game.setMode(b.getAttribute('data-mode')); setupEdited = true; dirty = phoneDirty = true; } };
+  $('modeRow').onclick = function (e) { var b = e.target.closest('button'); if (b) { game.setMode(b.getAttribute('data-mode')); dirty = phoneDirty = true; } };
   $('startBtn').onclick = function () { startGame(); };
   $('againBtn').onclick = function () { startGame(); };
   $('lobbyBtn').onclick = function () { toLobby(); };
-  // v0.3: a player tapped one of their deeds in My Stuff: that tile does a little bounce on the TV with a flash of their colour.
-  // Purely visual: it never changes the game. Only your own deeds, a few per second at most.
-  function pingTile(pl, sp) {
-    if (!inGame() || !pl || pl.bankrupt || !(sp >= 0 && sp < 40)) return;
-    var pr = game.props[sp]; if (!pr || pr.owner !== pl.id) return;
-    var now = Date.now(); if (now - (pingAt[pl.id] || 0) < ((C.ping || {}).gapMs || 600)) return;
-    pingAt[pl.id] = now; rnd.pingTile(sp, pl.color); dirty = true;
-  }
   function addAI(charId, level) {
     if (game.phase !== 'lobby' && game.phase !== 'over' && game.phase !== 'play') return null;
     var o = { ai: level || 'normal', charId: charId || nextFreeChar(null) };
@@ -439,7 +421,6 @@
     game.aiMem = {}; phoneFx = {};
     for (var cid in clients) clients[cid].lastSent = '';
     if (!game.start()) return;
-    setupEdited = true; lastFind = null;
     $('lobby').hidden = true; $('results').hidden = true; $('banner').hidden = false;
     AI.greet(game);
     requestWake(); dirty = phoneDirty = true;
@@ -491,61 +472,20 @@
   }
 
   // v0.2.1: the podium join QR is 20vh in the bottom-right corner. If a ground card would run under it (e.g. 7 players
-  // on a 16:9 TV), the ground row moves out of the QR's column and its cards get a little narrower.
-  // v0.3: then the whole results block (title, podium, ground, buttons) is scaled down to fit the screen when it is
-  // too tall or too wide (8 players at 1080p, 4:3 TVs). Geometry comes from layout offsets, which ignore the cards'
-  // drop-in animations; the scale is one CSS transform on #resBody (works on old Chromium, no CSS min()/clamp()).
-  function resBoxes() {
-    var body = $('resBody'), els = [$('resTitle')], out = [];
-    function add(list) { for (var i = 0; i < list.length; i++) els.push(list[i]); }
-    add($('podium').children); add($('ground').children); add(body.querySelectorAll('.res-btns button, .res-key'));
-    els.forEach(function (el) {
-      if (!el || !el.offsetWidth) return;
-      var x = 0, y = 0, e = el;
-      while (e && e !== body) { x += e.offsetLeft; y += e.offsetTop; e = e.offsetParent; }
-      if (e !== body) return;
-      out.push({ el: el, x: x, y: y, w: el.offsetWidth, h: el.offsetHeight });
-    });
-    return out;
-  }
+  // on a 16:9 TV), the ground row moves out of the QR's column and its cards get a little narrower. Measured from the
+  // layout boxes (offsetLeft/Top), so the cards' drop-in animation doesn't matter.
   function qrDodge() {
-    var R = $('results'), body = $('resBody'); R.classList.remove('qrdodge');
-    var W = R.clientWidth, H = R.clientHeight, vh = H / 100, m = 1.2 * vh, k = 1, tx = 0, ty = 0;
-    function fit() {
-      body.style.transform = ''; k = 1; tx = 0; ty = 0;
-      var bx = resBoxes(); if (!bx.length) return;
-      var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-      bx.forEach(function (b) { x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.w); y1 = Math.max(y1, b.y + b.h); });
-      var bw = body.offsetWidth, bh = body.offsetHeight;
-      if (x0 >= m && y0 >= m && x1 <= bw - m && y1 <= bh - m) return;        // fits as it is
-      k = Math.min(1, (W - 2 * m) / (x1 - x0), (H - 2 * m) / (y1 - y0));
-      tx = (W - (x1 + x0) * k) / 2; ty = (H - (y1 + y0) * k) / 2;
-      body.style.transform = 'translate(' + tx.toFixed(1) + 'px,' + ty.toFixed(1) + 'px) scale(' + k.toFixed(4) + ')';
-    }
-    var Q = $('resQr'), qx = W, qy = H;
-    if (Q && !Q.hidden) { qx = Q.offsetLeft - 1 * vh; qy = Q.offsetTop - 1 * vh; }     // the whole QR block (caption + code), in results space
+    var R = $('results'); R.classList.remove('qrdodge');
     function hits() {
-      if (qx >= W) return false;
-      var bx = resBoxes();
-      for (var i = 0; i < bx.length; i++) {
-        var b = bx[i], x = tx + b.x * k, y = ty + b.y * k;
-        if (x < W - 0 && x + b.w * k > qx && y + b.h * k > qy) return true;
+      var vh = R.clientHeight / 100, qx = R.clientWidth - 23.5 * vh, qy = R.clientHeight - 23.5 * vh, g = $('ground'), cards = g.children;
+      for (var i = 0; i < cards.length; i++) {
+        var c = cards[i], x = g.offsetLeft + c.offsetLeft, y = g.offsetTop + c.offsetTop;
+        if (x + c.offsetWidth > qx && y + c.offsetHeight > qy) return true;
       }
       return false;
     }
-    $('ground').style.paddingRight = '';
-    fit();
-    if (hits()) {
-      R.classList.add('qrdodge');
-      for (var n = 0, pad = W - qx; n < 5; n++) {        // keep the bottom row clear of the QR: pad the ground's right side, refit, repeat
-        $('ground').style.paddingRight = Math.round(pad / k) + 'px'; fit();
-        if (!hits()) break;
-        pad += 3 * vh;
-      }
-    }
-    R.setAttribute('data-fit', k.toFixed(3));
+    if (hits()) R.classList.add('qrdodge');
   }
-  window.addEventListener('resize', function () { if (!$('results').hidden) qrDodge(); });
 
   // ------------------------------------------------------------------ fireworks (results screen)
   var fw = { parts: [], raf: 0, until: 0, next: 0, colors: [] };
@@ -669,10 +609,9 @@
     if (m.t === 'leave') { if (lobbyish) { game.removePlayer(pl.id); delete clients[conn._cid]; dirty = phoneDirty = true; } return; }
     if (m.t === 'name') { if (lobbyish) { pl.name = String(m.name || '').replace(/[<>]/g, '').trim().slice(0, 12) || pl.name; game.changed(); } return; }
     if (m.t === 'hue') { if (isVip) hueIntent(m); return; }
-    if (m.t === 'addAI') { if (isVip && (lobbyish || inGame())) { addAI(m.charId, C.ai.levels[m.level] ? m.level : 'normal'); if (lobbyish) setupEdited = true; } return; }
-    if (m.t === 'removeAI') { var q = game.byId(+m.pid); if (isVip && lobbyish && q && q.ai) { game.removePlayer(q.id); setupEdited = true; dirty = phoneDirty = true; } return; }
-    if (m.t === 'rule') { if (isVip && lobbyish) { game.setRule(m.k, !!m.v); setupEdited = true; dirty = phoneDirty = true; } return; }
-    if (m.t === 'pingTile') { pingTile(pl, +m.sp); return; }
+    if (m.t === 'addAI') { if (isVip && (lobbyish || inGame())) addAI(m.charId, C.ai.levels[m.level] ? m.level : 'normal'); return; }
+    if (m.t === 'removeAI') { var q = game.byId(+m.pid); if (isVip && lobbyish && q && q.ai) { game.removePlayer(q.id); dirty = phoneDirty = true; } return; }
+    if (m.t === 'rule') { if (isVip && lobbyish) { game.setRule(m.k, !!m.v); dirty = phoneDirty = true; } return; }
     if (m.t === 'vote') { castVote(pl, m); return; }
     if (m.t === 'leaveGame') {      // v0.1.1: leave mid-game (hand the seat to an AI, split, give to one player, or into the pot)
       var lr = game.leaveGame(pl.id, String(m.how || ''), m.to);
@@ -681,12 +620,10 @@
       send(conn, { t: 'welcome', observer: true, room: net.code }); send(conn, { t: 'toast', text: 'You left the game. You\'re watching now.' });
       dirty = phoneDirty = true; return;
     }
-    if (m.t === 'mode') { if (isVip && lobbyish) { game.setMode(m.v); setupEdited = true; dirty = phoneDirty = true; } return; }
-    if (m.t === 'preset') { if (isVip && lobbyish && C.presets[m.v]) { applyRules(C.presets[m.v].rules); setupEdited = true; dirty = phoneDirty = true; } return; }
+    if (m.t === 'mode') { if (isVip && lobbyish) { game.setMode(m.v); dirty = phoneDirty = true; } return; }
+    if (m.t === 'preset') { if (isVip && lobbyish && C.presets[m.v]) { applyRules(C.presets[m.v].rules); dirty = phoneDirty = true; } return; }
     if (m.t === 'settings') {        // v0.2.1: the host phone puts back the last game's setup
       if (!isVip || game.phase !== 'lobby' || !m.rules) return;
-      if (setupEdited) { dirty = phoneDirty = true; return; }     // v0.3: this room's live setup wins over a reloading phone's saved one
-      setupEdited = true;
       applyRules(m.rules); if (m.mode) game.setMode(String(m.mode));
       var lvl = C.ai.levels[m.level] ? m.level : 'normal';
       for (var ai = 0; ai < Math.min(+m.addAI || 0, C.maxPlayers); ai++) if (!addAI(null, lvl)) break;
@@ -791,9 +728,7 @@
       feed: g.log.slice(-8).map(function (l) { return l.s; }),
       lobby: g.phase !== 'play' ? { taken: g.players.map(function (q) { return [q.charId, q.id, q.name, q.ai ? q.ai.level : '']; }) } : null,
       results: g.phase === 'over' ? g.results : null,
-      hue: g.phase !== 'play' ? hueView(p) : null,
-      setupEdited: setupEdited,
-      lastFind: g.phase === 'play' && lastFind ? { idx: lastFind.idx, n: lastFind.n, fresh: Date.now() - lastFind.at < (C.storyHoldMs || 9000) } : null   // fresh: phones keep the whole card up while the TV shows it
+      hue: g.phase !== 'play' ? hueView(p) : null
     };
     if (t && g.phase === 'play' && cur) {
       var pu = t.payup, card = t.card || (t.cardDone && now - (t.card ? 0 : 0) < 1 ? t.cardDone : null);
@@ -888,7 +823,7 @@
       case 'buy': lightFx('pickup', { color: B.GROUPS[S[d.sp].group].color }); break;
       case 'auctionWon': lightFx('pickup', { color: p ? p.color : '#ffd23f' }); break;   // flash in the winner's colour
       case 'build': lightFx('helipad'); break;                            // warm gold rise
-      case 'card': if (d.deck === 'random') lightFx('roll'); break;         // quick white flicker
+      case 'card': if (d.deck === 'hail') lightFx('roll'); break;         // quick white flicker
       case 'whiteout': lightFx('boom', { color: '#bfe6ff' }); break;      // cold blue-white flash
       case 'jackpot': lightFx('escape', { color: '#ffd23f' }); break;     // party cycle
       case 'state': if (d.to === 'gold') lightFx('helipad'); break;
@@ -968,6 +903,5 @@
   window.RDR.note = function () { return NOTE; }; window.RDR.applyRules = applyRules; window.RDR.qrDodge = qrDodge; window.RDR.big = big; window.RDR.showCard = showCard; window.RDR.cashShown = cashShown; window.RDR.plaque = plaque;   // v0.2 test hooks
   window.RDR.startGame = startGame; window.RDR.addAI = addAI; window.RDR.toLobby = toLobby; window.RDR.crush = crush; window.RDR.setRung = setRung;
   window.RDR.net = function () { return net; }; window.RDR.lights = function () { return lights; }; window.RDR.clients = clients; window.RDR.phoneState = phoneState; window.RDR.controllerUrl = controllerUrl;
-  window.RDR.setupEdited = function () { return setupEdited; }; window.RDR.lastFind = function () { return lastFind; };   // v0.3 test hooks
   requestAnimationFrame(loop);
 })();

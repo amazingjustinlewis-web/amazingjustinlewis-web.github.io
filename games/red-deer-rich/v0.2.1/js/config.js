@@ -1,5 +1,5 @@
 /* =====================================================================
-   RED DEER RICH - TUNABLE NUMBERS  v0.3 (placeholder art)
+   RED DEER RICH - TUNABLE NUMBERS  v0.2.1 (placeholder art)
    ---------------------------------------------------------------------
    Every rule number lives here. Change a value, save, refresh the TV.
    Phones read the same file (colours, labels, characters).
@@ -31,25 +31,12 @@
 
     // ---- PAY UP race ----
     payup: {
-      graceMs: 3000,             // PASS DICE (and ROLL AGAIN) is locked this long after landing on someone's deed (v0.3: only when a PAY UP window opens)
+      graceMs: 3000,             // v0.1.1: PASS DICE (and ROLL AGAIN) is locked this long after every landing / finished move
       kidGraceMs: 4000,          // Kid Mode grace
       loudAmpMs: 1000,           // Mike's perk: his window stays open this much longer after PASS DICE
       aiReflexMs: { easy: [4000, 7000], normal: [2000, 4000], ruthless: [800, 1500] },
-      aiPassDiceMs: [3000, 5500], // AI movers pass the dice after a random pause in this range (never before graceMs)
-      boom: { shake: 0.5, flash: 0.275 },   // v0.3: the PAY UP catch boom at half strength (TV shake amplitude, red flash opacity; the sound is halved in sfx.js)
-      explode: { burstMs: 420, flyMs: 760, spread: 2.3, mult: 1.8 }   // v0.3: on a PAY UP catch the money explodes out of the caught token (burst radius in tiles), then streams to the catcher
+      aiPassDiceMs: [3000, 5500] // AI movers pass the dice after a random pause in this range (never before graceMs)
     },
-    // ---- v0.3 card decks (cards themselves are in js/board.js) ----
-    decks: {
-      random: { name: 'RED DEER RANDOMNESS', tile: 'RANDOM- NESS', blurb: 'quirky everyday Red Deer happenings' },
-      finds:  { name: 'SECRET FINDS', tile: 'SECRET FINDS', blurb: 'true stories from Red Deer history' }
-    },
-    // era skins (design doc section 13). Every card carries one of these (or 'any'). eraFilter: null = draw from all eras;
-    // set it to an era id and the decks only use that era's cards (plus 'any'), falling back to all if too few.
-    eras: { pioneer: 'Pioneer Red Deer', punk2000: '2000 Punk Red Deer', present: 'Present Day', future: 'Future Red Deer' },
-    eraFilter: null,
-    storyHoldMs: 9000,           // v0.3: a Secret Finds card stays up on the TV this long (stories need a little longer than 6 s)
-    ping: { ms: 1100, lift: 0.22, gapMs: 600 },   // v0.3: tapping a deed in My Stuff bounces that tile on the TV (lift = bounce height in tiles)
 
     // ---- TV presentation (v0.1.1) ----
     tradeFadeMs: 10000,          // after a private deal, traded tiles drift from the old owner's colour to the new one
@@ -101,7 +88,7 @@
       { k: 'jackpot', icon: '\uD83D\uDCB0', tag: 'Jackpot', label: 'Dirt Lot Jackpot', short: 'Land on the Secret Dirt Lot and win the pot ($500 to start)',
         long: 'The Secret Dirt Lot corner holds a cash pot that starts at $500. Land on it and the whole pot is yours, then it resets to $500. Pairs well with Fees feed the pot.' },
       { k: 'feesToPot', icon: '\uD83E\uDE99', tag: 'Fees \u2192 pot', label: 'Fees feed the pot', short: 'Taxes, card fines and tow fees grow the jackpot',
-        long: 'Instead of vanishing into the bank, taxes, Red Deer Randomness and Secret Finds fines and tow truck fees pile up in the Dirt Lot pot, so the jackpot gets juicy. Turning this on also turns on the Dirt Lot Jackpot.' },
+        long: 'Instead of vanishing into the bank, taxes, Hailstone and Potluck fines and tow truck fees pile up in the Dirt Lot pot, so the jackpot gets juicy. Turning this on also turns on the Dirt Lot Jackpot.' },
       { k: 'bullseye', icon: '\uD83C\uDFAF', tag: 'Bullseye', label: 'Bullseye Halfway', short: 'Land exactly on The Halfway for $500 instead of $250',
         long: 'Passing The Halfway pays $250 as usual. Landing exactly on it is a Bullseye and pays $500.' },
       { k: 'kidMode', icon: '\uD83E\uDDF8', tag: 'Kid Mode', label: 'Kid Mode', short: 'Owners get 4 seconds to hit PAY UP (gentler for little hands)',
@@ -126,11 +113,11 @@
       { id: 'mike', name: 'MIKE', full: 'Mike', role: 'Vocals, Justin\'s brother', band: true, color: '#d8262f', ink: '#ffffff', shape: 'spikes',
         line: 'The tallest hair and the loudest voice in any room.', perk: 'Loud Amp', perkText: 'His PAY UP window lasts 1 second longer.' },
       { id: 'doug', name: 'DOUG', full: 'Doug', role: 'Original bass player', band: true, color: '#f2c94c', ink: '#3a2a00', shape: 'mop',
-        line: 'Laid-back low end. Nothing rattles him.', perk: 'Steady Groove', perkText: 'Never pays more than $100 on a single Red Deer Randomness card.' },
+        line: 'Laid-back low end. Nothing rattles him.', perk: 'Steady Groove', perkText: 'Never pays more than $100 on a single Hailstone card.' },
       { id: 'drew', name: 'DREW', full: 'Drew Weatherhead', role: 'Guitar / vocals', band: true, color: '#1d1d24', ink: '#ff4040', shape: 'star',
         line: 'Jumps off everything. "An amazing human being."', perk: 'High Kick', perkText: 'Once per game, roll 3 dice and keep 2. (coming soon)' },
       { id: 'grace', name: 'GRACE', full: 'Grace Friesen', role: 'Church-going mom of four', color: '#e889b5', ink: '#4a1030', shape: 'heart',
-        line: '"I\'ll pray for your rent payment, hon."', perk: 'Blessed Finds', perkText: 'Secret Finds cards that pay her pay $25 more.' },
+        line: '"I\'ll pray for your rent payment, hon."', perk: 'Potluck Blessing', perkText: 'Potluck cards that pay her pay $25 more.' },
       { id: 'walt', name: 'WALT', full: 'Walt', role: 'Knows every trail, bench and name', color: '#8a6a3a', ink: '#fff3d6', shape: 'toque',
         line: '"Been here longer than the roundabouts, friend."', perk: 'Knows Every Shortcut', perkText: 'Nudge his move by 1 space once per lap. (coming soon)' },
       { id: 'dez', name: 'DEZ', full: 'Dez Kowalski', role: 'Metalhead, flyer route', color: '#5a6b85', ink: '#e8eef8', shape: 'horns',
@@ -184,7 +171,7 @@
 
     // ---- Upper Level Youth Centre (the band's old all-ages venue, landmark by downtown) ----
     youthCentre: {
-      nearSpaces: [32, 33, 34],  // spaces right in front of it (Gaetz Avenue, Secret Finds, Ross Street)
+      nearSpaces: [32, 33, 34],  // spaces right in front of it (Gaetz Avenue, Potluck, Ross Street)
       hearRange: 9,              // spaces away where the band starts to be (faintly) heard
       minVol: 0.0, maxVol: 0.55, bpm: 176
     },
