@@ -161,10 +161,17 @@ window.GAMES = [
     ],
     versions: [
       {
-        id: 'v0.3',
-        name: 'Red Deer stories',
+        id: 'v0.4',
+        name: 'Cards in hand',
         current: true,
         play: 'games/red-deer-rich/index.html',
+        notes: 'My Stuff becomes a swipeable wheel of deed cards (or a plain list: the switch in the corner remembers your pick). The front card shows every rent, the next Shop and its price, with BUY (\u2212$) and SELL (+$) right on top and no confirm. Tap or pinch a card to unfold its whole colour set; MORTGAGE flips the card over to a Confirm, and a mortgaged card stays flipped with Unmortgage and its cost. Hawk is now called Mortgage everywhere. Owe money and sell or mortgage by hand: the debt pays itself the moment you have enough, with a big PAID IN FULL and a cha-ching. New Heckle option: if someone stalls, everyone else gets a little laughing button that floats faces up their phone. Every card drawn goes into the phone history, tap to read it again. Trades get a drag-and-drop map: drag deeds onto the two big pieces, slide cash across, and tap deeds to light them up on your own phone only. Board pieces now wear the same crowns and accessories everywhere, owned tiles get a crisp owner-colour outline instead of a tint, the TV picks its graphics level by itself, and the 4:3 podium is centred.'
+      },
+      {
+        id: 'v0.3',
+        name: 'Red Deer stories',
+        current: false,
+        play: 'games/red-deer-rich/v0.3/index.html',
         notes: 'Two new card decks. Red Deer Randomness (the old Hailstone): chinooks, hail, orange cones on Gaetz, Westerner Days, skating at Bower Ponds, geese on the trail. Secret Finds (the old Potluck): every card is a short true story from Red Deer history, checked against real sources (a fort bought for $1, Laurier\u2019s sticky theatre seats, Francis the Pig, the official cookie), with a READ MORE on the phones. PAY UP catches now explode the money out of the caught token and stream it to the catcher, with a cha-ching on the catcher\u2019s phone and a coin-drain on the caught phone (the boom itself is half as loud). Tap a deed in My Stuff to bounce that tile on the TV. No more 3-second PASS DICE wait on your own or unowned deeds. Lighter tile names with a soft halo, an 8-player podium that fits 1080p and 4:3 screens, and the TV keeps its setup if the host phone reloads.'
       },
       {

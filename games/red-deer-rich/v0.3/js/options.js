@@ -1,4 +1,4 @@
-/* RED DEER RICH - v0.2.1+ shared game-options helpers (TV lobby + host phone setup).
+/* RED DEER RICH - v0.2.1 shared game-options helpers (TV lobby + host phone setup).
    The option list, descriptions, icons and presets live in config.js (C.options, C.presets). */
 (function (root) {
   'use strict';
@@ -12,24 +12,10 @@
   function countOn(rules) { var n = 0; C.options.forEach(function (o) { if (rules[o.k]) n++; }); return n; }
   function activeList(rules) { return C.options.filter(function (o) { return !!rules[o.k]; }); }
   // the rules a preset (or a remembered setup) turns into, in a safe order (jackpot before fees: fees switch the jackpot on)
-  // v0.4: a setup remembered before a new option existed (e.g. Heckle) fills the missing switch from the preset the rest of
-  // it matches, so a remembered Chill stays Chill instead of turning Custom.
   function ordered(rules) {
     var out = [], keys = C.options.map(function (o) { return o.k; });
-    rules = fillMissing(rules);
     keys.sort(function (a, b) { return (a === 'feesToPot') - (b === 'feesToPot'); });
     keys.forEach(function (k) { if (k in rules) out.push([k, !!rules[k]]); });
-    return out;
-  }
-  function fillMissing(rules) {
-    var miss = C.options.some(function (o) { return o.k !== 'camera' && !(o.k in rules); });
-    if (!miss) return rules;
-    var out = {}, k; for (k in rules) out[k] = rules[k];
-    for (var id in C.presets) {
-      var r = C.presets[id].rules, same = true;
-      for (k in r) if ((k in rules) && !!rules[k] !== !!r[k]) { same = false; break; }
-      if (same) { for (k in r) if (!(k in out)) out[k] = r[k]; return out; }
-    }
     return out;
   }
   // press-and-hold on rows matching `sel` inside `box`: a quick tap calls onTap(row); holding still for `ms` calls
@@ -68,5 +54,5 @@
     box.addEventListener('click', function (e) { if (e.detail === 0) { var r = find(e.target); if (r) onTap(r); } });   // keyboard
     box.addEventListener('contextmenu', function (e) { if (find(e.target)) e.preventDefault(); });                   // long-press menu
   }
-  root.RDROpts = { opt: opt, presetOf: presetOf, countOn: countOn, activeList: activeList, ordered: ordered, fillMissing: fillMissing, hold: hold };
+  root.RDROpts = { opt: opt, presetOf: presetOf, countOn: countOn, activeList: activeList, ordered: ordered, hold: hold };
 })(typeof window !== 'undefined' ? window : globalThis);

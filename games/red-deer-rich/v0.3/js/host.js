@@ -1,4 +1,4 @@
-/* RED DEER RICH - TV / host page (v0.1.1 .. v0.4). Holds the true game state, renders the board, talks to phones,
+/* RED DEER RICH - TV / host page (v0.1.1). Holds the true game state, renders the board, talks to phones,
    runs the AI and (optionally) the Hue Lights Helper. */
 (function () {
   'use strict';
@@ -43,34 +43,6 @@
   var crush = { rung: 0, auto: !Q.has('lowfx') && !Q.has('nocrush'), low: 0, high: 0, fps: 60, frames: 0, acc: 0 };
   if (Q.has('lowfx')) crush.rung = LV.maxRung;
   if (Q.get('fx') != null) crush.rung = Math.max(0, Math.min(LV.maxRung, +Q.get('fx')));
-  // v0.4 auto quality: start from device hints, then a quick frame-time probe right after load (and as each game starts)
-  // jumps straight to the right rung; Auto-Crush keeps stepping down / back up from there. Hidden override:
-  // localStorage rdr_fx = '0'..'6' pins a rung (like ?fx=N), 'auto' or nothing = automatic.
-  var PR = LV.probe || { warmMs: 900, ms: 2600, slowMs: 34, verySlowMs: 50, fastMs: 19 };
-  var fxPin = null; try { fxPin = localStorage.getItem('rdr_fx'); } catch (e) {}
-  if (fxPin && /^[0-6]$/.test(fxPin) && Q.get('fx') == null && !Q.has('lowfx')) { crush.rung = +fxPin; crush.auto = false; }
-  function hintRung() {
-    var n = navigator.hardwareConcurrency || 0, m = navigator.deviceMemory || 0, ua = navigator.userAgent || '', r = 0;
-    if (/CrKey|Tizen|Web0S|webOS|SMART-TV|SmartTV|AFT[A-Z]|BRAVIA|Android TV|HbbTV|NetCast/i.test(ua)) r = 3;
-    if ((n && n <= 2) || (m && m <= 1)) r = Math.max(r, 3); else if ((n && n <= 4) || (m && m <= 2)) r = Math.max(r, 1);
-    return r;
-  }
-  crush.hint = hintRung();
-  if (crush.auto && Q.get('fx') == null) crush.rung = crush.hint;
-  var probe = { on: false };
-  function startProbe(upOk) { if (!crush.auto) return; probe = { on: true, t0: performance.now(), dts: [], upOk: !!upOk }; }
-  function probeTick(now, dt) {
-    if (!probe.on) return;
-    if (document.hidden || !crush.auto) { probe.on = false; return; }
-    var el = now - probe.t0; if (el < PR.warmMs) return;
-    probe.dts.push(dt); if (el < PR.warmMs + PR.ms) return;
-    probe.on = false;
-    var a = probe.dts.slice().sort(function (x, y) { return x - y; }), med = a[Math.floor(a.length / 2)] || 16;
-    crush.probeMs = Math.round(med * 10) / 10; crush.low = crush.high = 0;
-    if (med >= PR.verySlowMs) setRung(crush.rung + 3, 'probe ' + Math.round(med) + ' ms/frame');
-    else if (med >= PR.slowMs) setRung(crush.rung + (med >= (PR.slowMs + PR.verySlowMs) / 2 ? 2 : 1), 'probe ' + Math.round(med) + ' ms/frame');
-    else if (probe.upOk && med <= PR.fastMs && crush.rung > 0) setRung(crush.rung - 1, 'probe fast ' + Math.round(med) + ' ms/frame');
-  }
   function setRung(r, why) {
     r = Math.max(0, Math.min(LV.maxRung, r)); if (r === crush.rung) return;
     var oldLow = crush.rung >= 4; crush.rung = r; rnd.rung = r; rnd.staticKey = ''; rnd.ycKey = '';
@@ -134,8 +106,6 @@
         }
         break;
       case 'tab': pfx(d.pid, 'tab'); break;
-      case 'tabPaid': if (p) { pfx(d.pid, 'paid', { amount: d.amount, to: typeof d.to === 'number' ? (game.byId(d.to) || {}).name : d.to === 'pot' ? 'the pot' : 'the bank', auto: !!d.auto }); sideStamp(d.pid, 'PAID IN FULL', '#7dff7d'); } break;   // v0.4
-      case 'heckle': if (p) { pfx(d.pid, 'heckled', { from: (game.byId(d.from) || {}).name || '' }); tvHeckle(d.pid); } break;                 // v0.4
       case 'build': SFX.play('build'); if (d.shops === 5) big('MEGA-PLEX!', S[d.sp].name, '#ffd23f'); break;
       case 'whiteout': SFX.play('whiteout'); flash('#ffffff'); big('WHITEOUT!', (p ? p.name : '') + ' hit the ditch: STUCK IN THE SNOWBANK', '#bfe6ff'); break;
       case 'free': SFX.play('click'); break;
@@ -294,39 +264,19 @@
   // ------------------------------------------------------------------ side panel + top bar
   function stateLabel(st) { return st === 'gold' ? 'GOLD' : st === 'good' ? 'DOING GOOD' : 'RAGS'; }
   function chip(p, cls) { var ch = charById(p.charId); return '<span class="chip ' + (p.state || '') + ' ' + (cls || '') + '" style="background:' + p.color + ';color:' + ch.ink + '">' + esc(window.RDRRender.initials(p.name)) + '</span>'; }
-  // v0.4: the side panel shows each player's real piece (same crowns / accessories as the board token)
-  function pieceCv(p) { return '<canvas class="chip pc" width="64" height="64" data-pc="' + p.id + '"></canvas>'; }
-  function paintPieces(box) {
-    var list = box.querySelectorAll('canvas[data-pc]');
-    for (var i = 0; i < list.length; i++) { var cv = list[i], q = game.byId(+cv.getAttribute('data-pc')); if (!q) continue; var c = cv.getContext('2d'); c.clearRect(0, 0, 64, 64); window.RDRRender.drawPiece(c, q, 32, 37, 17, 0); }
-  }
-  // v0.4: tiny pops beside a player's name in the side panel (heckle faces, PAID IN FULL)
-  var popN = 0, heckleAt = 0;
-  function sidePop(pid, cls, html, ms) {
-    var card = document.querySelector('.pcard[data-pid="' + pid + '"]'); if (!card || popN >= 8) return;
-    var r = card.getBoundingClientRect(), el = document.createElement('div');
-    el.className = 'spop ' + cls; el.innerHTML = html;
-    var hk = cls === 'heckle'; el.style.left = Math.round(r.left + r.width * (hk ? 0.5 + Math.random() * 0.15 : 0.3 + Math.random() * 0.4)) + 'px'; el.style.top = Math.round(r.top + r.height * (hk ? 0.05 : 0.2)) + 'px';
-    document.body.appendChild(el); popN++;
-    setTimeout(function () { popN--; if (el.parentNode) el.parentNode.removeChild(el); }, ms || 1400);
-  }
-  function tvHeckle(pid) { var now = Date.now(); if (now - heckleAt < 180) return; heckleAt = now; var F = C.heckle.faces; sidePop(pid, 'heckle', F[Math.floor(Math.random() * F.length)], 1300); }
-  function sideStamp(pid, txt, col) { sidePop(pid, 'stamp', '<b style="color:' + col + '">' + esc(txt) + '</b>', 2200); }
   function renderSide() {
     var g = game, cur = g.turn ? g.turn.pid : -1;
-    var sideH = g.phase === 'lobby' ? '' : g.players.map(function (p) {
+    $('cards').innerHTML = g.phase === 'lobby' ? '' : g.players.map(function (p) {
       var deeds = g.props.filter(function (pr) { return pr && pr.owner === p.id; }).length;
       var cd = countdown(p), pl = plaque(p);
-      return '<div class="pcard' + (p.id === cur ? ' cur' : '') + (p.bankrupt ? ' out' : '') + '" data-pid="' + p.id + '" style="border-color:' + (p.id === cur ? p.color : '') + '">' +
-        '<div class="prow">' + pieceCv(p) + '<span class="pname">' + esc(p.name) + '</span>' + (cd >= 0 ? '<span class="pcd" title="AI takes over in">\u23F1 ' + cd + '</span>' : '') +
+      return '<div class="pcard' + (p.id === cur ? ' cur' : '') + (p.bankrupt ? ' out' : '') + '" style="border-color:' + (p.id === cur ? p.color : '') + '">' +
+        '<div class="prow">' + chip(p) + '<span class="pname">' + esc(p.name) + '</span>' + (cd >= 0 ? '<span class="pcd" title="AI takes over in">\u23F1 ' + cd + '</span>' : '') +
         '<span class="pcash" data-pid="' + p.id + '">' + (p.bankrupt ? (p.left ? 'LEFT' : 'OUT') : money(Math.round(cashShown[p.id] != null ? cashShown[p.id] : p.cash))) + '</span></div>' +
         (pl ? '<div class="plaque">' + esc(pl) + '</div>' : '') +
         (p.bankrupt ? '' : '<div class="psub"><span class="badge ' + p.state + '">' + stateLabel(p.state) + '</span><span>' + deeds + ' deeds</span>' +
         (p.snow ? '<span>\u2744 stuck</span>' : '') + (p.passes.length ? '<span>\uD83D\uDE9A' + p.passes.length + '</span>' : '') + (p.skip ? '<span>\u23F8</span>' : '') +
         (p.ai ? '<span class="tag">AI ' + C.ai.levels[p.ai.level].label + '</span>' : p.aiTakeover ? '<span class="tag off">AI covering</span>' : !p.connected ? '<span class="tag off">offline</span>' : '') + '</div>') + '</div>';
     }).join('');
-    var cardsEl = $('cards'), pk = sideH + g.players.map(function (p) { return p.state + p.snow; }).join();
-    if (cardsEl._pk !== pk) { cardsEl._pk = pk; cardsEl.innerHTML = sideH; paintPieces(cardsEl); }
     renderLog(g);
     $('roundInfo').innerHTML = inGame() ? 'Round <b>' + g.round + '</b>' + (g.timed() ? ' \u00b7 <b>' + clock(Math.max(0, g.endsAt - g.now)) + '</b> left' : '') : '';
     $('potInfo').innerHTML = g.rules.jackpot && g.phase !== 'lobby' ? 'Dirt Lot pot <b>' + money(g.pot) + '</b>' : '';
@@ -337,7 +287,7 @@
     if (rq.hidden === !!showR) { rq.hidden = !showR; if (showR && rq._code !== net.code) { rq._code = net.code; drawQr(controllerUrl(net.code), $('qrRes'), 4, 'L'); } }
     $('joinInfo').innerHTML = net && net.status === 'online' && g.phase !== 'lobby' ? 'Join: <b>' + net.code + '</b>' : '';
     $('lightInfo').innerHTML = lightsOn() ? '\uD83D\uDCA1 <b>Hue</b>' : '';
-    $('fxInfo').textContent = 'FX ' + (crush.rung ? 'crush ' + crush.rung : 'full') + (crush.auto ? ' auto' : ' (manual)') + ' \u00b7 ' + Math.round(crush.fps) + ' fps';
+    $('fxInfo').textContent = 'FX ' + (crush.rung ? 'crush ' + crush.rung : 'full') + (crush.auto ? '' : ' (manual)') + ' \u00b7 ' + Math.round(crush.fps) + ' fps';
     var t = g.turn, p = g.cur();
     if (inGame() && t && p) {
       $('banner').hidden = false;
@@ -489,7 +439,7 @@
     game.aiMem = {}; phoneFx = {};
     for (var cid in clients) clients[cid].lastSent = '';
     if (!game.start()) return;
-    setupEdited = true; lastFind = null; startProbe(false);      // v0.4: re-check the frame time once the board is busy
+    setupEdited = true; lastFind = null;
     $('lobby').hidden = true; $('results').hidden = true; $('banner').hidden = false;
     AI.greet(game);
     requestWake(); dirty = phoneDirty = true;
@@ -583,17 +533,14 @@
       }
       return false;
     }
-    var gr = $('ground'); gr.style.paddingRight = gr.style.paddingLeft = gr.style.maxWidth = '';
+    $('ground').style.paddingRight = '';
     fit();
     if (hits()) {
       R.classList.add('qrdodge');
-      // v0.4: keep the bottom row clear of the QR by narrowing the ground row symmetrically (max-width, centred), so it
-      // stays centred under the podium instead of sliding left (that looked lopsided with 6-8 players on 4:3 screens).
-      // Its right edge on screen is W/2 + k*w/2, which must stay left of the QR; refit and tighten a little if needed.
-      for (var n = 0; n < 6; n++) {
-        var lim = (2 * (qx - W / 2) - n * 3 * vh) / k; if (lim < 30 * vh) lim = 30 * vh;
-        gr.style.maxWidth = Math.round(lim) + 'px'; fit();
+      for (var n = 0, pad = W - qx; n < 5; n++) {        // keep the bottom row clear of the QR: pad the ground's right side, refit, repeat
+        $('ground').style.paddingRight = Math.round(pad / k) + 'px'; fit();
         if (!hits()) break;
+        pad += 3 * vh;
       }
     }
     R.setAttribute('data-fit', k.toFixed(3));
@@ -726,7 +673,6 @@
     if (m.t === 'removeAI') { var q = game.byId(+m.pid); if (isVip && lobbyish && q && q.ai) { game.removePlayer(q.id); setupEdited = true; dirty = phoneDirty = true; } return; }
     if (m.t === 'rule') { if (isVip && lobbyish) { game.setRule(m.k, !!m.v); setupEdited = true; dirty = phoneDirty = true; } return; }
     if (m.t === 'pingTile') { pingTile(pl, +m.sp); return; }
-    if (m.t === 'heckle') { game.intent(pl.id, m); return; }       // v0.4: rate-limited in the engine; never toasts
     if (m.t === 'vote') { castVote(pl, m); return; }
     if (m.t === 'leaveGame') {      // v0.1.1: leave mid-game (hand the seat to an AI, split, give to one player, or into the pot)
       var lr = game.leaveGame(pl.id, String(m.how || ''), m.to);
@@ -796,7 +742,7 @@
     var fake = { id: -99, name: cl.name, charId: C.characters[0].id, color: '#888888', cash: 0, pos: 0, snow: false, snowTries: 0, passes: [], state: 'rags', bankrupt: false, ai: null, aiTakeover: null, skip: 0 };
     var st = phoneState(fake);
     st.me.observer = true; st.me.vip = false; st.me.worth = 0; st.fx = {}; st.chats = st.chats.filter(function (c) { return c[2] === 'all'; }); st.trades = [];
-    st.feed = game.log.slice(-40).map(function (l) { return l.s; }); st.feedCard = game.log.slice(-40).map(function (l) { return l.card || 0; });
+    st.feed = game.log.slice(-40).map(function (l) { return l.s; });
     st.seats = game.players.filter(function (q) { return q.ai && !q.bankrupt; }).map(function (q) { return [q.id, q.name, q.charId, q.color]; });
     st.asking = votes && votes.cid === cl.conn._cid ? { seat: votes.seat, left: Math.max(0, votes.until - Date.now()) } : null;
     st.voteBusy = !!votes;
@@ -842,9 +788,7 @@
         connected: q.connected, pos: q.pos, snow: q.snow, passes: q.passes.length, worth: g.phase === 'play' ? q.worth : 0 }; }),
       props: g.props.map(function (pr, i) { return pr ? [pr.owner, pr.shops, pr.hocked ? 1 : 0, g.locked(i) ? 1 : 0] : null; }),
       fades: fadeList(),
-      feed: g.log.slice(-14).map(function (l) { return l.s; }),
-      feedCard: g.log.slice(-14).map(function (l) { return l.card || 0; }),                  // v0.4: [deck, idx] for card lines (tap to read)
-      cards: g.phase === 'play' ? (g.cardsDrawn || []).slice(-40) : [],                      // v0.4: every card drawn this game [deck, idx, pid, round]
+      feed: g.log.slice(-8).map(function (l) { return l.s; }),
       lobby: g.phase !== 'play' ? { taken: g.players.map(function (q) { return [q.charId, q.id, q.name, q.ai ? q.ai.level : '']; }) } : null,
       results: g.phase === 'over' ? g.results : null,
       hue: g.phase !== 'play' ? hueView(p) : null,
@@ -860,8 +804,7 @@
         tab: t.tab ? { amount: t.tab.amount, reason: t.tab.reason, hopeless: !!t.tab.hopeless, to: typeof t.tab.to === 'number' ? (g.byId(t.tab.to) || {}).name : t.tab.to, raise: g.liquidValue(cur) } : null,
         card: t.card ? { deck: t.card.deck, idx: t.card.idx } : null,
         auction: t.auction ? { sp: t.auction.sp, bid: t.auction.bid, leader: t.auction.leader, bids: t.auction.bids, seq: t.auction.seq, left: Math.round(Math.max(0, t.auction.endsAt - now)), total: Math.round(game.ms(C.auction.ms)) } : null,
-        move: t.moving ? { from: t.moving.from, path: t.moving.path, stepMs: Math.round(t.moving.step), elapsed: Math.round(now - t.moving.start) } : null,
-        heckle: t.heckle && t.heckle.open && g.rules.heckle ? { stalls: t.heckle.stalls, forever: t.heckle.forever } : null };     // v0.4
+        move: t.moving ? { from: t.moving.from, path: t.moving.path, stepMs: Math.round(t.moving.step), elapsed: Math.round(now - t.moving.start) } : null };
     }
     if (votes && votes.need.indexOf(p.id) >= 0) st.vote = { id: votes.id, name: votes.name, seat: votes.seat, left: Math.max(0, votes.until - Date.now()), mine: votes.yes[p.id] ? 'yes' : votes.no[p.id] ? 'no' : '' };
     // private: only my chats and deals
@@ -986,7 +929,7 @@
       if (Date.now() - dice.t < C.timing.roll / FAST + 100) drawDice();
       renderAuction();
       moneyTick(now, dt);
-      crushTick(dt); probeTick(now, dt);
+      crushTick(dt);
       if (game.version !== lastVer) { lastVer = game.version; dirty = true; phoneDirty = true; }
       if ((dirty || now - domT > 1000) && now - domT > 120) { domT = now; dirty = false; if (game.phase === 'lobby') renderLobby(); renderSide(); }
       if (phoneDirty) { phoneDirty = false; pushPhones(); }
@@ -1026,7 +969,5 @@
   window.RDR.startGame = startGame; window.RDR.addAI = addAI; window.RDR.toLobby = toLobby; window.RDR.crush = crush; window.RDR.setRung = setRung;
   window.RDR.net = function () { return net; }; window.RDR.lights = function () { return lights; }; window.RDR.clients = clients; window.RDR.phoneState = phoneState; window.RDR.controllerUrl = controllerUrl;
   window.RDR.setupEdited = function () { return setupEdited; }; window.RDR.lastFind = function () { return lastFind; };   // v0.3 test hooks
-  window.RDR.probe = function () { return probe; }; window.RDR.startProbe = startProbe;          // v0.4 test hooks
-  startProbe(true);
   requestAnimationFrame(loop);
 })();

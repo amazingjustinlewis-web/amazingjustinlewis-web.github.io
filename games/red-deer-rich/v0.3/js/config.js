@@ -1,5 +1,5 @@
 /* =====================================================================
-   RED DEER RICH - TUNABLE NUMBERS  v0.4 (placeholder art)
+   RED DEER RICH - TUNABLE NUMBERS  v0.3 (placeholder art)
    ---------------------------------------------------------------------
    Every rule number lives here. Change a value, save, refresh the TV.
    Phones read the same file (colours, labels, characters).
@@ -16,7 +16,7 @@
     jackpotSeed: 500,            // house rule: Secret Dirt Lot pot starts (and reseeds) here
     towFee: 60,                  // pay to get out of the Snowbank
     snowTries: 3,                // rolls for doubles before you must pay and move
-    unhockFee: 0.10,             // unmortgage = mortgage value + 10% (v0.4: 'hock' is called Mortgage everywhere players can see; the code keeps the old names)
+    unhockFee: 0.10,             // unhock = hock value + 10%
     shopSellBack: 0.5,           // selling a Shop back to the bank returns this share of its cost
     bankShops: 32,               // Shop Shortage stock
     bankMegas: 12,
@@ -50,18 +50,10 @@
     eraFilter: null,
     storyHoldMs: 9000,           // v0.3: a Secret Finds card stays up on the TV this long (stories need a little longer than 6 s)
     ping: { ms: 1100, lift: 0.22, gapMs: 600 },   // v0.3: tapping a deed in My Stuff bounces that tile on the TV (lift = bounce height in tiles)
-    // v0.4 Heckle (house rule): when the active player stalls, everyone else gets a tiny heckle button. It unlocks after
-    // afterMs[0] of inactivity on the first stall of a turn, afterMs[1] on the second, afterMs[2] on the third, and after the
-    // third it stays unlocked until the turn ends. Any action by the stalling player locks it again. gapMs = per-heckler spam limit.
-    heckle: { afterMs: [15000, 5000, 3000], gapMs: 450, targetGapMs: 120, faces: ['\uD83D\uDE02', '\uD83E\uDD23', '\uD83D\uDE06', '\uD83D\uDE1D', '\uD83E\uDD2A'] },
 
     // ---- TV presentation (v0.1.1) ----
     tradeFadeMs: 10000,          // after a private deal, traded tiles drift from the old owner's colour to the new one
-    ownerTint: { fill: 0.24, fillHocked: 0.128, border: 0.76, phoneFill: 0.336, phoneFillHocked: 0.16 },   // (v0.3 wash; v0.4 keeps fill only for the My Stuff tile-bounce flash)
-    // v0.4 owned tiles: a hard outline in the owner's colour at the tile edge (line = share of a tile's width) that feathers
-    // inward a little (feather = share of a tile's width, steps = how many soft rings). The middle of the tile and its colour
-    // band are never tinted. Mortgaged tiles draw the outline at mortgagedAlpha.
-    ownerLine: { line: 0.085, feather: 0.12, steps: 4, mortgagedAlpha: 0.45 },
+    ownerTint: { fill: 0.24, fillHocked: 0.128, border: 0.76, phoneFill: 0.336, phoneFillHocked: 0.16 },   // owned tiles: owner-colour wash + border (v0.2.1: all x0.8, 20% more see-through; the outer owner strip stays solid)
     sky: { on: true, alpha: 0.2, sunR: 0.075, moonR: 0.06, sunLight: 0.16, moonLight: 0.12, horizon: 1.06, height: 0.86 },   // v0.1.1 sun + moon arc: ~80% transparent over the board
     art: { lean: 0.12, fisheye: 0.3 },   // v0.2 building art: roofs lean OUTWARD from the board centre by lean x height at the edge (0 = flat, 0.12 = ~9 degrees). One knob.
     lighting: { feather: 0.2 },
@@ -94,8 +86,7 @@
       auctions: true,            // a passed-on deed goes to auction (every phone can bid)
       camera: true,              // TV camera gently follows the active player (also the C key on the TV)
       evenBuild: true,           // build evenly across a colour set
-      shopShortage: true,        // limited bank stock
-      heckle: true               // v0.4: everyone can heckle a player who stalls on their turn (escalating 15 s / 5 s / 3 s)
+      shopShortage: true         // limited bank stock
     },
 
     // ---- v0.2.1 game options as players see them (setup screens, TV lobby). Order = display order.
@@ -116,15 +107,13 @@
       { k: 'kidMode', icon: '\uD83E\uDDF8', tag: 'Kid Mode', label: 'Kid Mode', short: 'Owners get 4 seconds to hit PAY UP (gentler for little hands)',
         long: 'After a token lands, the dice can\'t be passed for 4 seconds instead of 3, so slower hands still have time to hit PAY UP. Only matters with the PAY UP race on.' },
       { k: 'camera', icon: '\uD83C\uDFA5', tag: 'TV camera', label: 'TV camera', short: 'The TV gently zooms in and follows whoever is moving',
-        long: 'The TV board softly zooms toward the active player and swoops in on big moments (purchases, big rent, bankruptcies). Turn it off for a fixed, full-board view. Also the C key on the TV.' },
-      { k: 'heckle', icon: '\uD83D\uDE02', tag: 'Heckle', label: 'Heckle', short: 'Stall on your turn and everyone gets a heckle button',
-        long: 'If the player whose turn it is sits still for 15 seconds, a tiny laughing-face button pops up beside their name on everyone else\'s phone. Every tap floats laughing faces up their screen and buzzes their phone. It locks again the moment they do something. Stall a second time and it unlocks after 5 seconds, a third time after 3 seconds, and then it stays open until their turn is over.' }
+        long: 'The TV board softly zooms toward the active player and swoops in on big moments (purchases, big rent, bankruptcies). Turn it off for a fixed, full-board view. Also the C key on the TV.' }
     ],
     // one-tap presets (camera is a TV preference and is left alone). Edit anything afterwards and setup shows "Custom".
     presets: {
-      classic: { label: 'Classic', blurb: 'The game as designed', rules: { payupRace: true, auctions: true, perks: true, jackpot: false, feesToPot: false, bullseye: false, kidMode: false, heckle: true } },
-      chaos:   { label: 'Chaos', blurb: 'Everything on, big swings', rules: { payupRace: true, auctions: true, perks: true, jackpot: true, feesToPot: true, bullseye: true, kidMode: false, heckle: true } },
-      chill:   { label: 'Chill', blurb: 'Automatic rent, no auctions, bonus cash', rules: { payupRace: false, auctions: false, perks: true, jackpot: true, feesToPot: false, bullseye: true, kidMode: false, heckle: false } }
+      classic: { label: 'Classic', blurb: 'The game as designed', rules: { payupRace: true, auctions: true, perks: true, jackpot: false, feesToPot: false, bullseye: false, kidMode: false } },
+      chaos:   { label: 'Chaos', blurb: 'Everything on, big swings', rules: { payupRace: true, auctions: true, perks: true, jackpot: true, feesToPot: true, bullseye: true, kidMode: false } },
+      chill:   { label: 'Chill', blurb: 'Automatic rent, no auctions, bonus cash', rules: { payupRace: false, auctions: false, perks: true, jackpot: true, feesToPot: false, bullseye: true, kidMode: false } }
     },
 
     // ---- timing (ms). &fast in the URL divides these by 4 ----
@@ -190,11 +179,7 @@
       cityCars: 3, cityPegs: 8,                        // v0.1.1 mini city: extra little cars on the inner ring road + peg-people (capped; halved / dropped by Auto-Crush)
       crushBelowFps: 24, crushAfterSec: 5,            // Auto-Crush: drop a rung if fps < 24 for 5 s
       recoverAboveFps: 28, recoverAfterSec: 30,
-      maxRung: 6,
-      // v0.4 auto quality: the starting rung comes from device hints (CPU cores, memory, TV-stick browsers), then a short
-      // frame-time probe right after load (and again as each game starts) jumps straight to the right rung instead of
-      // waiting out Auto-Crush. Hidden overrides: ?fx=0..6, ?lowfx, ?nocrush, or localStorage rdr_fx = '0'..'6' / 'auto'.
-      probe: { warmMs: 900, ms: 2600, slowMs: 34, verySlowMs: 50, fastMs: 19 }
+      maxRung: 6
     },
 
     // ---- Upper Level Youth Centre (the band's old all-ages venue, landmark by downtown) ----

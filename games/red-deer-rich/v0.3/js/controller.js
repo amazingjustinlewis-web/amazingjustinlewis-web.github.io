@@ -1,4 +1,4 @@
-/* RED DEER RICH - phone controller (v0.1.1 .. v0.4). Four tabs (My Turn, My Stuff, Board, Deals & Chat) that adapt to
+/* RED DEER RICH - phone controller (v0.1.1). Four tabs (My Turn, My Stuff, Board, Deals & Chat) that adapt to
    portrait (bottom tab bar) and landscape (left rail + two panes). PAY UP and BOOM take over the whole screen. */
 (function () {
   'use strict';
@@ -13,20 +13,13 @@
   var Q = new URLSearchParams(location.search), LOCAL = Q.has('local');
   var clientId = (Q.get('cid') || store.get('rdr_client')) || ('P' + Math.random().toString(36).slice(2, 10)); if (!Q.get('cid')) store.set('rdr_client', clientId);
   var net = null, st = null, lastFx = null, tab = 'turn', joined = false;
-  var ui = { sel: 0, thread: null, builder: null, seen: JSON.parse(store.get('rdr_seen') || '{}'), carIdx: 0, aiChar: null, aiLevel: 'normal', lastRollSeq: -1, diceT: 0, graceUntil: 0, fades: {},
-    stuffView: store.get('rdr_stuffView') === 'list' ? 'list' : 'cards', heckleAt: 0, heckToast: 0 };      // v0.4: My Stuff view is remembered (cards by default)
+  var ui = { sel: 0, thread: null, builder: null, seen: JSON.parse(store.get('rdr_seen') || '{}'), carIdx: 0, aiChar: null, aiLevel: 'normal', lastRollSeq: -1, diceT: 0, graceUntil: 0, fades: {} };
   function vib(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
   function send(m) { if (net) net.send(m); }
   function toast(t, ms) { var el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function () { el.hidden = true; }, ms || 2400); }
   function pById(id) { if (!st) return null; for (var i = 0; i < st.players.length; i++) if (st.players[i].id === id) return st.players[i]; return null; }
   function initials(n) { return R.initials(n || '?'); }
   function chip(p, cls) { if (!p) return ''; var ch = charById(p.charId); return '<span class="' + (cls || 'mini-chip') + '" style="background:' + p.color + ';color:' + ch.ink + ';border-color:' + (p.state === 'gold' ? '#ffd23f' : '#fff') + '">' + esc(initials(p.name)) + '</span>'; }
-  // v0.4: a player's real piece (same crowns / accessories as the TV board) in a little canvas
-  function pieceCv(p, px, cls) { if (!p) return ''; return '<canvas class="pc ' + (cls || '') + '" data-pc="' + p.id + '" width="' + px * 2 + '" height="' + px * 2 + '" style="width:' + px + 'px;height:' + px + 'px"></canvas>'; }
-  function paintPieces(root) {
-    if (!root) return; var list = root.querySelectorAll('canvas[data-pc]');
-    for (var i = 0; i < list.length; i++) { var cv = list[i], q = pById(+cv.getAttribute('data-pc')); if (!q) continue; var W = cv.width, c = cv.getContext('2d'); c.clearRect(0, 0, W, W); R.drawPiece(c, q, W / 2, W * 0.57, W * 0.27, 0); }
-  }
   function gcol(sp) { var s = S[sp]; return s.group ? B.GROUPS[s.group].color : '#888'; }
   function show(id) { ['join', 'lobby', 'game', 'over'].forEach(function (k) { $(k).hidden = k !== id; }); }
 
@@ -85,8 +78,6 @@
     if (inc('msg')) { vib(15); }
     if (inc('auction') && !st.me.bankrupt) { SFX.play('click'); vib([50, 40, 50]); toast('\uD83D\uDD28 AUCTION! Bid with the buttons at the top', 2600); }
     if (inc('tab')) { vib([100, 50, 100]); }
-    if (inc('paid')) paidInFull(f.paidData || {});                                                  // v0.4 PAID IN FULL
-    if (inc('heckled')) heckled(Math.min(6, (f.heckled || 0) - (lastFx.heckled || 0)), f.heckledData || {});   // v0.4 Heckle
     lastFx = JSON.parse(JSON.stringify(f));
   }
   function boom(d) {
@@ -155,9 +146,10 @@
   }
   function drawCarousel(ch) {
     var cv = $('carCv'), c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height);
+    var fake = { shapeAccent: R.prototype.shapeAccent };
     ['rags', 'good', 'gold'].forEach(function (s, k) {
       var x = 60 + k * 120, y = 70;
-      R.drawPiece(c, { charId: ch.id, color: ch.color, name: ch.name, state: s }, x, y, 30, Date.now());
+      R.prototype.drawToken.call(fake, c, { charId: ch.id, color: ch.color, name: ch.name, state: s }, x, y, 30, false, Date.now());
       c.fillStyle = '#a59fb8'; c.font = '700 13px Fredoka, sans-serif'; c.textAlign = 'center'; c.fillText(s === 'rags' ? 'RAGS' : s === 'good' ? 'DOING GOOD' : 'GOLD', x, 140);
     });
   }
@@ -208,11 +200,8 @@
   // ------------------------------------------------------------------ header + tabs
   function renderHead() {
     var me = st.me, p = pById(me.id) || me;
-    var pc = $('myPiece');
-    if (me.observer) { pc.hidden = true; $('myName').textContent = '\uD83D\uDC40 Watching'; var ob = $('myBadge'); ob.className = 'badge'; ob.textContent = 'OBSERVER \u00b7 ' + me.name; $('myCash').textContent = ''; return; }
-    pc.hidden = false;
-    var pk = [p.charId, p.color, p.state, p.name, me.snow].join('|');     // v0.4: my real piece, redrawn only when it changes
-    if (pc._k !== pk) { pc._k = pk; var pcx = pc.getContext('2d'); pcx.clearRect(0, 0, pc.width, pc.height); R.drawPiece(pcx, { charId: p.charId, color: p.color, name: p.name, state: p.state, snow: me.snow }, pc.width / 2, pc.height * 0.57, pc.width * 0.27, 0); }
+    if (me.observer) { $('myName').textContent = '\uD83D\uDC40 Watching'; var ob = $('myBadge'); ob.className = 'badge'; ob.textContent = 'OBSERVER \u00b7 ' + me.name; $('myCash').textContent = ''; return; }
+    $('myChip').outerHTML = chip(p, 'mychip').replace('class="mychip"', 'class="mychip" id="myChip"');
     $('myName').textContent = me.name + (me.aiCover ? ' (AI covering)' : '');
     var b = $('myBadge'); b.className = 'badge ' + me.state; b.textContent = me.bankrupt ? 'BANKRUPT' : me.state === 'gold' ? 'GOLD' : me.state === 'good' ? 'DOING GOOD' : 'RAGS';
     $('myCash').textContent = me.bankrupt ? 'OUT' : money(me.cash);
@@ -234,14 +223,12 @@
     var t = st.turn, me = st.me, mine = t && t.pid === me.id, h = '';
     if (!t) { setH($('turnMain'), '<div class="info">Waiting\u2026</div>'); return; }
     var cur = pById(t.pid);
-    var hk = !mine && t.heckle && st.rules.heckle;      // v0.4 Heckle: a tiny button beside a stalling player's name
-    h += '<div class="whose">' + (mine ? '<b style="color:#ffd23f">YOUR TURN</b>' : pieceCv(cur, 40, 'wpc') + '<span><b>' + esc(t.name) + '</b>\'s turn</span>' +
-      (hk ? '<button class="heckle' + (t.heckle.forever ? ' hot' : '') + '" data-act="heckle" aria-label="Heckle ' + esc(t.name) + '">\uD83D\uDE02</button>' : '')) + '</div>';
-    h += '<div class="dicebox" id="diceBox"><canvas id="pdice" width="360" height="180"></canvas>' + (mine && (t.stage === 'roll' || t.canRollAgain) ? '<div class="swipe">Swipe up or tap ROLL</div>' : '') + '</div>';
+    h += '<div class="whose">' + (mine ? '<b style="color:#ffd23f">YOUR TURN</b>' : chip(cur) + '<b>' + esc(t.name) + '</b>\'s turn') + '</div>';
+    h += '<div class="dicebox" id="diceBox"><canvas id="pdice" width="360" height="180"></canvas>' + (mine && (t.stage === 'roll' || t.canRollAgain) ? '<div class="swipe">Swipe up on the dice to throw, or tap ROLL</div>' : '') + '</div>';
     if (me.bankrupt) h += '<div class="info">You\'re bankrupt. Stick around: you can still chat and watch.</div>';
     else if (mine) {
       if (t.tab) {
-        h += '<div class="info warn"><b>You owe ' + money(t.tab.amount) + '</b> (' + esc(t.tab.reason) + ').<br>Sell Shops or mortgage deeds in <b>My Stuff</b>, or make a deal: it pays itself the moment you have enough. Or let it raise the cash for you.</div>';
+        h += '<div class="info warn"><b>You owe ' + money(t.tab.amount) + '</b> (' + esc(t.tab.reason) + ').<br>Sell Shops or hock deeds in <b>My Stuff</b>, make a deal, or raise it automatically.</div>';
         if (!t.tab.hopeless) h += '<button class="act buy" data-act="raise">AUTO-RAISE CASH</button>';
         else h += '<div class="info">Even selling everything only raises ' + money(t.tab.raise) + '. Going bust sells your Shops back and pays ' + esc(t.tab.to === 'bank' || t.tab.to === 'pot' ? 'the bank' : t.tab.to) + ' everything you have' + (t.tab.amount > t.tab.raise ? ': you skip town owing ' + money(t.tab.amount - t.tab.raise) : '') + '.</div><button class="act bust" data-act="giveUp">GO BUST, PAY WHAT I CAN</button>';
       }
@@ -267,15 +254,15 @@
       if (pu && pu.open) { var ow = pById(pu.owner), mv = pById(pu.mover); h += '<div class="info warn">' + esc(mv.name) + ' is on ' + esc(ow.name) + '\'s ' + esc(S[pu.sp].name) + '. ' + (pu.owner === me.id ? '<b>HIT PAY UP!</b>' : 'Will ' + esc(ow.name) + ' catch them?') + '</div>'; }
       else if (t.buy) h += '<div class="info">' + esc(t.name) + ' is thinking about buying ' + esc(S[t.buy.sp].name) + '.' + (st.rules.auctions ? ' If they pass, it goes to auction.' : '') + '</div>';
       if (t.auction) h += '<div class="info">\uD83D\uDD28 <b>' + esc(S[t.auction.sp].name) + '</b> is up for auction. Bid with the buttons at the top!</div>';
-      if (st.round <= 1) h += '<div class="info">PAY UP zone: when someone lands on your deed, a giant button takes over this phone. Hit it before they pass the dice.</div>';
+      h += '<div class="info">PAY UP zone: when someone lands on your deed, a giant button takes over this phone. Hit it before they pass the dice.</div>';
       if (me.snow) h += '<div class="info">\u2744 You\'re in the Snowbank, but you can still trade, build and hit PAY UP.</div>';
     }
-    if (setH($('turnMain'), h)) paintPieces($('turnMain'));
+    setH($('turnMain'), h);
     var side = '';
     if (t.card) { var cd = B.DECKS[t.card.deck][t.card.idx]; side += cardHtml(t.card.deck, cd, t.card.idx); }
     else if (st.lastFind && st.lastFind.fresh && B.FINDS[st.lastFind.idx]) side += cardHtml('finds', B.FINDS[st.lastFind.idx], st.lastFind.idx);
     else if (st.lastFind) { var lf = B.FINDS[st.lastFind.idx]; if (lf) side += '<div class="lastfind"><span>\uD83D\uDCDC Latest Secret Find<br><b>' + esc(lf.h) + '</b></span><button data-act="readFind" data-idx="' + st.lastFind.idx + '">READ MORE</button></div>'; }
-    side += historyHtml(st.feed, st.feedCard, false);
+    side += '<div class="feed">' + st.feed.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('') + '</div>';
     if (st.endsIn) side = '<div class="info">' + (C.modes[st.mode] ? C.modes[st.mode].label : '') + ' game: ' + clock(st.endsIn) + ' left</div>' + side;
     setH($('turnSide'), side);
     if (t.roll && t.rollSeq !== ui.lastRollSeq) { ui.lastRollSeq = t.rollSeq; ui.diceT = Date.now(); }
@@ -289,74 +276,11 @@
   }
   function openFind(idx) {
     var c = B.FINDS[idx]; if (!c) return;
-    $('findSheet').classList.remove('rand'); $('fsDeck').textContent = '\uD83D\uDCDC SECRET FINDS';
     $('fsEra').textContent = c.year + ' \u00b7 ' + (C.eras[c.era] || ''); $('fsH').textContent = c.h; $('fsStory').textContent = c.story; $('fsMore').textContent = c.more || '';
     $('fsFx').textContent = 'Card: ' + c.t; $('fsSrc').textContent = c.src && c.src.length ? 'Source: ' + c.src.map(function (u) { return u.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]; }).join(', ') : '';
     $('findSheet').hidden = false;
   }
   $('findSheet').onclick = function (e) { if (e.target === $('findSheet') || e.target === $('fsOk')) $('findSheet').hidden = true; };
-  // ---- v0.4 game history: every drawn card (both decks, anyone's) can be tapped open, like Secret Finds' READ MORE
-  function feedLines(feed, cards, newestFirst) {
-    var rows = (feed || []).map(function (l, i) {
-      var cd = cards && cards[i];
-      return cd ? '<button class="fline ' + cd[0] + '" data-act="readCard" data-deck="' + cd[0] + '" data-idx="' + cd[1] + '"><span>' + (cd[0] === 'finds' ? '\uD83D\uDCDC ' : '\u2684 ') + esc(l) + '</span><i>READ</i></button>' : '<div>' + esc(l) + '</div>';
-    });
-    if (newestFirst) rows.reverse();
-    return rows.join('');
-  }
-  function historyHtml(feed, cards) {
-    var n = (st.cards || []).length;
-    return '<div class="hist-h"><span>History</span>' + (n ? '<button class="cardsbtn" data-act="cardList">\uD83C\uDCCF Cards drawn (' + n + ')</button>' : '') + '</div><div class="feed">' + feedLines(feed, cards, false) + '</div>';
-  }
-  function openCard(deck, idx) {
-    if (deck === 'finds') { openFind(idx); return; }
-    var c = B.DECKS.random[idx]; if (!c) return;
-    var fs = $('findSheet'); fs.classList.add('rand');
-    $('fsDeck').textContent = '\u2684 ' + C.decks.random.name.toUpperCase(); $('fsEra').textContent = c.era && C.eras[c.era] ? C.eras[c.era] : '';
-    $('fsH').textContent = c.h; $('fsStory').textContent = c.t; $('fsMore').textContent = ''; $('fsFx').textContent = ''; $('fsSrc').textContent = '';
-    fs.hidden = false;
-  }
-  function openCardList() {
-    var list = (st.cards || []).slice().reverse();
-    setH($('clRows'), list.map(function (x) {
-      var c = B.DECKS[x[0]] && B.DECKS[x[0]][x[1]]; if (!c) return '';
-      var who = pById(x[2]);
-      return '<button class="clrow ' + x[0] + '" data-act="readCard" data-deck="' + x[0] + '" data-idx="' + x[1] + '"><span class="ic">' + (x[0] === 'finds' ? '\uD83D\uDCDC' : '\u2684') + '</span><span class="t"><b>' + esc(c.h) + '</b><small>' + esc(who ? who.name : '?') + ' \u00b7 round ' + x[3] + '</small></span><i>READ</i></button>';
-    }).join('') || '<div class="muted">No cards yet.</div>');
-    $('cardList').hidden = false;
-  }
-  $('cardList').addEventListener('click', function (e) { if (e.target === $('cardList') || e.target === $('clOk')) $('cardList').hidden = true; });
-
-  // ---- v0.4 PAID IN FULL: the debt cleared itself the moment the cash was there
-  function paidInFull(d) {
-    var el = $('paid');
-    $('paidSub').textContent = money(d.amount) + (d.to ? ' to ' + d.to : '') + ' \u2714';
-    el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
-    SFX.play('paid'); vib([40, 60, 40, 60, 180]);
-    clearTimeout(paidInFull._t); paidInFull._t = setTimeout(function () { el.hidden = true; }, 2700);
-  }
-  $('paid').onclick = function () { $('paid').hidden = true; };
-
-  // ---- v0.4 Heckle: laughing faces float up the stalling player's phone; the heckler sees a little one leave the button
-  function spawnFace(x, y, size, rise) {
-    var box = $('faces'), F = C.heckle.faces; if (box.children.length > 24) return;
-    var el = document.createElement('span'); el.className = 'face'; el.textContent = F[Math.floor(Math.random() * F.length)];
-    el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.fontSize = size + 'px';
-    el.style.setProperty('--dx', ((Math.random() - 0.5) * 80).toFixed(0) + 'px'); el.style.setProperty('--rise', (rise || 0.8 * innerHeight).toFixed(0) + 'px');
-    el.style.setProperty('--rot', ((Math.random() - 0.5) * 50).toFixed(0) + 'deg'); el.style.animationDuration = (1.5 + Math.random() * 0.9).toFixed(2) + 's';
-    box.appendChild(el); setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 2600);
-  }
-  function heckled(n, d) {
-    for (var i = 0; i < Math.min(9, 3 * Math.max(1, n)); i++) (function (k) { setTimeout(function () { spawnFace(innerWidth * (0.1 + Math.random() * 0.8), innerHeight * (0.82 + Math.random() * 0.12), 34 + Math.random() * 30); }, k * 90); })(i);
-    vib([25, 35, 25]); SFX.play('heckle');
-    if (Date.now() - ui.heckToast > 5000 && d.from) { ui.heckToast = Date.now(); toast('\uD83D\uDE02 ' + d.from + ' is heckling you. Do something!', 1600); }
-  }
-  function doHeckle(btn) {
-    var now = Date.now(); if (now - ui.heckleAt < 280) return; ui.heckleAt = now;
-    send({ t: 'heckle' }); vib(10);
-    var r = btn.getBoundingClientRect(); spawnFace(r.left + r.width / 2 - 12, r.top, 22, 120);
-    btn.classList.remove('bump'); void btn.offsetWidth; btn.classList.add('bump');
-  }
   function clock(ms) { var s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
   function updatePass() {
     var b = $('passBtn'); if (!b || !st.turn) return;
@@ -404,231 +328,36 @@
     if (sp > 30 && sp < 40) return 20 + (sp - 31);     // right side 31..39, top to bottom
     return 30 + (10 - sp);                             // bottom row 9..1, left to right
   }
-  // v0.4 My Stuff: a slim header (view switch top-left, cash, worth), then either the deed LIST or the CARDS (cover flow)
-  var ICON_LIST = '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
-  var ICON_CARDS = '<svg viewBox="0 0 24 24" width="22" height="22"><rect x="8" y="3" width="9" height="15" rx="2" fill="currentColor"/><rect x="2.5" y="6" width="7" height="12" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.8" transform="rotate(-10 6 12)"/><rect x="15" y="6" width="7" height="12" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.8" transform="rotate(10 18 12)"/></svg>';
-  function sortedDeeds() { return myDeeds().sort(function (a, b) { var ga = S[a].group, gb = S[b].group; return ga === gb ? boardRank(a) - boardRank(b) : firstRank(ga) - firstRank(gb); }); }
-  function firstRank(gr) { return Math.min.apply(null, B.GROUP_MEMBERS[gr].map(boardRank)); }
-  function deedInfo(sp) {
-    var s = S[sp], pr = st.props[sp], me = st.me, gr = s.group, G = B.GROUPS[gr], members = B.GROUP_MEMBERS[gr];
-    var full = ownsGroup(me.id, gr), shops = pr[1], setShops = members.map(function (i) { return st.props[i][1]; });
-    var anyShops = setShops.some(function (x) { return x > 0; }), anyMort = members.some(function (i) { return st.props[i][2]; });
-    var cost = G.shop || 0, back = Math.floor(cost * C.shopSellBack), even = st.rules.evenBuild;
-    return { s: s, G: G, members: members, have: members.filter(function (i) { return st.props[i][0] === me.id; }).length, full: full, shops: shops, mort: !!pr[2], lock: !!pr[3], cost: cost, back: back,
-      canB: s.type === 'prop' && full && !anyMort && shops < 5 && (!even || shops <= Math.min.apply(null, setShops)) && me.cash >= cost && !pr[3],
-      canS: shops > 0 && (!even || shops >= Math.max.apply(null, setShops)),
-      canM: !pr[2] && !anyShops && !pr[3], unCost: Math.ceil(s.hock * (1 + C.unhockFee)) };
-  }
-  function rentStr(sp) { var r = rentNow(sp); return typeof r === 'number' ? money(r) : r; }
   function renderStuff() {
-    var me = st.me, deeds = sortedDeeds(), G = C.states, max = G.goldNetWorth * 1.15, pct = function (v) { return Math.min(100, v / max * 100); }, cards = ui.stuffView === 'cards';
-    $('tab-stuff').classList.toggle('cards', cards);
-    var t = st.turn, owe = t && t.tab && t.pid === me.id;
-    var h = '<div class="stuffhead"><button class="viewsw" data-act="stuffView" aria-label="' + (cards ? 'Show my deeds as a list' : 'Show my deeds as cards') + '">' + (cards ? ICON_LIST : ICON_CARDS) + '</button>' +
-      '<div class="sh-cash">' + money(me.cash) + '<small>cash</small></div><div class="sh-worth"><span class="badge ' + me.state + '">' + (me.state === 'gold' ? 'GOLD' : me.state === 'good' ? 'DOING GOOD' : 'RAGS') + '</span><small>worth ' + money(me.worth) + '</small></div></div>';
-    h += '<div class="meter slim"><div class="fill" style="width:' + pct(me.worth) + '%"></div><span class="mk" style="left:' + pct(G.goodNetWorth) + '%"></span><span class="mk gold" style="left:' + pct(G.goldNetWorth) + '%"></span></div>';
-    if (me.passes || me.lockedCash) h += '<div class="sh-extra">' + (me.passes ? '\uD83D\uDE9A ' + me.passes + ' Tow Pass' + (me.passes > 1 ? 'es' : '') : '') + (me.lockedCash ? ' \uD83D\uDD12 ' + money(me.lockedCash) + ' locked for your Tab' : '') + '</div>';
-    if (owe) h += '<div class="info warn slim">You owe <b>' + money(t.tab.amount) + '</b>. Sell or mortgage below: it pays itself the moment you have enough.</div>';
+    var me = st.me, deeds = myDeeds(), G = C.states, max = G.goldNetWorth * 1.15, pct = function (v) { return Math.min(100, v / max * 100); };
+    var h = '<div class="muted">Cash</div><div class="bigcash">' + money(me.cash) + '</div>';
+    h += '<div class="meter"><div class="fill" style="width:' + pct(me.worth) + '%"></div><span class="mk" style="left:' + pct(G.goodNetWorth) + '%">Doing Good ' + money(G.goodNetWorth) + '</span><span class="mk" style="left:' + pct(G.goldNetWorth) + '%">GOLD ' + money(G.goldNetWorth) + '</span></div>';
+    h += '<div class="muted">Net worth ' + money(me.worth) + ' \u00b7 <span class="badge ' + me.state + '">' + (me.state === 'gold' ? 'GOLD' : me.state === 'good' ? 'DOING GOOD' : 'RAGS') + '</span> \u00b7 GOLD needs ' + money(G.goldNetWorth) + ' and #1</div>';
+    h += '<div class="info">\uD83D\uDE9A Tow Truck Passes: <b>' + me.passes + '</b>' + (me.lockedCash ? '<br>\uD83D\uDD12 ' + money(me.lockedCash) + ' locked for your open Tab' : '') + '</div>';
     setH($('stuffMain'), h);
-    if (cards) { $('flowBox').hidden = false; renderFlow(deeds); setH($('stuffSide'), moreHtml()); }
-    else { $('flowBox').hidden = true; closeSet(true); setH($('stuffSide'), listHtml(deeds) + moreHtml()); }
-  }
-  function listHtml(deeds) {
-    var me = st.me, groups = {}, order = [], out = '';
-    deeds.forEach(function (sp) { var gr = S[sp].group; if (!groups[gr]) { groups[gr] = []; order.push(gr); } groups[gr].push(sp); });
+    var groups = {}; deeds.forEach(function (sp) { (groups[S[sp].group] = groups[S[sp].group] || []).push(sp); });
+    // v0.2: deeds in the order you see them on the board: top row left to right, left side top to bottom,
+    // right side top to bottom, bottom row left to right. Sets appear in order of their first deed.
+    var out = '', order = [];
+    deeds.slice().sort(function (a, b) { return boardRank(a) - boardRank(b); }).forEach(function (sp) { if (order.indexOf(S[sp].group) < 0) order.push(S[sp].group); });
+    Object.keys(groups).forEach(function (gr) { groups[gr].sort(function (a, b) { return boardRank(a) - boardRank(b); }); });
     order.forEach(function (gr) {
-      var G2 = B.GROUPS[gr], full = ownsGroup(me.id, gr);
-      out += '<div class="grp"><div class="grp-h"><span class="sw" style="background:' + G2.color + '"></span>' + G2.name + (full && G2.shop ? ' \u00b7 FULL SET' : ' \u00b7 ' + groups[gr].length + '/' + B.GROUP_MEMBERS[gr].length) + '</div>';
+      if (!groups[gr]) return; var G2 = B.GROUPS[gr], full = ownsGroup(me.id, gr), groupShops = B.GROUP_MEMBERS[gr].some(function (i) { return st.props[i][1] > 0; });
+      out += '<div class="grp"><div class="grp-h"><span class="sw" style="background:' + G2.color + '"></span>' + G2.name + (full && G2.shop ? ' \u00b7 FULL SET (Shop ' + money(G2.shop) + ')' : ' \u00b7 ' + groups[gr].length + '/' + B.GROUP_MEMBERS[gr].length) + '</div>';
       groups[gr].forEach(function (sp) {
-        var I = deedInfo(sp), s = I.s, shops = I.shops;
-        var stat = I.mort ? 'MORTGAGED' : shops === 5 ? 'MEGA-PLEX' : shops ? shops + ' Shop' + (shops > 1 ? 's' : '') : 'no Shops';
-        out += '<div class="deedrow' + (I.mort ? ' hocked' : '') + '" data-act="pingTile" data-sp="' + sp + '" style="border-left-color:' + G2.color + '"><div class="dn">' + (I.lock ? '\uD83D\uDD12 ' : '') + esc(s.name) + '<small>' + stat + ' \u00b7 rent ' + rentStr(sp) + '</small></div>';
-        if (s.type === 'prop' && I.full && !I.mort) out += '<button class="sbtn buy" data-act="build" data-sp="' + sp + '"' + (I.canB ? '' : ' disabled') + '>' + (shops === 4 ? 'MEGA' : 'BUY') + ' <small>(\u2212' + money(I.cost) + ')</small></button><button class="sbtn" data-act="sell" data-sp="' + sp + '"' + (I.canS ? '' : ' disabled') + '>SELL <small>(+' + money(I.back) + ')</small></button>';
-        out += I.mort ? '<button class="sbtn" data-act="unhock" data-sp="' + sp + '"' + (me.cash >= I.unCost ? '' : ' disabled') + '>UNMORTGAGE <small>(\u2212' + money(I.unCost) + ')</small></button>' : '<button class="sbtn" data-act="hock" data-sp="' + sp + '"' + (I.canM ? '' : ' disabled') + '>MORTGAGE <small>(+' + money(s.hock) + ')</small></button>';
+        var pr = st.props[sp], s = S[sp], shops = pr[1], lock = pr[3];
+        var stat = pr[2] ? 'HOCKED (unhock ' + money(Math.ceil(s.hock * 1.1)) + ')' : shops === 5 ? 'MEGA-PLEX' : shops ? shops + ' Shop' + (shops > 1 ? 's' : '') : 'no Shops';
+        out += '<div class="deedrow' + (pr[2] ? ' hocked' : '') + '" data-act="pingTile" data-sp="' + sp + '" style="border-left-color:' + G2.color + '"><div class="dn">' + (lock ? '\uD83D\uDD12 ' : '') + esc(s.name) + '<small>' + stat + ' \u00b7 rent ' + (typeof rentNow(sp) === 'number' ? money(rentNow(sp)) : rentNow(sp)) + '</small></div>';
+        if (s.type === 'prop' && full && !pr[2]) out += '<button class="sbtn" data-act="build" data-sp="' + sp + '"' + (shops >= 5 ? ' disabled' : '') + '>+ ' + (shops === 4 ? 'MEGA' : 'SHOP') + '</button><button class="sbtn" data-act="sell" data-sp="' + sp + '"' + (shops ? '' : ' disabled') + '>\u2212 SELL</button>';
+        out += pr[2] ? '<button class="sbtn" data-act="unhock" data-sp="' + sp + '">UNHOCK</button>' : '<button class="sbtn" data-act="hock" data-sp="' + sp + '"' + (groupShops || lock ? ' disabled' : '') + '>HOCK +' + money(s.hock) + '</button>';
         out += '</div>';
       });
       out += '</div>';
     });
-    return out || '<div class="info">No deeds yet. Land on one and hit BUY!</div>';
-  }
-  function moreHtml() {
-    var me = st.me, h = '<button class="ghost morebtn" data-act="moreToggle">\u22EF ' + (ui.moreOpen ? 'Less' : 'Leave or new game') + '</button>';
-    if (ui.moreOpen) { if (!me.bankrupt) h += '<button class="ghost leavebtn" data-act="leave">\uD83D\uDEAA Leave game\u2026</button>'; if (me.vip) h += '<button class="ghost leavebtn" data-act="newgame">\uD83D\uDD04 New game (back to setup)\u2026</button>'; }
-    return h;
-  }
-
-  // ---- v0.4 cards view: an iPod-style cover flow on a slight arc. Swipe with momentum, tap the front card (or pinch
-  // open) to unfold its colour set, tap a side card to bring it to the front. The front card carries BUY / SELL at the
-  // top; MORTGAGE flips it over to a Confirm on the back. Mortgaged cards stay flipped, with Unmortgage on the back.
-  var flow = { pos: 0, target: null, vel: 0, els: {}, order: [], raf: 0, drag: null, flip: {}, open: null, cw: 200, ch: 284, last: 0, touches: 0, pinch: null };
-  function cardFront(sp) {
-    var I = deedInfo(sp), s = I.s, col = gcol(sp), h = '';
-    if (s.type === 'prop') {
-      if (I.full && !I.mort) h += '<div class="fc-btns"><button class="fb buy" data-act="build" data-sp="' + sp + '"' + (I.canB ? '' : ' disabled') + '>' + (I.shops === 4 ? 'MEGA' : 'BUY') + '<small>(\u2212' + money(I.cost) + ')</small></button><button class="fb sell" data-act="sell" data-sp="' + sp + '"' + (I.canS ? '' : ' disabled') + '>SELL<small>(+' + money(I.back) + ')</small></button></div>';
-      else h += '<div class="fc-btns need">' + (I.full ? 'Unmortgage the set to build' : 'Own all ' + I.members.length + ' to build \u00b7 ' + I.have + '/' + I.members.length) + '</div>';
-    } else h += '<div class="fc-btns need">' + (s.type === 'whistle' ? 'Whistle Stop' : 'Utility') + ' \u00b7 ' + I.have + '/' + I.members.length + '</div>';
-    h += '<div class="fc-band" style="background:' + col + '"><b>' + (I.lock ? '\uD83D\uDD12 ' : '') + esc(s.name) + '</b><small>' + esc(I.G.name) + '</small></div><div class="fc-body">';
-    if (s.type === 'prop') {
-      var cur = I.mort ? -1 : I.shops;
-      h += '<div class="ladder">' + s.rents.map(function (r, k) { return '<div class="lr' + (k === cur ? ' on' : '') + '"><span>' + (k === 0 ? (I.full ? 'Rent \u00d72 (set)' : 'Rent') : k === 5 ? 'Mega-Plex' : '\uD83C\uDFE0'.repeat(k)) + '</span><b>' + money(k === 0 && I.full ? r * 2 : r) + '</b></div>'; }).join('') + '</div>';
-      h += I.full && !I.mort && I.shops < 5 ? '<div class="fc-next">Next ' + (I.shops === 4 ? 'Mega-Plex' : 'Shop #' + (I.shops + 1)) + ' <b>' + money(I.cost) + '</b> \u2192 rent ' + money(s.rents[I.shops + 1]) + '</div>' : '<div class="fc-next">' + (I.shops === 5 ? 'Maxed out: Mega-Plex' : 'Rent now ' + rentStr(sp)) + '</div>';
-    } else if (s.type === 'whistle') {
-      var nW = B.WHISTLES.filter(function (w) { return st.props[w][0] === st.me.id; }).length;
-      h += '<div class="ladder">' + [1, 2, 3, 4].map(function (k) { return '<div class="lr' + (k === nW && !I.mort ? ' on' : '') + '"><span>' + k + ' stop' + (k > 1 ? 's' : '') + '</span><b>' + money(B.WHISTLE_RENT[k]) + '</b></div>'; }).join('') + '</div><div class="fc-next">Rent now ' + rentStr(sp) + '</div>';
-    } else {
-      var nJ = B.GROUP_MEMBERS.juice.filter(function (w) { return st.props[w][0] === st.me.id; }).length;
-      h += '<div class="ladder">' + [1, 2].map(function (k) { return '<div class="lr' + (k === nJ && !I.mort ? ' on' : '') + '"><span>Own ' + k + '</span><b>dice \u00d7' + B.JUICE_MULT[k] + '</b></div>'; }).join('') + '</div><div class="fc-next">Rent is the dice roll times that</div>';
-    }
-    h += '<div class="fc-foot"><span>Price ' + money(s.price) + '</span><button class="fb mort" data-act="flipMort" data-sp="' + sp + '"' + (I.canM ? '' : ' disabled') + '>MORTGAGE<small>(+' + money(s.hock) + ')</small></button></div></div>';
-    return h;
-  }
-  function cardBack(sp) {
-    var I = deedInfo(sp), s = I.s, col = gcol(sp);
-    var h = '<div class="fc-band slim" style="background:' + col + '"><b>' + esc(s.name) + '</b></div><div class="fc-backbody">';
-    if (I.mort) h += '<div class="stamp">MORTGAGED</div><button class="fb confirm unm" data-act="unhock" data-sp="' + sp + '"' + (st.me.cash >= I.unCost ? '' : ' disabled') + '>UNMORTGAGE<small>(\u2212' + money(I.unCost) + ')</small></button><div class="faint">No rent while it\u2019s mortgaged. You got ' + money(s.hock) + ' for it. Price ' + money(s.price) + '.</div>';
-    else h += '<div class="bv"><small>Mortgage for</small><b>+' + money(s.hock) + '</b></div><button class="fb confirm" data-act="hock" data-sp="' + sp + '">CONFIRM</button><div class="faint">No rent from it (now ' + rentStr(sp) + ') until you pay ' + money(I.unCost) + ' to unmortgage. No building on the set meanwhile.</div><button class="fb cancel" data-act="flipBack" data-sp="' + sp + '">Cancel</button>';
-    return h + '</div>';
-  }
-  function makeCard(sp) {
-    var el = document.createElement('div'); el.className = 'fcard'; el.setAttribute('data-sp', sp);
-    el.innerHTML = '<div class="fc-rot"><div class="fc-face fc-front"></div><div class="fc-face fc-back"></div></div>';
-    el._f = el.querySelector('.fc-front'); el._b = el.querySelector('.fc-back'); return el;
-  }
-  function fillCard(el, sp) {
-    var pr = st.props[sp]; if (pr[2]) delete flow.flip[sp];
-    setH(el._f, cardFront(sp)); setH(el._b, cardBack(sp));
-    el.classList.toggle('flipped', !!pr[2] || !!flow.flip[sp]); el.classList.toggle('mort', !!pr[2]);
-    el.style.setProperty('--gc', gcol(sp));
-  }
-  function landscape() { return !!(window.matchMedia && matchMedia('(orientation: landscape) and (min-width: 560px)').matches); }
-  function sizeFlow() {
-    var box = $('flowBox'), W = box.clientWidth || 360, cw, ch;
-    if (landscape()) { var H = $('tab-stuff').clientHeight - $('stuffMain').offsetHeight - 30; ch = Math.max(190, Math.min(330, H - 24)); cw = ch / 1.42; }
-    else { cw = Math.min(260, W * 0.62); ch = cw * 1.42; }
-    flow.cw = cw; flow.ch = ch; flow.land = landscape();
-    box.style.height = Math.round(ch + 34) + 'px';
-    box.style.setProperty('--cw', cw.toFixed(1) + 'px'); box.style.setProperty('--ch', ch.toFixed(1) + 'px');
-  }
-  function initFlow(box) {
-    box._init = true;
-    box.innerHTML = '<div class="flow" id="flowStage"></div><div class="flow-empty" hidden>No deeds yet. Land on one and hit BUY!</div><div class="flow-hint">Swipe \u00b7 tap the front card to open its set</div>';
-    var stg = $('flowStage');
-    stg.addEventListener('pointerdown', function (e) {
-      if (flow.open || flow.drag || flow.touches >= 2 || e.button > 0 || e.target.closest('button')) return;
-      flow.drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, pos0: flow.pos, moved: false, target: e.target, samples: [[performance.now(), flow.pos]] };
-      flow.vel = 0; flow.target = null;
-    });
-    stg.addEventListener('pointermove', function (e) {
-      var d = flow.drag; if (!d || e.pointerId !== d.id) return;
-      var dx = e.clientX - d.x0, dy = e.clientY - d.y0;
-      if (!d.moved) { if (Math.abs(dx) < 7) return; if (Math.abs(dy) > Math.abs(dx) * 1.3) { flow.drag = null; return; } d.moved = true; try { stg.setPointerCapture(e.pointerId); } catch (er) {} }
-      var n = flow.order.length, p = d.pos0 - dx / (flow.cw * 0.42);
-      if (p < 0) p *= 0.35; else if (p > n - 1) p = n - 1 + (p - (n - 1)) * 0.35;
-      flow.pos = p; var now = performance.now(); d.samples.push([now, p]); while (d.samples.length > 2 && now - d.samples[0][0] > 90) d.samples.shift();
-      layoutFlow();
-    });
-    function up(e) {
-      var d = flow.drag; if (!d || e.pointerId !== d.id) return; flow.drag = null;
-      if (!d.moved) { flowTap(d.target); return; }
-      var a = d.samples[0], b = d.samples[d.samples.length - 1], dt = b[0] - a[0];
-      flow.vel = dt > 5 ? (b[1] - a[1]) / dt : 0; flow.vel = Math.max(-0.03, Math.min(0.03, flow.vel));
-      flow.target = clampI(Math.round(flow.pos + flow.vel * 260)); kick();
-    }
-    stg.addEventListener('pointerup', up); stg.addEventListener('pointercancel', function (e) { if (flow.drag && flow.drag.id === e.pointerId) { flow.drag = null; flow.target = clampI(Math.round(flow.pos)); kick(); } });
-    stg.addEventListener('wheel', function (e) { if (flow.open) return; var dd = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if (Math.abs(dd) < 4) return; e.preventDefault(); var now = Date.now(); if (now - (flow.wheelAt || 0) < 140) return; flow.wheelAt = now; flow.target = clampI(Math.round(flow.target == null ? flow.pos : flow.target) + (dd > 0 ? 1 : -1)); flow.vel = 0; kick(); }, { passive: false });
-    // pinch open on the wheel unfolds the front card's set; pinch closed on the unfolded set folds it back
-    var host = $('tab-stuff').parentNode;
-    function dist(e) { var a = e.touches[0], b = e.touches[1]; return Math.max(10, Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)); }
-    host.addEventListener('touchstart', function (e) { if (tab !== 'stuff' || ui.stuffView !== 'cards') return; flow.touches = e.touches.length; if (e.touches.length === 2) { flow.pinch = { d0: dist(e), done: false }; flow.drag = null; } }, { passive: true });
-    host.addEventListener('touchmove', function (e) {
-      if (!flow.pinch || e.touches.length !== 2) return; e.preventDefault();
-      var r = dist(e) / flow.pinch.d0; if (flow.pinch.done) return;
-      if (!flow.open && r > 1.25) { flow.pinch.done = true; openFrontSet(); } else if (flow.open && r < 0.8) { flow.pinch.done = true; closeSet(); }
-    }, { passive: false });
-    host.addEventListener('touchend', function (e) { flow.touches = e.touches.length; if (e.touches.length < 2) flow.pinch = null; });
-    $('flowSet').addEventListener('click', function (e) {
-      if (e.target.closest('button')) return;
-      var c = e.target.closest('.fcard'); if (!c) { closeSet(); return; }
-      if (!c.classList.contains('ghost')) ping(+c.getAttribute('data-sp'));
-    });
-    window.addEventListener('resize', function () { if (tab === 'stuff' && ui.stuffView === 'cards' && st) { sizeFlow(); layoutFlow(); if (flow.open) renderSet(true); } });
-  }
-  function clampI(i) { return Math.max(0, Math.min(flow.order.length - 1, i)); }
-  function ping(sp) { if (!(sp >= 0)) return; send({ t: 'pingTile', sp: sp }); vib(12); }
-  function flowTap(target) {
-    var el = target && target.closest && target.closest('.fcard'); if (!el) return;
-    var sp = +el.getAttribute('data-sp'), i = flow.order.indexOf(sp); if (i < 0) return;
-    ping(sp);
-    if (Math.abs(i - flow.pos) < 0.5) openSet(S[sp].group); else { flow.target = i; flow.vel = 0; kick(); SFX.play('click'); }
-  }
-  function renderFlow(deeds) {
-    var box = $('flowBox'); if (!box._init) initFlow(box);
-    sizeFlow();
-    var stg = $('flowStage'), old = flow.order, front = old.length ? old[clampI(Math.round(flow.pos))] : null;
-    deeds.forEach(function (sp) { if (!flow.els[sp]) { flow.els[sp] = makeCard(sp); stg.appendChild(flow.els[sp]); } });
-    Object.keys(flow.els).forEach(function (k) { if (deeds.indexOf(+k) < 0) { var e = flow.els[k]; if (e.parentNode) e.parentNode.removeChild(e); delete flow.els[k]; } });
-    var changed = old.join() !== deeds.join(); flow.order = deeds.slice();
-    if (changed && front != null && deeds.indexOf(front) >= 0) { flow.pos = deeds.indexOf(front); flow.target = null; flow.vel = 0; }
-    flow.pos = Math.max(0, Math.min(Math.max(0, deeds.length - 1), flow.pos));
-    deeds.forEach(function (sp) { fillCard(flow.els[sp], sp); });
-    box.querySelector('.flow-empty').hidden = deeds.length > 0; box.querySelector('.flow-hint').hidden = !deeds.length;
-    layoutFlow();
-    if (flow.open) renderSet(false);
-  }
-  function layoutFlow() {
-    var cw = flow.cw, land = flow.land, gap = cw * (land ? 0.62 : 0.43), step = cw * (land ? 0.13 : 0.07);
-    flow.order.forEach(function (sp, i) {
-      var el = flow.els[sp]; if (!el) return;
-      var d = i - flow.pos, ad = Math.abs(d), sg = d < 0 ? -1 : 1, a1 = Math.min(1, ad);
-      if (ad > 9.5) { if (el.style.visibility !== 'hidden') el.style.visibility = 'hidden'; return; }
-      if (el.style.visibility) el.style.visibility = '';
-      var x = ad <= 1 ? d * gap : sg * (gap + (ad - 1) * step), z = -a1 * cw * 0.55 - Math.max(0, ad - 1) * 7;
-      var y = Math.pow(Math.min(ad, 8), 1.45) * cw * 0.016, ry = -sg * a1 * 56, rz = sg * Math.min(ad, 8) * 1.5;
-      el.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,' + z.toFixed(1) + 'px) rotateY(' + ry.toFixed(1) + 'deg) rotateZ(' + rz.toFixed(2) + 'deg)';
-      el.style.zIndex = String(1000 - Math.round(ad * 10));
-      var fr = ad < 0.5; if (el.classList.contains('front') !== fr) el.classList.toggle('front', fr);
-    });
-  }
-  // critically damped spring toward the target card, starting with the swipe's momentum (no overshoot, no hard stop)
-  function kick() { if (!flow.raf) { flow.last = performance.now(); flow.raf = requestAnimationFrame(flowAnim); } }
-  function flowAnim() {
-    flow.raf = 0; if (flow.drag) return;
-    var now = performance.now(), dt = Math.min(100, now - flow.last), w = 0.0155; flow.last = now;
-    if (!flow.order.length) return;
-    if (flow.target == null) flow.target = clampI(Math.round(flow.pos));
-    for (var n = Math.ceil(dt / 4), hh = dt / n, k = 0; k < n; k++) { var acc = w * w * (flow.target - flow.pos) - 2 * w * flow.vel; flow.vel += acc * hh; flow.pos += flow.vel * hh; }
-    if (Math.abs(flow.target - flow.pos) < 0.002 && Math.abs(flow.vel) < 0.0004) { flow.pos = flow.target; flow.vel = 0; layoutFlow(); return; }
-    layoutFlow(); flow.raf = requestAnimationFrame(flowAnim);
-  }
-  function openFrontSet() { var sp = flow.order[clampI(Math.round(flow.pos))]; if (sp != null) { ping(sp); openSet(S[sp].group); } }
-  function openSet(gr) { flow.open = gr; renderSet(true); SFX.play('card'); vib(15); }
-  function closeSet(quiet) {
-    if (!flow.open) return; flow.open = null; var o = $('flowSet');
-    if (quiet) { o.hidden = true; return; }
-    o.classList.add('closing'); setTimeout(function () { if (!flow.open) o.hidden = true; o.classList.remove('closing'); }, 200);
-  }
-  function renderSet(fresh) {
-    var o = $('flowSet'), gr = flow.open; if (!gr) return;
-    var members = B.GROUP_MEMBERS[gr].slice().sort(function (a, b) { return boardRank(a) - boardRank(b); }), n = members.length, land = landscape();
-    o.hidden = false;
-    var W = o.clientWidth - 24, H = o.clientHeight - 44, cols = land ? n : (n === 1 ? 1 : 2), rows = Math.ceil(n / cols), gap = 10;
-    var cw = Math.min((W - (cols - 1) * gap) / cols, (H - (rows - 1) * gap) / rows / 1.42, 260), key = gr + ':' + members.map(function (sp) { return st.props[sp][0] === st.me.id ? 1 : 0; }).join('') + ':' + Math.round(cw) + ':' + cols;
-    if (fresh || o._key !== key) {
-      o._key = key;
-      o.innerHTML = '<div class="fs-title"><span class="sw" style="background:' + B.GROUPS[gr].color + '"></span>' + esc(B.GROUPS[gr].name) + '<small>tap outside or pinch to close</small></div><div class="fs-grid" style="--cw:' + cw.toFixed(1) + 'px;--ch:' + (cw * 1.42).toFixed(1) + 'px;grid-template-columns:repeat(' + cols + ',var(--cw))"></div>';
-      var grid = o.querySelector('.fs-grid');
-      members.forEach(function (sp, i) {
-        var el;
-        if (st.props[sp][0] === st.me.id) { el = makeCard(sp); el.classList.add('front'); }
-        else { el = document.createElement('div'); el.className = 'fcard ghost'; el.setAttribute('data-sp', sp); }
-        el.style.animationDelay = (i * 45) + 'ms'; grid.appendChild(el);
-      });
-    }
-    Array.prototype.forEach.call(o.querySelectorAll('.fs-grid .fcard'), function (el) {
-      var sp = +el.getAttribute('data-sp');
-      if (el.classList.contains('ghost')) { var ow = pById(st.props[sp][0]); setH(el, '<div class="fc-face"><div class="fc-band" style="background:' + gcol(sp) + '"><b>' + esc(S[sp].name) + '</b></div><div class="ghost-t">' + (ow ? pieceCv(ow, 30) + '<span>' + esc(ow.name) + '</span>' : 'For sale<br>' + money(S[sp].price)) + '</div></div>') && paintPieces(el); el.style.setProperty('--gc', gcol(sp)); }
-      else fillCard(el, sp);
-    });
+    out = out || '<div class="info">No deeds yet. Land on one and hit BUY!</div>';
+    if (!me.bankrupt) out += '<button class="ghost leavebtn" data-act="leave">\uD83D\uDEAA Leave game\u2026</button>';
+    if (st.me.vip) out += '<button class="ghost leavebtn" data-act="newgame">\uD83D\uDD04 New game (back to setup)\u2026</button>';
+    setH($('stuffSide'), out);
   }
 
   // ------------------------------------------------------------------ Board / Info
@@ -643,7 +372,7 @@
         if (s.type === 'prop') h += '<div class="band" style="background:' + gcol(i) + '"></div>';
         h += '<span class="nm">' + esc(s.short) + '</span>';
       }
-      if (pr && pr[0] >= 0 && pr[1]) h += '<b class="sh">' + (pr[1] === 5 ? 'MP' : pr[1] + 'S') + '</b>';
+      if (pr && pr[0] >= 0) { h += '<div class="own"></div>'; if (pr[1]) h += '<b class="sh">' + (pr[1] === 5 ? 'MP' : pr[1] + 'S') + '</b>'; }
       h += '</div>';
     }
     h += '<div class="mid">RED DEER<br>RICH<small>' + (st.rules.jackpot ? 'Dirt Lot pot ' + money(st.pot) : 'Round ' + st.round) + '</small></div>';
@@ -653,7 +382,7 @@
     if (s0.price) {
       var o0 = pr0[0] >= 0 ? pById(pr0[0]) : null;
       side += '<div class="deedcard"><div class="top" style="background:' + gcol(ui.sel) + '">' + esc(s0.name) + '</div><div class="body">';
-      side += 'Owner: <b>' + (o0 ? esc(o0.name) : 'the bank (for sale)') + '</b>' + (pr0[2] ? ' \u00b7 MORTGAGED' : '') + (pr0[3] ? ' \u00b7 \uD83D\uDD12' : '') + '<br>Price ' + money(s0.price) + ' \u00b7 mortgage ' + money(s0.hock);
+      side += 'Owner: <b>' + (o0 ? esc(o0.name) : 'the bank (for sale)') + '</b>' + (pr0[2] ? ' \u00b7 HOCKED' : '') + (pr0[3] ? ' \u00b7 \uD83D\uDD12' : '') + '<br>Price ' + money(s0.price) + ' \u00b7 hock ' + money(s0.hock);
       if (s0.type === 'prop') { var mx = s0.rents[5]; side += '<div class="stairs">' + s0.rents.map(function (r, k) { return '<div class="' + (o0 && pr0[1] === k ? 'on' : '') + '" style="height:' + Math.max(16, Math.round(100 * Math.sqrt(r / mx))) + '%"><b>$' + r + '</b>' + ['rent', '1', '2', '3', '4', 'MP'][k] + '</div>'; }).join('') + '</div>Shop cost ' + money(B.GROUPS[s0.group].shop) + '. Full set doubles base rent.'; }
       else if (s0.type === 'whistle') side += '<br>Rent $30/$60/$120/$240 for 1-4 stops.<br><i>' + esc(B.STORIES[ui.sel] || '') + '</i>';
       else side += '<br>Rent: dice \u00d7 5 (one) or \u00d7 12 (both).';
@@ -662,11 +391,11 @@
     side += '<h3>Standings</h3>' + st.players.slice().sort(function (a, b) { return (a.bankrupt - b.bankrupt) || (b.worth - a.worth); }).map(function (p) { return '<div class="standing">' + chip(p) + '<span class="nm">' + esc(p.name) + (p.ai ? ' <small class="muted">AI</small>' : '') + '</span><span>' + (p.bankrupt ? 'OUT' : money(p.cash) + ' \u00b7 <span class="badge ' + p.state + '">' + (p.state === 'gold' ? 'GOLD' : p.state === 'good' ? 'GOOD' : 'RAGS') + '</span>') + '</span></div>'; }).join('');
     var R2 = st.rules, on = [];
     if (R2.jackpot) on.push('Dirt Lot Jackpot (pot ' + money(st.pot) + ')'); if (R2.feesToPot) on.push('Fees feed the pot'); if (R2.bullseye) on.push('Bullseye Halfway $500');
-    on.push(R2.payupRace ? 'PAY UP race' + (R2.kidMode ? ' (Kid Mode 4 s)' : '') : 'Automatic rent'); if (R2.perks) on.push('Character perks'); if (R2.auctions) on.push('Auctions on passed deeds'); if (R2.heckle) on.push('Heckle');
+    on.push(R2.payupRace ? 'PAY UP race' + (R2.kidMode ? ' (Kid Mode 4 s)' : '') : 'Automatic rent'); if (R2.perks) on.push('Character perks'); if (R2.auctions) on.push('Auctions on passed deeds');
     side += '<h3>House rules</h3><div class="info">' + on.map(esc).join('<br>') + '<br>Game length: ' + (C.modes[st.mode] ? C.modes[st.mode].label : st.mode) + (st.endsIn ? ' (' + clock(st.endsIn) + ' left)' : '') + '</div>';
     setH($('boardSide'), side);
   }
-  // v0.4 owned tiles: a hard outline in the owner's colour that feathers inward (no wash); after a private deal it drifts over ~10 s
+  // owned tiles get a wash + border in the owner's colour; after a private deal it drifts over ~10 s
   function hexRgb(hx) { hx = String(hx || '#888888'); return [parseInt(hx.substr(1, 2), 16), parseInt(hx.substr(3, 2), 16), parseInt(hx.substr(5, 2), 16)]; }
   function ownerRgb(i) {
     var pr = st.props[i], o = pr && pr[0] >= 0 ? pById(pr[0]) : null; if (!o) return null;
@@ -680,13 +409,12 @@
     for (var n = 0; n < cells.length; n++) {
       var el = cells[n], sp = el.getAttribute('data-sp'); if (sp == null) continue;
       var pr = st.props[+sp], col = ownerRgb(+sp);
-      if (!col) { el.style.boxShadow = ''; continue; }
-      el.style.boxShadow = ownerShadow(col, pr[2]);
+      if (!col) { el.style.backgroundImage = ''; el.style.boxShadow = ''; continue; }
+      var rgb = Math.round(col[0]) + ',' + Math.round(col[1]) + ',' + Math.round(col[2]);
+      var oa = pr[2] ? C.ownerTint.phoneFillHocked : C.ownerTint.phoneFill; el.style.backgroundImage = 'linear-gradient(rgba(' + rgb + ',' + oa + '),rgba(' + rgb + ',' + oa + '))';   // v0.2.1: x0.8
+      el.style.boxShadow = 'inset 0 0 0 2px rgb(' + rgb + ')';
+      var own = el.querySelector('.own'); if (own) { own.style.background = 'rgb(' + rgb + ')'; own.style.opacity = pr[2] ? 0.45 : 1; }
     }
-  }
-  function ownerShadow(col, mort) {
-    var rgb = Math.round(col[0]) + ',' + Math.round(col[1]) + ',' + Math.round(col[2]), a = mort ? (C.ownerLine || {}).mortgagedAlpha || 0.45 : 1;
-    return 'inset 0 0 0 2px rgba(' + rgb + ',' + a + '), inset 0 0 6px 2px rgba(' + rgb + ',' + (0.55 * a).toFixed(2) + ')';
   }
   setInterval(function () { if (tab === 'board' && st && st.phase === 'play' && Object.keys(ui.fades).length) paintOwners(); }, 250);
   $('mini').addEventListener('click', function (e) { if (zm.dragged) { zm.dragged = false; return; } var c = e.target.closest('.c'); if (c) { ui.sel = +c.getAttribute('data-sp'); renderBoard(); } });
@@ -738,7 +466,7 @@
     else if (st.seats && st.seats.length) h = st.seats.map(function (s2) { return '<button class="big-btn obsreq" data-obs="' + s2[0] + '"' + (st.voteBusy ? ' disabled' : '') + '><span class="mini-chip" style="background:' + s2[3] + ';color:' + charById(s2[2]).ink + '">' + esc(initials(s2[1])) + '</span>PLAY AS ' + esc(s2[1]) + '</button>'; }).join('');
     else h = '<div class="muted small">No AI seats right now. You\'ll join the next game automatically.</div>';
     setH($('obsSeats'), h);
-    setH($('obsFeed'), feedLines(st.feed, st.feedCard, true));
+    setH($('obsFeed'), st.feed.slice().reverse().map(function (l) { return '<div>' + esc(l) + '</div>'; }).join(''));
   }
   $('obsBox').addEventListener('click', function (e) {
     var b = e.target.closest('[data-obs]'); if (!b || b.disabled) return;
@@ -846,7 +574,7 @@
     });
     h += '</div>';
     setH($('msgMain'), h);
-    $('tab-msgs').className = 'tab' + (ui.thread != null || ui.builder ? ' open' : '') + (ui.builder && ui.builder.map ? ' mapmode' : '');
+    $('tab-msgs').className = 'tab' + (ui.thread != null || ui.builder ? ' open' : '');
     if (ui.builder) { renderBuilder(); return; }
     renderThread();
   }
@@ -889,32 +617,30 @@
   }
   // trade builder: YOU GIVE | YOU GET, tap deeds to move them in, cash chips + number, CEMENT
   function openBuilder(pid, fromTrade) {
-    var b = { partner: pid || null, give: { cash: 0, props: [], passes: 0 }, get: { cash: 0, props: [], passes: 0 }, editId: null, v: 1, map: store.get('rdr_tradeView') === 'map', lit: {} };   // v0.4: map view remembered
+    var b = { partner: pid || null, give: { cash: 0, props: [], passes: 0 }, get: { cash: 0, props: [], passes: 0 }, editId: null, v: 1 };
     if (fromTrade) { var meA = fromTrade.a === st.me.id; b.partner = meA ? fromTrade.b : fromTrade.a; b.give = JSON.parse(JSON.stringify(meA ? fromTrade.aGives : fromTrade.bGives)); b.get = JSON.parse(JSON.stringify(meA ? fromTrade.bGives : fromTrade.aGives)); b.editId = fromTrade.id; b.v = fromTrade.v + 1; }
     ui.builder = b; ui.builderBuilt = false; renderMsgs();
   }
   function renderBuilder() {
     var b = ui.builder, side = $('msgSide'), me = st.me;
-    if (b.map) { renderTradeMap(b, side); return; }
     if (!ui.builderBuilt) {
-      side.innerHTML = '<div class="builder"><div class="row" style="align-items:center"><button class="ghost" data-act="closeBuilder">\u2190</button><h3 style="flex:1;margin:0">' + (b.editId ? 'Edit deal (counter v' + b.v + ')' : 'New deal') + '</h3><button class="ghost mapsw" data-act="bMap">\uD83D\uDDFA\uFE0F Map</button></div>' +
+      side.innerHTML = '<div class="builder"><div class="row" style="align-items:center"><button class="ghost" data-act="closeBuilder">\u2190</button><h3 style="flex:1;margin:0">' + (b.editId ? 'Edit deal (counter v' + b.v + ')' : 'New deal') + '</h3></div>' +
         '<div class="hb-title">Deal with:</div><div class="partners" id="bPartners"></div>' +
         '<div class="bcols"><div class="bcol"><h4>YOU GIVE</h4><div class="cashrow">\uD83D\uDCB5 <input type="number" min="0" step="10" inputmode="numeric" id="bGiveCash" value="' + (b.give.cash || 0) + '"></div><div class="cashrow" data-cash="give"><button data-add="10">+10</button><button data-add="50">+50</button><button data-add="100">+100</button><button data-add="0">0</button></div><div class="tray" id="bGiveTray"></div></div>' +
         '<div class="bcol"><h4>YOU GET</h4><div class="cashrow">\uD83D\uDCB5 <input type="number" min="0" step="10" inputmode="numeric" id="bGetCash" value="' + (b.get.cash || 0) + '"></div><div class="cashrow" data-cash="get"><button data-add="10">+10</button><button data-add="50">+50</button><button data-add="100">+100</button><button data-add="0">0</button></div><div class="tray" id="bGetTray"></div></div></div>' +
-        '<div class="bmini-row"><div class="tboard small" id="bMini">' + tradeBoardHtml() + '</div><div class="hist muted">Deeds in the deal light up here. Only you see this map.<br>\uD83D\uDD12 = locked by the active turn. Deeds in a set with Shops can\'t be traded.</div></div>' +
-        '<button class="cement" data-act="cement">CEMENT</button></div>';
+        '<button class="cement" data-act="cement">CEMENT</button><div class="hist muted" style="margin-top:6px">Tap deeds to put them in the deal. \uD83D\uDD12 = locked by the active turn. Deeds in a set with Shops can\'t be traded.</div></div>';
       ui.builderBuilt = true; side._h = null;
       $('bGiveCash').addEventListener('input', function () { b.give.cash = Math.max(0, Math.floor(+this.value || 0)); });
       $('bGetCash').addEventListener('input', function () { b.get.cash = Math.max(0, Math.floor(+this.value || 0)); });
     }
-    setH($('bPartners'), partnerButtons(b));
+    setH($('bPartners'), st.players.filter(function (p) { return p.id !== me.id && !p.bankrupt; }).map(function (p) { return '<button data-partner="' + p.id + '" class="' + (b.partner === p.id ? 'on' : '') + '">' + chip(p) + esc(p.name) + '</button>'; }).join(''));
     var tray = function (pid, side, sel) {
       if (pid == null) return '<span class="muted">Pick who to deal with first.</span>';
       var h = '', groupShops = function (sp) { return B.GROUP_MEMBERS[S[sp].group].some(function (i) { return st.props[i][1] > 0; }); };
       st.props.forEach(function (pr, sp) {
         if (!pr || pr[0] !== pid) return;
         var locked = pr[3] || groupShops(sp), on = sel.props.indexOf(sp) !== -1;
-        h += '<button data-tray="' + side + '" data-sp="' + sp + '" class="' + (on ? 'in' : '') + '" style="border-left-color:' + gcol(sp) + '"' + (locked && !on ? ' disabled' : '') + '>' + (locked ? '\uD83D\uDD12 ' : '') + esc(S[sp].short) + (pr[2] ? ' (M)' : '') + '</button>';
+        h += '<button data-tray="' + side + '" data-sp="' + sp + '" class="' + (on ? 'in' : '') + '" style="border-left-color:' + gcol(sp) + '"' + (locked && !on ? ' disabled' : '') + '>' + (locked ? '\uD83D\uDD12 ' : '') + esc(S[sp].short) + (pr[2] ? ' (H)' : '') + '</button>';
       });
       var passes = pid === me.id ? me.passes : (pById(pid) || {}).passes || 0;
       if (passes) h += '<button data-tray="' + side + '" data-pass="1" class="' + (sel.passes ? 'in' : '') + '">\uD83D\uDE9A Tow Pass' + (sel.passes ? ' \u00d7' + sel.passes : '') + '</button>';
@@ -922,13 +648,11 @@
     };
     setH($('bGiveTray'), tray(me.id, 'give', b.give));
     setH($('bGetTray'), tray(b.partner, 'get', b.get));
-    paintTradeBoard($('bMini'), b, false);
   }
   function builderClick(e) {
     var b = ui.builder; if (!b) return false;
     var el = e.target.closest('button'); if (!el) return false;
-    if (el.getAttribute('data-partner')) { var np = +el.getAttribute('data-partner'); if (np !== b.partner) { b.partner = np; b.get = { cash: 0, props: [], passes: 0 }; if ($('bGetCash')) $('bGetCash').value = 0; } renderBuilder(); return true; }
-    if (el.getAttribute('data-rm')) { var rs = b[el.getAttribute('data-rm')], ri = rs.props.indexOf(+el.getAttribute('data-sp')); if (ri >= 0) rs.props.splice(ri, 1); SFX.play('click'); renderBuilder(); return true; }   // v0.4 map: take a deed back out
+    if (el.getAttribute('data-partner')) { var np = +el.getAttribute('data-partner'); if (np !== b.partner) { b.partner = np; b.get = { cash: 0, props: [], passes: 0 }; $('bGetCash').value = 0; } renderBuilder(); return true; }
     if (el.getAttribute('data-tray')) {
       var side = b[el.getAttribute('data-tray')];
       if (el.getAttribute('data-pass')) { var maxP = el.getAttribute('data-tray') === 'give' ? st.me.passes : (pById(b.partner) || {}).passes || 0; side.passes = side.passes >= maxP ? 0 : side.passes + 1; }
@@ -939,128 +663,6 @@
     if (row) { var add = +el.getAttribute('data-add'), s2 = b[row]; s2.cash = add ? (s2.cash || 0) + add : 0; $(row === 'give' ? 'bGiveCash' : 'bGetCash').value = s2.cash; return true; }
     return false;
   }
-
-  // ---- v0.4 trade board: one small private board used by both trade views. Only the two traders' deeds show (everything
-  // else is very faint); tapped / dealt deeds light up. It's drawn only on this phone, never on the TV.
-  function tradeBoardHtml() {
-    var h = '';
-    for (var i = 0; i < 40; i++) { var rc = cellPos(i), corner = i % 10 === 0; h += '<div class="tc' + (corner ? ' corner' : '') + '" data-sp="' + i + '" style="grid-row:' + rc[0] + ';grid-column:' + rc[1] + '">' + (S[i].type === 'prop' ? '<i class="tb" style="background:' + gcol(i) + '"></i>' : '') + (corner ? '' : '<span>' + esc(S[i].short) + '</span>') + '</div>'; }
-    return h + '<div class="tmid"></div>';
-  }
-  function paintTradeBoard(root, b, map) {
-    if (!root) return; var me = st.me.id, pa = b.partner, deal = b.give.props.concat(b.get.props), cells = root.querySelectorAll('.tc');
-    for (var n = 0; n < cells.length; n++) {
-      var el = cells[n], sp = +el.getAttribute('data-sp'), pr = st.props[sp], ow = pr ? pr[0] : -1, ours = ow >= 0 && (ow === me || ow === pa);
-      var cls = 'tc' + (sp % 10 === 0 ? ' corner' : '') + (!ours ? ' faint' : ow === me ? ' mine' : ' theirs') + (deal.indexOf(sp) >= 0 ? (map ? ' indeal' : ' lit') : '') + (map && b.lit[sp] ? ' lit' : '') + (ours && tradeLocked(sp) ? ' locked' : '');
-      if (el.className !== cls) el.className = cls;
-      var sh = ours ? ownerShadow(hexRgb((pById(ow) || {}).color), pr[2]) : '';
-      if (el._sh !== sh) { el._sh = sh; el.style.boxShadow = sh; }
-    }
-  }
-  function tradeLocked(sp) { var pr = st.props[sp]; return !!(pr && (pr[3] || B.GROUP_MEMBERS[S[sp].group].some(function (i) { return st.props[i][1] > 0; }))); }
-
-  // ---- v0.4 trade MAP: drag their deed onto your piece (or yours onto theirs); cash sliders above each piece pour money
-  // across. Reset clears it; Submit goes through the same offer / counter flow as CEMENT.
-  function renderTradeMap(b, side) {
-    var me = st.me, P = b.partner != null ? pById(b.partner) : null;
-    if (!ui.builderBuilt) {
-      side.innerHTML = '<div class="builder map"><div class="tm-layout">' +
-        '<div class="tm-hdr"><div class="row" style="align-items:center"><button class="ghost" data-act="closeBuilder">\u2190</button><h3 style="flex:1;margin:0">' + (b.editId ? 'Counter (v' + b.v + ')' : 'New deal') + '</h3><button class="ghost mapsw" data-act="bMap">\u2630 List</button></div><div class="partners" id="bPartners"></div></div>' +
-        '<div class="tm-wrap" id="tmWrap"><div class="tboard map" id="tmBoard">' + tradeBoardHtml() + '</div><div class="tm-mid" id="tmMid">' +
-          ['me', 'them'].map(function (k) { var sl = k === 'me' ? 'give' : 'get'; return '<div class="tm-side" data-side="' + k + '"><div class="tm-name" id="tmName_' + k + '"></div><div class="tm-bank" id="tmBank_' + k + '"></div>' +
-            '<div class="tm-row"><div class="tm-slider" data-sl="' + sl + '" id="tmSl_' + sl + '"><i class="tm-fill"></i><b class="tm-knob"></b></div><div class="tm-tokcol"><div class="tm-amt" id="tmAmt_' + sl + '"></div><div class="tm-tok" id="tmTok_' + k + '"></div></div></div>' +
-            '<div class="tm-recv" id="tmRecv_' + k + '"></div></div>'; }).join('') +
-        '</div></div>' +
-        '<div class="tm-ctl"><div class="tm-btns"><button class="ghost" data-act="tmReset">RESET</button><button class="cement" data-act="cement">SUBMIT</button></div><div class="hist muted">Drag their deeds onto your piece, yours onto theirs. Slide up to add cash. Tap a deed to light it up: only you see this map.</div></div>' +
-        '</div></div>';
-      ui.builderBuilt = true; side._h = null; ui.tmTok = '';
-      bindTradeMap(b);
-    }
-    setH($('bPartners'), partnerButtons(b));
-    paintTradeBoard($('tmBoard'), b, true);
-    var tk = me.charId + me.state + ':' + (P ? P.id + P.state : '');
-    if (ui.tmTok !== tk) { ui.tmTok = tk; setH($('tmTok_me'), pieceCv(pById(me.id) || me, 46)); setH($('tmTok_them'), P ? pieceCv(P, 46) : '<span class="tm-q">?</span>'); paintPieces($('tmWrap')); }
-    setH($('tmName_me'), 'You'); setH($('tmName_them'), P ? esc(P.name) : 'Pick who');
-    setH($('tmBank_me'), money(me.cash)); setH($('tmBank_them'), P ? money(P.cash) : '\u2014');
-    setH($('tmRecv_me'), recvHtml(b.get, 'get')); setH($('tmRecv_them'), recvHtml(b.give, 'give'));
-    sliderPaint(b, 'give'); sliderPaint(b, 'get');
-  }
-  function partnerButtons(b) { return st.players.filter(function (p) { return p.id !== st.me.id && !p.bankrupt; }).map(function (p) { return '<button data-partner="' + p.id + '" class="' + (b.partner === p.id ? 'on' : '') + '">' + chip(p) + esc(p.name) + '</button>'; }).join(''); }
-  function recvHtml(sideObj, k) {
-    var h = sideObj.props.map(function (sp) { return '<button class="tm-bar" data-rm="' + k + '" data-sp="' + sp + '" style="--gc:' + gcol(sp) + '"><span>' + esc(S[sp].short) + '</span><i>\u2715</i></button>'; }).join('');
-    if (sideObj.passes) h += '<span class="tm-bar pass">\uD83D\uDE9A Pass \u00d7' + sideObj.passes + '</span>';
-    if (sideObj.cash > 0) { var nB = Math.min(7, 1 + Math.floor(Math.log(sideObj.cash / 25 + 1) / Math.log(1.9))); h += '<div class="tm-stack"><span class="bills">' + new Array(nB + 1).join('<i></i>') + '</span><b>' + money(sideObj.cash) + '</b></div>'; }
-    return h;
-  }
-  function sliderMax(b, k) { if (k === 'give') return Math.max(0, st.me.cash); var P = b.partner != null ? pById(b.partner) : null; return P ? Math.max(0, P.cash) : 0; }
-  function sliderPaint(b, k) {
-    var el = $('tmSl_' + k); if (!el) return; var mx = sliderMax(b, k), v = Math.min(b[k].cash || 0, mx), f = mx ? v / mx : 0;
-    el.querySelector('.tm-fill').style.height = (f * 100).toFixed(1) + '%'; el.querySelector('.tm-knob').style.bottom = (f * 100).toFixed(1) + '%';
-    el.classList.toggle('off', !mx);
-    setH($('tmAmt_' + k), v ? (k === 'give' ? '\u2192 ' : '\u2190 ') + money(v) : '');
-  }
-  function pourMoney(fromK, toK, n) {
-    var mid = $('tmMid'), a = $('tmTok_' + fromK), z = $('tmTok_' + toK); if (!mid || !a || !z) return;
-    var mr = mid.getBoundingClientRect(), ar = a.getBoundingClientRect(), zr = z.getBoundingClientRect();
-    for (var i = 0; i < n; i++) (function (k) {
-      if (mid.querySelectorAll('.tm-bill').length > 14) return;
-      var bill = document.createElement('i'); bill.className = 'tm-bill';
-      var x0 = ar.left - mr.left + ar.width / 2 + (Math.random() - 0.5) * 16, y0 = ar.top - mr.top + ar.height / 2;
-      var x1 = zr.left - mr.left + zr.width / 2 + (Math.random() - 0.5) * 16, y1 = zr.top - mr.top + zr.height * 0.9;
-      bill.style.left = x0 + 'px'; bill.style.top = y0 + 'px'; mid.appendChild(bill);
-      setTimeout(function () { bill.style.transform = 'translate(' + (x1 - x0).toFixed(0) + 'px,' + (y1 - y0).toFixed(0) + 'px) rotate(' + ((Math.random() - 0.5) * 70).toFixed(0) + 'deg)'; bill.style.opacity = '0.15'; }, 16 + k * 60);
-      setTimeout(function () { if (bill.parentNode) bill.parentNode.removeChild(bill); }, 700 + k * 60);
-    })(i);
-  }
-  function bindTradeMap(b) {
-    // cash sliders (vertical): slide up to add cash; money pours from the giver's piece to the other one
-    Array.prototype.forEach.call(document.querySelectorAll('.tm-slider'), function (el) {
-      var k = el.getAttribute('data-sl'), drag = false, lastPour = 0, lastV = 0;
-      function setFrom(y) {
-        var bb = ui.builder; if (!bb) return; var r = el.getBoundingClientRect(), mx = sliderMax(bb, k); if (!mx) return;
-        var f = Math.max(0, Math.min(1, (r.bottom - y) / r.height)), step = mx > 2000 ? 50 : 10, v = Math.min(mx, Math.round(f * mx / step) * step);
-        if (v === bb[k].cash) return;
-        var up = v > bb[k].cash; bb[k].cash = v; sliderPaint(bb, k);
-        var mine = k === 'give'; setH($(mine ? 'tmRecv_them' : 'tmRecv_me'), recvHtml(bb[k], k));
-        var now = Date.now(); if (now - lastPour > 70 && Math.abs(v - lastV) >= step) { lastPour = now; lastV = v; pourMoney(up === mine ? 'me' : 'them', up === mine ? 'them' : 'me', 1); if (up) SFX.play('click'); }
-      }
-      el.addEventListener('pointerdown', function (e) { drag = true; try { el.setPointerCapture(e.pointerId); } catch (er) {} setFrom(e.clientY); e.preventDefault(); });
-      el.addEventListener('pointermove', function (e) { if (drag) setFrom(e.clientY); });
-      el.addEventListener('pointerup', function () { drag = false; }); el.addEventListener('pointercancel', function () { drag = false; });
-    });
-    // deeds: drag onto a piece to add, tap to light it up
-    var board = $('tmBoard'), dd = null;
-    board.addEventListener('pointerdown', function (e) {
-      var c = e.target.closest('.tc'); if (!c || c.classList.contains('faint') || c.classList.contains('corner')) return;
-      dd = { sp: +c.getAttribute('data-sp'), x0: e.clientX, y0: e.clientY, ghost: null, id: e.pointerId };
-      try { board.setPointerCapture(e.pointerId); } catch (er) {}
-    });
-    board.addEventListener('pointermove', function (e) {
-      if (!dd || e.pointerId !== dd.id) return;
-      if (!dd.ghost) {
-        if (Math.abs(e.clientX - dd.x0) + Math.abs(e.clientY - dd.y0) < 8) return;
-        if (tradeLocked(dd.sp)) { toast('\uD83D\uDD12 Locked: ' + (st.props[dd.sp][3] ? 'part of the active turn' : 'its set has Shops')); dd = null; return; }
-        var g = dd.ghost = document.createElement('div'); g.className = 'tm-ghost'; g.style.setProperty('--gc', gcol(dd.sp)); g.textContent = S[dd.sp].short; document.body.appendChild(g); vib(10);
-      }
-      dd.ghost.style.left = e.clientX + 'px'; dd.ghost.style.top = e.clientY + 'px';
-      var over = sideAt(e.clientX, e.clientY); Array.prototype.forEach.call(document.querySelectorAll('.tm-side'), function (s2) { s2.classList.toggle('over', s2 === over); });
-    });
-    function end(e) {
-      var d = dd; dd = null; if (!d) return;
-      Array.prototype.forEach.call(document.querySelectorAll('.tm-side'), function (s2) { s2.classList.remove('over'); });
-      var bb = ui.builder; if (!bb) { if (d.ghost) d.ghost.remove(); return; }
-      if (!d.ghost) { if (e.type === 'pointerup') { bb.lit[d.sp] = !bb.lit[d.sp]; SFX.play('click'); vib(8); paintTradeBoard(board, bb, true); } return; }
-      var over = sideAt(e.clientX, e.clientY), k = over && over.getAttribute('data-side'), ow = st.props[d.sp][0], ok = false;
-      if (k === 'them' && ow === st.me.id && bb.partner != null && bb.give.props.indexOf(d.sp) < 0) { bb.give.props.push(d.sp); ok = true; }
-      if (k === 'me' && ow === bb.partner && bb.get.props.indexOf(d.sp) < 0) { bb.get.props.push(d.sp); ok = true; }
-      var g = d.ghost;
-      if (ok) { g.classList.add('drop'); SFX.play('buy'); vib(20); renderBuilder(); }
-      else { g.classList.add('back'); }          // wrong way (or nowhere): nothing happens
-      setTimeout(function () { g.remove(); }, 260);
-    }
-    board.addEventListener('pointerup', end); board.addEventListener('pointercancel', end);
-  }
-  function sideAt(x, y) { var list = document.querySelectorAll('.tm-side'); for (var i = 0; i < list.length; i++) { var r = list[i].getBoundingClientRect(); if (x >= r.left - 6 && x <= r.right + 6 && y >= r.top - 6 && y <= r.bottom + 6) return list[i]; } return null; }
 
   // ------------------------------------------------------------------ actions (event delegation)
   document.addEventListener('click', function (e) {
@@ -1074,16 +676,7 @@
       case 'roll': doRoll(); break;
       case 'buy': case 'skipBuy': case 'payTow': case 'usePass': case 'raise': case 'giveUp': send({ t: act }); vib(30); if (act === 'buy') SFX.play('buy'); break;
       case 'pass': send({ t: 'pass' }); vib(40); SFX.play('click'); break;
-      case 'build': case 'sell': case 'hock': case 'unhock': send({ t: act, sp: +sp }); vib(25); if (act === 'hock' || act === 'unhock') delete flow.flip[+sp]; if (act === 'build') SFX.play('build'); if (act === 'hock' || act === 'unhock') SFX.play('card'); break;   // v0.4: no confirmation for BUY / SELL
-      case 'heckle': doHeckle(el); break;                                                     // v0.4
-      case 'readCard': $('cardList').hidden = true; openCard(el.getAttribute('data-deck'), +el.getAttribute('data-idx')); break;
-      case 'cardList': openCardList(); break;
-      case 'stuffView': ui.stuffView = ui.stuffView === 'cards' ? 'list' : 'cards'; store.set('rdr_stuffView', ui.stuffView); SFX.play('click'); vib(10); renderStuff(); break;
-      case 'moreToggle': ui.moreOpen = !ui.moreOpen; renderStuff(); break;
-      case 'flipMort': flow.flip[+sp] = true; SFX.play('card'); vib(15); renderStuff(); break;
-      case 'flipBack': delete flow.flip[+sp]; SFX.play('click'); renderStuff(); break;
-      case 'bMap': if (ui.builder) { ui.builder.map = !ui.builder.map; store.set('rdr_tradeView', ui.builder.map ? 'map' : 'list'); ui.builderBuilt = false; SFX.play('click'); renderMsgs(); } break;
-      case 'tmReset': if (ui.builder) { ui.builder.give = { cash: 0, props: [], passes: 0 }; ui.builder.get = { cash: 0, props: [], passes: 0 }; ui.builder.lit = {}; SFX.play('click'); vib(15); renderBuilder(); } break;
+      case 'build': case 'sell': case 'hock': case 'unhock': send({ t: act, sp: +sp }); vib(25); if (act === 'build') SFX.play('build'); break;
       case 'pingTile': send({ t: 'pingTile', sp: +sp }); vib(12); el.classList.add('pinged'); setTimeout(function () { el.classList.remove('pinged'); }, 350); break;   // v0.3: bounce my tile on the TV (changes nothing)
       case 'readFind': openFind(+el.getAttribute('data-idx')); break;
       case 'leave': openLeave(1); break;
@@ -1105,7 +698,7 @@
   function leaveBlock() {
     var t = st && st.turn, me = st && st.me; if (!t || !me) return '';
     if (t.payup && t.payup.open && (t.payup.mover === me.id || t.payup.owner === me.id)) return 'You can\'t leave during a PAY UP window.';
-    if (t.pid === me.id && t.tab) return 'Settle your debt first (sell, mortgage or make a deal).';
+    if (t.pid === me.id && t.tab) return 'Settle your debt first (sell, hock or make a deal).';
     if (t.auction && t.auction.leader === me.id) return 'You can\'t leave while you lead an auction.';
     if (t.pid === me.id && (t.stage === 'rolling' || t.stage === 'moving' || t.stage === 'card')) return 'Wait until your move finishes.';
     return '';
@@ -1152,6 +745,5 @@
   });
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) { document.addEventListener(ev, function () { if (hold) { clearInterval(hold.timer); hold = null; var bars = document.querySelectorAll('.hold .bar'); Array.prototype.forEach.call(bars, function (x) { x.style.width = '0'; }); } }); });
 
-  window.RDRC = { state: function () { return st; }, send: send, setTab: setTab, ui: ui, openBuilder: openBuilder, join: join,
-    flow: flow, openSet: openSet, closeSet: closeSet, openFrontSet: openFrontSet, openCard: openCard, openCardList: openCardList, renderStuff: renderStuff, renderBuilder: renderBuilder, flowTo: function (i) { flow.target = clampI(i); flow.vel = 0; kick(); } };   // v0.4 test hooks
+  window.RDRC = { state: function () { return st; }, send: send, setTab: setTab, ui: ui, openBuilder: openBuilder, join: join };
 })();

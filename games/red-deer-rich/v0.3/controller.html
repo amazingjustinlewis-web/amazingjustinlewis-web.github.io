@@ -13,7 +13,7 @@
 </head>
 <body>
 <section id="join" class="screen">
-  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">RED DEER <b>RICH</b></div><div class="jsub">v0.4 &middot; phone controller</div></div></header>
+  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">RED DEER <b>RICH</b></div><div class="jsub">v0.3 &middot; phone controller</div></div></header>
   <label class="fld">Room code<input id="room" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD"></label>
   <label class="fld">Your name<input id="name" maxlength="12" autocomplete="nickname" placeholder="Name"></label>
   <button id="joinBtn" class="big-btn">JOIN GAME</button>
@@ -52,7 +52,7 @@
 </section>
 
 <section id="game" class="screen" hidden>
-  <header class="ghead"><canvas class="mypiece" id="myPiece" width="96" height="96" aria-hidden="true"></canvas><div class="gh-mid"><div id="myName"></div><span id="myBadge" class="badge"></span></div><div class="gh-cash" id="myCash"></div><span id="gConn" class="conn"></span></header>
+  <header class="ghead"><span class="mychip" id="myChip"></span><div class="gh-mid"><div id="myName"></div><span id="myBadge" class="badge"></span></div><div class="gh-cash" id="myCash"></div><span id="gConn" class="conn"></span></header>
   <nav class="tabs" id="tabs">
     <button data-tab="turn" class="on"><span class="ti">&#127922;</span><span class="tl">My Turn</span><i class="dot" id="bTurn"></i></button>
     <button data-tab="stuff"><span class="ti">&#128176;</span><span class="tl">My Stuff</span></button>
@@ -66,7 +66,7 @@
       <div class="pane-side" id="turnSide"></div>
     </section>
     <section class="tab" id="tab-stuff" hidden>
-      <div class="pane-main"><div id="stuffMain"></div><div id="flowBox" class="flowbox" hidden></div></div>
+      <div class="pane-main" id="stuffMain"></div>
       <div class="pane-side" id="stuffSide"></div>
     </section>
     <section class="tab" id="tab-board" hidden>
@@ -77,7 +77,6 @@
       <div class="pane-main" id="msgMain"></div>
       <div class="pane-side" id="msgSide"></div>
     </section>
-    <div id="flowSet" class="flowset" hidden></div>
   </main>
 </section>
 
@@ -88,11 +87,8 @@
 <div id="leaveBox" class="leavebox" hidden></div>
 <div id="voteBar" class="votebar" hidden></div>
 <div id="toast" class="toast" hidden></div>
-<div id="paid" class="paidbox" hidden><div class="paid-stamp">PAID<br>IN FULL</div><div class="paid-sub" id="paidSub"></div></div>
-<div id="faces" class="faces" aria-hidden="true"></div>
-<div id="cardList" class="optsheet" hidden><div class="os-card"><div class="os-h">Cards drawn this game</div><div class="clrows" id="clRows"></div><button id="clOk" class="big-btn">CLOSE</button></div></div>
 
-<div id="findSheet" class="optsheet" hidden><div class="os-card fs-card"><div class="fs-deck" id="fsDeck">&#128220; SECRET FINDS</div><div class="fs-era" id="fsEra"></div><div class="fs-h" id="fsH"></div><div class="fs-story" id="fsStory"></div><div class="fs-more" id="fsMore"></div><div class="fs-fx" id="fsFx"></div><div class="fs-src" id="fsSrc"></div><button id="fsOk" class="big-btn">CLOSE</button></div></div>
+<div id="findSheet" class="optsheet" hidden><div class="os-card fs-card"><div class="fs-deck">&#128220; SECRET FINDS</div><div class="fs-era" id="fsEra"></div><div class="fs-h" id="fsH"></div><div class="fs-story" id="fsStory"></div><div class="fs-more" id="fsMore"></div><div class="fs-fx" id="fsFx"></div><div class="fs-src" id="fsSrc"></div><button id="fsOk" class="big-btn">CLOSE</button></div></div>
 <div id="optSheet" class="optsheet" hidden><div class="os-card"><div class="os-h" id="osH"></div><div class="os-short" id="osShort"></div><div class="os-t" id="osT"></div><button id="osOk" class="big-btn">GOT IT</button></div></div>
 <script src="js/vendor/peerjs.min.js"></script>
 <script>/* old TV browsers (e.g. Samsung Tizen, Chromium < 80) cannot run the modern PeerJS build: load the transpiled one */ if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>

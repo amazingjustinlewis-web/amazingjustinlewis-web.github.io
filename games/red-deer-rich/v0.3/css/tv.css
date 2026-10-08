@@ -287,18 +287,8 @@ button.wide { min-width: 22vh; }
 .optinfo .oi-t { font-size: 2.2vh; line-height: 1.4; }
 .optinfo .oi-x { margin-top: 1.4vh; font-size: 1.5vh; color: var(--muted); }
 /* v0.2.1: the bigger podium join QR keeps its own bottom-right column. Only applied when a ground card would run under it */
-#results.qrdodge #ground { box-sizing: border-box; margin-left: auto; margin-right: auto; }
+#results.qrdodge #ground { box-sizing: border-box; padding-right: 23vh; }
 #results.qrdodge .gcard { padding: .8vh .8vh; margin: 0 .4vh 1vh; min-width: 0; }
 #results.qrdodge .gcard .rstat { width: 5.5vh; margin: 0 .2vh; }
 #results.qrdodge .gcard .rstat.wide { width: 7.4vh; }
 #results.qrdodge .gcard .rstat b { font-size: 1.02vh; letter-spacing: 0; }
-
-/* ---- v0.4 ---- */
-/* side panel: real pieces (same crowns / accessories as the board) */
-.chip.pc { border: none; background: none; box-shadow: none; width: 4.6vh; height: 4.6vh; margin: -.6vh .5vh -.4vh -.6vh; border-radius: 0; }
-/* heckle faces + PAID IN FULL stamp beside a name */
-.spop { position: fixed; z-index: 60; pointer-events: none; transform: translate(-50%, 0); }
-.spop.heckle { font-size: 3.4vh; animation: spopUp 1.3s ease-out forwards; }
-.spop.stamp { font-size: 2.2vh; font-weight: 800; letter-spacing: .1vh; background: rgba(10,30,10,.85); border: .3vh solid #7dff7d; border-radius: 1vh; padding: .3vh 1vh; white-space: nowrap; animation: spopStamp 2.2s ease-out forwards; }
-@keyframes spopUp { 0% { opacity: 0; transform: translate(-50%, 1vh) scale(.6); } 15% { opacity: 1; transform: translate(-50%, -1vh) scale(1.15); } 100% { opacity: 0; transform: translate(-50%, -4.5vh) scale(1) rotate(12deg); } }
-@keyframes spopStamp { 0% { opacity: 0; transform: translate(-50%, 0) scale(1.8) rotate(-8deg); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1) rotate(-4deg); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -2vh) scale(1) rotate(-4deg); } }

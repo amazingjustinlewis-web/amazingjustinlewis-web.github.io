@@ -23,14 +23,14 @@
     this.mode = 'regular';
     this.phase = 'lobby';
     this.version = 0;                      // bumps on every change (host pushes phones when it moves)
-    this.chats = []; this.trades = []; this.log = []; this.cardsDrawn = []; this.heckleGap = {};
+    this.chats = []; this.trades = []; this.log = [];
     this.resetBoard();
   }
   var G = Game.prototype;
   G.on = function (fn) { this.listeners.push(fn); };
   G.emit = function (type, d) { d = d || {}; d.type = type; this.version++; try { this.trackStat(type, d); } catch (e) {} for (var i = 0; i < this.listeners.length; i++) try { this.listeners[i](type, d, this); } catch (e) { if (root.console) console.error(e); } };
   G.changed = function () { this.version++; };
-  G.addLog = function (s, card) { var e = { t: this.now, s: s }; if (card) e.card = card; this.log.push(e); if (this.log.length > 60) this.log.shift(); this.changed(); };
+  G.addLog = function (s) { this.log.push({ t: this.now, s: s }); if (this.log.length > 60) this.log.shift(); this.changed(); };
   G.ms = function (x) { return x / this.speed; };
   G.byId = function (id) { for (var i = 0; i < this.players.length; i++) if (this.players[i].id === id) return this.players[i]; return null; };
   G.cur = function () { return this.turn ? this.byId(this.turn.pid) : null; };
@@ -96,7 +96,7 @@
       p.cash = MD.startCash; p.stats = null; p.pos = 0; p.snow = false; p.snowTries = 0; p.passes = []; p.bankrupt = false; p.skip = 0; p.bustOwed = 0; p.bustTo = null; p.leftTo = null;
       p.perk = {}; p.laps = 0; p.halfwayPasses = 0; p.preLap = -1; p.state = 'rags'; p.place = 0;
     });
-    this.chats = []; this.trades = []; this.log = []; this.tradeSeq = 1; this.cardsDrawn = []; this.heckleGap = {};
+    this.chats = []; this.trades = []; this.log = []; this.tradeSeq = 1;
     this.order = this.shuffle(this.players.map(function (p) { return p.id; }));
     this.players.sort(function (a, b) { return self.order.indexOf(a.id) - self.order.indexOf(b.id); });
     this.endsAt = 0;
@@ -191,7 +191,7 @@
   };
   G.settleTab = function () {
     var t = this.turn && this.turn.tab, p = this.cur(); if (!t || !p) return;
-    if (p.cash >= t.amount) { this.turn.tab = null; var ok = this.charge(p, t.amount, t.to, t.reason); this.emit('tabPaid', { pid: p.id, amount: t.amount, to: t.to, auto: !!this._raising }); this.afterPay(); return ok; }
+    if (p.cash >= t.amount) { this.turn.tab = null; var ok = this.charge(p, t.amount, t.to, t.reason); this.emit('tabPaid', { pid: p.id }); this.afterPay(); return ok; }
   };
   G.afterPay = function () { this.checkTrades(); this.updateStates(); };
   G.autoRaise = function (p, need) {
@@ -261,7 +261,7 @@
       if (t.payup && !t.payup.done && (t.payup.mover === p.id || t.payup.owner === p.id)) return 'Not during a PAY UP window: try again in a moment';
       if (t.auction && t.auction.leader === p.id) return 'Not while you lead an auction';
       if (t.pid === p.id) {
-        if (t.tab) return 'Settle your debt first (My Stuff: sell, mortgage or make a deal)';
+        if (t.tab) return 'Settle your debt first (My Stuff: sell, hock or make a deal)';
         if (t.stage === 'rolling' || t.stage === 'moving' || t.stage === 'card' || t.stage === 'closing') return 'Wait until your move finishes';
         if (t.auction) return 'Wait for the auction to finish';
       }
@@ -328,7 +328,7 @@
   G.canBuild = function (p, sp) {
     var s = S[sp], pr = this.props[sp]; if (!s || s.type !== 'prop' || !pr || pr.owner !== p.id || p.bankrupt) return 'Not yours';
     if (!this.ownsGroup(p.id, s.group)) return 'Own the whole colour set first';
-    var self = this; if (B.GROUP_MEMBERS[s.group].some(function (i) { return self.props[i].hocked; })) return 'Unmortgage the set first';
+    var self = this; if (B.GROUP_MEMBERS[s.group].some(function (i) { return self.props[i].hocked; })) return 'Unhock the set first';
     if (pr.shops >= 5) return 'Already a Mega-Plex';
     if (this.rules.evenBuild && pr.shops > Math.min.apply(null, this.groupShops(s.group))) return 'Build evenly';
     if (this.rules.shopShortage) { if (pr.shops < 4 && this.bankShops <= 0) return 'Bank is out of Shops'; if (pr.shops === 4 && this.bankMegas <= 0) return 'No Mega-Plexes left'; }
@@ -362,19 +362,19 @@
     this.emit('sell', { pid: p.id, sp: sp }); this.updateStates(); return '';
   };
   G.hock = function (p, sp, force) {
-    var pr = this.props[sp]; if (!pr || pr.owner !== p.id || pr.hocked) return 'Can\'t mortgage that';
+    var pr = this.props[sp]; if (!pr || pr.owner !== p.id || pr.hocked) return 'Can\'t hock that';
     if (this.groupHasShops(S[sp].group)) return 'Sell the Shops in this set first';
     if (!force && this.locked(sp)) return 'Locked during this turn';
     pr.hocked = true; p.cash += S[sp].hock;
-    this.addLog(p.name + ' mortgaged ' + S[sp].name + ' for ' + money(S[sp].hock));
+    this.addLog(p.name + ' hocked ' + S[sp].name + ' for ' + money(S[sp].hock));
     this.emit('hock', { pid: p.id, sp: sp }); this.updateStates(); return '';
   };
   G.unhockCost = function (sp) { return Math.ceil(S[sp].hock * (1 + C.unhockFee)); };
   G.unhock = function (p, sp) {
-    var pr = this.props[sp]; if (!pr || pr.owner !== p.id || !pr.hocked) return 'Not mortgaged';
+    var pr = this.props[sp]; if (!pr || pr.owner !== p.id || !pr.hocked) return 'Not hocked';
     var cost = this.unhockCost(sp); if (p.cash < cost) return 'Not enough cash';
     p.cash -= cost; pr.hocked = false;
-    this.addLog(p.name + ' unmortgaged ' + S[sp].name);
+    this.addLog(p.name + ' unhocked ' + S[sp].name);
     this.emit('unhock', { pid: p.id, sp: sp }); this.updateStates(); return '';
   };
   // assets the active turn holds on to: the space under the active player during a PAY UP window or open Tab
@@ -396,8 +396,7 @@
       p = this.nextAfter(p);
     }
     this.turnCount++;
-    this.turn = { pid: p.id, stage: 'roll', doubles: 0, roll: null, rollSeq: (this.turn ? this.turn.rollSeq : 0), canRollAgain: false, buy: null, payup: null, tab: null, card: null, graceUntil: 0, startedAt: this.now, payupSeq: (this.turn ? this.turn.payupSeq : 0),
-      heckle: { stalls: 0, lastAct: this.now, open: false, forever: false, lastAt: -1e9, n: 0 } };   // v0.4 Heckle
+    this.turn = { pid: p.id, stage: 'roll', doubles: 0, roll: null, rollSeq: (this.turn ? this.turn.rollSeq : 0), canRollAgain: false, buy: null, payup: null, tab: null, card: null, graceUntil: 0, startedAt: this.now, payupSeq: (this.turn ? this.turn.payupSeq : 0) };
     this.emit('turn', { pid: p.id });
   };
   G.nextAfter = function (p) {
@@ -568,7 +567,7 @@
       if (pr.owner < 0) { t.buy = p.pos; this.emit('offer', { pid: p.id, sp: p.pos }); }
       else if (pr.owner !== p.id) {
         var owner = this.byId(pr.owner);
-        if (pr.hocked) this.addLog(s.name + ' is mortgaged: no rent.');
+        if (pr.hocked) this.addLog(s.name + ' is hocked: no rent.');
         else if (owner && !owner.bankrupt) {
           if (this.rules.payupRace) {
             t.payupSeq = (t.payupSeq || 0) + 1;
@@ -617,8 +616,7 @@
     var d = this.decks[deck], idx = d.shift(), card = B.DECKS[deck][idx];
     if (card.fx.k !== 'pass') d.push(idx);
     var t = this.turn; t.stage = 'card'; t.card = { deck: deck, idx: idx, until: this.now + this.ms(C.timing.card) };
-    this.addLog(p.name + ' drew ' + C.decks[deck].name + ': ' + card.h, [deck, idx]);   // v0.4: phones can open any drawn card from the history
-    this.cardsDrawn.push([deck, idx, p.id, this.round]); if (this.cardsDrawn.length > 60) this.cardsDrawn.shift();
+    this.addLog(p.name + ' drew ' + C.decks[deck].name + ': ' + card.h);
     this.emit('card', { pid: p.id, deck: deck, idx: idx });
   };
   G.applyCard = function () {
@@ -773,8 +771,6 @@
       case 'chat': this.chat(pid, m.to, m.text); return '';
       case 'char': return this.setChar(pid, m.id) ? '' : 'taken';
     }
-    if (m.t === 'heckle') return this.heckle(pid);                       // v0.4: bankrupt players can still heckle from the rail
-    if (active) this.heckleAct();                                         // any move by the active player locks the heckle button again
     if (this.phase !== 'play' || p.bankrupt) return 'not playing';
     switch (m.t) {
       case 'roll':
@@ -829,12 +825,12 @@
       case 'payup': return this.payup(pid) ? '' : 'too late';
       case 'bid': return this.bid(pid, +m.add);
       case 'build': r = this.build(p, +m.sp); return r;
-      case 'sell': r = this.sellShop(p, +m.sp); if (!r && active && t.tab) this.settleTab(); return r;      // v0.4 PAID IN FULL the moment there's enough
-      case 'hock': r = this.hock(p, +m.sp); if (!r && active && t.tab) this.settleTab(); return r;
+      case 'sell': return this.sellShop(p, +m.sp);
+      case 'hock': return this.hock(p, +m.sp);
       case 'unhock': return this.unhock(p, +m.sp);
       case 'raise':
         if (!active || !t.tab) return 'no tab';
-        this._raising = true; this.autoRaise(p, t.tab.amount); this.settleTab(); this._raising = false; return '';
+        this.autoRaise(p, t.tab.amount); this.settleTab(); return '';
       case 'giveUp':
         if (!active || !t.tab) return 'no tab';
         if (this.liquidValue(p) >= t.tab.amount) return 'You can still raise the cash';
@@ -893,34 +889,6 @@
     return price;
   };
 
-  // ------------------------------------------------------------------ heckle (v0.4 house rule)
-  // Inactivity only counts while the game is waiting on the active human (roll / act stages, no auction running).
-  // Stall 1 unlocks after afterMs[0], stall 2 after afterMs[1], stall 3 after afterMs[2] and then stays open for the turn.
-  G.heckleAct = function () {
-    var h = this.turn && this.turn.heckle; if (!h) return;
-    h.lastAct = this.now;
-    if (h.open && !h.forever) { h.open = false; this.emit('heckleClose', { pid: this.turn.pid }); }
-  };
-  G.heckleTick = function (now) {
-    var t = this.turn, h = t && t.heckle, p = this.cur(); if (!h) return;
-    if (!this.rules.heckle || !p || this.isBot(p)) { if (h.open) { h.open = false; h.forever = false; this.changed(); } h.lastAct = now; return; }
-    if (h.forever) return;
-    if (!((t.stage === 'roll' || t.stage === 'act') && !t.auction)) { h.lastAct = now; if (h.open) { h.open = false; this.changed(); } return; }
-    if (!h.open && now - h.lastAct >= this.ms(C.heckle.afterMs[Math.min(h.stalls, 2)])) {
-      h.open = true; h.stalls++; if (h.stalls >= 3) h.forever = true;
-      this.emit('heckleOpen', { pid: p.id, stalls: h.stalls });
-    }
-  };
-  G.heckle = function (from) {
-    var t = this.turn, h = t && t.heckle, p = this.byId(from);
-    if (this.phase !== 'play' || !h || !h.open || !this.rules.heckle || !p || p.id === t.pid) return 'no';
-    var now = this.now, gaps = this.heckleGap || (this.heckleGap = {});
-    if (now - (gaps[from] || -1e9) < C.heckle.gapMs || now - h.lastAt < C.heckle.targetGapMs) return 'wait';   // light rate limit (real time)
-    gaps[from] = now; h.lastAt = now; h.n++;
-    this.emit('heckle', { pid: t.pid, from: from, n: h.n });
-    return '';
-  };
-
   // ------------------------------------------------------------------ clock
   G.tick = function (now) {
     this.now = now;
@@ -946,7 +914,6 @@
       t = this.turn;
     }
     if (t.tab) { var p = this.cur(); if (p && p.cash >= t.tab.amount) this.settleTab(); }
-    this.heckleTick(now);
     if (this.timed() && now >= this.endsAt && t.stage === 'roll') this.finish('time');
   };
 

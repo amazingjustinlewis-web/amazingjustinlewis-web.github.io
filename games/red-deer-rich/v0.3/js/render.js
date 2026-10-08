@@ -228,7 +228,7 @@
     c.font = '900 ' + Math.round(k * 0.11) + 'px Fredoka, system-ui, sans-serif';
     c.strokeText('RICH', 0, k * 0.056); c.fillStyle = '#f2c230'; c.fillText('RICH', 0, k * 0.056);
     c.font = '700 ' + Math.round(k * 0.024) + 'px Fredoka, system-ui, sans-serif'; c.fillStyle = '#3a2a10';
-    c.fillText('a Zero to Phi game \u00b7 v0.4', 0, k * 0.125);
+    c.fillText('a Zero to Phi game \u00b7 v0.3', 0, k * 0.125);
     c.restore();
     // card decks
     var dw = k * 0.14, dh = k * 0.09;      // v0.1.1: the card piles sit in the open middle of the mini city
@@ -299,9 +299,7 @@
       if (pr.hocked) {
         c.fillStyle = 'rgba(40,40,50,0.55)'; c.fillRect(0, 0, r.w, r.h);
         c.save(); c.translate(r.w / 2, r.h / 2); c.rotate(horiz ? -Math.PI / 2.6 : -0.3);
-        var mfs = Math.max(7, Math.round(fs * 0.95)); c.font = '800 ' + mfs + 'px Fredoka, sans-serif';
-        var mroom = (horiz ? r.h : r.w) * 0.86, mw = c.measureText('MORTGAGED').width; if (mw > mroom) { mfs = Math.max(6, Math.floor(mfs * mroom / mw)); c.font = '800 ' + mfs + 'px Fredoka, sans-serif'; }
-        c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('MORTGAGED', 0, 0); c.restore();
+        c.fillStyle = '#fff'; c.font = '800 ' + Math.max(8, Math.round(fs * 0.95)) + 'px Fredoka, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('HOCKED', 0, 0); c.restore();
       }
     } else if (pr && !flat && s.type === 'prop') {          // unowned: a tiny FOR SALE sign
       var fx = r.side === 'r' ? ta[0] + ta[2] - 8 : r.side === 'l' ? ta[0] + 8 : ta[0] + ta[2] - 7, fy = horiz ? (r.side === 'b' ? r.h - fs * 1.4 : fs * 0.9) : ta[3] - fs * 1.2;
@@ -641,25 +639,14 @@
     if (p.state === 'gold') { c.fillStyle = 'rgba(255,210,60,0.35)'; c.beginPath(); c.arc(x, y, r * 1.55 + Math.sin(now / 250) * r * 0.08, 0, 7); c.fill(); }
     if (active) { c.strokeStyle = 'rgba(255,255,255,' + (0.5 + 0.5 * Math.sin(now / 180)) + ')'; c.lineWidth = 3; c.beginPath(); c.arc(x, y, r * 1.35, 0, 7); c.stroke(); }
     c.fillStyle = 'rgba(0,0,0,0.35)'; c.beginPath(); c.ellipse(x, y + r * 0.95, r * 0.8, r * 0.25, 0, 0, 7); c.fill();
-    // v0.4: the same piece everywhere (board, phone header, TV side panel, lobby carousel). Spiky accessories sit behind
-    // the head, hats and badges sit on top of it so they still read at board size; each gets a soft dark edge.
-    var behind = ACC_BEHIND[ch.shape];
-    if (behind) this.accent(c, ch, x, y, r);
+    this.shapeAccent(c, ch.shape, x, y, r, ch);
     c.fillStyle = p.color; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
     c.lineWidth = Math.max(2, r * 0.16); c.strokeStyle = p.state === 'gold' ? '#ffd23f' : p.state === 'good' ? '#d8e2ec' : '#ffffff'; c.stroke();
     if (p.state === 'good') { c.strokeStyle = '#8a9aaa'; c.lineWidth = 1; c.beginPath(); c.arc(x, y, r * 1.14, 0, 7); c.stroke(); }
     c.fillStyle = ch.ink; c.font = '800 ' + Math.round(r * (p.name.length > 1 ? 0.85 : 1.1)) + 'px Fredoka, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
     c.fillText(initials(p.name), x, y + r * 0.05);
-    if (!behind) this.accent(c, ch, x, y, r);
-    if (p.state === 'gold') { c.fillStyle = '#ffd23f'; c.strokeStyle = '#7a5a00'; c.lineWidth = Math.max(1, r * 0.06); c.beginPath(); var cy0 = y - r * 1.05; c.moveTo(x - r * 0.55, cy0); c.lineTo(x - r * 0.6, cy0 - r * 0.5); c.lineTo(x - r * 0.25, cy0 - r * 0.25); c.lineTo(x, cy0 - r * 0.6); c.lineTo(x + r * 0.25, cy0 - r * 0.25); c.lineTo(x + r * 0.6, cy0 - r * 0.5); c.lineTo(x + r * 0.55, cy0); c.closePath(); c.fill(); c.stroke(); }
+    if (p.state === 'gold') { c.fillStyle = '#ffd23f'; c.strokeStyle = '#7a5a00'; c.lineWidth = 1; c.beginPath(); var cy0 = y - r * 1.05; c.moveTo(x - r * 0.55, cy0); c.lineTo(x - r * 0.6, cy0 - r * 0.5); c.lineTo(x - r * 0.25, cy0 - r * 0.25); c.lineTo(x, cy0 - r * 0.6); c.lineTo(x + r * 0.25, cy0 - r * 0.25); c.lineTo(x + r * 0.6, cy0 - r * 0.5); c.lineTo(x + r * 0.55, cy0); c.closePath(); c.fill(); c.stroke(); }
     if (p.snow) { c.fillStyle = 'rgba(255,255,255,0.9)'; c.beginPath(); c.ellipse(x, y + r * 0.7, r * 1.1, r * 0.4, 0, 0, 7); c.fill(); }
-  };
-  var ACC_BEHIND = { mohawk: 1, spikes: 1, horns: 1 };
-  P.accent = function (c, ch, x, y, r) {
-    var soft = !(this.rung >= 3) && r >= 9;
-    if (soft) { c.save(); c.shadowColor = 'rgba(0,0,0,0.6)'; c.shadowBlur = Math.max(1.5, r * 0.14); c.shadowOffsetY = Math.max(0.5, r * 0.04); }
-    (this.shapeAccent || P.shapeAccent).call(this, c, ch.shape, x, y, r, ch);
-    if (soft) c.restore();
   };
   function initials(n) { var w = String(n).trim().split(/\s+/); return (w.length > 1 ? w[0][0] + w[1][0] : String(n).slice(0, 2)).toUpperCase(); }
   P.shapeAccent = function (c, shape, x, y, r, ch) {
@@ -714,7 +701,7 @@
   };
   // v0.2: short zoom-ins on big moments (purchase, big rent, bankruptcy). Purely visual: the game never waits for it.
   P.camMoment = function (pid, ms, zoomMul) { this.cam.moment = { pid: pid, until: performance.now() + (ms || 1500), z: zoomMul || 1.25 }; };
-  P.tokenR = function () { return Math.max(7, this.w * 0.285); };   // v0.4: a touch bigger so the accessories read
+  P.tokenR = function () { return Math.max(7, this.w * 0.26); };
 
   // ------------------------------------------------------------------ day / night
   P.darkness = function () {
@@ -874,23 +861,19 @@
     list.forEach(function (x) { var cur = self.fades[x.sp]; self.fades[x.sp] = { from: cur && cur.t0 != null ? self.ownerRgbFrom(x.sp, cur, x.from) : hexRgb(x.from), t0: null, dur: x.dur || C.tradeFadeMs }; });
   };
   P.ownerRgbFrom = function (sp, f, fallback) { var k = (performance.now() - f.t0) / f.dur; return k >= 1 ? hexRgb(fallback) : mixRgb(f.from, hexRgb(fallback), smooth(k)); };
-  // v0.4 owned tiles: a hard outline in the owner's colour right at the tile edge, feathering a little way inward in a
-  // few soft rings. No wash over the tile: its middle and colour band stay their own colour. Trade fades still work
-  // because the colour comes from ownerRgb (old owner -> new owner).
   P.drawOwners = function (c, now) {
-    var g = this.g, L = C.ownerLine || {}, lw = Math.max(2.5, this.w * (L.line || 0.085)), fw = Math.max(3, this.w * (L.feather || 0.12));
-    var steps = this.rung >= 4 ? 1 : this.rung >= 2 ? 2 : (L.steps || 4), sw = fw / steps;
+    var g = this.g, T = C.ownerTint, lw = Math.max(3, this.w * 0.075), th = Math.max(4, this.w * 0.1);
     for (var i = 0; i < 40; i++) {
       var pr = g.props[i]; if (!pr || pr.owner < 0) continue;
       var col = this.ownerRgb(i, now); if (!col) continue;
-      var r = this.rect(i), x = this.bx + r.x, y = this.by + r.y, a = pr.hocked ? (L.mortgagedAlpha || 0.45) : 1;
-      c.strokeStyle = rgba(col, a); c.lineWidth = lw; c.strokeRect(x + lw / 2, y + lw / 2, r.w - lw, r.h - lw);
-      c.lineWidth = sw;
-      for (var k = 0; k < steps; k++) {
-        var ins = lw + sw * (k + 0.5), fa = a * 0.6 * Math.pow(1 - (k + 0.5) / steps, 1.5) + (steps === 1 ? 0.12 : 0);
-        c.strokeStyle = rgba(col, fa.toFixed(3)); c.strokeRect(x + ins, y + ins, r.w - 2 * ins, r.h - 2 * ins);
-      }
-      if (col[0] + col[1] + col[2] < 160) { c.strokeStyle = 'rgba(255,255,255,' + (0.75 * a).toFixed(2) + ')'; c.lineWidth = 1; c.strokeRect(x + lw + 0.5, y + lw + 0.5, r.w - 2 * lw - 1, r.h - 2 * lw - 1); }
+      var r = this.rect(i), x = this.bx + r.x, y = this.by + r.y;
+      c.fillStyle = rgba(col, pr.hocked ? T.fillHocked : T.fill); c.fillRect(x, y, r.w, r.h);
+      // solid strip on the outer edge + a border all round, so ownership reads from across the room
+      c.fillStyle = rgba(col, 1);
+      if (r.side === 'b') c.fillRect(x, y + r.h - th, r.w, th); else if (r.side === 't') c.fillRect(x, y, r.w, th);
+      else if (r.side === 'l') c.fillRect(x, y, th, r.h); else c.fillRect(x + r.w - th, y, th, r.h);
+      c.strokeStyle = rgba(col, T.border); c.lineWidth = lw; c.strokeRect(x + lw / 2 + 0.5, y + lw / 2 + 0.5, r.w - lw - 1, r.h - lw - 1);
+      if (col[0] + col[1] + col[2] < 160) { c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1; c.strokeRect(x + lw + 0.5, y + lw + 0.5, r.w - 2 * lw - 1, r.h - 2 * lw - 1); }
     }
   };
 
@@ -1006,6 +989,4 @@
   };
   root.RDRRender = R;
   root.RDRRender.initials = initials;
-  // v0.4: draw a player's piece (same look as the board token) into any canvas: phone header, TV side panel, carousel
-  root.RDRRender.drawPiece = function (c, p, x, y, r, now) { P.drawToken.call({ shapeAccent: P.shapeAccent, accent: P.accent, rung: 0 }, c, p, x, y, r, false, now || 0); };
 })(typeof window !== 'undefined' ? window : globalThis);

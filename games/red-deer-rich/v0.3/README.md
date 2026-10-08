@@ -1,4 +1,6 @@
-# Red Deer Rich - v0.4 (placeholder art)
+> **Archived v0.3** (Red Deer stories). This folder is a frozen copy for reference; the current version lives one folder up.
+
+# Red Deer Rich - v0.3 (placeholder art)
 
 A Red Deer-themed property trading board game by Zero to Phi. The spec is the design doc
 (`red-deer-rich/design-doc.md`, outside this repo). Same architecture as Zombie Tiles: plain
@@ -28,42 +30,6 @@ Live: https://amazingjustinlewis-web.github.io/games/red-deer-rich/
 | Regular | nothing pre-dealt, $1,800 each | none (last one standing) |
 | Medium | 3 deeds each (2 each for 4+ players), $1,500 each | 45 min, then the richest wins |
 | Quick | ALL ownable spaces dealt out round-robin, $1,500 each | 30 min, then the richest wins |
-
-### What's new in v0.4 (Cards in hand)
-Everything from v0.3 is unchanged: presets and remembered setup, PAY UP and its sounds, the decks with era tags, money
-flows, AI takeover, hops, the podium and the QR codes. Clean screens, and the new rules hide behind the options list.
-- **Hawk is now Mortgage** everywhere (phone, TV log, help). Code names (`hock`, `unhock`, `hocked`) are unchanged.
-- **My Stuff as cards.** The switch at the top left flips between a **cards** wheel and the plain **list** (the phone
-  remembers, `localStorage rdr_stuffView`). The wheel is an iPod-style cover flow on a slight arc: swipe with momentum,
-  tap a side card to bring it forward. The front card has the full rent ladder, the next Shop and its price, and
-  **BUY (−$60)** / **SELL (+$30)** on top with no confirmation. Tap the front card (or pinch open) to unfold its whole
-  colour set (2×2 portrait, one row landscape; deeds you don't own show as faint ghosts with their owner), each with
-  its own buttons; tap outside or pinch closed to go back. **MORTGAGE** flips the card: the back shows the cash with
-  a clear CONFIRM. A mortgaged card stays flipped and shows **UNMORTGAGE (−$)**. Tapping still bounces the tile on the TV.
-  The list view also shows prices on every button.
-- **PAID IN FULL.** Owe money and sell or mortgage by hand: the debt pays itself the moment you have enough. The phone
-  shows a big PAID IN FULL stamp with a cha-ching and a buzz; the TV shows a small stamp by the name. AUTO-RAISE stays.
-- **Heckle (new option; on in Classic and Chaos, off in Chill).** When the player whose turn it is stalls, the others
-  get a tiny 😂 button beside their name: after 15 s of nothing on the first stall of the turn, 5 s on the second, 3 s on
-  the third, then it stays unlocked until the turn ends. Any action locks it again. Each press floats laughing faces up
-  the staller's phone with a buzz, and a little face pops by their name on the TV. Light rate limit
-  (`C.heckle`: 450 ms per heckler, 120 ms per target). Computer players and auctions are never heckled.
-- **Card history.** Every card drawn (both decks, anyone) is in the phone History; tap it to read the card again, or
-  open "Cards drawn (N)" for the whole list.
-- **Owned tiles** get a solid outline in the owner's colour that feathers inward (`C.ownerLine`); the tile and its
-  colour band stay untinted. The 10 s trade colour crossfade still works.
-- **Matching pieces.** Board tokens wear the same crowns and accessories as the pieces in the side panel, the phone
-  header, whose-turn line and trade map (one shared `RDRRender.drawPiece`).
-- **Trade map.** The deal screen stays; a 🗺️ Map switch (remembered) opens a drag-and-drop board with only the two
-  traders' deeds. Drag their deed onto your piece or yours onto theirs (wrong-way drags do nothing); added deeds go
-  half dark and appear as coloured bars beside the receiving piece. Each side has its bank balance and a cash slider
-  with money pouring across and a cash stack. RESET and SUBMIT use the same trade / counter flow. Tapping deeds (in
-  either view) lights them up on a small board on your phone only, never the TV.
-- **Calmer phone.** Leave / New game are folded behind "⋯", PAY UP tips only in round 1, shorter hints.
-- **Graphics pick themselves.** The TV starts from a hint (CPU cores, memory, device) and runs a short frame-time probe
-  at boot and at game start, stepping the Auto-Crush rung down or up. Pin a rung with `localStorage rdr_fx = '0'..'6'`
-  (remove it to go back to auto). `&nocrush` and `&fx=N` still work.
-- **Podium on 4:3** with 6 to 8 players is centred.
 
 ### What's new in v0.3 (Red Deer stories)
 Everything Justin loves is unchanged: sticky hops, token hops, money flows, dice from the token, podium awards, fast
@@ -132,7 +98,7 @@ log, QR rejoin to your original seat, and the fast turn pace (the game never wai
   bottom row).
 - **"Go bust, pay what I can"**: when even selling everything can't cover a debt, the phone shows one big button. The
   bank buys your Shops back, then each deed goes whichever way is worth more to the creditor: deeds go to a player as
-  they are (mortgaged ones stay mortgaged); for the bank, deeds are mortgaged for cash and then go back up for auction straight
+  they are (hocked ones stay hocked); for the bank, deeds are hocked for cash and then go back up for auction straight
   after. Whatever is still unpaid follows you: "Skipped Town Owing $840" on the podium. AI and off-turn bankruptcies use
   the same rules.
 - **Plaques** beside out-of-game names on the TV: "Busted, owed $840", "Busted", "Left town, the AI took over",
@@ -203,7 +169,7 @@ log, QR rejoin to your original seat, and the fast turn pace (the game never wai
 | `js/board.js` | the 40 Present Day spaces, groups, rents, the Red Deer Randomness and Secret Finds decks (era tags, sources, `deckCards` filter) |
 | `data/secret-finds-sources.md` | v0.3: the source for every Secret Finds story, plus the facts we checked and left out |
 | `js/game.js` | rules engine (pure, time-driven `tick(now)`; also runs in node for the simulations) |
-| `js/ai.js` | AI players: buying, building, unmortgaging, set-completing trades, PAY UP reflexes, chat lines |
+| `js/ai.js` | AI players: buying, building, unhocking, set-completing trades, PAY UP reflexes, chat lines |
 | `js/render.js` | canvas board: tiles, Youth Centre vignette, walkers and cars, day/night, tokens, camera |
 | `js/fx.js` | v0.2 board particles (landing fireworks, $ pops, bills, token-to-token money): pre-rendered sprites, capped, swappable |
 | `js/options.js` | v0.2.1 game-options helpers: presets, counts, active chips, and the press-and-hold row handler (tap toggles, hold explains) |
@@ -255,9 +221,10 @@ helper's existing effects:
 | results podium | pickup / kill flashes in the winner's colour, a second escape wave, then over |
 | bankrupt | crunch |
 
-## Placeholder or not done yet (v0.4)
+## Placeholder or not done yet (v0.3)
 - Art is all placeholder: coloured tokens with initials and shapes, line-art buildings, simple particles, simple silhouettes.
 - Perks still coming: Justin's Count-In, Drew's High Kick and Walt's Shortcut.
+- No drag-and-drop in the trade builder (tap to toggle instead).
 - The mini city is a first pass: generic blocks, not real Red Deer landmarks yet.
 - Present Day era only: no era skins yet (cards are era-tagged and filterable, ready for them), and vignettes are icons rather than full stages.
 - No Future Red Deer history cards (a Future skin falls back to the whole deck).
@@ -290,7 +257,6 @@ helper's existing effects:
 - `e2e6.py` covers v0.2.1: owner-tint alpha × 0.8 (config and pixels), podium QR size, overlap and blurred decode, the collapsed options line, presets + Custom, press-and-hold details without toggling, remember-last-game (phone and TV), the START pickers, TV lobby chips, and no page errors.
 - `v03unit.js` (node) covers v0.3 decks (sizes, eras, effects, sources file, filter + fallback), the PASS DICE lockout only where PAY UP can happen, and the halved boom.
 - `e2e7.py` covers v0.3 in the browser: every card fits the TV at 16:9 / 720p / 4:3, the phone card + READ MORE sheet, the My Stuff tile bounce (colour, no game change, rate limit, own deeds only), the PAY UP explosion vs the normal rent flow, phone sounds and vibration, and rejoin keeping the live settings.
-- `v04.py` is the v0.4 multi-phone playthrough: Heckle unlock times / faces / buzz / TV pop / rate limit, PAID IN FULL by a manual sell and by a mortgage flip, card history + card list, the cards view in portrait and landscape (unfold, ghosts, flip, unmortgage, list switch), and the drag-map trade with slider, private highlights and SUBMIT.
 - `podfit.py` checks the results screen for 2 to 8 players at 1920×1080 and 1024×768 (inside the screen, no overlaps, clear of the QR).
 - `tiletext.py` makes the tile-name before/after closeup and checks the lighter weight.
 - `oldsetup.py` checks the new setup screens and TV lobby on Chromium 62 / 74.

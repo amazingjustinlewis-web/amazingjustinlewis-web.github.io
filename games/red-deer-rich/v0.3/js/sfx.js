@@ -79,13 +79,10 @@
     crunch: function (A, t) { hiss(A, out, t, 0.35, 0.7, 'lowpass', 700); tone(A, out, 'square', 90, 40, t, 0.4, 0.4); },
     jackpot: function (A, t) { SOUNDS.fanfare(A, t); for (var i = 0; i < 6; i++) SOUNDS.cash(A, t + 0.3 + i * 0.18); },
     deal: function (A, t) { hiss(A, out, t, 0.18, 0.5, 'lowpass', 300); tone(A, out, 'sine', 90, 50, t, 0.25, 0.6); },   // CEMENT thunk
-    buzz: function (A, t) { tone(A, out, 'square', 180, 0, t, 0.12, 0.1); },
-    // v0.4 heckle: a quick "ha-ha-ha" (three falling chirps); PAID IN FULL: double cha-ching + a bright chord
-    heckle: function (A, t) { [79, 77, 74].forEach(function (n, i) { tone(A, out, 'sawtooth', NOTE(n), NOTE(n - 3), t + i * 0.09, 0.08, 0.07, 0.005); }); },
-    paid: function (A, t) { SOUNDS.cash(A, t); SOUNDS.cash(A, t + 0.2); [72, 76, 79, 84].forEach(function (n) { tone(A, out, 'triangle', NOTE(n), 0, t + 0.42, 0.6, 0.07); }); }
+    buzz: function (A, t) { tone(A, out, 'square', 180, 0, t, 0.12, 0.1); }
   };
   // identical sounds closer together than this are skipped (AI turns at speed fire a lot of them)
-  var MIN_GAP = { heckle: 160, paid: 700, step: 70, click: 40, dice: 150, cash: 90, buy: 120, card: 120, build: 90, deal: 150, turn: 200, pop: 120, boom: 200, caught: 150, tiptoe: 300, drain: 200, payupAlarm: 300, tarnish: 300, gold: 300 };
+  var MIN_GAP = { step: 70, click: 40, dice: 150, cash: 90, buy: 120, card: 120, build: 90, deal: 150, turn: 200, pop: 120, boom: 200, caught: 150, tiptoe: 300, drain: 200, payupAlarm: 300, tarnish: 300, gold: 300 };
   function play(name) {
     if (S.muted || !SOUNDS[name]) return;
     var A = live(); if (!A) return;
