@@ -300,5 +300,5 @@ button.wide { min-width: 22vh; }
 .spop { position: fixed; z-index: 60; pointer-events: none; transform: translate(-50%, 0); }
 .spop.heckle { font-size: 3.4vh; animation: spopUp 1.3s ease-out forwards; }
 .spop.stamp { font-size: 2.2vh; font-weight: 800; letter-spacing: .1vh; background: rgba(10,30,10,.85); border: .3vh solid #7dff7d; border-radius: 1vh; padding: .3vh 1vh; white-space: nowrap; animation: spopStamp 2.2s ease-out forwards; }
-@keyframes spopUp { 0% { opacity: 0; transform: translate(-50%, 1vh) scale(.6); } 15% { opacity: 1; transform: translate(-50%, -1vh) scale(1.15); } 100% { opacity: 0; transform: translate(-50%, -4.5vh) scale(1) rotate(12deg); } }
+@keyframes spopUp { 0% { opacity: 0; transform: translate(-50%, 1vh) scale(.6); } 15% { opacity: 1; transform: translate(-50%, -1vh) scale(1.15); } 100% { opacity: 0; transform: translate(-50%, -3vh) scale(1) rotate(12deg); } }
 @keyframes spopStamp { 0% { opacity: 0; transform: translate(-50%, 0) scale(1.8) rotate(-8deg); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1) rotate(-4deg); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -2vh) scale(1) rotate(-4deg); } }

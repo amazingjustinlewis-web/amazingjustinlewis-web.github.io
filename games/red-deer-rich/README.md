@@ -291,6 +291,7 @@ helper's existing effects:
 - `v03unit.js` (node) covers v0.3 decks (sizes, eras, effects, sources file, filter + fallback), the PASS DICE lockout only where PAY UP can happen, and the halved boom.
 - `e2e7.py` covers v0.3 in the browser: every card fits the TV at 16:9 / 720p / 4:3, the phone card + READ MORE sheet, the My Stuff tile bounce (colour, no game change, rate limit, own deeds only), the PAY UP explosion vs the normal rent flow, phone sounds and vibration, and rejoin keeping the live settings.
 - `v04.py` is the v0.4 multi-phone playthrough: Heckle unlock times / faces / buzz / TV pop / rate limit, PAID IN FULL by a manual sell and by a mortgage flip, card history + card list, the cards view in portrait and landscape (unfold, ghosts, flip, unmortgage, list switch), and the drag-map trade with slider, private highlights and SUBMIT.
+- `autoq.py` checks v0.4 auto graphics: the boot probe steps a slow TV down, the FX line says auto, and `rdr_fx` pins a rung.
 - `podfit.py` checks the results screen for 2 to 8 players at 1920×1080 and 1024×768 (inside the screen, no overlaps, clear of the QR).
 - `tiletext.py` makes the tile-name before/after closeup and checks the lighter weight.
 - `oldsetup.py` checks the new setup screens and TV lobby on Chromium 62 / 74.

@@ -306,7 +306,7 @@
     var card = document.querySelector('.pcard[data-pid="' + pid + '"]'); if (!card || popN >= 8) return;
     var r = card.getBoundingClientRect(), el = document.createElement('div');
     el.className = 'spop ' + cls; el.innerHTML = html;
-    var hk = cls === 'heckle'; el.style.left = Math.round(r.left + r.width * (hk ? 0.5 + Math.random() * 0.15 : 0.3 + Math.random() * 0.4)) + 'px'; el.style.top = Math.round(r.top + r.height * (hk ? 0.05 : 0.2)) + 'px';
+    var hk = cls === 'heckle'; el.style.left = Math.round(r.left + r.width * (hk ? 0.5 + Math.random() * 0.15 : 0.3 + Math.random() * 0.4)) + 'px'; el.style.top = Math.round(r.top + r.height * (hk ? 0.32 : 0.2)) + 'px';
     document.body.appendChild(el); popN++;
     setTimeout(function () { popN--; if (el.parentNode) el.parentNode.removeChild(el); }, ms || 1400);
   }
