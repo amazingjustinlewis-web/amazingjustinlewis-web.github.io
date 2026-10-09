@@ -240,10 +240,17 @@ window.GAMES = [
     ],
     versions: [
       {
-        id: 'v0.2',
-        name: 'Thumb pad',
+        id: 'v0.3',
+        name: 'Trackpad + lock-on',
         current: true,
         play: 'games/mech/index.html',
+        notes: 'A second control mode, Trackpad: the whole phone screen moves the crosshair like a laptop trackpad, tap anywhere to fire, hold to keep firing or charge the rail, and lean the phone to walk (forward, back, and sideways to strafe). Rockets get a forgiving lock-on with flashing red brackets and a lock tone, lock up to three targets and fire a homing salvo. The thumb pad keeps its momentum after a swipe and slows down gradually, and the edge-turn zones are wider and softer.'
+      },
+      {
+        id: 'v0.2',
+        name: 'Thumb pad',
+        current: false,
+        play: 'games/mech/v0.2/index.html',
         notes: 'Projector-night control pass: a thumb pad on the phone that walks the mech in the direction you drag (further = faster), a facing ring you can drag to swing the torso while you keep walking the same way, an arrow for travel direction and speed, a faint holographic mini-map inside the pad, tap the pad to fire, a second big intent reticle that smooths out hand jitter (shots go there, tighter when you hold steady), full look range straight up to the sky and down at your feet, and WASD movement with mouse aim on a laptop.'
       },
       {

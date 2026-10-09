@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Iron Stride - TV | Zero to Phi</title>
+<meta name="description" content="Iron Stride (working title): pilot a walking mech from the cockpit on your TV. Your phone is the controller. Prototype v0.1 by Zero to Phi.">
+<meta name="theme-color" content="#0b0e14">
+<meta name="robots" content="noindex">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/tv.css">
+</head>
+<body>
+<canvas id="gl" aria-label="Mech cockpit view"></canvas>
+<canvas id="frame" aria-hidden="true"></canvas>
+<canvas id="hud" aria-hidden="true"></canvas>
+
+<section id="lobby">
+  <div class="lb-left">
+    <div class="presents"><img src="assets/logo.svg" alt="" width="49" height="40"> ZERO TO PHI <span class="proto">PROTOTYPE v0.2</span> <a class="back" href="../../../family.html">&larr; games</a></div>
+    <h1>IRON <span>STRIDE</span></h1>
+    <div class="wt">working title</div>
+    <p class="tagline">You're inside a walking mech. Your phone is the stick: swing it to turn, tilt it to aim, draw a path on the map and the legs do the walking.</p>
+    <ul class="how">
+      <li><b>1</b> Scan the code with your phone (the first phone is the <b>pilot</b>, a second one can join as <b>gunner</b>).</li>
+      <li><b>2</b> Point the top of your phone at the TV and do the 3-tap calibration.</li>
+      <li><b>3</b> Tap <b>START</b>. Hold FIRE, switch guns, tap the map to walk, walk into the bay to rearm.</li>
+    </ul>
+    <button id="kbBtn" class="kb">No phone? Play here with mouse + keys</button>
+    <div id="phoneHint" class="phone-hint" hidden>On a phone? This is the <b>TV screen</b>. Open it on the TV or a laptop, then join with the <a href="controller.html">phone controller</a>.</div>
+  </div>
+  <div class="join-box">
+    <canvas id="qr" width="300" height="300" aria-label="QR code to join"></canvas>
+    <div class="join-text">
+      <div class="join-label">JOIN ON YOUR PHONE</div>
+      <div class="code" id="code">----</div>
+      <div class="url" id="joinUrl"></div>
+      <div class="netstatus" id="netStatus">Connecting to the room server&hellip;</div>
+      <ul id="lobbyPlayers"></ul>
+      <div class="start-hint" id="startHint">Waiting for a pilot&hellip;</div>
+    </div>
+  </div>
+</section>
+
+<div id="strip" hidden>Co-pilot gunner: join <b id="stripCode">----</b></div>
+<div id="big" aria-live="polite"></div>
+<div id="kbHelp" hidden>WASD: walk (relative to where you face) &middot; mouse: aim (push to the edges to turn) &middot; Q/E: swing torso &middot; click: fire &middot; 1 2 3: weapons &middot; right-click ground: walk there &middot; B brace &middot; H holo hands &middot; M mute</div>
+<div id="fxInfo"></div>
+
+<script src="js/vendor/three.min.js"></script>
+<script src="js/vendor/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/config.js"></script>
+<script src="js/world.js"></script>
+<script src="js/aim.js"></script>
+<script src="js/sfx.js"></script>
+<script src="js/net.js"></script>
+<script src="js/cockpit.js"></script>
+<script src="js/tv.js"></script>
+</body>
+</html>

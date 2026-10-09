@@ -1,0 +1,43 @@
+@font-face { font-family: 'Fredoka'; src: url('../assets/fredoka-latin-var.woff2') format('woff2'); font-weight: 300 700; font-display: swap; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0e14; color: #eef3ff; font-family: 'Fredoka', system-ui, sans-serif; }
+canvas#gl, canvas#frame, canvas#hud { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+canvas#frame, canvas#hud { pointer-events: none; }
+#lobby { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; gap: 5vw; padding: 4vh 5vw; box-sizing: border-box;
+  background: radial-gradient(ellipse at 30% 40%, rgba(10,14,24,.55), rgba(5,7,12,.88)); }
+#lobby[hidden] { display: none; }
+.lb-left { max-width: 46vw; }
+.presents { font-size: 1.6vw; letter-spacing: .15em; color: #9fb0cc; display: flex; align-items: center; gap: .6em; }
+.presents img { height: 2.2vw; width: auto; }
+.proto { background: #ffb02e; color: #241500; padding: .1em .5em; border-radius: .3em; font-weight: 700; letter-spacing: .05em; }
+.back { color: #9fb0cc; margin-left: auto; text-decoration: none; }
+h1 { font-size: 7.4vw; margin: 2vh 0 0; line-height: .95; letter-spacing: .04em; font-weight: 700; }
+h1 span { color: #ffb02e; }
+.wt { color: #8a97ad; font-size: 1.3vw; letter-spacing: .3em; text-transform: uppercase; }
+.tagline { font-size: 1.75vw; color: #cfd8ea; line-height: 1.35; }
+.how { list-style: none; padding: 0; margin: 2vh 0; font-size: 1.4vw; color: #c7d1e4; }
+.how li { margin: .6em 0; padding-left: 2.3em; text-indent: -2.3em; }
+.how li > b:first-child { background: #ffb02e; color: #241500; border-radius: 50%; min-width: 1.6em; height: 1.6em; display: inline-flex; align-items: center; justify-content: center; text-indent: 0; margin-right: .7em; }
+.kb { font: inherit; font-size: 1.2vw; background: transparent; border: 2px solid #3a4558; color: #b8c4da; border-radius: .6em; padding: .5em 1em; cursor: pointer; }
+.kb:hover { border-color: #ffb02e; color: #fff; }
+.phone-hint { margin-top: 1em; background: #2a1e05; border: 1px solid #ffb02e; padding: .6em .8em; border-radius: .5em; font-size: 1.3vw; }
+.join-box { background: rgba(16,20,30,.92); border: 2px solid #2b3446; border-radius: 1.2vw; padding: 2vw; display: flex; flex-direction: column; align-items: center; min-width: 22vw; }
+#qr { width: 17vw; height: 17vw; background: #fff; border-radius: .6vw; image-rendering: pixelated; }
+.join-text { text-align: center; }
+.join-label { margin-top: 1vw; letter-spacing: .2em; font-size: 1.1vw; color: #9fb0cc; }
+.code { font-size: 5vw; font-weight: 700; letter-spacing: .15em; color: #ffb02e; }
+.url { font-size: 1vw; color: #7f8ba3; }
+.netstatus { font-size: 1vw; color: #7f8ba3; margin-top: .4em; }
+#lobbyPlayers { list-style: none; padding: 0; margin: 1vw 0 0; font-size: 1.4vw; }
+#lobbyPlayers li { margin: .3em 0; }
+#lobbyPlayers .role { font-weight: 700; padding: .05em .45em; border-radius: .3em; color: #111; margin-right: .4em; font-size: .8em; }
+#lobbyPlayers .st { color: #8fa0bb; font-size: .8em; margin-left: .4em; }
+.start-hint { margin-top: .8vw; font-size: 1.3vw; color: #ffd27a; }
+#strip { position: fixed; right: 1.2vw; top: 1.2vh; font-size: 1vw; color: #9fb0cc; background: rgba(8,10,16,.7); padding: .3em .7em; border-radius: .4em; }
+#strip[hidden] { display: none; }
+#big { position: fixed; left: 0; right: 0; top: 30vh; text-align: center; font-size: 5vw; font-weight: 700; letter-spacing: .08em; color: #fff;
+  text-shadow: 0 0 .4em rgba(255,176,46,.8), 0 .08em 0 #000; opacity: 0; transform: scale(.9); transition: opacity .2s, transform .2s; pointer-events: none; }
+#big.on { opacity: 1; transform: scale(1); }
+#big small { display: block; font-size: .35em; letter-spacing: .2em; color: #ffd27a; }
+#kbHelp { position: fixed; left: 50%; transform: translateX(-50%); top: 1.2vh; font-size: .95vw; color: #b9c5da; background: rgba(8,10,16,.75); padding: .35em .9em; border-radius: .4em; white-space: nowrap; }
+#kbHelp[hidden] { display: none; }
+#fxInfo { position: fixed; left: .6vw; top: .4vh; font-size: .8vw; color: #5d6a80; }
