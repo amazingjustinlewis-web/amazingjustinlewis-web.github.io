@@ -136,7 +136,7 @@
 
 
   // ------------------------------------------------------------------ v0.2 thumb pad: walk, facing ring, travel arrow, holo mini-map, tap to fire
-  var pc = $('pad'), px = pc.getContext('2d'), PS = pc.width, PC = PS / 2, RING = PS * 0.465, INNER = PS * 0.375, MAPR = PS * 0.36, STICK = PS * 0.2;
+  var pc = $('pad'), px = pc.getContext('2d'), PS = pc.width, PC = PS / 2, RING = PS * 0.44, INNER = PS * 0.355, MAPR = PS * 0.34, STICK = PS * 0.2;
   var tp = { id: null, mode: null, sx: 0, sy: 0, x: 0, y: 0, t0: 0, moved: 0, mv: [0, 0], sentMv: [0, 0], sentAt: 0, ringA: 0, spring: null }, trail = [];
   function padPt(e) { var r = pc.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * PS, (e.clientY - r.top) / r.height * PS, r.width / PS]; }
   function sendMove(force) {
@@ -149,7 +149,7 @@
     e.preventDefault(); if (tp.id != null) return; try { pc.setPointerCapture(e.pointerId); } catch (x) {}
     var p = padPt(e), dx = p[0] - PC, dy = p[1] - PC, r = Math.hypot(dx, dy);
     tp.id = e.pointerId; tp.sx = tp.x = p[0]; tp.sy = tp.y = p[1]; tp.t0 = performance.now(); tp.moved = 0; tp.css = p[2];
-    if (r > INNER - PS * 0.02 && me.seat === 0) { tp.mode = 'ring'; tp.spring = null; tp.ringA = Math.atan2(dx, -dy); vib(10); }
+    if (r > INNER - PS * 0.02 && me.seat === 0) { tp.mode = 'ring'; if (tp.spin) { dispTy = tp.spin.target + tp.spin.rem; tp.spin = null; } tp.ringA = Math.atan2(dx, -dy); vib(10); }
     else tp.mode = 'pad';
   });
   pc.addEventListener('pointermove', function (e) {
@@ -165,7 +165,7 @@
     if (tp.id !== e.pointerId) return; var dt = performance.now() - tp.t0;
     if (tp.mode === 'ring') {
       if (Math.abs(tp.ringA) > 0.06) { send({ t: 'face', a: +tp.ringA.toFixed(3) }); vib([15, 30, 15]); }
-      tp.spring = { from: tp.ringA, t0: performance.now() };
+      if (st && Math.abs(tp.ringA) > 0.06) { tp.spin = { rem: tp.ringA, target: wrapA2(dispTy - tp.ringA) }; } else tp.ringA = 0;   // the pod turns; the whole pad rotates back with it
     } else {
       if (tp.moved <= 12 && dt < 260) { send({ t: 'tap' }); vib(18); flashTap = performance.now(); }
       if (tp.mv[0] || tp.mv[1]) { tp.mv = [0, 0]; sendMove(true); }      // let go: the mech slows to a stop
@@ -173,17 +173,23 @@
     tp.id = null; tp.mode = null;
   }
   pc.addEventListener('pointerup', padUp); pc.addEventListener('pointercancel', padUp);
-  var flashTap = 0;
+  var flashTap = 0, dispTy = null;
+  function wrapA2(a) { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; }
   function drawPad() {
     requestAnimationFrame(drawPad);
     if (tab !== 'combat' || $('main').hidden) return;
-    var c = px, now = performance.now(); c.clearRect(0, 0, PS, PS);
-    if (tp.spring) { var u = (now - tp.spring.t0) / 380; if (u >= 1) { tp.ringA = 0; tp.spring = null; } else tp.ringA = tp.spring.from * Math.pow(1 - u, 2) * Math.cos(u * 5); }
+    var c = px, now = performance.now(); c.clearRect(0, 0, PS, PS); if (st && dispTy == null) dispTy = st.ty;
+    var fdt = Math.min(0.05, (now - (drawPad.last || now)) / 1000); drawPad.last = now;
+    if (tp.spin) {         // same turn rate as the pod on the TV (faceDegPerSec), eased over the last few degrees
+      var rate = C.mech.faceDegPerSec * D2R * fdt * Math.min(1, 0.25 + Math.abs(tp.spin.rem) / 0.35), r0 = tp.spin.rem;
+      tp.spin.rem = Math.abs(r0) <= rate ? 0 : r0 - Math.sign(r0) * rate; tp.ringA = tp.spin.rem; dispTy = tp.spin.target + tp.spin.rem;
+      if (!tp.spin.rem) tp.spin = null;
+    } else if (st && tp.mode !== 'ring') dispTy += wrapA2(st.ty - dispTy) * Math.min(1, fdt * 12);
     // holographic mini-map, heading-up like the TV radar
     c.save(); c.beginPath(); c.arc(PC, PC, MAPR, 0, Math.PI * 2); c.clip();
     var g = c.createRadialGradient(PC, PC, 0, PC, PC, MAPR); g.addColorStop(0, 'rgba(30,90,110,.28)'); g.addColorStop(1, 'rgba(10,30,40,.5)'); c.fillStyle = g; c.fillRect(0, 0, PS, PS);
     if (st) {
-      var sc = MAPR / 90; c.translate(PC, PC); c.rotate(st.ty); c.scale(sc, sc); c.translate(-st.x, -st.z);
+      var sc = MAPR / 90; c.translate(PC, PC); c.rotate(dispTy); c.scale(sc, sc); c.translate(-st.x, -st.z);
       c.lineWidth = 1.2 / sc; c.strokeStyle = 'rgba(120,230,255,.45)'; c.fillStyle = 'rgba(80,200,255,.10)';
       Wd.buildings.forEach(function (b) { if (Math.abs(b.x - st.x) > 120 || Math.abs(b.z - st.z) > 120) return; c.fillRect(b.x - b.w / 2, b.z - b.d / 2, b.w, b.d); c.strokeRect(b.x - b.w / 2, b.z - b.d / 2, b.w, b.d); });
       var B = Wd.bay; c.strokeStyle = 'rgba(93,200,255,.9)'; c.lineWidth = 2.5 / sc; c.strokeRect(B.x - B.w / 2, B.z - B.d / 2, B.w, B.d);
@@ -197,7 +203,7 @@
     // inner ring: travel direction + speed
     c.strokeStyle = 'rgba(93,255,154,.3)'; c.lineWidth = 3; c.beginPath(); c.arc(PC, PC, INNER, 0, Math.PI * 2); c.stroke();
     if (st && st.tv && st.tv[1] > 0.03) {
-      var ta = st.tv[0], len = INNER * (0.25 + 0.75 * st.tv[1]); c.save(); c.translate(PC, PC); c.rotate(ta);
+      var ta = st.tv[0] - st.ty + dispTy, len = INNER * (0.25 + 0.75 * st.tv[1]); c.save(); c.translate(PC, PC); c.rotate(ta);
       c.strokeStyle = '#5dff9a'; c.lineWidth = 7; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -len + 14); c.stroke();
       c.fillStyle = '#5dff9a'; c.beginPath(); c.moveTo(0, -len - 6); c.lineTo(-13, -len + 16); c.lineTo(13, -len + 16); c.fill(); c.restore();
     }
