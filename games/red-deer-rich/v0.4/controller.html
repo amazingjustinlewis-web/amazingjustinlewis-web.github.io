@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Red Deer Rich controller | Zero to Phi</title>
+<meta name="theme-color" content="#14121b">
+<meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/phone.css">
+</head>
+<body>
+<section id="join" class="screen">
+  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">RED DEER <b>RICH</b></div><div class="jsub">v0.4 &middot; phone controller</div></div></header>
+  <label class="fld">Room code<input id="room" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD"></label>
+  <label class="fld">Your name<input id="name" maxlength="12" autocomplete="nickname" placeholder="Name"></label>
+  <button id="joinBtn" class="big-btn">JOIN GAME</button>
+  <div id="joinStatus" class="jstatus" role="status"></div>
+</section>
+
+<section id="lobby" class="screen" hidden>
+  <div class="lhead"><span id="lConn" class="conn"></span><span>Room <b id="lRoom"></b></span></div>
+  <div class="carousel" id="carousel">
+    <button class="car-nav" id="carPrev" aria-label="Previous character">&#9664;</button>
+    <div class="car-card" id="carCard"><canvas id="carCv" width="360" height="150"></canvas><div class="car-name" id="carName"></div><div class="car-role" id="carRole"></div><div class="car-line" id="carLine"></div><div class="car-perk" id="carPerk"></div><div class="car-taken" id="carTaken"></div></div>
+    <button class="car-nav" id="carNext" aria-label="Next character">&#9654;</button>
+  </div>
+  <button id="pickBtn" class="big-btn">PICK THIS CHARACTER</button>
+  <div class="lplayers" id="lPlayers"></div>
+  <div id="hostBox" class="hostbox" hidden>
+    <div class="hb-title">You're the host</div>
+    <div class="presets" id="hPresets"></div>
+    <button id="hOptToggle" class="optline" aria-expanded="false"><span id="hOptLabel">Game options</span><i>&#9662;</i></button>
+    <div id="hOpts" class="optpanel" hidden>
+      <div class="optrows" id="hOptRows"></div>
+      <div class="muted small">Tap to switch on or off. Press and hold for more.</div>
+      <div class="hb-sub">Computer players</div>
+      <div class="row"><button id="hAiChar" class="ghost">Character</button><button id="hAiLevel" class="ghost">Normal</button></div>
+      <div class="muted small">Pick who the next AI is and how tough, then use + next to START. Mid-game, you can fill an empty seat from the Board tab.</div>
+      <div id="hHue"></div>
+    </div>
+    <div class="startpick">
+      <div class="seg" id="hMode"></div>
+      <div class="aistep"><button id="hAiMinus" aria-label="Remove an AI player">&minus;</button><span id="hAiCount">AI 0</span><button id="hAiAdd" aria-label="Add an AI player">+</button></div>
+    </div>
+    <div class="muted small" id="hModeInfo"></div>
+    <button id="startBtn" class="big-btn red">START GAME</button>
+  </div>
+  <div id="waitHost" class="muted center"></div>
+</section>
+
+<section id="game" class="screen" hidden>
+  <header class="ghead"><canvas class="mypiece" id="myPiece" width="96" height="96" aria-hidden="true"></canvas><div class="gh-mid"><div id="myName"></div><span id="myBadge" class="badge"></span></div><div class="gh-cash" id="myCash"></div><span id="gConn" class="conn"></span></header>
+  <nav class="tabs" id="tabs">
+    <button data-tab="turn" class="on"><span class="ti">&#127922;</span><span class="tl">My Turn</span><i class="dot" id="bTurn"></i></button>
+    <button data-tab="stuff"><span class="ti">&#128176;</span><span class="tl">My Stuff</span></button>
+    <button data-tab="board"><span class="ti">&#128506;&#65039;</span><span class="tl">Board</span></button>
+    <button data-tab="msgs"><span class="ti">&#128172;</span><span class="tl">Deals &amp; Chat</span><i class="dot" id="bMsgs"></i></button>
+  </nav>
+  <div id="auctionBar" class="aucbar" hidden></div>
+  <main class="panes">
+    <section class="tab" id="tab-turn">
+      <div class="pane-main" id="turnMain"></div>
+      <div class="pane-side" id="turnSide"></div>
+    </section>
+    <section class="tab" id="tab-stuff" hidden>
+      <div class="pane-main"><div id="stuffMain"></div><div id="flowBox" class="flowbox" hidden></div></div>
+      <div class="pane-side" id="stuffSide"></div>
+    </section>
+    <section class="tab" id="tab-board" hidden>
+      <div class="pane-main"><div class="mini-wrap" id="miniWrap"><div class="mini-zoom" id="miniZoom"><div class="mini" id="mini"></div><div class="mini-dots" id="miniDots"></div></div><div class="zbtns"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">&minus;</button><button data-z="fit" aria-label="Fit board">&#10530;</button></div></div><div class="muted center zhint">Pinch or use + / &minus; to zoom, drag to pan. Tap a space for details.</div><div id="seatBox"></div><div id="obsBox"></div></div>
+      <div class="pane-side" id="boardSide"></div>
+    </section>
+    <section class="tab" id="tab-msgs" hidden>
+      <div class="pane-main" id="msgMain"></div>
+      <div class="pane-side" id="msgSide"></div>
+    </section>
+    <div id="flowSet" class="flowset" hidden></div>
+  </main>
+</section>
+
+<section id="over" class="screen" hidden><h1 id="oTitle">GAME OVER</h1><ol id="oList"></ol><button id="againBtn" class="big-btn" hidden>PLAY AGAIN</button><button id="lobbyBtn" class="big-btn ghostbtn" hidden>CHANGE PLAYERS</button><div class="muted center" id="oWait"></div></section>
+
+<div id="payup" class="takeover" hidden><div class="pu-who" id="puWho"></div><button id="puBtn" class="pu-btn">PAY<br>UP!</button><div class="pu-sub" id="puSub"></div></div>
+<div id="boom" class="takeover boom" hidden><div class="boom-art">&#128165;</div><div class="boom-t">YOU GOT<br>CAUGHT!</div><div class="boom-s" id="boomSub"></div></div>
+<div id="leaveBox" class="leavebox" hidden></div>
+<div id="voteBar" class="votebar" hidden></div>
+<div id="toast" class="toast" hidden></div>
+<div id="paid" class="paidbox" hidden><div class="paid-stamp">PAID<br>IN FULL</div><div class="paid-sub" id="paidSub"></div></div>
+<div id="faces" class="faces" aria-hidden="true"></div>
+<div id="cardList" class="optsheet" hidden><div class="os-card"><div class="os-h">Cards drawn this game</div><div class="clrows" id="clRows"></div><button id="clOk" class="big-btn">CLOSE</button></div></div>
+
+<div id="findSheet" class="optsheet" hidden><div class="os-card fs-card"><div class="fs-deck" id="fsDeck">&#128220; SECRET FINDS</div><div class="fs-era" id="fsEra"></div><div class="fs-h" id="fsH"></div><div class="fs-story" id="fsStory"></div><div class="fs-more" id="fsMore"></div><div class="fs-fx" id="fsFx"></div><div class="fs-src" id="fsSrc"></div><button id="fsOk" class="big-btn">CLOSE</button></div></div>
+<div id="optSheet" class="optsheet" hidden><div class="os-card"><div class="os-h" id="osH"></div><div class="os-short" id="osShort"></div><div class="os-t" id="osT"></div><button id="osOk" class="big-btn">GOT IT</button></div></div>
+<script src="js/vendor/peerjs.min.js"></script>
+<script>/* old TV browsers (e.g. Samsung Tizen, Chromium < 80) cannot run the modern PeerJS build: load the transpiled one */ if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/config.js"></script>
+<script src="js/options.js"></script>
+<script src="js/board.js"></script>
+<script src="js/sfx.js"></script>
+<script src="js/net.js"></script>
+<script src="js/render.js"></script>
+<script src="js/controller.js"></script>
+</body>
+</html>
