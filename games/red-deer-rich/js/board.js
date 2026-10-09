@@ -205,6 +205,31 @@
       src: ['https://reddeer.ca/whats-happening/news-room/historic-cpr-pedestrian-bridge-officially-reopens-to-the-community.html'] }
   ];
   // deck metadata (display names live in config: C.decks)
+  // v0.5 Disasters: mild local mishaps (house rule). sev 1 minor / 2 medium / 3 major = turns it lasts; mode 'closed' = no rent,
+  // 'half' = half rent. when: day / night / any (the TV's day-night clock). No tornadoes, nobody hurt.
+  var DISASTERS = [
+    { id: 'hail',      when: 'day',   sev: 2, mode: 'half',   icon: '\uD83C\uDF28\uFE0F', h: 'Hailstorm',               t: 'Golf-ball hail dents the awnings. Half the customers stay home.' },
+    { id: 'car',       when: 'day',   sev: 3, mode: 'closed', icon: '\uD83D\uDE97',       h: 'Car Through the Window',  t: 'A driver backs right through the storefront. Nobody hurt, but the front is gone.' },
+    { id: 'watermain', when: 'day',   sev: 2, mode: 'closed', icon: '\uD83D\uDCA7',       h: 'Water Main Break',        t: 'A water main bursts on Gaetz and floods the shop.' },
+    { id: 'cones',     when: 'day',   sev: 1, mode: 'half',   icon: '\uD83D\uDEA7',       h: 'Road Construction',       t: 'Orange cones block the entrance. Customers drive around the block twice and give up.' },
+    { id: 'outage',    when: 'day',   sev: 1, mode: 'closed', icon: '\u26A1',             h: 'Summer Power Outage',     t: 'The power goes out and the tills go dark.' },
+    { id: 'goose',     when: 'any',   sev: 1, mode: 'half',   icon: '\uD83E\uDDA2',       h: 'Goose Standoff',          t: 'A Canada goose guards the front door. Nobody is brave enough to get past.' },
+    { id: 'snowsep',   when: 'day',   sev: 2, mode: 'half',   icon: '\u2744\uFE0F',       h: 'September Snow Dump',     t: 'A freak September snowfall collapses the sign.' },
+    { id: 'sewer',     when: 'day',   sev: 2, mode: 'closed', icon: '\uD83C\uDF27\uFE0F', h: 'Sewer Backup',            t: 'The sewer backs up after a big rain. Everybody out.' },
+    { id: 'inspector', when: 'day',   sev: 1, mode: 'half',   icon: '\uD83D\uDCCB',       h: 'Surprise Inspection',     t: 'A health inspector shows up with a clipboard and a lot of questions.' },
+    { id: 'smoke',     when: 'day',   sev: 2, mode: 'half',   icon: '\uD83D\uDCA8',       h: 'Grass-Fire Smoke',        t: 'Smoke drifts in from the river valley. Doors shut, fans on.' },
+    { id: 'breakin',   when: 'night', sev: 2, mode: 'closed', icon: '\uD83D\uDD28',       h: 'Break-In',                t: 'Someone smashes the window and breaks in overnight.' },
+    { id: 'graffiti',  when: 'night', sev: 1, mode: 'half',   icon: '\uD83C\uDFA8',       h: 'Graffiti',                t: 'Spray paint all across the front by morning.' },
+    { id: 'catcon',    when: 'night', sev: 1, mode: 'half',   icon: '\uD83D\uDD27',       h: 'Converter Thieves',       t: 'The catalytic converters get stolen off the delivery van.' },
+    { id: 'pipe',      when: 'any',   sev: 3, mode: 'closed', icon: '\uD83E\uDD76',       h: 'Burst Pipe',              t: 'A pipe bursts in a minus-35 cold snap.' },
+    { id: 'raccoon',   when: 'night', sev: 1, mode: 'half',   icon: '\uD83E\uDD9D',       h: 'Raccoon Gang',            t: 'A raccoon gang raids the storage room. They took the good snacks.' },
+    { id: 'fire',      when: 'night', sev: 3, mode: 'closed', icon: '\uD83E\uDDEF',       h: 'Small Kitchen Fire',      t: 'A small kitchen fire after closing. Out fast, nobody hurt, lots of smoke damage.' },
+    { id: 'plow',      when: 'night', sev: 2, mode: 'half',   icon: '\uD83D\uDE9C',       h: 'Snowplow Hit',            t: 'A snowplow takes out the sign and the curb.' },
+    { id: 'icedam',    when: 'night', sev: 2, mode: 'half',   icon: '\uD83E\uDDCA',       h: 'Ice Dam',                 t: 'An ice dam leaks through the roof.' },
+    { id: 'copper',    when: 'night', sev: 2, mode: 'closed', icon: '\uD83D\uDD0C',       h: 'Copper Theft',            t: 'Thieves strip the copper wiring and cut the power.' },
+    { id: 'patio',     when: 'night', sev: 1, mode: 'half',   icon: '\uD83C\uDF7A',       h: 'Patio Wrecked',           t: 'The bar crowd wrecks the patio at closing time.' }
+  ];
+  var SEV_NAMES = ['', 'Minor', 'Medium', 'Major'];
   var DECKS = { random: RANDOM, finds: FINDS };
   // indexes of a deck's cards for an era skin; null/'all' = every card. Falls back to the whole deck if an era has too few.
   function deckCards(deck, era) {
@@ -215,5 +240,5 @@
   }
 
   root.RDR_BOARD = { SPACES: SPACES, GROUPS: GROUPS, GROUP_MEMBERS: GROUP_MEMBERS, WHISTLES: WHISTLES, WHISTLE_RENT: WHISTLE_RENT, JUICE_MULT: JUICE_MULT,
-    STORIES: STORIES, RANDOM: RANDOM, FINDS: FINDS, DECKS: DECKS, deckCards: deckCards };
+    STORIES: STORIES, RANDOM: RANDOM, FINDS: FINDS, DECKS: DECKS, deckCards: deckCards, DISASTERS: DISASTERS, SEV_NAMES: SEV_NAMES };
 })(typeof window !== 'undefined' ? window : globalThis);

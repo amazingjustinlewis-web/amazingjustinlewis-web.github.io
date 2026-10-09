@@ -1,4 +1,4 @@
-/* RED DEER RICH - TV board renderer (v0.1.1, placeholder art drawn in code).
+/* RED DEER RICH - TV board renderer (v0.5; v0.1.1 base, placeholder art drawn in code).
    v0.1.1: owner-colour wash on owned tiles (drawn per frame so private deals can crossfade slowly),
    a gentle follow camera and dice that tumble across the board.
    Static tiles are cached on an offscreen canvas and only redrawn when ownership/Shops change.
@@ -228,7 +228,7 @@
     c.font = '900 ' + Math.round(k * 0.11) + 'px Fredoka, system-ui, sans-serif';
     c.strokeText('RICH', 0, k * 0.056); c.fillStyle = '#f2c230'; c.fillText('RICH', 0, k * 0.056);
     c.font = '700 ' + Math.round(k * 0.024) + 'px Fredoka, system-ui, sans-serif'; c.fillStyle = '#3a2a10';
-    c.fillText('a Zero to Phi game \u00b7 v0.4', 0, k * 0.125);
+    c.fillText('a Zero to Phi game \u00b7 v0.5', 0, k * 0.125);
     c.restore();
     // card decks
     var dw = k * 0.14, dh = k * 0.09;      // v0.1.1: the card piles sit in the open middle of the mini city
@@ -314,7 +314,7 @@
     if (root.RDRArt && r && this.rung < 6) return this.drawShops3d(c, band, n, horiz, r, own);
     if (n === 5) {      // Mega-Plex
       var mw = horiz ? bw * 0.62 : bw * 0.75, mh = horiz ? bh * 0.75 : bh * 0.62;
-      c.fillStyle = '#c0182a'; rr(c, bx + (bw - mw) / 2, by + (bh - mh) / 2, mw, mh, 3); c.fill(); c.strokeStyle = '#ffd84a'; c.lineWidth = 1.5; c.stroke();
+      c.fillStyle = '#c0182a'; rr(c, bx + (bw - mw) / 2, by + (bh - mh) / 2, mw, mh, 3); c.fill(); c.strokeStyle = '#121a14'; c.lineWidth = 2; c.stroke();
       c.fillStyle = '#ffd84a'; c.font = '800 ' + Math.max(7, Math.round(Math.min(mw, mh) * 0.5)) + 'px Fredoka, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('MP', bx + bw / 2, by + bh / 2 + 1);
       return;
     }
@@ -324,16 +324,17 @@
       var y = horiz ? by + (bh - sz) / 2 : by + 3 + k * (bh - 6) / 4 + ((bh - 6) / 4 - sz) / 2;
       c.fillStyle = '#1f9d47'; c.fillRect(x, y + sz * 0.3, sz, sz * 0.7);
       c.beginPath(); c.moveTo(x - 1, y + sz * 0.32); c.lineTo(x + sz / 2, y); c.lineTo(x + sz + 1, y + sz * 0.32); c.closePath(); c.fill();
-      c.strokeStyle = '#0b3d1b'; c.lineWidth = 1; c.strokeRect(x, y + sz * 0.3, sz, sz * 0.7);
+      c.strokeStyle = '#121a14'; c.lineWidth = Math.max(1.6, sz * 0.12); c.strokeRect(x, y + sz * 0.3, sz, sz * 0.7);
     }
   };
   // v0.2: Shops as little line-art houses and the Mega-Plex as a block, leaning outward (RDRArt), owner colour as the accent
   P.drawShops3d = function (c, band, n, horiz, r, own) {
-    var A = root.RDRArt, bx = band[0], by = band[1], bw = band[2], bh = band[3], half = this.S / 2, line = '#1b2a1e';
+    var A = root.RDRArt, bx = band[0], by = band[1], bw = band[2], bh = band[3], half = this.S / 2, line = '#121a14';
+    var lw = Math.max(1.6, Math.min(bw, bh) * 0.085);      // v0.5: one slightly thicker dark outline on every Shop / Mega-Plex
     if (n === 5) {
       var mw = horiz ? bw * 0.6 : bw * 0.72, mh = horiz ? bh * 0.72 : bh * 0.6, mx = bx + (bw - mw) / 2, my = by + (bh - mh) / 2;
       var o = A.offset(r.x + mx + mw / 2, r.y + my + mh / 2, Math.min(mw, mh) * 1.1, half, half, half);
-      var rf = A.box(c, mx, my, mw, mh, o, { wall: '#efe4cf', roof: '#c0182a', line: '#3a0a10', sprite: 'mega' });
+      var rf = A.box(c, mx, my, mw, mh, o, { wall: '#efe4cf', roof: '#c0182a', line: line, lw: lw, sprite: 'mega' });
       if (own) { c.fillStyle = own; c.fillRect(rf.x + 2, rf.y + 2, horiz ? mw - 4 : Math.max(2, mw * 0.16), horiz ? Math.max(2, mh * 0.16) : mh - 4); }
       c.fillStyle = '#ffd84a'; c.font = '800 ' + Math.max(7, Math.round(Math.min(mw, mh) * 0.48)) + 'px Fredoka, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('MP', rf.x + mw / 2, rf.y + mh / 2 + 1);
       return;
@@ -343,7 +344,7 @@
       var x = horiz ? bx + 3 + k * (bw - 6) / 4 + ((bw - 6) / 4 - sz) / 2 : bx + (bw - sz) / 2;
       var y = horiz ? by + (bh - sz) / 2 : by + 3 + k * (bh - 6) / 4 + ((bh - 6) / 4 - sz) / 2;
       var oo = A.offset(r.x + x + sz / 2, r.y + y + sz / 2, sz * 1.05, half, half, half);
-      A.box(c, x, y, sz, sz, oo, { wall: '#f4ecd8', roof: '#1f9d47', line: line, ridge: horiz ? 'v' : 'h', accent: own, sprite: 'shop' });
+      A.box(c, x, y, sz, sz, oo, { wall: '#f4ecd8', roof: '#1f9d47', line: line, lw: lw, ridge: horiz ? 'v' : 'h', accent: own, sprite: 'shop' });
     }
   };
   P.icon = function (c, s, x, y, h) {
@@ -712,6 +713,116 @@
       return true;
     });
   };
+  // ------------------------------------------------------------------ v0.5
+  // a resting token drawn once into a scratch canvas, then stamped at 70% so its parts don't show through each other
+  P.ghostToken = function (c, p, x, y, r, a, now) {
+    var tf = c.getTransform ? c.getTransform() : null;
+    if (!tf) { c.globalAlpha = a; this.drawToken(c, p, x, y, r, false, now); c.globalAlpha = 1; return; }
+    var sc = Math.max(1, Math.abs(tf.a)), half = r * 2.2, px = Math.ceil(half * 2 * sc);
+    var cv = this._ghost || (this._ghost = document.createElement('canvas'));
+    if (cv.width < px || cv.height < px) { cv.width = px; cv.height = px; }
+    var g2 = cv.getContext('2d'); g2.setTransform(1, 0, 0, 1, 0, 0); g2.clearRect(0, 0, px, px); g2.setTransform(sc, 0, 0, sc, 0, 0);
+    this.drawToken(g2, p, half, half, r, false, now);
+    c.globalAlpha = a; c.drawImage(cv, 0, 0, px, px, x - half, y - half, half * 2, half * 2); c.globalAlpha = 1;
+  };
+  // Disasters: a small pill on the tile (icon + turns left); a closed business gets a faint red wash and hazard edge
+  P.drawDamage = function (c, now) {
+    var g = this.g, self = this, w = this.w;
+    g.props.forEach(function (pr, i) {
+      if (!pr || !pr.dmg || pr.owner < 0) return;
+      var r = self.rect(i), x0 = self.bx + r.x, y0 = self.by + r.y, e = B.DISASTERS[pr.dmg.e] || {}, closed = pr.dmg.mode === 'closed';
+      var fx = (self.disFx || []).filter(function (f) { return f.sp === i; })[0];
+      if (fx && (fx.t0 == null || now - fx.t0 < fx.fly)) return;           // marker appears on impact
+      if (closed) {
+        c.fillStyle = 'rgba(200,30,40,0.16)'; c.fillRect(x0, y0, r.w, r.h);
+        c.save(); c.beginPath(); c.rect(x0, y0, r.w, r.h); c.clip(); c.lineWidth = Math.max(2, w * 0.05);
+        c.setLineDash([w * 0.12, w * 0.12]); c.strokeStyle = 'rgba(255,200,40,0.95)'; c.strokeRect(x0 + c.lineWidth / 2, y0 + c.lineWidth / 2, r.w - c.lineWidth, r.h - c.lineWidth);
+        c.lineDashOffset = w * 0.12; c.strokeStyle = 'rgba(30,20,20,0.9)'; c.strokeRect(x0 + c.lineWidth / 2, y0 + c.lineWidth / 2, r.w - c.lineWidth, r.h - c.lineWidth); c.setLineDash([]); c.restore();
+      }
+      var ph = Math.max(12, w * 0.36), pw = ph * 1.75, cx = x0 + r.w / 2, cy = r.side === 't' ? y0 + r.h - ph * 0.85 : r.side === 'b' ? y0 + ph * 0.85 : y0 + r.h / 2;
+      if (r.side === 'l') cx = x0 + r.w - pw * 0.6; if (r.side === 'r') cx = x0 + pw * 0.6;
+      var bob = Math.sin(now / 420 + i) * ph * 0.04;
+      c.fillStyle = 'rgba(0,0,0,0.35)'; rr(c, cx - pw / 2 + 1.5, cy - ph / 2 + 2.5 + bob, pw, ph, ph / 2); c.fill();
+      c.fillStyle = closed ? '#d8323e' : '#f08a1a'; rr(c, cx - pw / 2, cy - ph / 2 + bob, pw, ph, ph / 2); c.fill();
+      c.lineWidth = Math.max(1.5, ph * 0.09); c.strokeStyle = '#1b1416'; c.stroke();
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.font = Math.round(ph * 0.62) + 'px "Noto Color Emoji", "Segoe UI Emoji", sans-serif'; c.fillText(e.icon || '\uD83D\uDD27', cx - pw * 0.2, cy + bob + ph * 0.04);
+      c.fillStyle = '#fff'; c.font = '800 ' + Math.round(ph * 0.66) + 'px Fredoka, sans-serif'; c.fillText(String(pr.dmg.left), cx + pw * 0.24, cy + bob + ph * 0.05);
+    });
+  };
+  // the disaster graphic flies in from the nearest edge, then an impact sized to the severity (rings + debris + a jolt)
+  P.disaster = function (sp, ei, sev) {
+    var e = B.DISASTERS[ei] || {}, D = C.disasters || {};
+    this.disFx = (this.disFx || []).filter(function (f) { return f.sp !== sp; });
+    this.disFx.push({ sp: sp, icon: e.icon || '\u26A0\uFE0F', sev: sev || 1, t0: null, fly: D.flyMs || 900, seed: Math.random() * 1000 });
+  };
+  P.drawDisasterFx = function (c, now) {
+    var list = this.disFx; if (!list || !list.length) return;
+    var self = this, w = this.w;
+    this.disFx = list.filter(function (f) {
+      if (f.t0 == null) f.t0 = now;
+      var el = now - f.t0, hit = 600 + 450 * f.sev; if (el > f.fly + hit) return false;
+      var r = self.rect(f.sp), tx = self.bx + r.x + r.w / 2, ty = self.by + r.y + r.h / 2;
+      var sx = r.side === 'b' ? tx : r.side === 'l' ? self.bx - w * 2.5 : r.side === 'r' ? self.bx + self.S + w * 2.5 : tx;
+      var sy = r.side === 'b' ? self.by + self.S + w * 2.5 : r.side === 't' ? self.by - w * 2.5 : ty;
+      if (r.side === 'b' || r.side === 't') sx = tx + (f.seed % 2 < 1 ? -1 : 1) * w * 3;
+      var size = w * (0.8 + 0.25 * f.sev);
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      if (el < f.fly) {
+        var k = el / f.fly, e2 = k * k, x = sx + (tx - sx) * e2, y = sy + (ty - sy) * e2 - Math.sin(Math.PI * k) * w * 1.2;
+        c.save(); c.translate(x, y); c.rotate((1 - k) * 2.4 * (f.seed % 2 < 1 ? -1 : 1));
+        c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.arc(0, size * 0.55, size * 0.45, 0, 7); c.fill();
+        c.font = Math.round(size) + 'px "Noto Color Emoji", "Segoe UI Emoji", sans-serif'; c.fillStyle = '#fff'; c.fillText(f.icon, 0, 0); c.restore();
+        return true;
+      }
+      var q = (el - f.fly) / hit, rings = f.sev, maxR = w * (0.7 + 0.55 * f.sev);
+      for (var k2 = 0; k2 < rings; k2++) {
+        var qq = Math.max(0, Math.min(1, q * 1.4 - k2 * 0.18)); if (qq <= 0 || qq >= 1) continue;
+        c.strokeStyle = 'rgba(255,' + (f.sev === 3 ? 90 : 170) + ',40,' + (0.85 * (1 - qq)).toFixed(3) + ')'; c.lineWidth = Math.max(2, w * 0.07 * (1 - qq) * f.sev);
+        c.beginPath(); c.arc(tx, ty, maxR * qq, 0, 7); c.stroke();
+      }
+      var n = (self.rung >= 3 ? 3 : 6) * f.sev;
+      for (var j = 0; j < n; j++) {
+        var ang = (j / n) * 6.283 + f.seed, dist = maxR * 0.9 * Math.min(1, q * 1.8), dy = q * q * w * 1.2;
+        c.fillStyle = j % 3 === 0 ? 'rgba(90,70,60,' + (1 - q).toFixed(2) + ')' : j % 3 === 1 ? 'rgba(240,200,120,' + (1 - q).toFixed(2) + ')' : 'rgba(200,200,210,' + (1 - q).toFixed(2) + ')';
+        var ps = w * 0.07 * (1 + (j % 2)); c.fillRect(tx + Math.cos(ang) * dist - ps / 2, ty + Math.sin(ang) * dist + dy - ps / 2, ps, ps);
+      }
+      var pop = q < 0.25 ? 1 + 0.5 * (1 - q / 0.25) : 1, fade = q > 0.6 ? 1 - (q - 0.6) / 0.4 : 1;
+      c.globalAlpha = Math.max(0, fade); c.font = Math.round(size * pop) + 'px "Noto Color Emoji", "Segoe UI Emoji", sans-serif'; c.fillText(f.icon, tx, ty - w * 0.1); c.globalAlpha = 1;
+      return true;
+    });
+  };
+  P.shakeOf = function (sp, now) { var f = (this.disFx || []).filter(function (x) { return x.sp === sp && x.t0 != null; })[0]; if (!f) return 0; var el = now - f.t0 - f.fly; return el > 0 && el < 350 ? Math.sin(el / 18) * this.w * 0.03 * f.sev * (1 - el / 350) : 0; };
+  // Mega-Plex construction: a saw going back and forth and a hammer knocking on the tile for a few seconds
+  P.construct = function (sp, ms) { this.cons = (this.cons || []).filter(function (q) { return q.sp !== sp; }); this.cons.push({ sp: sp, t0: null, ms: ms || 3200 }); };
+  P.drawConstruction = function (c, now) {
+    var list = this.cons; if (!list || !list.length) return;
+    var self = this, w = this.w;
+    this.cons = list.filter(function (q) {
+      if (q.t0 == null) q.t0 = now;
+      var el = now - q.t0; if (el > q.ms) return false;
+      var r = self.rect(q.sp), cx = self.bx + r.x + r.w / 2, cy = self.by + r.y + r.h / 2, k = el / q.ms, fade = k > 0.85 ? (1 - k) / 0.15 : 1;
+      c.save(); c.globalAlpha = fade;
+      c.fillStyle = 'rgba(255,210,60,0.18)'; c.fillRect(self.bx + r.x, self.by + r.y, r.w, r.h);
+      // saw: blade with teeth, sliding back and forth
+      var sl = Math.sin(el / 70) * w * 0.18, bl = w * 0.62, bh = w * 0.16, sx = cx - bl * 0.2 + sl, sy = cy + w * 0.12;
+      c.fillStyle = '#c9ced6'; c.strokeStyle = '#2a2d33'; c.lineWidth = Math.max(1, w * 0.03);
+      c.beginPath(); c.moveTo(sx - bl / 2, sy - bh / 2); c.lineTo(sx + bl / 2, sy - bh / 2); c.lineTo(sx + bl / 2, sy + bh * 0.1);
+      for (var t = 0; t <= 8; t++) c.lineTo(sx + bl / 2 - t * bl / 8, sy + bh * (t % 2 ? 0.5 : 0.1));
+      c.closePath(); c.fill(); c.stroke();
+      c.fillStyle = '#8a4b22'; rr(c, sx + bl / 2 - 1, sy - bh * 0.9, bh * 1.1, bh * 1.6, bh * 0.3); c.fill(); c.stroke();
+      // hammer: swings down and knocks
+      var sw = Math.abs(Math.sin(el / 160)), ang = -1.1 + sw * 1.1, hx = cx - w * 0.22, hy = cy - w * 0.05;
+      c.save(); c.translate(hx, hy); c.rotate(ang);
+      c.fillStyle = '#a8662e'; c.fillRect(-w * 0.03, -w * 0.38, w * 0.06, w * 0.38); c.strokeRect(-w * 0.03, -w * 0.38, w * 0.06, w * 0.38);
+      c.fillStyle = '#5b6068'; c.fillRect(-w * 0.12, -w * 0.46, w * 0.24, w * 0.1); c.strokeRect(-w * 0.12, -w * 0.46, w * 0.24, w * 0.1); c.restore();
+      // sawdust
+      for (var j = 0; j < 6; j++) { var u = ((el / 500) + j / 6) % 1; c.fillStyle = 'rgba(214,170,110,' + (0.9 * (1 - u)).toFixed(2) + ')'; c.fillRect(sx - bl * 0.1 + (j - 3) * w * 0.05, sy + bh * 0.5 + u * w * 0.3, w * 0.035, w * 0.035); }
+      c.restore();
+      return true;
+    });
+  };
+
   // v0.2: short zoom-ins on big moments (purchase, big rent, bankruptcy). Purely visual: the game never waits for it.
   P.camMoment = function (pid, ms, zoomMul) { this.cam.moment = { pid: pid, until: performance.now() + (ms || 1500), z: zoomMul || 1.25 }; };
   P.tokenR = function () { return Math.max(7, this.w * 0.285); };   // v0.4: a touch bigger so the accessories read
@@ -837,6 +948,8 @@
     }
     this.drawSky(c, dark);
     this.drawPings(c, now);      // v0.3 My Stuff tap: tile bounce (under the tokens)
+    this.drawDamage(c, now);     // v0.5 Disasters: repair markers
+    this.drawConstruction(c, now);   // v0.5 Mega-Plex construction
     // tokens (never crushed)
     var self = this, r = this.tokenR(), cur = g.turn ? g.turn.pid : -1;
     var list = g.players.filter(function (p) { return !p.bankrupt; });
@@ -847,7 +960,11 @@
       var moving = g.turn && g.turn.pid === p.id && g.turn.stage === 'moving';
       if (!v || moving) v = self.vis[p.id] = { x: tg.x, y: tg.y }; else { v.x += (tg.x - v.x) * ease; v.y += (tg.y - v.y) * ease; }
       v.sp = tg.sp;
-      self.drawToken(c, p, v.x, v.y, r * (p.id === cur ? 1.15 : 1), p.id === cur && g.phase === 'play', now);
+      // v0.5: resting tokens are see-through so tile text reads; solid while moving and for the active player
+      var act = p.id === cur && g.phase === 'play', mov = moving || Math.abs(tg.x - v.x) + Math.abs(tg.y - v.y) > 2;
+      var a = act || mov ? 1 : (C.tokenRestAlpha || 0.7);
+      v.alpha = a;
+      if (a < 1) self.ghostToken(c, p, v.x, v.y, r, a, now); else self.drawToken(c, p, v.x, v.y, r * (p.id === cur ? 1.15 : 1), act, now);
     });
     // speech bubbles
     var tnow = Date.now();
@@ -855,6 +972,7 @@
     this.drawBoardDice(c, now);
     if (root.RDRFx) { root.RDRFx.setRung(this.rung); root.RDRFx.step(dt || 16); root.RDRFx.draw(c); }
     this.bubbles.forEach(function (b) { var v = self.vis[b.pid]; if (v) self.drawBubble(c, v.x, v.y - r * 1.8, b.text, b.color); });
+    this.drawDisasterFx(c, now);     // v0.5: the disaster graphic flies in over everything
     if (camOn) c.restore();
   };
 

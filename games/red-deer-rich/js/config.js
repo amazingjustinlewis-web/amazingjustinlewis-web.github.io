@@ -1,5 +1,5 @@
 /* =====================================================================
-   RED DEER RICH - TUNABLE NUMBERS  v0.4 (placeholder art)
+   RED DEER RICH - TUNABLE NUMBERS  v0.5 (placeholder art)
    ---------------------------------------------------------------------
    Every rule number lives here. Change a value, save, refresh the TV.
    Phones read the same file (colours, labels, characters).
@@ -48,11 +48,24 @@
     // set it to an era id and the decks only use that era's cards (plus 'any'), falling back to all if too few.
     eras: { pioneer: 'Pioneer Red Deer', punk2000: '2000 Punk Red Deer', present: 'Present Day', future: 'Future Red Deer' },
     eraFilter: null,
-    storyHoldMs: 9000,           // v0.3: a Secret Finds card stays up on the TV this long (stories need a little longer than 6 s)
+    cardHoldMs: 12000,           // v0.5: every drawn card stays up on the TV this long unless another card replaces it
+    storyHoldMs: 12000,           // v0.3: a Secret Finds card stays up on the TV this long (stories need a little longer than 6 s)
     ping: { ms: 1100, lift: 0.22, gapMs: 600 },   // v0.3: tapping a deed in My Stuff bounces that tile on the TV (lift = bounce height in tiles)
     // v0.4 Heckle (house rule): when the active player stalls, everyone else gets a tiny heckle button. It unlocks after
     // afterMs[0] of inactivity on the first stall of a turn, afterMs[1] on the second, afterMs[2] on the third, and after the
     // third it stays unlocked until the turn ends. Any action by the stalling player locks it again. gapMs = per-heckler spam limit.
+    // v0.5 Disasters (house rule): mild local mishaps hit a random owned business between turns. sev 1/2/3 = minor/medium/major
+    // = closed or half rent for that many of the owner's turns. Never two on one deed. chance = per turn, at most maxPerRound
+    // per round and maxActive at once, from startRound on, never the same owner twice in a row. rushPct x price per turn
+    // left = RUSH REPAIR cost. sevWeights pick the severity (mostly minor). Night events need the TV's night (sim: every 3rd turn).
+    disasters: { chance: 0.14, maxPerRound: 2, maxActive: 3, startRound: 2, rushPct: 0.10, sevWeights: [0.56, 0.32, 0.12], flyMs: 900, holdMs: 5200 },
+    // v0.5 AUTO-RAISE plan order: mortgage deeds outside full sets (cheapest first), sell Shops evenly from the weakest set,
+    // then mortgage set deeds (weakest set first). Stops as soon as the debt is covered.
+    // v0.5 game timer: separate from game length. null = the length's default (Regular none, Medium 45, Quick 30).
+    timerChoices: [0, 20, 30, 45, 60, 90],
+    // v0.5 resting tokens let tile text show through; solid while moving and for the active player
+    tokenRestAlpha: 0.7,
+    buildSeqMs: 3200,            // v0.5 Mega-Plex construction (saw + hammer on the tile)
     heckle: { afterMs: [15000, 5000, 3000], gapMs: 450, targetGapMs: 120, faces: ['\uD83D\uDE02', '\uD83E\uDD23', '\uD83D\uDE06', '\uD83D\uDE1D', '\uD83E\uDD2A'] },
 
     // ---- TV presentation (v0.1.1) ----
@@ -95,6 +108,7 @@
       camera: true,              // TV camera gently follows the active player (also the C key on the TV)
       evenBuild: true,           // build evenly across a colour set
       shopShortage: true,        // limited bank stock
+      disasters: false,          // v0.5: mild local mishaps close or halve a business's rent for 1-3 turns
       heckle: true               // v0.4: everyone can heckle a player who stalls on their turn (escalating 15 s / 5 s / 3 s)
     },
 
@@ -118,13 +132,15 @@
       { k: 'camera', icon: '\uD83C\uDFA5', tag: 'TV camera', label: 'TV camera', short: 'The TV gently zooms in and follows whoever is moving',
         long: 'The TV board softly zooms toward the active player and swoops in on big moments (purchases, big rent, bankruptcies). Turn it off for a fixed, full-board view. Also the C key on the TV.' },
       { k: 'heckle', icon: '\uD83D\uDE02', tag: 'Heckle', label: 'Heckle', short: 'Stall on your turn and everyone gets a heckle button',
-        long: 'If the player whose turn it is sits still for 15 seconds, a tiny laughing-face button pops up beside their name on everyone else\'s phone. Every tap floats laughing faces up their screen and buzzes their phone. It locks again the moment they do something. Stall a second time and it unlocks after 5 seconds, a third time after 3 seconds, and then it stays open until their turn is over.' }
+        long: 'If the player whose turn it is sits still for 15 seconds, a tiny laughing-face button pops up beside their name on everyone else\'s phone. Every tap floats laughing faces up their screen and buzzes their phone. It locks again the moment they do something. Stall a second time and it unlocks after 5 seconds, a third time after 3 seconds, and then it stays open until their turn is over.' },
+      { k: 'disasters', icon: '\u26C8\uFE0F', tag: 'Disasters', label: 'Disasters', short: 'Hail, floods, raccoons: a business closes or earns half for a turn or three',
+        long: 'Now and then a mild local mishap hits a random owned business: hail, a water main break on Gaetz, a goose standoff, a break-in at night. Minor ones last 1 turn, medium 2, major 3, and the business is closed (no rent) or earns half rent until it is fixed. Never two on the same deed, a few per round at most. The owner can pay for a RUSH REPAIR (about 10% of the price per turn skipped). No tornadoes.' }
     ],
     // one-tap presets (camera is a TV preference and is left alone). Edit anything afterwards and setup shows "Custom".
     presets: {
-      classic: { label: 'Classic', blurb: 'The game as designed', rules: { payupRace: true, auctions: true, perks: true, jackpot: false, feesToPot: false, bullseye: false, kidMode: false, heckle: true } },
-      chaos:   { label: 'Chaos', blurb: 'Everything on, big swings', rules: { payupRace: true, auctions: true, perks: true, jackpot: true, feesToPot: true, bullseye: true, kidMode: false, heckle: true } },
-      chill:   { label: 'Chill', blurb: 'Automatic rent, no auctions, bonus cash', rules: { payupRace: false, auctions: false, perks: true, jackpot: true, feesToPot: false, bullseye: true, kidMode: false, heckle: false } }
+      classic: { label: 'Classic', blurb: 'The game as designed', rules: { payupRace: true, auctions: true, perks: true, jackpot: false, feesToPot: false, bullseye: false, kidMode: false, heckle: true, disasters: false } },
+      chaos:   { label: 'Chaos', blurb: 'Everything on, big swings', rules: { payupRace: true, auctions: true, perks: true, jackpot: true, feesToPot: true, bullseye: true, kidMode: false, heckle: true, disasters: true } },
+      chill:   { label: 'Chill', blurb: 'Automatic rent, no auctions, bonus cash', rules: { payupRace: false, auctions: false, perks: true, jackpot: true, feesToPot: false, bullseye: true, kidMode: false, heckle: false, disasters: false } }
     },
 
     // ---- timing (ms). &fast in the URL divides these by 4 ----

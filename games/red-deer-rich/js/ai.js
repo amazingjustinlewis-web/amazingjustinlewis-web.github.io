@@ -78,6 +78,12 @@
     g.props.forEach(function (pr, i) {
       if (pr && pr.owner === p.id && pr.hocked && p.cash - g.unhockCost(i) > reserve * 2 && g.rand() < L.build) { if (!g.intent(p.id, { t: 'unhock', sp: i })) did = true; }
     });
+    // v0.5 Disasters: rush a repair when the business is worth it and the cash is comfortable (sets with Shops first)
+    g.props.forEach(function (pr, i) {
+      if (!pr || pr.owner !== p.id || !pr.dmg) return;
+      var cost = g.rushCost(i), base = g.rentBase(i, 7, false), lost = (pr.dmg.mode === 'closed' ? base : base / 2) * pr.dmg.left;
+      if (lost * (0.6 + L.build) > cost && p.cash - cost > reserve * 1.5) { if (!g.intent(p.id, { t: 'rush', sp: i })) did = true; }
+    });
     if (g.rand() > L.build) return did;
     for (var guard = 0; guard < 12; guard++) {
       var best = -1, bestShops = 9;

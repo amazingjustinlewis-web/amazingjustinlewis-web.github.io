@@ -21,6 +21,7 @@
     this.players = [];
     this.rules = {}; for (var k in C.rules) this.rules[k] = C.rules[k];
     this.mode = 'regular';
+    this.timerMin = null;                  // v0.5: game timer in minutes, separate from the length (null = the length's default)
     this.phase = 'lobby';
     this.version = 0;                      // bumps on every change (host pushes phones when it moves)
     this.chats = []; this.trades = []; this.log = []; this.cardsDrawn = []; this.heckleGap = {};
@@ -30,7 +31,7 @@
   G.on = function (fn) { this.listeners.push(fn); };
   G.emit = function (type, d) { d = d || {}; d.type = type; this.version++; try { this.trackStat(type, d); } catch (e) {} for (var i = 0; i < this.listeners.length; i++) try { this.listeners[i](type, d, this); } catch (e) { if (root.console) console.error(e); } };
   G.changed = function () { this.version++; };
-  G.addLog = function (s, card) { var e = { t: this.now, s: s }; if (card) e.card = card; this.log.push(e); if (this.log.length > 60) this.log.shift(); this.changed(); };
+  G.addLog = function (s, card, ev) { var e = { t: this.now, s: s }; if (card) e.card = card; if (ev) e.ev = ev; this.log.push(e); if (this.log.length > 60) this.log.shift(); this.changed(); };
   G.ms = function (x) { return x / this.speed; };
   G.byId = function (id) { for (var i = 0; i < this.players.length; i++) if (this.players[i].id === id) return this.players[i]; return null; };
   G.cur = function () { return this.turn ? this.byId(this.turn.pid) : null; };
@@ -75,7 +76,14 @@
   };
   G.setRule = function (k, v) { if (k in C.rules && (this.phase === 'lobby' || this.phase === 'over' || k === 'camera')) { this.rules[k] = !!v; if (k === 'feesToPot' && v) this.rules.jackpot = true; if (k === 'jackpot' && !v) this.rules.feesToPot = false; this.changed(); } };
   G.setMode = function (m) { if (m === 'full') m = 'regular'; if (C.modes[m] && (this.phase === 'lobby' || this.phase === 'over')) { this.mode = m; this.changed(); } };
-  G.timed = function () { return !!(C.modes[this.mode] && C.modes[this.mode].minutes && this.endsAt); };
+  G.timed = function () { return !!this.endsAt; };
+  // v0.5 game timer: on/off + length, separate from the game length. null = the length's own default (Regular untimed, Medium 45, Quick 30)
+  G.timerFor = function () { return this.timerMin != null ? this.timerMin : ((C.modes[this.mode] && C.modes[this.mode].minutes) || 0); };
+  G.setTimer = function (m) {
+    if (!(this.phase === 'lobby' || this.phase === 'over')) return;
+    if (m === null || m === undefined || m === 'auto') this.timerMin = null; else { m = +m; if ((C.timerChoices || []).indexOf(m) < 0) return; this.timerMin = m; }
+    this.changed();
+  };
   // v0.1.1: an AI (or a late phone) can take a seat in a running game: starting cash, at The Halfway, last in turn order
   G.addLatePlayer = function (o) {
     if (this.phase !== 'play') return this.addPlayer(o);
@@ -96,7 +104,7 @@
       p.cash = MD.startCash; p.stats = null; p.pos = 0; p.snow = false; p.snowTries = 0; p.passes = []; p.bankrupt = false; p.skip = 0; p.bustOwed = 0; p.bustTo = null; p.leftTo = null;
       p.perk = {}; p.laps = 0; p.halfwayPasses = 0; p.preLap = -1; p.state = 'rags'; p.place = 0;
     });
-    this.chats = []; this.trades = []; this.log = []; this.tradeSeq = 1; this.cardsDrawn = []; this.heckleGap = {};
+    this.chats = []; this.trades = []; this.log = []; this.tradeSeq = 1; this.cardsDrawn = []; this.heckleGap = {}; this.dis = { round: 0, n: 0, last: null, seq: 0 };
     this.order = this.shuffle(this.players.map(function (p) { return p.id; }));
     this.players.sort(function (a, b) { return self.order.indexOf(a.id) - self.order.indexOf(b.id); });
     this.endsAt = 0;
@@ -108,7 +116,7 @@
       var all = this.shuffle(this.props.map(function (pr, i) { return pr ? i : -1; }).filter(function (i) { return i >= 0; }));
       all.forEach(function (sp, k) { self.props[sp].owner = self.players[k % self.players.length].id; });
     }
-    if (MD.minutes) this.endsAt = this.now + MD.minutes * 60000 / (this.speed >= 20 ? this.speed : 1);
+    var mins = this.timerFor(); if (mins) this.endsAt = this.now + mins * 60000 / (this.speed >= 20 ? this.speed : 1);   // v0.5 timer
     this.phase = 'play'; this.startedAt = this.now; this.round = 1;
     this.addLog('Game on! Turn order: ' + this.players.map(function (p) { return p.name; }).join(', '));
     this.emit('start', { order: this.order.slice() });
@@ -122,7 +130,13 @@
   G.ownsGroup = function (pid, group) { var self = this; return B.GROUP_MEMBERS[group].every(function (i) { return self.props[i].owner === pid; }); };
   G.groupShops = function (group) { var self = this; return B.GROUP_MEMBERS[group].map(function (i) { return self.props[i].shops; }); };
   G.countOwned = function (pid, group) { var self = this; return B.GROUP_MEMBERS[group].filter(function (i) { return self.props[i].owner === pid; }).length; };
+  // v0.5 Disasters: a damaged business is closed (no rent) or earns half until it's repaired
   G.rentFor = function (sp, roll, dbl) {
+    var r = this.rentBase(sp, roll, dbl), d = this.props[sp] && this.props[sp].dmg;
+    if (!d || !r) return r;
+    return d.mode === 'closed' ? 0 : Math.floor(r / 2);
+  };
+  G.rentBase = function (sp, roll, dbl) {
     var s = S[sp], pr = this.props[sp]; if (!pr || pr.owner < 0 || pr.hocked) return 0;
     if (s.type === 'prop') return pr.shops > 0 ? s.rents[pr.shops] : s.rents[0] * (this.ownsGroup(pr.owner, s.group) ? 2 : 1);
     if (s.type === 'whistle') return B.WHISTLE_RENT[this.countOwned(pr.owner, 'whistle')] * (dbl ? 2 : 1);
@@ -194,16 +208,55 @@
     if (p.cash >= t.amount) { this.turn.tab = null; var ok = this.charge(p, t.amount, t.to, t.reason); this.emit('tabPaid', { pid: p.id, amount: t.amount, to: t.to, auto: !!this._raising }); this.afterPay(); return ok; }
   };
   G.afterPay = function () { this.checkTrades(); this.updateStates(); };
+  // v0.5 smarter AUTO-RAISE. Fixed order: 1) mortgage deeds outside full sets, cheapest first; 2) sell Shops evenly from
+  // the weakest set; 3) mortgage the set deeds, weakest set first, cheapest first. The best sets and high-rent deeds go
+  // last. Stops as soon as the debt is covered. planRaise only simulates (the phone shows it); autoRaise carries it out.
+  G.setStrength = function (gr) { return B.GROUP_MEMBERS[gr].reduce(function (a, i) { return a + (S[i].rents ? S[i].rents[5] : S[i].price); }, 0); };
+  G.planRaise = function (p, need) {
+    var self = this, cash = p.cash, steps = [], back = function (sp) { return Math.floor(self.shopCost(sp) * C.shopSellBack); };
+    var sim = {}; this.props.forEach(function (pr, i) { if (pr && pr.owner === p.id) sim[i] = { shops: pr.shops, hocked: pr.hocked }; });
+    var mine = Object.keys(sim).map(Number), inSet = function (sp) { return S[sp].type === 'prop' && self.ownsGroup(p.id, S[sp].group); };
+    var grpShops = function (gr) { return B.GROUP_MEMBERS[gr].some(function (i) { return sim[i] && sim[i].shops > 0; }); };
+    var done = function () { return cash >= need; };
+    // 1) outside full sets, cheapest first
+    mine.filter(function (sp) { return !inSet(sp) && !sim[sp].hocked && !grpShops(S[sp].group); })
+      .sort(function (a, b) { return S[a].price - S[b].price || a - b; })
+      .forEach(function (sp) { if (done()) return; sim[sp].hocked = true; cash += S[sp].hock; steps.push({ k: 'hock', sp: sp, amt: S[sp].hock }); });
+    // 2) Shops, evenly, weakest set first
+    var sets = []; mine.forEach(function (sp) { if (inSet(sp) && sets.indexOf(S[sp].group) < 0) sets.push(S[sp].group); });
+    sets.sort(function (a, b) { return self.setStrength(a) - self.setStrength(b); });
+    sets.forEach(function (gr) {
+      for (var guard = 0; guard < 30 && !done(); guard++) {
+        var top = -1, most = 0; B.GROUP_MEMBERS[gr].forEach(function (i) { if (sim[i] && sim[i].shops > most) { most = sim[i].shops; top = i; } });
+        if (top < 0) break;
+        sim[top].shops--; cash += back(top); steps.push({ k: 'sell', sp: top, amt: back(top) });
+      }
+    });
+    // 3) set deeds, weakest set first, cheapest first
+    sets.forEach(function (gr) {
+      B.GROUP_MEMBERS[gr].slice().sort(function (a, b) { return S[a].price - S[b].price || a - b; }).forEach(function (sp) {
+        if (done() || !sim[sp] || sim[sp].hocked || grpShops(gr)) return; sim[sp].hocked = true; cash += S[sp].hock; steps.push({ k: 'hock', sp: sp, amt: S[sp].hock });
+      });
+    });
+    return { steps: steps, total: cash - p.cash, covers: cash >= need, need: need };
+  };
+  // a short readable version for the phone: "Mortgage Ross Street, sell 2 Shops on Capstone = $340"
+  G.planText = function (plan) {
+    var parts = [], i = 0, st = plan.steps;
+    while (i < st.length) {
+      var a = st[i], n = 1; while (i + n < st.length && st[i + n].k === a.k && st[i + n].sp === a.sp) n++;
+      parts.push(a.k === 'hock' ? 'Mortgage ' + S[a.sp].name : 'sell ' + n + ' Shop' + (n > 1 ? 's' : '') + ' on ' + S[a.sp].name);
+      i += n;
+    }
+    if (!parts.length) return '';
+    var txt = parts.join(', '); return txt.charAt(0).toUpperCase() + txt.slice(1) + ' = ' + money(plan.total);
+  };
   G.autoRaise = function (p, need) {
-    var self = this, guard = 0;
-    while (p.cash < need && guard++ < 200) {
-      var best = -1, bestShops = 0;
-      this.props.forEach(function (pr, i) { if (pr && pr.owner === p.id && pr.shops > 0 && pr.shops >= bestShops) { bestShops = pr.shops; best = i; } });
-      if (best >= 0) { this.sellShop(p, best, true); continue; }
-      var hk = -1, low = 1e9;
-      this.props.forEach(function (pr, i) { if (pr && pr.owner === p.id && !pr.hocked && !self.groupHasShops(S[i].group) && S[i].price < low) { low = S[i].price; hk = i; } });
-      if (hk >= 0) { this.hock(p, hk, true); continue; }
-      break;
+    for (var guard = 0; guard < 200 && p.cash < need; guard++) {
+      var plan = this.planRaise(p, need), a = plan.steps[0]; if (!a) break;
+      var before = p.cash;
+      if (a.k === 'sell') this.sellShop(p, a.sp, true); else this.hock(p, a.sp, true);
+      if (p.cash === before) break;           // nothing moved (shouldn't happen): don't spin
     }
     return p.cash >= need;
   };
@@ -387,6 +440,59 @@
   };
   G.lockedCash = function (p) { var t = this.turn; return t && t.tab && t.pid === p.id ? p.cash : 0; };
 
+  // ------------------------------------------------------------------ v0.5 DISASTERS (house rule)
+  G.isNight = function () { return this.nightFn ? !!this.nightFn() : (this.turnCount % 3 === 2); };   // the TV hands over its day/night clock
+  G.rushCost = function (sp) { var d = this.props[sp] && this.props[sp].dmg; if (!d) return 0; return Math.max(10, Math.round(S[sp].price * C.disasters.rushPct * d.left / 5) * 5); };
+  G.activeDamage = function () { var n = 0; this.props.forEach(function (pr) { if (pr && pr.dmg) n++; }); return n; };
+  G.maybeDisaster = function (force) {
+    if (!this.rules.disasters || this.phase !== 'play') return null;
+    var D = C.disasters, ds = this.dis || (this.dis = { round: 0, n: 0, last: null, seq: 0 });
+    if (ds.round !== this.round) { ds.round = this.round; ds.n = 0; }
+    if (!force) {
+      if (this.round < D.startRound || ds.n >= D.maxPerRound || this.activeDamage() >= D.maxActive) return null;
+      if (this.rand() >= D.chance) return null;
+    }
+    var self = this, pool = [];
+    this.props.forEach(function (pr, i) {
+      if (!pr || pr.owner < 0 || pr.hocked || pr.dmg) return;
+      var o = self.byId(pr.owner); if (!o || o.bankrupt) return;
+      if (!force && pr.owner === ds.last && self.players.filter(function (q) { return !q.bankrupt; }).length > 1) return;   // spread it around
+      pool.push(i);
+    });
+    if (typeof force === 'number') pool = this.props[force] && this.props[force].owner >= 0 && !this.props[force].dmg ? [force] : [];
+    if (!pool.length) return null;
+    var sp = pool[Math.floor(this.rand() * pool.length)];
+    var night = this.isNight(), w = D.sevWeights, x = this.rand() * (w[0] + w[1] + w[2]), sev = x < w[0] ? 1 : x < w[0] + w[1] ? 2 : 3;
+    var fits = function (e) { return e.when === 'any' || (e.when === 'night') === night; };
+    var list = B.DISASTERS.map(function (e, i) { return i; }).filter(function (i) { return fits(B.DISASTERS[i]) && B.DISASTERS[i].sev === sev; });
+    if (!list.length) list = B.DISASTERS.map(function (e, i) { return i; }).filter(function (i) { return fits(B.DISASTERS[i]); });
+    return this.hitDisaster(sp, list[Math.floor(this.rand() * list.length)]);
+  };
+  G.hitDisaster = function (sp, ei) {
+    var e = B.DISASTERS[ei], pr = this.props[sp], o = this.byId(pr.owner), ds = this.dis || (this.dis = { round: this.round, n: 0, last: null, seq: 0 });
+    pr.dmg = { e: ei, left: e.sev, sev: e.sev, mode: e.mode, seq: ++ds.seq };
+    ds.n++; ds.last = pr.owner;
+    this.addLog(e.icon + ' ' + e.h + ' at ' + S[sp].name + ' (' + o.name + '): ' + (e.mode === 'closed' ? 'closed' : 'half rent') + ' for ' + e.sev + ' turn' + (e.sev > 1 ? 's' : '') + '.', 0, [ei, sp]);
+    this.emit('disaster', { sp: sp, pid: o.id, e: ei, sev: e.sev, mode: e.mode, seq: pr.dmg.seq });
+    return { sp: sp, e: ei };
+  };
+  G.tickRepairs = function (p) {
+    var self = this;
+    this.props.forEach(function (pr, i) {
+      if (!pr || !pr.dmg) return;
+      if (pr.owner < 0) { delete pr.dmg; return; }
+      if (pr.owner !== p.id) return;
+      if (--pr.dmg.left <= 0) { delete pr.dmg; self.addLog(S[i].name + ' is repaired and open again.'); self.emit('repaired', { sp: i, pid: p.id, how: 'time' }); }
+    });
+  };
+  G.rush = function (p, sp) {
+    var pr = this.props[sp]; if (!pr || pr.owner !== p.id || !pr.dmg) return 'Nothing to repair';
+    var cost = this.rushCost(sp); if (p.cash < cost) return 'Not enough cash';
+    delete pr.dmg;
+    this.transfer(p, cost, this.feeDest(), 'rush repair on ' + S[sp].name);
+    this.emit('repaired', { sp: sp, pid: p.id, how: 'rush', cost: cost }); this.afterPay(); return '';
+  };
+
   // ------------------------------------------------------------------ turns
   G.isBot = function (p) { return !!(p.ai || p.aiTakeover); };
   G.beginTurn = function (p) {
@@ -396,6 +502,7 @@
       p = this.nextAfter(p);
     }
     this.turnCount++;
+    this.tickRepairs(p);
     this.turn = { pid: p.id, stage: 'roll', doubles: 0, roll: null, rollSeq: (this.turn ? this.turn.rollSeq : 0), canRollAgain: false, buy: null, payup: null, tab: null, card: null, graceUntil: 0, startedAt: this.now, payupSeq: (this.turn ? this.turn.payupSeq : 0),
       heckle: { stalls: 0, lastAct: this.now, open: false, forever: false, lastAt: -1e9, n: 0 } };   // v0.4 Heckle
     this.emit('turn', { pid: p.id });
@@ -418,6 +525,7 @@
     if (wrapped) this.round++;
     if (this.timed() && this.now >= this.endsAt) { this.finish('time'); return; }
     if (this.round > C.maxRounds) { this.finish('rounds'); return; }
+    this.maybeDisaster();
     this.beginTurn(next);
   };
 
@@ -569,6 +677,7 @@
       else if (pr.owner !== p.id) {
         var owner = this.byId(pr.owner);
         if (pr.hocked) this.addLog(s.name + ' is mortgaged: no rent.');
+        else if (pr.dmg && pr.dmg.mode === 'closed') { this.addLog(s.name + ' is closed for repairs: no rent.'); this.emit('closedLand', { pid: p.id, sp: p.pos }); }
         else if (owner && !owner.bankrupt) {
           if (this.rules.payupRace) {
             t.payupSeq = (t.payupSeq || 0) + 1;
@@ -832,6 +941,7 @@
       case 'sell': r = this.sellShop(p, +m.sp); if (!r && active && t.tab) this.settleTab(); return r;      // v0.4 PAID IN FULL the moment there's enough
       case 'hock': r = this.hock(p, +m.sp); if (!r && active && t.tab) this.settleTab(); return r;
       case 'unhock': return this.unhock(p, +m.sp);
+      case 'rush': return this.rush(p, +m.sp);                                                     // v0.5 RUSH REPAIR
       case 'raise':
         if (!active || !t.tab) return 'no tab';
         this._raising = true; this.autoRaise(p, t.tab.amount); this.settleTab(); this._raising = false; return '';

@@ -161,6 +161,13 @@ window.GAMES = [
     ],
     versions: [
       {
+        id: 'v0.5',
+        name: 'Weather and wear',
+        current: true,
+        play: 'games/red-deer-rich/index.html',
+        notes: 'NOTES_V05'
+      },
+      {
         id: 'v0.4',
         name: 'Cards in hand',
         current: false,

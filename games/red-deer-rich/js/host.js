@@ -1,4 +1,4 @@
-/* RED DEER RICH - TV / host page (v0.1.1 .. v0.4). Holds the true game state, renders the board, talks to phones,
+/* RED DEER RICH - TV / host page (v0.1.1 .. v0.5). Holds the true game state, renders the board, talks to phones,
    runs the AI and (optionally) the Hue Lights Helper. */
 (function () {
   'use strict';
@@ -22,6 +22,7 @@
   };
   var inGame = function () { return game.phase === 'play'; };
   window.RDR = { game: game, render: rnd, sfx: SFX };
+  game.nightFn = function () { return rnd.darkness() > 0.5; };      // v0.5 Disasters follow the TV's day/night clock
   if (Q.has('mute')) SFX.setMuted(true);
   if (Q.get('mode')) game.setMode(Q.get('mode').toLowerCase());   // regular | medium | quick (old 'full' = regular)
   if (Q.get('rules')) Q.get('rules').split(',').forEach(function (r) { var map = { jackpot: 'jackpot', fees: 'feesToPot', bullseye: 'bullseye', classic: 'payupRace', kid: 'kidMode', noperks: 'perks' }; if (map[r]) game.setRule(map[r], r !== 'classic' && r !== 'noperks'); });
@@ -136,7 +137,10 @@
       case 'tab': pfx(d.pid, 'tab'); break;
       case 'tabPaid': if (p) { pfx(d.pid, 'paid', { amount: d.amount, to: typeof d.to === 'number' ? (game.byId(d.to) || {}).name : d.to === 'pot' ? 'the pot' : 'the bank', auto: !!d.auto }); sideStamp(d.pid, 'PAID IN FULL', '#7dff7d'); } break;   // v0.4
       case 'heckle': if (p) { pfx(d.pid, 'heckled', { from: (game.byId(d.from) || {}).name || '' }); tvHeckle(d.pid); } break;                 // v0.4
-      case 'build': SFX.play('build'); if (d.shops === 5) big('MEGA-PLEX!', S[d.sp].name, '#ffd23f'); break;
+      case 'build': if (d.shops === 5) { rnd.construct(d.sp, C.buildSeqMs); SFX.play('construct'); big('MEGA-PLEX!', S[d.sp].name + ' \u00b7 under construction', '#ffd23f'); } else SFX.play('build'); break;   // v0.5 construction
+      case 'disaster': disasterTV(d); break;                                                       // v0.5
+      case 'repaired': SFX.play('repair'); rnd.pingTile(d.sp, '#ffd23f'); if (p) { pfx(d.pid, 'repaired', { sp: d.sp, how: d.how }); if (d.how === 'rush') sideStamp(d.pid, 'RUSH REPAIR', '#ffd23f'); } break;
+      case 'closedLand': rnd.pingTile(d.sp, '#d8323e'); break;
       case 'whiteout': SFX.play('whiteout'); flash('#ffffff'); big('WHITEOUT!', (p ? p.name : '') + ' hit the ditch: STUCK IN THE SNOWBANK', '#bfe6ff'); break;
       case 'free': SFX.play('click'); break;
       case 'jackpot': SFX.play('jackpot'); big('JACKPOT!', p.name + ' found the Secret Dirt Lot pot: ' + money(d.amount), '#ffd23f'); break;
@@ -203,6 +207,8 @@
   // game never waits on any of this, so turns keep their pace.
   var FX = C.fx || {}, NOTE = { cur: null, t: 0, ft: 0 };
   function noteShow(id, html, pin) {
+    // v0.5: a drawn card stays up for C.cardHoldMs unless another card replaces it; anything else waits its turn
+    if (id !== 'cardPop' && NOTE.cur === 'cardPop' && Date.now() - NOTE.at < (C.cardHoldMs || 12000) - 50) { NOTE.q = { id: id, html: html, pin: pin, at: Date.now() }; return; }
     var el = $(id);
     if (NOTE.cur) { shatterOut(NOTE.cur); if (NOTE.cur !== id) noteClear(NOTE.cur); }
     clearTimeout(NOTE.t); clearTimeout(NOTE.ft);
@@ -221,7 +227,7 @@
     if (id === 'big') el.innerHTML = ''; else el.hidden = true;
     if (NOTE.cur === id) NOTE.cur = null;
   }
-  function noteClearAll() { clearTimeout(NOTE.t); clearTimeout(NOTE.ft); ['big', 'cardPop', 'deedPop'].forEach(noteClear); NOTE.cur = null; }
+  function noteClearAll() { NOTE.q = null; clearTimeout(NOTE.t); clearTimeout(NOTE.ft); ['big', 'cardPop', 'deedPop'].forEach(noteClear); NOTE.cur = null; }
   // the outgoing notification breaks into a few shards that fly apart (one simple shard on crushed / old hardware)
   var SHARDS = ['polygon(0 0,55% 0,40% 55%,0 70%)', 'polygon(55% 0,100% 0,100% 60%,40% 55%)', 'polygon(0 70%,40% 55%,60% 100%,0 100%)', 'polygon(40% 55%,100% 60%,100% 100%,60% 100%)'];
   function shatterOut(id) {
@@ -238,7 +244,7 @@
     document.body.appendChild(box);
     setTimeout(function () { if (box.parentNode) box.parentNode.removeChild(box); }, 520);
   }
-  function big(a, b, col) { noteShow('big', '<div class="b1" style="color:' + (col || '#ffd23f') + '">' + esc(a) + '</div><div class="b2">' + esc(b || '') + '</div>'); }
+  function big(a, b, col) { noteShow('big', '<div class="b1" style="color:' + (col || '#ffd23f') + '">' + esc(a) + '</div><div class="b2">' + boldMoney(esc(b || '')) + '</div>'); }
   function hideBig() { if (NOTE.cur === 'big') noteFade('big', true); }
   function shake(soft) { var b = document.body; b.classList.remove('shake'); b.classList.remove('shake-soft'); void b.offsetWidth; var k = soft ? 'shake-soft' : 'shake'; b.classList.add(k); setTimeout(function () { b.classList.remove(k); }, 500); }   // v0.3: soft = PAY UP boom at half amplitude
   function flash(col, op) { var f = $('flash'); f.style.transition = 'none'; f.style.background = col; f.style.opacity = String(op || 0.55); void f.offsetWidth; f.style.transition = 'opacity .5s'; f.style.opacity = '0'; }
@@ -254,15 +260,21 @@
     return h;
   }
   function showDeed(sp, ask) { noteShow('deedPop', deedHtml(sp, ask), ask); }
-  function hideDeed() { if (NOTE.cur === 'deedPop') noteFade('deedPop', true); }
+  function hideDeed() { if (NOTE.q && NOTE.q.id === 'deedPop') NOTE.q = null; if (NOTE.cur === 'deedPop') noteFade('deedPop', true); }
   // v0.3 decks: Red Deer Randomness (playful) and Secret Finds (old paper, a true story + its effect)
   function cardHtml(deck, idx) {
     var c = B.DECKS[deck][idx], D = C.decks[deck];
     if (deck === 'finds') return '<div class="card finds"><div class="deck"><span class="seal">\uD83D\uDCDC</span> ' + esc(D.name) + '</div><div class="era">' + esc(c.year) + ' \u00b7 ' + esc(C.eras[c.era] || '') + '</div>' +
-      '<div class="h">' + esc(c.h) + '</div><div class="story">' + esc(c.story) + '</div><div class="t">' + esc(c.t) + '</div></div>';
-    return '<div class="card random"><div class="deck"><span class="dice">\u2684</span> ' + esc(D.name) + ' <span class="dice">\u2682</span></div><div class="h">' + esc(c.h) + '</div><div class="t">' + esc(c.t) + '</div></div>';
+      '<div class="h">' + esc(c.h) + '</div><div class="story">' + esc(c.story) + '</div><div class="t">' + boldMoney(esc(c.t)) + '</div></div>';
+    return '<div class="card random"><div class="deck"><span class="dice">\u2684</span> ' + esc(D.name) + ' <span class="dice">\u2682</span></div><div class="h">' + esc(c.h) + '</div><div class="t">' + boldMoney(esc(c.t)) + '</div></div>';
   }
-  function showCard(deck, idx) { noteShow('cardPop', cardHtml(deck, idx)); if (deck === 'finds') { clearTimeout(NOTE.t); NOTE.t = setTimeout(function () { noteFade('cardPop'); }, C.storyHoldMs || 9000); } }
+  function showCard(deck, idx) {
+    NOTE.q = null; noteShow('cardPop', cardHtml(deck, idx)); clearTimeout(NOTE.t);
+    NOTE.t = setTimeout(function () {                        // v0.5: 12 s for every card, then whatever was waiting (if it's still fresh)
+      var q = NOTE.q; NOTE.q = null;
+      if (q && Date.now() - q.at < (C.cardHoldMs || 12000) + 500) noteShow(q.id, q.html, q.pin); else noteFade('cardPop');
+    }, C.cardHoldMs || 12000);
+  }
   function hideCard() { if (NOTE.cur === 'cardPop') noteFade('cardPop', true); }
   var puT = 0;
   function payupBar(kind, d) {
@@ -311,6 +323,19 @@
     setTimeout(function () { popN--; if (el.parentNode) el.parentNode.removeChild(el); }, ms || 1400);
   }
   function tvHeckle(pid) { var now = Date.now(); if (now - heckleAt < 180) return; heckleAt = now; var F = C.heckle.faces; sidePop(pid, 'heckle', F[Math.floor(Math.random() * F.length)], 1300); }
+  // v0.5 Disasters on the TV: the graphic flies in, the impact lands, then a small notification and the owner's phone alert
+  function disasterTV(d) {
+    var e = B.DISASTERS[d.e] || {}, o = game.byId(d.pid), fly = (C.disasters && C.disasters.flyMs) || 900;
+    rnd.disaster(d.sp, d.e, d.sev);
+    setTimeout(function () {
+      SFX.play('disaster' + Math.max(1, Math.min(3, d.sev)));
+      if (d.sev >= 3) shake(true);
+      noteShow('big', '<div class="b1 dis" style="color:' + (d.mode === 'closed' ? '#ff6a6a' : '#ffb347') + '">' + e.icon + ' ' + esc(e.h) + '</div><div class="b2">' + esc(S[d.sp].name) + (o ? ' \u00b7 ' + esc(o.name) : '') + ' \u00b7 <b class="amt">' + (d.mode === 'closed' ? 'CLOSED' : 'HALF RENT') + '</b> for ' + d.sev + ' turn' + (d.sev > 1 ? 's' : '') + '</div><div class="b3">' + esc(e.t) + '</div>');
+    }, fly / FAST);
+    if (o) pfx(d.pid, 'disaster', { sp: d.sp, e: d.e, sev: d.sev, mode: d.mode });
+  }
+  // v0.5: dollar amounts in bold on the board popups and the play-by-play
+  function boldMoney(h) { return String(h).replace(/([+\u2212-]?\$[\d,]+)/g, '<b class="amt">$1</b>'); }
   function sideStamp(pid, txt, col) { sidePop(pid, 'stamp', '<b style="color:' + col + '">' + esc(txt) + '</b>', 2200); }
   function renderSide() {
     var g = game, cur = g.turn ? g.turn.pid : -1;
@@ -353,7 +378,7 @@
   function renderLog(g) {
     var el = $('log'), last = g.log.length ? g.log[g.log.length - 1] : null, key = g.log.length + ':' + (last ? last.s : '') + ':' + g.players.length + ':' + innerHeight;
     if (key === logKey) return; logKey = key;
-    el.innerHTML = g.log.slice(-(C.logLines || 9)).map(function (l) { return '<div>' + esc(l.s) + '</div>'; }).join('');
+    el.innerHTML = g.log.slice(-(C.logLines || 9)).map(function (l) { return '<div>' + boldMoney(esc(l.s)) + '</div>'; }).join('');   // v0.5 bold amounts
     var guard = 0; while (el.children.length > 1 && el.scrollHeight > el.clientHeight + 1 && guard++ < 20) el.removeChild(el.firstChild);
   }
   // v0.2 disconnects: seconds left before the AI covers a dropped phone (-1 = no countdown)
@@ -414,13 +439,13 @@
   function saveTvSetup() {
     if (game.phase !== 'lobby') return;
     var r = {}; C.options.forEach(function (o) { r[o.k] = !!game.rules[o.k]; });
-    var j = JSON.stringify({ rules: r, mode: game.mode }); if (j !== tvSaved) { tvSaved = j; tvStore(TVKEY, j); }
+    var j = JSON.stringify({ rules: r, mode: game.mode, timer: game.timerMin }); if (j !== tvSaved) { tvSaved = j; tvStore(TVKEY, j); }
   }
   function loadTvSetup() {
     if (['local', 'nonet', 'autostart', 'ai', 'rules', 'mode', 'fresh'].some(function (k) { return Q.has(k); })) return false;
     var sv = null; try { sv = JSON.parse(tvStore(TVKEY) || 'null'); } catch (e) {}
     if (!sv || !sv.rules) return false;
-    applyRules(sv.rules); if (sv.mode) game.setMode(sv.mode); tvSaved = JSON.stringify(sv); return true;
+    applyRules(sv.rules); if (sv.mode) game.setMode(sv.mode); if ('timer' in sv) game.setTimer(sv.timer); tvSaved = JSON.stringify(sv); return true;
   }
   function showOptInfo(k) {
     var o = O.opt(k), el = $('optInfo'); if (!o) return;
@@ -454,6 +479,7 @@
     setHtml($('rulesRow'), C.options.map(function (o) { var on = !!g.rules[o.k]; return '<button class="optrow' + (on ? ' on' : '') + '" data-rule="' + o.k + '"><span class="ck">' + (on ? '\u2714' : '') + '</span><span class="ot"><b>' + o.icon + ' ' + esc(o.label) + '</b><small>' + esc(o.short) + '</small></span></button>'; }).join(''));
     saveTvSetup();
     Array.prototype.forEach.call($('modeRow').children, function (b) { b.className = 'ghost' + (b.getAttribute('data-mode') === g.mode ? ' on' : ''); });
+    var tm = g.timerFor(); setHtml($('timerRow'), '<button class="ghost' + (tm ? ' on' : '') + '" id="timerBtn">\u23F1 Timer: ' + (tm ? tm + ' min' : 'off') + '<small>' + (g.timerMin == null ? 'default for ' + C.modes[g.mode].label : 'click to change') + '</small></button>');   // v0.5
     $('startBtn').disabled = g.players.length < C.minPlayers;
     renderHuePanel();
   }
@@ -465,6 +491,7 @@
   $('optToggle').onclick = function () { optsOpen = !optsOpen; dirty = true; };
   $('presetRow').onclick = function (e) { var b = e.target.closest('button'); if (b && C.presets[b.getAttribute('data-preset')]) { applyRules(C.presets[b.getAttribute('data-preset')].rules); setupEdited = true; dirty = phoneDirty = true; } };
   $('optInfo').onclick = function () { $('optInfo').hidden = true; };
+  $('timerRow').onclick = function () { var L = C.timerChoices, i = L.indexOf(game.timerFor()); game.setTimer(L[(i + 1) % L.length]); setupEdited = true; dirty = phoneDirty = true; };
   $('modeRow').onclick = function (e) { var b = e.target.closest('button'); if (b) { game.setMode(b.getAttribute('data-mode')); setupEdited = true; dirty = phoneDirty = true; } };
   $('startBtn').onclick = function () { startGame(); };
   $('againBtn').onclick = function () { startGame(); };
@@ -736,12 +763,13 @@
       dirty = phoneDirty = true; return;
     }
     if (m.t === 'mode') { if (isVip && lobbyish) { game.setMode(m.v); setupEdited = true; dirty = phoneDirty = true; } return; }
+    if (m.t === 'timer') { if (isVip && lobbyish) { game.setTimer(m.v); setupEdited = true; dirty = phoneDirty = true; } return; }   // v0.5
     if (m.t === 'preset') { if (isVip && lobbyish && C.presets[m.v]) { applyRules(C.presets[m.v].rules); setupEdited = true; dirty = phoneDirty = true; } return; }
     if (m.t === 'settings') {        // v0.2.1: the host phone puts back the last game's setup
       if (!isVip || game.phase !== 'lobby' || !m.rules) return;
       if (setupEdited) { dirty = phoneDirty = true; return; }     // v0.3: this room's live setup wins over a reloading phone's saved one
       setupEdited = true;
-      applyRules(m.rules); if (m.mode) game.setMode(String(m.mode));
+      applyRules(m.rules); if (m.mode) game.setMode(String(m.mode)); if ('timer' in m) game.setTimer(m.timer);
       var lvl = C.ai.levels[m.level] ? m.level : 'normal';
       for (var ai = 0; ai < Math.min(+m.addAI || 0, C.maxPlayers); ai++) if (!addAI(null, lvl)) break;
       dirty = phoneDirty = true; return;
@@ -792,11 +820,12 @@
     SFX.play('fanfare'); dirty = phoneDirty = true;
   }
   setInterval(function () { if (votes && Date.now() >= votes.until) resolveVote(); }, 250);
+  function raisePlan(p, need) { var pl = game.planRaise(p, need); return { text: game.planText(pl), total: pl.total, covers: pl.covers, steps: pl.steps.length }; }   // v0.5
   function observerState(cl) {
     var fake = { id: -99, name: cl.name, charId: C.characters[0].id, color: '#888888', cash: 0, pos: 0, snow: false, snowTries: 0, passes: [], state: 'rags', bankrupt: false, ai: null, aiTakeover: null, skip: 0 };
     var st = phoneState(fake);
     st.me.observer = true; st.me.vip = false; st.me.worth = 0; st.fx = {}; st.chats = st.chats.filter(function (c) { return c[2] === 'all'; }); st.trades = [];
-    st.feed = game.log.slice(-40).map(function (l) { return l.s; }); st.feedCard = game.log.slice(-40).map(function (l) { return l.card || 0; });
+    st.feed = game.log.slice(-40).map(function (l) { return l.s; }); st.feedCard = game.log.slice(-40).map(function (l) { return l.card || 0; }); st.feedEv = game.log.slice(-40).map(function (l) { return l.ev || 0; });
     st.seats = game.players.filter(function (q) { return q.ai && !q.bankrupt; }).map(function (q) { return [q.id, q.name, q.charId, q.color]; });
     st.asking = votes && votes.cid === cl.conn._cid ? { seat: votes.seat, left: Math.max(0, votes.until - Date.now()) } : null;
     st.voteBusy = !!votes;
@@ -840,16 +869,18 @@
       fx: phoneFx[p.id] || {},
       players: g.players.map(function (q) { return { id: q.id, name: q.name, charId: q.charId, color: q.color, cash: q.cash, state: q.state, bankrupt: q.bankrupt, ai: q.ai ? q.ai.level : null,
         connected: q.connected, pos: q.pos, snow: q.snow, passes: q.passes.length, worth: g.phase === 'play' ? q.worth : 0 }; }),
-      props: g.props.map(function (pr, i) { return pr ? [pr.owner, pr.shops, pr.hocked ? 1 : 0, g.locked(i) ? 1 : 0] : null; }),
+      props: g.props.map(function (pr, i) { return pr ? [pr.owner, pr.shops, pr.hocked ? 1 : 0, g.locked(i) ? 1 : 0, pr.dmg && pr.owner >= 0 ? [pr.dmg.left, pr.dmg.mode === 'closed' ? 1 : 0, pr.dmg.e, g.rushCost(i)] : 0] : null; }),   // v0.5 [4] = repair [turns left, closed, event, rush cost]
       fades: fadeList(),
       feed: g.log.slice(-14).map(function (l) { return l.s; }),
-      feedCard: g.log.slice(-14).map(function (l) { return l.card || 0; }),                  // v0.4: [deck, idx] for card lines (tap to read)
+      feedCard: g.log.slice(-14).map(function (l) { return l.card || 0; }),
+      feedEv: g.log.slice(-14).map(function (l) { return l.ev || 0; }),                      // v0.5: [event, sp] for disaster lines                  // v0.4: [deck, idx] for card lines (tap to read)
       cards: g.phase === 'play' ? (g.cardsDrawn || []).slice(-40) : [],                      // v0.4: every card drawn this game [deck, idx, pid, round]
       lobby: g.phase !== 'play' ? { taken: g.players.map(function (q) { return [q.charId, q.id, q.name, q.ai ? q.ai.level : '']; }) } : null,
       results: g.phase === 'over' ? g.results : null,
       hue: g.phase !== 'play' ? hueView(p) : null,
       setupEdited: setupEdited,
-      lastFind: g.phase === 'play' && lastFind ? { idx: lastFind.idx, n: lastFind.n, fresh: Date.now() - lastFind.at < (C.storyHoldMs || 9000) } : null   // fresh: phones keep the whole card up while the TV shows it
+      lastFind: g.phase === 'play' && lastFind ? { idx: lastFind.idx, n: lastFind.n, fresh: Date.now() - lastFind.at < (C.cardHoldMs || 12000) } : null,
+      timer: { min: g.timerMin, eff: g.timerFor() }   // fresh: phones keep the whole card up while the TV shows it
     };
     if (t && g.phase === 'play' && cur) {
       var pu = t.payup, card = t.card || (t.cardDone && now - (t.card ? 0 : 0) < 1 ? t.cardDone : null);
@@ -857,7 +888,7 @@
         buy: t.buy != null ? { sp: t.buy, price: g.priceFor(cur, t.buy) } : null,
         payup: pu ? { owner: pu.owner, mover: pu.mover, sp: pu.sp, seq: pu.seq, open: !pu.done, caught: pu.caught, amount: pu.amount || 0, rent: g.rentFor(pu.sp, pu.roll, pu.dbl), graceLeft: Math.max(0, t.graceUntil - now) } : null,
         graceLeft: t.stage === 'act' ? Math.max(0, (t.graceUntil || 0) - now) : 0,
-        tab: t.tab ? { amount: t.tab.amount, reason: t.tab.reason, hopeless: !!t.tab.hopeless, to: typeof t.tab.to === 'number' ? (g.byId(t.tab.to) || {}).name : t.tab.to, raise: g.liquidValue(cur) } : null,
+        tab: t.tab ? { amount: t.tab.amount, reason: t.tab.reason, hopeless: !!t.tab.hopeless, to: typeof t.tab.to === 'number' ? (g.byId(t.tab.to) || {}).name : t.tab.to, raise: g.liquidValue(cur), plan: t.pid === p.id ? raisePlan(cur, t.tab.amount) : null } : null,
         card: t.card ? { deck: t.card.deck, idx: t.card.idx } : null,
         auction: t.auction ? { sp: t.auction.sp, bid: t.auction.bid, leader: t.auction.leader, bids: t.auction.bids, seq: t.auction.seq, left: Math.round(Math.max(0, t.auction.endsAt - now)), total: Math.round(game.ms(C.auction.ms)) } : null,
         move: t.moving ? { from: t.moving.from, path: t.moving.path, stepMs: Math.round(t.moving.step), elapsed: Math.round(now - t.moving.start) } : null,
@@ -1022,7 +1053,7 @@
     else spec.split(',').forEach(function (x) { var pr = x.split(':'); addAI(charById(pr[0]) && pr[0] === charById(pr[0]).id ? pr[0] : null, C.ai.levels[pr[1]] ? pr[1] : 'normal'); });
   }
   if (Q.has('autostart') && game.players.length >= 2) setTimeout(startGame, 300);
-  window.RDR.note = function () { return NOTE; }; window.RDR.applyRules = applyRules; window.RDR.qrDodge = qrDodge; window.RDR.big = big; window.RDR.showCard = showCard; window.RDR.cashShown = cashShown; window.RDR.plaque = plaque;   // v0.2 test hooks
+  window.RDR.note = function () { return NOTE; }; window.RDR.boldMoney = boldMoney; window.RDR.applyRules = applyRules; window.RDR.qrDodge = qrDodge; window.RDR.big = big; window.RDR.showCard = showCard; window.RDR.cashShown = cashShown; window.RDR.plaque = plaque;   // v0.2 test hooks
   window.RDR.startGame = startGame; window.RDR.addAI = addAI; window.RDR.toLobby = toLobby; window.RDR.crush = crush; window.RDR.setRung = setRung;
   window.RDR.net = function () { return net; }; window.RDR.lights = function () { return lights; }; window.RDR.clients = clients; window.RDR.phoneState = phoneState; window.RDR.controllerUrl = controllerUrl;
   window.RDR.setupEdited = function () { return setupEdited; }; window.RDR.lastFind = function () { return lastFind; };   // v0.3 test hooks

@@ -37,7 +37,7 @@
     if (opts.shadow !== false) { c.fillStyle = 'rgba(0,0,0,0.13)'; c.fillRect(x + o.x * 0.35, y + o.y * 0.35, w, h); }
     walls(x, y, w, h, o).forEach(function (wl) { poly(c, wl.p); c.fillStyle = shade(opts.wall || '#e8e0cc', wl.tone); c.fill(); c.stroke(); });
     var rx = x + o.x, ry = y + o.y, spr = opts.sprite && sprites[opts.sprite];
-    if (spr && spr.ok) { c.drawImage(spr.img, rx, ry, w, h); return { x: rx, y: ry }; }
+    if (spr && spr.ok) { c.drawImage(spr.img, rx, ry, w, h); if (opts.lw) c.strokeRect(rx + 0.5 * lw, ry + 0.5 * lw, w - lw, h - lw); return { x: rx, y: ry }; }   // v0.5 outline the sprites too
     c.fillStyle = opts.roof || '#c96a4a'; c.fillRect(rx, ry, w, h); c.strokeRect(rx + 0.5 * lw, ry + 0.5 * lw, w - lw, h - lw);
     if (opts.ridge) {          // pitched roof: ridge line, one half a touch darker
       c.fillStyle = 'rgba(0,0,0,0.14)';

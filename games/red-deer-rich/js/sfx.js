@@ -82,10 +82,24 @@
     buzz: function (A, t) { tone(A, out, 'square', 180, 0, t, 0.12, 0.1); },
     // v0.4 heckle: a quick "ha-ha-ha" (three falling chirps); PAID IN FULL: double cha-ching + a bright chord
     heckle: function (A, t) { [79, 77, 74].forEach(function (n, i) { tone(A, out, 'sawtooth', NOTE(n), NOTE(n - 3), t + i * 0.09, 0.08, 0.07, 0.005); }); },
-    paid: function (A, t) { SOUNDS.cash(A, t); SOUNDS.cash(A, t + 0.2); [72, 76, 79, 84].forEach(function (n) { tone(A, out, 'triangle', NOTE(n), 0, t + 0.42, 0.6, 0.07); }); }
+    paid: function (A, t) { SOUNDS.cash(A, t); SOUNDS.cash(A, t + 0.2); [72, 76, 79, 84].forEach(function (n) { tone(A, out, 'triangle', NOTE(n), 0, t + 0.42, 0.6, 0.07); }); },
+    // v0.5 Mega-Plex construction: a few seconds of sawing strokes and hammer knocks
+    construct: function (A, t) {
+      for (var i = 0; i < 6; i++) hiss(A, out, t + i * 0.26, 0.2, 0.16, 'bandpass', i % 2 ? 2400 : 1800, 2.5);                 // saw strokes
+      for (var k = 0; k < 7; k++) { var tt = t + 1.55 + k * 0.22 + (k % 3 === 2 ? 0.08 : 0); tone(A, out, 'square', 190, 90, tt, 0.06, 0.16); hiss(A, out, tt, 0.03, 0.18, 'bandpass', 900, 3); }   // hammer
+      hiss(A, out, t + 3.1, 0.18, 0.12, 'bandpass', 2600, 2);
+    },
+    // v0.5 Disasters: a thud / crash sized to the severity
+    disaster1: function (A, t) { tone(A, out, 'sine', 180, 60, t, 0.25, 0.22); hiss(A, out, t, 0.15, 0.14, 'lowpass', 900); },
+    disaster2: function (A, t) { tone(A, out, 'sine', 160, 45, t, 0.4, 0.3); hiss(A, out, t, 0.35, 0.22, 'lowpass', 1400); for (var i = 0; i < 4; i++) hiss(A, out, t + 0.08 + i * 0.07, 0.05, 0.12, 'bandpass', 3000 + i * 500, 6); },
+    disaster3: function (A, t) { tone(A, out, 'sine', 140, 35, t, 0.6, 0.38); hiss(A, out, t, 0.6, 0.3, 'lowpass', 1800); for (var i = 0; i < 8; i++) hiss(A, out, t + 0.1 + i * 0.06, 0.06, 0.14, 'bandpass', 2500 + Math.random() * 3000, 6); },
+    repair: function (A, t) { tone(A, out, 'square', 260, 0, t, 0.05, 0.1); tone(A, out, 'square', 260, 0, t + 0.12, 0.05, 0.1); tone(A, out, 'triangle', NOTE(79), 0, t + 0.26, 0.25, 0.1); },
+    // v0.5 phone cash: money in (little cha-ching) / money out (a small crunch)
+    cashIn: function (A, t) { tone(A, out, 'square', NOTE(91), 0, t, 0.08, 0.08); tone(A, out, 'square', NOTE(96), 0, t + 0.07, 0.22, 0.08); hiss(A, out, t, 0.05, 0.14, 'bandpass', 5000, 3); },
+    cashOut: function (A, t) { hiss(A, out, t, 0.09, 0.2, 'bandpass', 700, 1.5); tone(A, out, 'triangle', 220, 120, t, 0.14, 0.12); hiss(A, out, t + 0.07, 0.07, 0.12, 'bandpass', 1300, 2); }
   };
   // identical sounds closer together than this are skipped (AI turns at speed fire a lot of them)
-  var MIN_GAP = { heckle: 160, paid: 700, step: 70, click: 40, dice: 150, cash: 90, buy: 120, card: 120, build: 90, deal: 150, turn: 200, pop: 120, boom: 200, caught: 150, tiptoe: 300, drain: 200, payupAlarm: 300, tarnish: 300, gold: 300 };
+  var MIN_GAP = { heckle: 160, paid: 700, construct: 2500, disaster1: 400, disaster2: 400, disaster3: 400, repair: 300, cashIn: 350, cashOut: 350, step: 70, click: 40, dice: 150, cash: 90, buy: 120, card: 120, build: 90, deal: 150, turn: 200, pop: 120, boom: 200, caught: 150, tiptoe: 300, drain: 200, payupAlarm: 300, tarnish: 300, gold: 300 };
   function play(name) {
     if (S.muted || !SOUNDS[name]) return;
     var A = live(); if (!A) return;

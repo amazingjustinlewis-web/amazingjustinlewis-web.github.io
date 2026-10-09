@@ -1,4 +1,4 @@
-/* RED DEER RICH - phone controller (v0.1.1 .. v0.4). Four tabs (My Turn, My Stuff, Board, Deals & Chat) that adapt to
+/* RED DEER RICH - phone controller (v0.1.1 .. v0.5). Four tabs (My Turn, My Stuff, Board, Deals & Chat) that adapt to
    portrait (bottom tab bar) and landscape (left rail + two panes). PAY UP and BOOM take over the whole screen. */
 (function () {
   'use strict';
