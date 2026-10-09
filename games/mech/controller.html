@@ -13,7 +13,7 @@
 </head>
 <body>
 <section id="join" class="screen">
-  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">IRON <b>STRIDE</b></div><div class="jsub">prototype v0.1 &middot; cockpit controller</div></div></header>
+  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">IRON <b>STRIDE</b></div><div class="jsub">prototype v0.2 &middot; cockpit controller</div></div></header>
   <label class="fld">Room code<input id="room" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD"></label>
   <label class="fld">Call sign<input id="name" maxlength="12" autocomplete="nickname" placeholder="Name"></label>
   <button id="joinBtn" class="big-btn">CLIMB IN</button>
@@ -26,8 +26,9 @@
   <nav class="tabs" id="tabs"><button data-tab="combat" class="on">COMBAT</button><button data-tab="map" id="mapTab">MAP</button><button data-tab="set">&#9881;</button></nav>
 
   <div id="tab-combat" class="tab">
+    <div class="padwrap"><canvas id="pad" width="640" height="640" aria-label="Thumb pad: drag to walk, drag the outer ring to turn, tap to fire"></canvas></div>
     <div id="weapons" class="weapons"></div>
-    <div id="zone"><div id="zoneHint">Swing the phone to turn &middot; tilt to aim</div></div>
+    <div id="zone" hidden><div id="zoneHint"></div></div>
     <div class="row tools">
       <button id="recBtn" class="tool">&#9678; Re-centre</button>
       <button id="calBtn" class="tool">Calibrate</button>

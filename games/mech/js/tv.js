@@ -293,7 +293,8 @@
       if (d < R && d < bestD) { best = t; bestD = d; }
     });
     if (best) { s.lock = best; s.lockT = now; } else if (s.lock && now - s.lockT > A.stickyMs) s.lock = null;
-    var L = phase === 'play' ? best : null, gx = s.ax + (L ? (L.x - s.ax) * pull : 0), gy = s.ay + (L ? (L.y - s.ay) * pull : 0);
+    var L = phase === 'play' ? best : null, grav = L ? pull * Math.pow(clamp(1 - Math.max(0, bestD) / R, 0, 1), 1.5) : 0;   // soft magnetism, stronger the closer you hover
+    var gx = s.ax + (L ? (L.x - s.ax) * grav : 0), gy = s.ay + (L ? (L.y - s.ay) * grav : 0);
     if (s.ix == null) { s.ix = s.ax; s.iy = s.ay; }
     var k = 1 - Math.exp(-dt / lerp(A.intentTauShaky, A.intentTauSteady, st));
     s.ix += (gx - s.ix) * k; s.iy += (gy - s.iy) * k;
@@ -464,7 +465,7 @@
   function steer(dt) {
     var s = seats[0], A = C.aim;
     if (s && !M.eject && M.down <= 0 && s.calStep < 0) {
-      var ex = Math.abs(s.ax) - A.edge; if (ex > 0) M.torso -= Math.sign(s.ax) * Math.pow(ex / (1 - A.edge), 1.5) * A.turnDegPerSec * D2R * dt;
+      var ex = Math.abs(s.ax) - A.edge; if (ex > 0) M.torso -= Math.sign(s.ax) * Math.pow(Math.min(1, ex / (1 - A.edge)), A.turnCurve || 1.5) * A.turnDegPerSec * D2R * dt;
       var ey = Math.abs(s.ay) - A.pitchEdge; if (ey > 0) M.pitch = clamp(M.pitch + Math.sign(s.ay) * Math.pow(ey / (1 - A.pitchEdge), 1.5) * A.pitchDegPerSec * D2R * dt, A.pitchLimitDeg[0] * D2R, A.pitchLimitDeg[1] * D2R);
       if (ex > 0.05 && !steer.whir) { SFX.play('servo'); steer.whir = 1; } else if (ex <= 0) steer.whir = 0;
     }

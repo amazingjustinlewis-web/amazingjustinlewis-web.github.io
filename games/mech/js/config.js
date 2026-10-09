@@ -14,8 +14,8 @@
       sendHz: 30,
       defaultSpanDeg: 50,          // degrees of swing from the left edge of the TV to the right edge (before calibrating)
       minSpanDeg: 12,              // calibration refused if left and right are closer than this
-      edge: 0.55,                  // crosshair past this (of half the screen) starts turning the torso
-      turnDegPerSec: 95,           // torso turn speed at the very edge
+      edge: 0.6,                   // v0.2: the outer 20% of the screen on each side is the turn zone
+      turnDegPerSec: 115, turnCurve: 2.6,   // speed at the far edge; eased curve (u^2.6): a slight dip turns barely, deep turns fast           // torso turn speed at the very edge
       pitchEdge: 0.5, pitchDegPerSec: 40, pitchLimitDeg: [-89, 89],
       filter: { minCutoff: 1.4, beta: 4, dCutoff: 1.0 }
     },
@@ -24,7 +24,7 @@
       windowMs: 450,               // how much recent crosshair motion is used to judge steadiness
       shakyAt: 0.9,                // crosshair speed (screen half-widths per second, RMS) that counts as fully shaky
       radiusSteady: 0.07, radiusShaky: 0.16,  // lock cone (fraction of screen half-width)
-      pullSteady: 0.85, pullShaky: 0.45,      // how far the shot bends from the crosshair to the target
+      pullSteady: 0.5, pullShaky: 0.3,       // v0.2 reticle gravity: soft pull, fades out toward the edge of the cone      // how far the shot bends from the crosshair to the target
       scatterShaky: 0.025,         // extra random spread when shaky (screen half-widths)
       stickyMs: 350,               // a lock holds this long after the crosshair slips off
       intentTauSteady: 0.07, intentTauShaky: 0.32,   // v0.2 intent reticle: seconds to catch up (steady = quick, shaky = heavy smoothing)

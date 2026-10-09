@@ -82,7 +82,7 @@
   }
   function setMode(m) {
     sensor.mode = m; $('modeBtn').textContent = m === 'pad' ? 'Touchpad' : 'Motion';
-    $('zone').classList.toggle('pad', m === 'pad'); $('zoneHint').textContent = m === 'pad' ? 'Drag here to aim (push to the edge to turn)' : 'Swing the phone to turn \u00b7 tilt to aim';
+    $('zone').hidden = m !== 'pad'; $('zone').classList.toggle('pad', m === 'pad'); $('zoneHint').textContent = m === 'pad' ? 'Drag here to aim (push to the edge to turn)' : 'Swing the phone to turn \u00b7 tilt to aim';
     if (m === 'gyro' && !sensor.listening) listen(1800);
     if (m === 'gyro' && !cal.done && me.role) startCal();
     if (m === 'pad') { $('cal').hidden = true; send({ t: 'cal', step: null, done: true }); }
@@ -134,9 +134,92 @@
   zone.addEventListener('pointerup', function () { pad.id = null; }); zone.addEventListener('pointercancel', function () { pad.id = null; });
   setInterval(function () { if (!pad.ax && !pad.ay) return; var k = 2.6 / (zone.clientWidth || 300); if (send({ t: 'pad', dx: +(pad.ax * k).toFixed(4), dy: +(pad.ay * k).toFixed(4) })) { pad.ax = 0; pad.ay = 0; } }, 33);
 
+
+  // ------------------------------------------------------------------ v0.2 thumb pad: walk, facing ring, travel arrow, holo mini-map, tap to fire
+  var pc = $('pad'), px = pc.getContext('2d'), PS = pc.width, PC = PS / 2, RING = PS * 0.465, INNER = PS * 0.375, MAPR = PS * 0.36, STICK = PS * 0.2;
+  var tp = { id: null, mode: null, sx: 0, sy: 0, x: 0, y: 0, t0: 0, moved: 0, mv: [0, 0], sentMv: [0, 0], sentAt: 0, ringA: 0, spring: null }, trail = [];
+  function padPt(e) { var r = pc.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * PS, (e.clientY - r.top) / r.height * PS, r.width / PS]; }
+  function sendMove(force) {
+    var m = tp.mv, s = tp.sentMv, now = performance.now();
+    if (!force && Math.abs(m[0] - s[0]) + Math.abs(m[1] - s[1]) < 0.04) return;
+    if (!force && now - tp.sentAt < 40) { clearTimeout(sendMove._t); sendMove._t = setTimeout(function () { sendMove(); }, 45); return; }
+    if (send({ t: 'move', x: +m[0].toFixed(3), y: +m[1].toFixed(3) })) { tp.sentMv = m.slice(); tp.sentAt = now; }
+  }
+  pc.addEventListener('pointerdown', function (e) {
+    e.preventDefault(); if (tp.id != null) return; try { pc.setPointerCapture(e.pointerId); } catch (x) {}
+    var p = padPt(e), dx = p[0] - PC, dy = p[1] - PC, r = Math.hypot(dx, dy);
+    tp.id = e.pointerId; tp.sx = tp.x = p[0]; tp.sy = tp.y = p[1]; tp.t0 = performance.now(); tp.moved = 0; tp.css = p[2];
+    if (r > INNER - PS * 0.02 && me.seat === 0) { tp.mode = 'ring'; tp.spring = null; tp.ringA = Math.atan2(dx, -dy); vib(10); }
+    else tp.mode = 'pad';
+  });
+  pc.addEventListener('pointermove', function (e) {
+    if (tp.id !== e.pointerId) return; var p = padPt(e); tp.x = p[0]; tp.y = p[1];
+    tp.moved = Math.max(tp.moved, Math.hypot(p[0] - tp.sx, p[1] - tp.sy) * tp.css);
+    if (tp.mode === 'ring') tp.ringA = Math.atan2(p[0] - PC, -(p[1] - PC));
+    else if (tp.mode === 'pad' && me.seat === 0 && tp.moved > 8) {           // floating stick from where the thumb landed
+      var dx = (p[0] - tp.sx) / STICK, dy = -(p[1] - tp.sy) / STICK, m = Math.hypot(dx, dy);
+      if (m > 1) { dx /= m; dy /= m; } tp.mv = [dx, dy]; sendMove();
+    }
+  });
+  function padUp(e) {
+    if (tp.id !== e.pointerId) return; var dt = performance.now() - tp.t0;
+    if (tp.mode === 'ring') {
+      if (Math.abs(tp.ringA) > 0.06) { send({ t: 'face', a: +tp.ringA.toFixed(3) }); vib([15, 30, 15]); }
+      tp.spring = { from: tp.ringA, t0: performance.now() };
+    } else {
+      if (tp.moved <= 12 && dt < 260) { send({ t: 'tap' }); vib(18); flashTap = performance.now(); }
+      if (tp.mv[0] || tp.mv[1]) { tp.mv = [0, 0]; sendMove(true); }      // let go: the mech slows to a stop
+    }
+    tp.id = null; tp.mode = null;
+  }
+  pc.addEventListener('pointerup', padUp); pc.addEventListener('pointercancel', padUp);
+  var flashTap = 0;
+  function drawPad() {
+    requestAnimationFrame(drawPad);
+    if (tab !== 'combat' || $('main').hidden) return;
+    var c = px, now = performance.now(); c.clearRect(0, 0, PS, PS);
+    if (tp.spring) { var u = (now - tp.spring.t0) / 380; if (u >= 1) { tp.ringA = 0; tp.spring = null; } else tp.ringA = tp.spring.from * Math.pow(1 - u, 2) * Math.cos(u * 5); }
+    // holographic mini-map, heading-up like the TV radar
+    c.save(); c.beginPath(); c.arc(PC, PC, MAPR, 0, Math.PI * 2); c.clip();
+    var g = c.createRadialGradient(PC, PC, 0, PC, PC, MAPR); g.addColorStop(0, 'rgba(30,90,110,.28)'); g.addColorStop(1, 'rgba(10,30,40,.5)'); c.fillStyle = g; c.fillRect(0, 0, PS, PS);
+    if (st) {
+      var sc = MAPR / 90; c.translate(PC, PC); c.rotate(st.ty); c.scale(sc, sc); c.translate(-st.x, -st.z);
+      c.lineWidth = 1.2 / sc; c.strokeStyle = 'rgba(120,230,255,.45)'; c.fillStyle = 'rgba(80,200,255,.10)';
+      Wd.buildings.forEach(function (b) { if (Math.abs(b.x - st.x) > 120 || Math.abs(b.z - st.z) > 120) return; c.fillRect(b.x - b.w / 2, b.z - b.d / 2, b.w, b.d); c.strokeRect(b.x - b.w / 2, b.z - b.d / 2, b.w, b.d); });
+      var B = Wd.bay; c.strokeStyle = 'rgba(93,200,255,.9)'; c.lineWidth = 2.5 / sc; c.strokeRect(B.x - B.w / 2, B.z - B.d / 2, B.w, B.d);
+      if (trail.length > 1) { c.strokeStyle = 'rgba(255,210,122,.55)'; c.lineWidth = 2.5 / sc; c.beginPath(); trail.forEach(function (p, i) { if (i) c.lineTo(p[0], p[1]); else c.moveTo(p[0], p[1]); }); c.lineTo(st.x, st.z); c.stroke(); }
+      if (path.length) { c.strokeStyle = 'rgba(255,255,255,.5)'; c.setLineDash([6 / sc, 5 / sc]); c.beginPath(); c.moveTo(st.x, st.z); path.forEach(function (p) { c.lineTo(p[0], p[1]); }); c.stroke(); c.setLineDash([]); }
+      st.en.forEach(function (e) { c.fillStyle = e[2] ? '#ff6a3d' : '#ffd23f'; c.beginPath(); c.arc(e[0], e[1], (e[2] ? 3.5 : 2.6), 0, Math.PI * 2); c.fill(); });
+    }
+    c.restore();
+    c.strokeStyle = 'rgba(120,230,255,.25)'; c.lineWidth = 2; c.beginPath(); c.arc(PC, PC, MAPR, 0, Math.PI * 2); c.stroke();
+    c.fillStyle = 'rgba(255,176,46,.9)'; c.beginPath(); c.moveTo(PC, PC - 12); c.lineTo(PC - 8, PC + 8); c.lineTo(PC + 8, PC + 8); c.fill();   // you
+    // inner ring: travel direction + speed
+    c.strokeStyle = 'rgba(93,255,154,.3)'; c.lineWidth = 3; c.beginPath(); c.arc(PC, PC, INNER, 0, Math.PI * 2); c.stroke();
+    if (st && st.tv && st.tv[1] > 0.03) {
+      var ta = st.tv[0], len = INNER * (0.25 + 0.75 * st.tv[1]); c.save(); c.translate(PC, PC); c.rotate(ta);
+      c.strokeStyle = '#5dff9a'; c.lineWidth = 7; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -len + 14); c.stroke();
+      c.fillStyle = '#5dff9a'; c.beginPath(); c.moveTo(0, -len - 6); c.lineTo(-13, -len + 16); c.lineTo(13, -len + 16); c.fill(); c.restore();
+    }
+    // outer ring: the front of the mech (always at the top unless you are dragging it)
+    c.strokeStyle = 'rgba(255,176,46,.45)'; c.lineWidth = 4; c.beginPath(); c.arc(PC, PC, RING, 0, Math.PI * 2); c.stroke();
+    c.save(); c.translate(PC, PC); c.rotate(tp.ringA);
+    c.fillStyle = tp.mode === 'ring' ? '#ffffff' : '#ffb02e'; c.beginPath(); c.moveTo(0, -RING - 26); c.lineTo(-22, -RING + 14); c.lineTo(0, -RING + 4); c.lineTo(22, -RING + 14); c.fill();
+    c.restore();
+    if (tp.mode === 'ring') { c.fillStyle = 'rgba(255,255,255,.8)'; c.font = '600 26px Fredoka, sans-serif'; c.textAlign = 'center'; c.fillText('let go to swing the torso', PC, PC + MAPR * 0.55); }
+    // stick
+    if (tp.mode === 'pad' && tp.moved > 8) {
+      c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 3; c.beginPath(); c.arc(tp.sx, tp.sy, STICK, 0, Math.PI * 2); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.arc(tp.sx + tp.mv[0] * STICK, tp.sy - tp.mv[1] * STICK, 34, 0, Math.PI * 2); c.fill();
+    }
+    var ft = (now - flashTap) / 250; if (ft < 1) { c.strokeStyle = 'rgba(255,240,180,' + (1 - ft) + ')'; c.lineWidth = 10; c.beginPath(); c.arc(PC, PC, MAPR * (0.3 + ft * 0.7), 0, Math.PI * 2); c.stroke(); }
+    if (!st || (st.phase !== 'play')) { c.fillStyle = 'rgba(200,230,255,.55)'; c.font = '500 24px Fredoka, sans-serif'; c.textAlign = 'center'; c.fillText(me.seat === 1 ? 'tap to fire' : 'drag to walk \u00b7 tap to fire', PC, PC + MAPR * 0.75); }
+  }
+  requestAnimationFrame(drawPad);
+
   // ------------------------------------------------------------------ tabs
   var tab = 'combat';
-  [].forEach.call($('tabs').children, function (b) { b.onclick = function () { tab = b.getAttribute('data-tab'); [].forEach.call($('tabs').children, function (x) { x.classList.toggle('on', x === b); }); ['combat', 'map', 'set'].forEach(function (t) { $('tab-' + t).hidden = t !== tab; }); if (tab === 'map') drawMap(); }; });
+  [].forEach.call($('tabs').children, function (b) { b.onclick = function () { tab = b.getAttribute('data-tab'); if (tab !== 'combat' && (tp.mv[0] || tp.mv[1])) { tp.mv = [0, 0]; tp.id = null; tp.mode = null; sendMove(true); } [].forEach.call($('tabs').children, function (x) { x.classList.toggle('on', x === b); }); ['combat', 'map', 'set'].forEach(function (t) { $('tab-' + t).hidden = t !== tab; }); if (tab === 'map') drawMap(); }; });
 
   // ------------------------------------------------------------------ weapons + FIRE
   function buildWeapons(names) {
@@ -170,6 +253,7 @@
   function onState(s) {
     var first = !st; st = s; if (first && me.seat === 0 && s.hands !== hands) send({ t: 'hands', on: hands });
     if (s.path) path = s.path;
+    var lt = trail[trail.length - 1]; if (!lt || Math.hypot(s.x - lt[0], s.z - lt[1]) > 1.5) { trail.push([s.x, s.z]); if (trail.length > 400) trail.shift(); }
     $('hull').textContent = s.hull + '%'; $('hull').style.color = s.hull > 50 ? '#5dff9a' : s.hull > 25 ? '#ffd23f' : '#ff4b3a';
     if (s.hull < lastHull - 0.5) vib(s.hull < 25 ? [80, 40, 80] : 60); lastHull = s.hull;
     (s.notes || []).forEach(function (n) { if (n === 'kill') vib([15, 20, 30]); if (n === 'boom') vib(50); if (n === 'down') vib([200, 100, 400]); if (n === 'rail') vib(90); });
@@ -265,5 +349,5 @@
     for (i = 1; i < out.length; i++) { acc += Math.hypot(out[i][0] - out[i - 1][0], out[i][1] - out[i - 1][1]); if (acc >= 3 || i === out.length - 1) { even.push(out[i]); acc = 0; } }
     return even.slice(0, 160);
   }
-  window.MP = { state: function () { return st; }, me: function () { return me; }, cal: cal, sensor: sensor, bezierPath: bezierPath, send: send };
+  window.MP = { tp: tp, trail: trail, state: function () { return st; }, me: function () { return me; }, cal: cal, sensor: sensor, bezierPath: bezierPath, send: send };
 })();
