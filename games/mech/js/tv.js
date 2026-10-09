@@ -431,10 +431,9 @@
   }
   function tickMech(dt) {
     var target = 0, desired = M.legYaw;
+    if (M.padRel >= 0 && M.pad > 0) { if (M.padRel > 0) M.padRel = Math.max(0, M.padRel - dt); else { M.pad *= Math.exp(-dt / C.pad.decaySec); if (M.pad < 0.06) { M.pad = 0; M.padRel = -1; } } }   // v0.3 momentum after a swipe
     if (M.down > 0) { M.down -= dt; if (M.down <= 0) respawn(); }
     else if (M.eject) { /* standing still while the pilot is out */ }
-    if (M.padRel >= 0 && M.pad > 0) { if (M.padRel > 0) M.padRel = Math.max(0, M.padRel - dt); else { M.pad *= Math.exp(-dt / C.pad.decaySec); if (M.pad < 0.06) { M.pad = 0; M.padRel = -1; } } }   // v0.3 momentum after a swipe
-    if (false) {}
     else if (M.pad > 0.05) {     // v0.2 thumb pad: walk toward the dragged direction (legs turn around to back up)
       var dT = wrapA(M.travel - M.legYaw), back = Math.abs(dT) > 2.0; desired = back ? M.travel + Math.PI : M.travel;
       target = C.mech.walkSpeed * M.pad * (back ? -C.mech.backSpeed : 1) * clamp(Math.cos(wrapA(desired - M.legYaw)) * 1.3, 0.12, 1);

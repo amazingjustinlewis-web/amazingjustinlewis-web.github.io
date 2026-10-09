@@ -46,7 +46,7 @@
       [].forEach.call(document.querySelectorAll('.pilot'), function (el) { el.hidden = m.seat !== 0; });
       $('mapTab').hidden = m.seat !== 0;
       buildWeapons(m.seat === 0 ? m.weapons : ['CANNON']);
-      if (!sensor.mode) setupSensors(); else if (sensor.mode === 'gyro' && !cal.done) startCal();
+      setCtl(ctl, true); if (!sensor.mode) setupSensors(); else if (sensor.mode === 'gyro' && !cal.done && ctl === 'gyro') startCal();
       vib(30); return;
     }
     if (m.t === 'reject') { $('joinStatus').textContent = m.reason; $('join').hidden = false; $('main').hidden = true; if (net && net.destroy) net.destroy(); net = null; return; }
@@ -84,7 +84,7 @@
     sensor.mode = m; $('modeBtn').textContent = m === 'pad' ? 'Touchpad' : 'Motion';
     $('zone').hidden = m !== 'pad'; $('zone').classList.toggle('pad', m === 'pad'); $('zoneHint').textContent = m === 'pad' ? 'Drag here to aim (push to the edge to turn)' : 'Swing the phone to turn \u00b7 tilt to aim';
     if (m === 'gyro' && !sensor.listening) listen(1800);
-    if (m === 'gyro' && !cal.done && me.role) startCal();
+    if (m === 'gyro' && !cal.done && me.role && ctl === 'gyro') startCal();
     if (m === 'pad') { $('cal').hidden = true; send({ t: 'cal', step: null, done: true }); }
   }
   $('modeBtn').onclick = function () { setMode(sensor.mode === 'pad' ? 'gyro' : 'pad'); };
@@ -119,11 +119,11 @@
   };
   $('calSkip').onclick = function () { var v = sensor.v; if (v) { var a = yp(v); cal.yaw0 = a[0]; cal.pitch0 = a[1]; } finishCal(); };
   function finishCal() { cal.step = -1; cal.done = true; $('cal').hidden = true; send({ t: 'cal', step: null, done: true }); toast('Calibrated. Push to the edges of the TV to turn.'); vib([20, 40, 20]); }
-  $('calBtn').onclick = function () { if (sensor.mode === 'gyro') startCal(); else toast('Calibration is for motion aiming.'); };
-  $('recBtn').onclick = function () { if (sensor.v) { var a = yp(sensor.v); cal.yaw0 = a[0]; cal.pitch0 = a[1]; vib(20); toast('Re-centred'); } };
+  $('calBtn').onclick = function () { if (ctl === 'trackpad') return; if (sensor.mode === 'gyro') startCal(); else toast('Calibration is for motion aiming.'); };
+  $('recBtn').onclick = function () { if (ctl === 'trackpad') { tiltNeutral(); vib(20); toast('Tilt levelled'); return; } if (sensor.v) { var a = yp(sensor.v); cal.yaw0 = a[0]; cal.pitch0 = a[1]; vib(20); toast('Re-centred'); } };
   // stream the aim (screen units: x -1 left .. 1 right, y -1 bottom .. 1 top)
   setInterval(function () {
-    if (sensor.mode !== 'gyro' || !sensor.v || !net || cal.step >= 0) return;
+    if (sensor.mode !== 'gyro' || !sensor.v || !net || cal.step >= 0 || ctl !== 'gyro') return;
     var a = yp(sensor.v), x = wrap(a[0] - cal.yaw0) / cal.half, y = (a[1] - cal.pitch0) / (cal.half * 0.5625);
     send({ t: 'aim', x: +clamp(x, -1.3, 1.3).toFixed(4), y: +clamp(y, -1.3, 1.3).toFixed(4) });
   }, Math.round(1000 / A.sendHz));
@@ -148,12 +148,12 @@
   pc.addEventListener('pointerdown', function (e) {
     e.preventDefault(); if (tp.id != null) return; try { pc.setPointerCapture(e.pointerId); } catch (x) {}
     var p = padPt(e), dx = p[0] - PC, dy = p[1] - PC, r = Math.hypot(dx, dy);
-    tp.id = e.pointerId; tp.sx = tp.x = p[0]; tp.sy = tp.y = p[1]; tp.t0 = performance.now(); tp.moved = 0; tp.css = p[2];
+    tp.hist = []; tp.id = e.pointerId; tp.sx = tp.x = p[0]; tp.sy = tp.y = p[1]; tp.t0 = performance.now(); tp.moved = 0; tp.css = p[2];
     if (r > INNER - PS * 0.02 && me.seat === 0) { tp.mode = 'ring'; if (tp.spin) { dispTy = tp.spin.target + tp.spin.rem; tp.spin = null; } tp.ringA = Math.atan2(dx, -dy); vib(10); }
     else tp.mode = 'pad';
   });
   pc.addEventListener('pointermove', function (e) {
-    if (tp.id !== e.pointerId) return; var p = padPt(e); tp.x = p[0]; tp.y = p[1];
+    if (tp.id !== e.pointerId) return; var p = padPt(e); tp.x = p[0]; tp.y = p[1]; var tn = performance.now(); tp.hist = (tp.hist || []).filter(function (h) { return tn - h[0] < 110; }); tp.hist.push([tn, p[0], p[1]]);
     tp.moved = Math.max(tp.moved, Math.hypot(p[0] - tp.sx, p[1] - tp.sy) * tp.css);
     if (tp.mode === 'ring') tp.ringA = Math.atan2(p[0] - PC, -(p[1] - PC));
     else if (tp.mode === 'pad' && me.seat === 0 && tp.moved > 8) {           // floating stick from where the thumb landed
@@ -168,7 +168,11 @@
       if (st && Math.abs(tp.ringA) > 0.06) { tp.spin = { rem: tp.ringA, target: wrapA2(dispTy - tp.ringA) }; } else tp.ringA = 0;   // the pod turns; the whole pad rotates back with it
     } else {
       if (tp.moved <= 12 && dt < 260) { send({ t: 'tap' }); vib(18); flashTap = performance.now(); }
-      if (tp.mv[0] || tp.mv[1]) { tp.mv = [0, 0]; sendMove(true); }      // let go: the mech slows to a stop
+      if (me.seat === 0 && tp.moved > 12) {     // v0.3 momentum: keep the swipe's speed for a moment, then fade slowly (TV side, C.pad)
+        var hh = tp.hist || [], vx = 0, vy = 0; if (hh.length > 1) { var h0 = hh[0], h1 = hh[hh.length - 1], dts = Math.max(0.016, (h1[0] - h0[0]) / 1000); vx = (h1[1] - h0[1]) / dts; vy = -(h1[2] - h0[2]) / dts; }
+        var vm = Math.hypot(vx, vy), boost = Math.min(1, vm / (STICK * 6)), m = Math.hypot(tp.mv[0], tp.mv[1]), dir = m > 0.1 ? [tp.mv[0] / m, tp.mv[1] / m] : vm > 1 ? [vx / vm, vy / vm] : [0, 0], mag = Math.max(m, boost);
+        tp.mv = [0, 0]; tp.sentMv = [9, 9]; send({ t: 'move', x: +(dir[0] * mag).toFixed(3), y: +(dir[1] * mag).toFixed(3), rel: 1 }); tp.sentAt = performance.now();
+      } else if (tp.mv[0] || tp.mv[1]) { tp.mv = [0, 0]; sendMove(true); }
     }
     tp.id = null; tp.mode = null;
   }
@@ -223,6 +227,49 @@
   }
   requestAnimationFrame(drawPad);
 
+
+  // ------------------------------------------------------------------ v0.3 TRACKPAD MODE: the screen moves the crosshair, lean the phone to walk
+  var ctl = store.get('ms_ctl') === 'trackpad' ? 'trackpad' : 'gyro', tilt = { b0: null, g0: null, b: null, g: null, sent: [0, 0], at: 0 };
+  function setCtl(m, quiet) {
+    ctl = m; store.set('ms_ctl', m); document.body.classList.toggle('trackpad', m === 'trackpad'); $('tpzone').hidden = m !== 'trackpad';
+    $('ctlBtn').textContent = m === 'trackpad' ? 'Trackpad + tilt' : 'Gyro + pad'; $('ctlQuick').innerHTML = m === 'trackpad' ? '&#9678; Gyro aim' : '&#9645; Trackpad';
+    $('recBtn').innerHTML = m === 'trackpad' ? '&#9678; Level tilt' : '&#9678; Re-centre';
+    if (m === 'trackpad') { tiltNeutral(); $('cal').hidden = true; if (cal.step >= 0) { cal.step = -1; send({ t: 'cal', step: null, done: true }); } send({ t: 'cal', step: null, done: true }); if (!quiet) toast('Trackpad: slide to aim, tap to fire, lean to walk. Tilt levelled here.', 3200); }
+    else { send({ t: 'move', x: 0, y: 0 }); if (sensor.mode === 'gyro' && !cal.done && me.role && !quiet) startCal(); }
+  }
+  function tiltNeutral() { tilt.b0 = tilt.b; tilt.g0 = tilt.g; }
+  $('ctlBtn').onclick = $('ctlQuick').onclick = function () { setCtl(ctl === 'trackpad' ? 'gyro' : 'trackpad'); vib(15); };
+  window.addEventListener('deviceorientation', function (e) { if (e.beta == null) return; tilt.b = e.beta; tilt.g = e.gamma; if (tilt.b0 == null && ctl === 'trackpad') tiltNeutral(); });
+  function dz(v) { var T = C.tilt, a = Math.abs(v); return a < T.deadDeg ? 0 : Math.sign(v) * Math.min(1, Math.pow((a - T.deadDeg) / (T.fullDeg - T.deadDeg), 1.3)); }
+  setInterval(function () {     // lean forward = walk, lean back = back up, lean left/right = strafe
+    if (ctl !== 'trackpad' || me.seat !== 0 || tilt.b == null || tilt.b0 == null || $('main').hidden) return;
+    var y = dz(tilt.b0 - tilt.b), x = dz(tilt.g - tilt.g0), s = tilt.sent;
+    $('tiltDot').style.transform = 'translate(' + (x * 60) + 'px,' + (-y * 60) + 'px)';
+    if (Math.abs(x - s[0]) + Math.abs(y - s[1]) < 0.04 && performance.now() - tilt.at < 1000) return;
+    if (!x && !y && !s[0] && !s[1]) return;
+    if (send({ t: 'move', x: +x.toFixed(3), y: +y.toFixed(3) })) { tilt.sent = [x, y]; tilt.at = performance.now(); }
+  }, 66);
+  var tz = $('tpzone'), tpad = { id: null, ax: 0, ay: 0 };
+  tz.addEventListener('pointerdown', function (e) {
+    e.preventDefault(); try { tz.setPointerCapture(e.pointerId); } catch (x) {}
+    if (tpad.id != null) return;
+    tpad.id = e.pointerId; tpad.x = tpad.sx = e.clientX; tpad.y = tpad.sy = e.clientY; tpad.t = tpad.t0 = performance.now(); tpad.moved = 0; tpad.firing = false;
+    clearTimeout(tpad.hold); tpad.hold = setTimeout(function () { if (tpad.id != null && tpad.moved < 12) { tpad.firing = true; send({ t: 'fire', d: 1 }); tz.classList.add('firing'); vib(15); } }, 220);
+  });
+  tz.addEventListener('pointermove', function (e) {
+    if (tpad.id !== e.pointerId) return; var now = performance.now(), dx = e.clientX - tpad.x, dy = e.clientY - tpad.y, dt = Math.max(1, now - tpad.t), d = Math.hypot(dx, dy);
+    tpad.moved = Math.max(tpad.moved, Math.hypot(e.clientX - tpad.sx, e.clientY - tpad.sy));
+    var gain = (0.45 + Math.min(2.4, d / dt * 1.5)) * 2.0 / (tz.clientWidth || 340);     // pointer acceleration: slow = precise, fast flick = big move
+    tpad.ax += dx * gain; tpad.ay += dy * gain; tpad.x = e.clientX; tpad.y = e.clientY; tpad.t = now;
+  });
+  function tzUp(e) {
+    if (tpad.id !== e.pointerId) return; clearTimeout(tpad.hold);
+    if (tpad.firing) send({ t: 'fire', d: 0 }); else if (tpad.moved < 12 && performance.now() - tpad.t0 < 260) { send({ t: 'tap' }); vib(18); }
+    tz.classList.remove('firing'); tpad.id = null; tpad.firing = false;
+  }
+  tz.addEventListener('pointerup', tzUp); tz.addEventListener('pointercancel', tzUp);
+  setInterval(function () { if (!tpad.ax && !tpad.ay) return; if (send({ t: 'pad', dx: +tpad.ax.toFixed(4), dy: +tpad.ay.toFixed(4) })) { tpad.ax = 0; tpad.ay = 0; } }, 33);
+
   // ------------------------------------------------------------------ tabs
   var tab = 'combat';
   [].forEach.call($('tabs').children, function (b) { b.onclick = function () { tab = b.getAttribute('data-tab'); if (tab !== 'combat' && (tp.mv[0] || tp.mv[1])) { tp.mv = [0, 0]; tp.id = null; tp.mode = null; sendMove(true); } [].forEach.call($('tabs').children, function (x) { x.classList.toggle('on', x === b); }); ['combat', 'map', 'set'].forEach(function (t) { $('tab-' + t).hidden = t !== tab; }); if (tab === 'map') drawMap(); }; });
@@ -262,7 +309,8 @@
     var lt = trail[trail.length - 1]; if (!lt || Math.hypot(s.x - lt[0], s.z - lt[1]) > 1.5) { trail.push([s.x, s.z]); if (trail.length > 400) trail.shift(); }
     $('hull').textContent = s.hull + '%'; $('hull').style.color = s.hull > 50 ? '#5dff9a' : s.hull > 25 ? '#ffd23f' : '#ff4b3a';
     if (s.hull < lastHull - 0.5) vib(s.hull < 25 ? [80, 40, 80] : 60); lastHull = s.hull;
-    (s.notes || []).forEach(function (n) { if (n === 'kill') vib([15, 20, 30]); if (n === 'boom') vib(50); if (n === 'down') vib([200, 100, 400]); if (n === 'rail') vib(90); });
+    (s.notes || []).forEach(function (n) { if (n === 'kill') vib([15, 20, 30]); if (n === 'boom') vib(50); if (n === 'down') vib([200, 100, 400]); if (n === 'rail') vib(90); if (n === 'lock') vib([10, 20, 10]); });
+    if (ctl === 'trackpad') $('tpHint').innerHTML = (me.seat === 0 && s.w === 1 && s.locks ? '<b style="color:#ff5a3a">LOCKED x' + s.locks + '</b><br>' : '') + 'Slide to aim &middot; tap to fire &middot; hold to keep firing' + (me.seat === 0 ? '<br>Lean the phone to walk' : '');
     var btns = $('weapons').children;
     for (var i = 0; i < btns.length && s.ammo[i]; i++) {
       var a = s.ammo[i]; btns[i].classList.toggle('on', i === s.w);
@@ -272,7 +320,7 @@
     var cw = s.ammo[me.seat === 0 ? s.w : 0], rail = me.seat === 0 && s.w === 2;
     fire.classList.toggle('reload', cw && cw[2] >= 0);
     $('fireLbl').textContent = cw && cw[2] >= 0 ? 'LOADING' : rail ? 'CHARGE' : 'FIRE';
-    $('fireSub').textContent = rail ? 'hold to charge, let go to fire' : me.seat === 0 && s.w === 1 ? 'tap for one rocket, hold for a volley' : 'hold to keep firing';
+    $('fireSub').textContent = rail ? 'hold to charge, let go to fire' : me.seat === 0 && s.w === 1 ? (s.locks ? 'LOCKED x' + s.locks + ' - fire the salvo!' : 'aim near enemies to lock on') : 'hold to keep firing';
     $('chargeBar').style.width = (s.charge * 100) + '%';
     $('startBtn').hidden = !(s.phase === 'lobby' && me.seat === 0);
     $('autoBtn').innerHTML = 'AUTOPILOT <b>' + (s.auto ? 'ON' : 'OFF') + '</b>'; $('autoBtn').classList.toggle('on', s.auto);
@@ -355,5 +403,5 @@
     for (i = 1; i < out.length; i++) { acc += Math.hypot(out[i][0] - out[i - 1][0], out[i][1] - out[i - 1][1]); if (acc >= 3 || i === out.length - 1) { even.push(out[i]); acc = 0; } }
     return even.slice(0, 160);
   }
-  window.MP = { tp: tp, trail: trail, state: function () { return st; }, me: function () { return me; }, cal: cal, sensor: sensor, bezierPath: bezierPath, send: send };
+  window.MP = { tilt: tilt, ctl: function () { return ctl; }, setCtl: setCtl, tp: tp, trail: trail, state: function () { return st; }, me: function () { return me; }, cal: cal, sensor: sensor, bezierPath: bezierPath, send: send };
 })();
