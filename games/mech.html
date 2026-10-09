@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-page-title="Iron Stride (working title, first prototype)">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- SITE NAME: visible copies come from ../assets/js/site-config.js; plain-text copies below are for link previews (see README). -->
+<title>Iron Stride (working title, first prototype) | Zero to Phi</title>
+<meta name="description" content="Iron Stride (working title): pilot a walking mech from its cockpit on your TV. Your phone is the controller: swing to turn, tilt to aim, draw a path on the map. First prototype.">
+<meta name="theme-color" content="#0b0913">
+
+<!-- TODO(domain): share URLs are absolute for the current GitHub Pages address. When the .com is live,
+     replace "https://amazingjustinlewis-web.github.io/" with the new domain in og:url / og:image / twitter:image. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Zero to Phi">
+<meta property="og:title" content="Iron Stride (working title, first prototype)">
+<meta property="og:description" content="Pilot a walking mech from the cockpit. Your phone is the stick. First prototype, free in your browser.">
+<meta property="og:image" content="https://amazingjustinlewis-web.github.io/assets/img/mech/cover.webp">
+<meta property="og:url" content="https://amazingjustinlewis-web.github.io/games/mech.html">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="675">
+<meta property="og:image:alt" content="Iron Stride: the view out of a mech cockpit over a low-poly city, with a crosshair locked on a drone">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Iron Stride (working title, first prototype)">
+<meta name="twitter:description" content="Swing your phone to turn, tilt to aim, draw a path and the legs do the walking.">
+<meta name="twitter:image" content="https://amazingjustinlewis-web.github.io/assets/img/mech/cover.webp">
+
+<link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../assets/img/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png">
+<link rel="preload" href="../assets/fonts/press-start-2p-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body data-root="../">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="../index.html"><img src="../assets/img/logo.svg" alt="" width="49" height="40"><span data-site-name>Zero to Phi</span><span class="sr-only"> home</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="../soft-play.html">Soft Play</a>
+      <a href="../family.html" aria-current="page">Family</a>
+      <a href="../deep-end.html">Deep End</a>
+      <a href="../about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="game-hero">
+    <div class="wrap">
+      <div>
+        <div class="breadcrumb"><a href="../family.html">Family Friendly</a> / Iron Stride</div>
+        <h1 class="game-title">Iron Stride</h1>
+        <div class="status-row">
+          <span class="chip chip--hot">First prototype</span>
+          <span class="chip">1&ndash;2 players</span>
+          <span class="chip">TV + phones</span>
+          <span class="chip">v0.1 &middot; First steps</span>
+          <span class="chip">Family: Lively (3/5)</span>
+        </div>
+        <p class="lede">You're sitting inside a <strong>walking mech</strong>. Your phone is the stick: <strong>swing it</strong> to turn the torso, <strong>tilt it</strong> to aim, hold <strong>FIRE</strong>, switch between the autocannon, rockets and a charged rail shot, and <strong>draw a path</strong> on the map so the legs stomp you there. Cartoon drones and tanks come in from the sides; the mech bay rearms and repairs you.</p>
+        <a class="btn btn--play btn--huge btn--pulse" href="mech/index.html" data-play-current="mech">&#9654; Open on the TV</a>
+        <p class="play-note">First prototype with simple low-poly proxy art. Open this on the big screen (TV browser, Chromecast or a PC plugged into the TV). Everyone else scans the QR code with their phone.</p>
+      </div>
+      <div class="hero-art">
+        <a class="crt" href="mech/index.html" data-play-current="mech" aria-label="Play Iron Stride">
+          <img src="../assets/img/mech/cover.webp" alt="Iron Stride on the TV: the cockpit frame with hull, radar and weapon readouts, looking out over a low-poly city" width="1200" height="675">
+          <span class="crt-label">STOMP!</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="howto-title">
+    <div class="wrap">
+      <h2 class="pixel" id="howto-title">Play it on your <span style="color:var(--yellow)">TV</span> with <span style="color:var(--cyan)">phones</span></h2>
+      <ul class="next-list">
+        <li><span class="icon">1</span><div><strong>Open the game on the TV</strong><span class="d">Go to <em>amazingjustinlewis-web.github.io/games/mech/</em> on the TV, a laptop plugged into it, or cast it with DashCast. A room code and a QR code appear. No phone handy? Click <em>Play here with mouse + keys</em>.</span></div></li>
+        <li><span class="icon">2</span><div><strong>Climb in with your phone</strong><span class="d">Scan the QR code. The first phone is the <b>pilot</b>; a second phone can join as the <b>gunner</b> with its own crosshair. On an iPhone, tap <em>Tap to enable motion</em>.</span></div></li>
+        <li><span class="icon">3</span><div><strong>Calibrate in three taps</strong><span class="d">Point the top of the phone at the centre of the TV, then its left edge, then its right edge. Re-centre any time.</span></div></li>
+        <li><span class="icon">4</span><div><strong>Stomp around</strong><span class="d">Push the crosshair to the edge of the TV to turn. Hold FIRE. On the MAP tab, tap to walk there or draw a path with your finger. Walk into the blue mech bay to rearm and repair. BRACE soaks hits; hold EJECT for fun.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="gallery-title" style="padding-top:0">
+    <div class="wrap">
+      <h2 class="pixel" id="gallery-title">Screenshots</h2>
+      <div class="gallery">
+        <a href="../assets/img/mech/cockpit.webp" data-lightbox data-caption="The cockpit: heading tape, hull, radar, weapons, and holographic hands on the controls">
+          <img src="../assets/img/mech/cockpit-thumb.webp" alt="Cockpit view over a low-poly city with a crosshair locked on a drone" width="480" height="270" loading="lazy"><span class="cap">Cockpit</span></a>
+        <a href="../assets/img/mech/rail.webp" data-lightbox data-caption="Charged rail shot">
+          <img src="../assets/img/mech/rail-thumb.webp" alt="A rail shot beam firing from the cockpit" width="480" height="270" loading="lazy"><span class="cap">Rail shot</span></a>
+        <a href="../assets/img/mech/phones.webp" data-lightbox data-caption="The phone: combat tab, the topographic map with a drawn path, and calibration">
+          <img src="../assets/img/mech/phones-thumb.webp" alt="Three phone screens: FIRE button and weapons, a topographic map with a path, calibration" width="480" height="270" loading="lazy"><span class="cap">Phone controller</span></a>
+        <a href="../assets/img/mech/eject.webp" data-lightbox data-caption="Eject! The canopy blows and you float down over the city">
+          <img src="../assets/img/mech/eject-thumb.webp" alt="Looking down over the city after ejecting" width="480" height="270" loading="lazy"><span class="cap">Eject</span></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="versions-title" style="padding-top:0">
+    <div class="wrap">
+      <h2 class="pixel" id="versions-title">Versions</h2>
+      <p style="color:var(--muted);margin-top:-.4rem">The very first prototype, with simple proxy art. Motion steering has only been tested with a simulated phone so far.</p>
+      <div data-versions="mech">
+        <ul class="versions"><li class="is-current"><a href="mech/index.html"><span class="v-id">v0.1 &middot; First steps</span><span class="v-badge">Current</span></a></li></ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="gtk-title" style="padding-top:0">
+    <div class="wrap">
+      <h2 class="pixel" id="gtk-title">Good to know</h2>
+      <ul class="next-list" data-good-to-know="mech"></ul>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    <div class="wrap">
+      <h2 class="pixel">Grab your phone.</h2>
+      <a class="btn btn--play btn--huge" href="mech/index.html" data-play-current="mech">&#9654; Play Iron Stride</a>
+    </div>
+  </section>
+</main>
+
+<dialog class="lightbox" id="lightbox" aria-label="Screenshot viewer">
+  <figure>
+    <img src="" alt="">
+    <div class="lb-row">
+      <figcaption></figcaption>
+      <div class="lb-btns">
+        <button type="button" data-prev aria-label="Previous screenshot">&lt;</button>
+        <button type="button" data-next aria-label="Next screenshot">&gt;</button>
+        <button type="button" data-close aria-label="Close">X</button>
+      </div>
+    </div>
+  </figure>
+</dialog>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div><span class="footer-brand" data-site-name>Zero to Phi</span><br>&copy; <span data-year>2026</span> Justin Lewis &middot; Made in Red Deer, Alberta</div>
+    <nav aria-label="Footer">
+      <a href="../soft-play.html">Soft Play</a>
+      <a href="../family.html">Family</a>
+      <a href="../deep-end.html">Deep End</a>
+      <a href="../about.html">About</a>
+      <a href="#main">Back to top &uarr;</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="../assets/js/site-config.js"></script>
+<script src="../assets/js/games.js"></script>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

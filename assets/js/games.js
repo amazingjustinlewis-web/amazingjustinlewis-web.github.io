@@ -218,6 +218,37 @@ window.GAMES = [
     ]
   },
   {
+    id: 'mech',
+    title: 'Iron Stride',
+    pitch: 'Pilot a walking mech from its cockpit on the TV. Swing your phone to turn, tilt to aim, draw a path on the map and the legs do the walking. 1 pilot + an optional gunner.',
+    cover: 'assets/img/mech/cover-card.webp',
+    coverAlt: 'Iron Stride on the TV: a mech cockpit looking out over a low-poly city, with a crosshair locked on a cartoon drone',
+    details: 'games/mech.html',
+    status: 'First prototype',
+    tags: ['1\u20132 players', 'TV + phones', 'Motion aiming'],
+    accent: '#ffb02e',
+    sections: ['family'],
+    intensity: 3,
+    goodToKnow: [
+      'Working title. Cartoon robots: drones and tanks pop apart in puffs of fire and smoke. No people.',
+      'First-person cockpit view with a walking bob and stomps. Some players may find the bobbing view a bit much on a big screen.',
+      'Aim and turn by pointing your phone at the TV (motion sensor). iPhones ask for permission first. No sensor? Use the touchpad, or play on a laptop with mouse + keys.',
+      'A 3-tap calibration before you play. Re-centre any time.',
+      'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi).',
+      'Cannon fire, rockets, explosions, stomps and cockpit beeps. Press M on the TV to mute.',
+      'First prototype: simple proxy art, no rounds or scores to chase yet.'
+    ],
+    versions: [
+      {
+        id: 'v0.1',
+        name: 'First steps',
+        current: true,
+        play: 'games/mech/index.html',
+        notes: 'Wraparound cockpit with heading, hull, radar and weapon readouts; phone motion steering and aiming with a 3-tap calibration; hidden aim assist that locks tight when you hold steady and loosely when you are shaky; autocannon, rockets and a charged rail shot with reload animations; a topographic map where you tap to walk or draw a path that becomes a smooth curve; autopilot, brace and eject; holographic hands on the controls (toggle); drones and tanks; exploding barrels; a mech bay that rearms and repairs; a co-pilot gunner phone; mouse + keys on a laptop; auto quality for slow TV sticks.'
+      }
+    ]
+  },
+  {
     id: 'laser-range',
     title: 'Laser Range',
     pitch: 'Point your phone at the TV like a light gun. Pop cartoon targets, blow up barrels and don\u2019t shoot granny. 1 to 4 players, 90-second rounds.',
