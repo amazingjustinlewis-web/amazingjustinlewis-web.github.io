@@ -1,4 +1,4 @@
-# Red Deer Rich - v0.4 (placeholder art)
+# Red Deer Rich - v0.5 (placeholder art)
 
 A Red Deer-themed property trading board game by Zero to Phi. The spec is the design doc
 (`red-deer-rich/design-doc.md`, outside this repo). Same architecture as Zombie Tiles: plain
@@ -28,6 +28,50 @@ Live: https://amazingjustinlewis-web.github.io/games/red-deer-rich/
 | Regular | nothing pre-dealt, $1,800 each | none (last one standing) |
 | Medium | 3 deeds each (2 each for 4+ players), $1,500 each | 45 min, then the richest wins |
 | Quick | ALL ownable spaces dealt out round-robin, $1,500 each | 30 min, then the richest wins |
+
+v0.5: the timer is its own setting. The ⏱ button beside the length picker (phone) or the Timer button in the TV lobby
+cycles Off / 20 / 30 / 45 / 60 / 90 min and works with any length. Until you touch it, each length keeps the default above.
+
+### What's new in v0.5 (Weather and wear)
+Everything from v0.4 is unchanged. The core stays small: the new house rule hides in Game options, and the rest is feel and polish.
+- **Disasters (Game options; Chaos on, Classic and Chill off).** Now and then a mild local event hits an owned business:
+  it is **closed** (no rent) or earns **half rent** for 1, 2 or 3 of the owner's turns, by severity. The 20 events
+  follow the TV's day/night clock: day brings hail, a car through the window, a water main break, road cones, a power
+  outage, an angry goose, September snow, a sewer backup, a fussy inspector and wildfire smoke; night brings a break-in,
+  graffiti, a stolen catalytic converter, a burst pipe, raccoons, a kitchen fire, a plow ridge, an ice dam, copper
+  thieves and a wrecked patio. No tornadoes. Hidden limits keep it gentle: nothing before round 2, at most 2 a round
+  and 3 at once, never two on one deed, never a mortgaged deed, and it spreads around rather than hitting the same
+  player twice in a row (`C.disasters`). On the TV, the event's icon flies in from the edge and lands with an impact
+  sized to its severity, and a big note names the place, the owner and the effect. The tile then wears a repair pill
+  with the turns left (closed tiles also get a red wash and a hazard border). The owner's phone gets an alert card with
+  **RUSH REPAIR** (about 10% of the price per turn skipped) or WAIT IT OUT. The repair badge and RUSH button also
+  show in My Stuff (list and cards) and on the phone's board map. Rent and PAY UP amounts are halved or zeroed
+  automatically. Every event line in the history is tappable. The AI rushes when the rent it would lose is worth more than the cost,
+  and the headless sim checks the limits every game.
+- **Smarter AUTO-RAISE.** The phone shows the plan before anything happens, for example *"Mortgage Three Mile Bend,
+  sell 2 Shops on Gasoline Alley West and 2 on Gasoline Alley East = $180"*. **OK, DO IT** runs it, and **ADJUST BY
+  HAND** opens My Stuff. The order: mortgage deeds outside full sets (cheapest first), then full sets that have no Shops
+  yet, then sell Shops evenly from the weakest set (and mortgage that set once it's empty) before touching a stronger
+  set. It stops the moment the debt is covered. The same planner (`planRaise`) drives the phone text and the real moves.
+- **Mega-Plex construction.** Building a Mega-Plex plays a few seconds of saw and hammer sounds, with a saw, a hammer and
+  sawdust on the tile.
+- **Bold amounts.** Dollar amounts are bold in the TV's payment popups and play-by-play, and in the phone history.
+- **Deed cards from the map.** Tap any deed on the phone's board map, on the trade map (it still lights up too), or in
+  a history line that names it, and its deed card opens, whoever owns it. Tap to flip it: the front has owner, price,
+  mortgage, rent now and the full rent ladder; the back has every Shop and Mega-Plex step with its cost, running
+  total and the rent it brings.
+- **Card hold.** A drawn card stays on the TV for 12 s unless another card replaces it. Other notes wait their turn.
+- **Shop outlines.** Shops and Mega-Plexes have a slightly thicker, consistent dark outline.
+- **Token transparency.** Resting tokens are drawn at 70% opacity; the active player and any moving token stay solid.
+- **Shake to roll.** When you can roll, a firm shake rolls (debounced). On iPhone, the first ROLL tap asks once for
+  motion access; on Android it just works.
+- **Keep screen awake.** A 🔆 / 🌙 toggle beside the dice uses the Wake Lock API. It is remembered per phone
+  (`rdr_wake`), re-acquired when you come back to the page, and hidden where the browser can't do it.
+- **Timer toggle,** separate from game length (see the table above).
+- **Cash animation on the phone.** Money in pops green dollar signs with a cha-ching; money out crunches the number with a
+  crunch sound.
+- **Polish.** Bigger cards in the portrait cards view (up to 300 px wide, sized to the screen height), a tidier turn
+  screen, a time-left pill, and calmer spacing.
 
 ### What's new in v0.4 (Cards in hand)
 Everything from v0.3 is unchanged: presets and remembered setup, PAY UP and its sounds, the decks with era tags, money
@@ -255,14 +299,16 @@ helper's existing effects:
 | results podium | pickup / kill flashes in the winner's colour, a second escape wave, then over |
 | bankrupt | crunch |
 
-## Placeholder or not done yet (v0.4)
+## Placeholder or not done yet (v0.5)
 - Art is all placeholder: coloured tokens with initials and shapes, line-art buildings, simple particles, simple silhouettes.
 - Perks still coming: Justin's Count-In, Drew's High Kick and Walt's Shortcut.
 - The mini city is a first pass: generic blocks, not real Red Deer landmarks yet.
 - Present Day era only: no era skins yet (cards are era-tagged and filterable, ready for them), and vignettes are icons rather than full stages.
 - No Future Red Deer history cards (a Future skin falls back to the whole deck).
 - Hue: no day/night base cycle and no new effect names (existing helper effects are reused).
-- Optional rules not built yet: Deal Ticker and the turn timer. No character voice stings.
+- Optional rules not built yet: Deal Ticker and a per-turn timer (the v0.5 timer is the game clock). No character voice stings.
+- Disasters use emoji icons for the fly-in graphic (placeholder art), and the saw animation is simple line art.
+- Shake to roll was tested with synthetic motion events only; the threshold (`C.shake.jerk`) may want tuning on real phones.
 
 ## Backlog (not built yet)
 - **Night Crime (lobby toggle).** At night, players can Lock Up their businesses from My Stuff (maybe a small cost,
@@ -270,8 +316,8 @@ helper's existing effects:
   window) that cost repair money. Crime must never be tied to, or shown as, the unhoused townsfolk.
 - **Unhoused townsfolk (separate lobby toggle).** Whether unhoused townsfolk appear in the ambient population at all.
   This is independent of Night Crime and has no gameplay link to it.
-- **Natural Disasters & Mishaps (lobby toggle).** Hailstorms, floods and tornado scares, plus daytime mishaps such as a
-  wild driver crashing into your property, all with repair costs. Night break-ins belong under Night Crime, not here.
+- **Natural Disasters & Mishaps.** Built in v0.5 as the Disasters option, using closures and half rent instead of repair bills.
+  Possible later: Lock Up at night to dodge the night events.
 - **Remote TV screen.** A second household opens the game page on their own TV, types the room code, and gets a live,
   mirrored, view-only TV board (same animations and sounds, no host controls), so two living rooms across town can
   play one game, each on its own TV. Their phones join with the same room code. Needs: a "Watch on another TV" entry on
@@ -291,6 +337,8 @@ helper's existing effects:
 - `v03unit.js` (node) covers v0.3 decks (sizes, eras, effects, sources file, filter + fallback), the PASS DICE lockout only where PAY UP can happen, and the halved boom.
 - `e2e7.py` covers v0.3 in the browser: every card fits the TV at 16:9 / 720p / 4:3, the phone card + READ MORE sheet, the My Stuff tile bounce (colour, no game change, rate limit, own deeds only), the PAY UP explosion vs the normal rent flow, phone sounds and vibration, and rejoin keeping the live settings.
 - `v04.py` is the v0.4 multi-phone playthrough: Heckle unlock times / faces / buzz / TV pop / rate limit, PAID IN FULL by a manual sell and by a mortgage flip, card history + card list, the cards view in portrait and landscape (unfold, ghosts, flip, unmortgage, list switch), and the drag-map trade with slider, private highlights and SUBMIT.
+- `v05unit.js` (node) covers v0.5: the 20 disaster events and presets, rent with damage, the repair countdown, rush cost, caps (per round, at once, never stacked, never mortgaged, day/night pools), the auto-raise planner order and text, and the timer defaults and choices.
+- `v05.py` is the v0.5 browser run: the Disasters option, presets and hold details, timer picker and end time, bold amounts, the TV fly-in and note, the phone alert, RUSH REPAIR, history taps, the My Stuff badge, the board-map marker, deed flip cards (board map, trade map, history), shake to roll, the wake lock, the raise plan with OK, the Mega-Plex saw, the 12 s card hold and queue, cash pop and crunch, and bigger portrait cards.
 - `autoq.py` checks v0.4 auto graphics: the boot probe steps a slow TV down, the FX line says auto, and `rdr_fx` pins a rung.
 - `podfit.py` checks the results screen for 2 to 8 players at 1920×1080 and 1024×768 (inside the screen, no overlaps, clear of the QR).
 - `tiletext.py` makes the tile-name before/after closeup and checks the lighter weight.

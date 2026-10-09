@@ -165,7 +165,7 @@ window.GAMES = [
         name: 'Weather and wear',
         current: true,
         play: 'games/red-deer-rich/index.html',
-        notes: 'NOTES_V05'
+        notes: 'A new Disasters option (on in Chaos): now and then hail, a car through the window, a burst pipe, raccoons or one of 20 small day or night mishaps closes a business or halves its rent for 1 to 3 turns. The icon flies in on the TV, the tile wears a repair pill, and the owner\u2019s phone offers RUSH REPAIR. AUTO-RAISE now shows its plan first (\u201cMortgage X, sell 1 Shop on Y = $340\u201d) with OK or adjust by hand. Tap any deed on the phone\u2019s maps or history for a flip card with rents and every building cost. Mega-Plexes get built with saw and hammer, amounts are bold, drawn cards stay up 12 s, resting tokens are see-through, and the phone gets shake to roll, a keep-screen-awake switch, a game timer for any length, and cash that pops or crunches.'
       },
       {
         id: 'v0.4',
