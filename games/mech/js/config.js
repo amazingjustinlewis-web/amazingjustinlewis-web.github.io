@@ -2,7 +2,7 @@
    Every gameplay number lives here. The TV and the phones both read this file. */
 (function (root) {
   var C = root.MECH_CONFIG = {
-    version: '0.1',
+    version: '0.2',
     title: 'IRON STRIDE',
     peerPrefix: 'ztp-ironstride-v01-',
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }],
@@ -16,7 +16,7 @@
       minSpanDeg: 12,              // calibration refused if left and right are closer than this
       edge: 0.55,                  // crosshair past this (of half the screen) starts turning the torso
       turnDegPerSec: 95,           // torso turn speed at the very edge
-      pitchEdge: 0.5, pitchDegPerSec: 40, pitchLimitDeg: [-55, 22],
+      pitchEdge: 0.5, pitchDegPerSec: 40, pitchLimitDeg: [-89, 89],
       filter: { minCutoff: 1.4, beta: 4, dCutoff: 1.0 }
     },
     // ---- hidden aim assist: reads intent. steady = tight, strong lock; shaky = wide, soft, approximate ----
@@ -26,7 +26,9 @@
       radiusSteady: 0.07, radiusShaky: 0.16,  // lock cone (fraction of screen half-width)
       pullSteady: 0.85, pullShaky: 0.45,      // how far the shot bends from the crosshair to the target
       scatterShaky: 0.025,         // extra random spread when shaky (screen half-widths)
-      stickyMs: 350                // a lock holds this long after the crosshair slips off
+      stickyMs: 350,               // a lock holds this long after the crosshair slips off
+      intentTauSteady: 0.07, intentTauShaky: 0.32,   // v0.2 intent reticle: seconds to catch up (steady = quick, shaky = heavy smoothing)
+      spreadSteady: 0.004, spreadShaky: 0.045        // shot spread around the intent reticle (screen half-widths)
     },
     weapons: [
       { id: 'cannon', label: 'AUTOCANNON', short: 'CANNON', mag: 40, reloadSec: 1.8, rpm: 540, damage: 1, spread: 0.006, color: '#ffd84a' },
@@ -34,7 +36,7 @@
       { id: 'rail', label: 'RAIL', short: 'RAIL', mag: 2, reloadSec: 2.6, chargeSec: 1.1, minCharge: 0.25, damage: 2, maxDamage: 8, color: '#7af0ff' }
     ],
     gunner: { weapon: 0 },         // co-pilot gunner phone: own crosshair, autocannon
-    mech: { walkSpeed: 7, turnDegPerSec: 55, strideSec: 1.05, eyeHeight: 9.5, radius: 3.2, hull: 100, lookahead: 7, arriveDist: 3 },
+    mech: { faceDegPerSec: 150, backSpeed: 0.55, walkSpeed: 7, turnDegPerSec: 55, strideSec: 1.05, eyeHeight: 9.5, radius: 3.2, hull: 100, lookahead: 7, arriveDist: 3 },
     bay: { reloadPerSec: 1, repairPerSec: 18 },
     enemies: {
       drone: { hp: 2, speed: 16, radius: 2.2, fireEvery: [2.8, 4.5], boltSpeed: 34, damage: 4, score: 100 },

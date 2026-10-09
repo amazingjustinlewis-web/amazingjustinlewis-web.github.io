@@ -159,7 +159,7 @@
 
   // ================================================================== the mech
   var M = { x: 0, z: -2, legYaw: 0, torso: 0, pitch: 0, speed: 0, phase: 0, lastStep: 0, hull: C.mech.hull, path: [], pathIdx: 0, pathV: 0, autopilot: true, walk: 0, turn: 0,
-    bob: 0, dip: 0, dipV: 0, shake: 0, braceT: 0, braceCd: 0, eject: null, down: 0, inBay: false, score: 0, kills: 0, hurt: 0, swap: 0 };
+    pad: 0, travel: 0, faceTo: null, bob: 0, dip: 0, dipV: 0, shake: 0, braceT: 0, braceCd: 0, eject: null, down: 0, inBay: false, score: 0, kills: 0, hurt: 0, swap: 0 };
   var WEAP = C.weapons.map(function (w) { return { def: w, mag: w.mag, res: w.id === 'rocket' ? 24 : w.id === 'rail' ? 8 : 0, resMax: w.id === 'rocket' ? 24 : w.id === 'rail' ? 8 : 0, reload: -1, cool: 0 }; });
   var GUN2 = { def: C.weapons[0], mag: 60, res: 0, resMax: 0, reload: -1, cool: 0, magMax: 60 };
   var wsel = 0;
@@ -277,7 +277,12 @@
     barrels.forEach(function (b, i) { if (!b.alive) return; var p = new T.Vector3(b.x, b.y + 1.1, b.z); if (p.distanceTo(camera.position) > 110) return; proj.copy(p).project(camera); if (proj.z < 1 && Math.abs(proj.x) < 1.1 && Math.abs(proj.y) < 1.1) out.push({ b: i, x: proj.x, y: proj.y, d: p.distanceTo(camera.position), asp: asp }); });
     return out;
   }
-  function assist(s) {            // reads intent: returns { x, y, target, tight }
+  function assist(s) { return s.intent || { x: s.ax, y: s.ay, t: null, tight: 1, R: 0.1 }; }
+  function shotAim(s) {           // v0.2: shots go to the intent reticle, spread by steadiness
+    var a = assist(s), sp = lerp(C.assist.spreadShaky, C.assist.spreadSteady, a.tight);
+    return { x: a.x + (Math.random() - 0.5) * 2 * sp, y: a.y + (Math.random() - 0.5) * 2 * sp * camera.aspect, t: a.t, tight: a.tight };
+  }
+  function tickIntent(s, dt) {    // v0.2 intent reticle: smoothed estimate of where the player means to aim, pulled onto the locked target
     var A = C.assist, st = steadiness(s), R = lerp(A.radiusShaky, A.radiusSteady, st), pull = lerp(A.pullShaky, A.pullSteady, st), now = performance.now();
     var best = null, bestD = 1e9, list = targetsOnScreen();
     list.forEach(function (t) {
@@ -288,9 +293,11 @@
       if (d < R && d < bestD) { best = t; bestD = d; }
     });
     if (best) { s.lock = best; s.lockT = now; } else if (s.lock && now - s.lockT > A.stickyMs) s.lock = null;
-    var L = best || null, sc = (1 - st) * A.scatterShaky;
-    var x = s.ax + (L ? (L.x - s.ax) * pull : 0) + (Math.random() - 0.5) * 2 * sc, y = s.ay + (L ? (L.y - s.ay) * pull : 0) + (Math.random() - 0.5) * 2 * sc;
-    return { x: x, y: y, t: L, tight: st, R: R };
+    var L = phase === 'play' ? best : null, gx = s.ax + (L ? (L.x - s.ax) * pull : 0), gy = s.ay + (L ? (L.y - s.ay) * pull : 0);
+    if (s.ix == null) { s.ix = s.ax; s.iy = s.ay; }
+    var k = 1 - Math.exp(-dt / lerp(A.intentTauShaky, A.intentTauSteady, st));
+    s.ix += (gx - s.ix) * k; s.iy += (gy - s.iy) * k;
+    s.intent = { x: s.ix, y: s.iy, t: L, tight: st, R: R };
   }
   // ray vs world: nearest of enemies, barrels, buildings, ground
   var ray = new T.Raycaster();
@@ -339,7 +346,7 @@
   }
   var lastAim = [null, null];
   function fireCannon(s) {
-    var a = assist(s), side = s.seat === 1 ? -1 : (M.alt = -(M.alt || 1)), r = castFrom(a.x + rand(-1, 1) * C.weapons[0].spread, a.y + rand(-1, 1) * C.weapons[0].spread), h = hitscan(r, false), from = muzzleOf(s.seat === 1 ? -1 : 1);
+    var a = shotAim(s), side = s.seat === 1 ? -1 : (M.alt = -(M.alt || 1)), r = castFrom(a.x + rand(-1, 1) * C.weapons[0].spread, a.y + rand(-1, 1) * C.weapons[0].spread), h = hitscan(r, false), from = muzzleOf(s.seat === 1 ? -1 : 1);
     tracer(from, h.end, s.seat === 1 ? '#7af0ff' : '#ffe27a'); SFX.play('cannon'); M.shake = Math.max(M.shake, 0.06); cockpit.cmd('fire');
     emit(2, from.x, from.y, from.z, 3, '#fff3b0', '#ffb040', 0.08, 1, 0);
     if (h.hits.length) { var x = h.hits[0]; if (x.e) { damageEnemy(x.e, 1, s.seat); emit(4, h.end.x, h.end.y, h.end.z, 9, '#fff', '#ffd23f', 0.25); } else blowBarrel(x.b, s.seat); }
@@ -347,7 +354,7 @@
     lastAim[s.seat] = a;
   }
   function fireRocket(s) {
-    var a = assist(s), r = castFrom(a.x, a.y), from = muzzleOf(rockets.length % 2 ? -1 : 1), m = rocketPool.find(function (q) { return !q.visible; });
+    var a = shotAim(s), r = castFrom(a.x, a.y), from = muzzleOf(rockets.length % 2 ? -1 : 1), m = rocketPool.find(function (q) { return !q.visible; });
     if (!m) return; m.visible = true; m.position.copy(from);
     var dir = r.direction.clone();
     rockets.push({ m: m, v: dir.multiplyScalar(C.weapons[1].speed * 0.55), target: a.t && a.t.e ? a.t.e : null, life: 4, seat: s.seat, smoke: 0 });
@@ -368,13 +375,24 @@
   }
   var rail = { t: 0 };
   function fireRail(s, w, charge) {
-    var def = w.def, a = assist(s), r = castFrom(a.x, a.y), h = hitscan(r, true), from = muzzleOf(1), dmg = Math.round(lerp(def.damage, def.maxDamage, charge));
+    var def = w.def, a = shotAim(s), r = castFrom(a.x, a.y), h = hitscan(r, true), from = muzzleOf(1), dmg = Math.round(lerp(def.damage, def.maxDamage, charge));
     w.mag--; w.cool = 0.4; if (w.mag <= 0) startReload(w, s);
     h.hits.forEach(function (x) { if (x.e) damageEnemy(x.e, dmg, s.seat); else blowBarrel(x.b, s.seat); });
     var mid = from.clone().add(h.end).multiplyScalar(0.5), len = from.distanceTo(h.end);
     railBeam.visible = true; railBeam.position.copy(mid); railBeam.scale.set(0.6 + charge * 1.6, len, 0.6 + charge * 1.6); railBeam.lookAt(h.end); railBeam.rotateX(Math.PI / 2); rail.t = 0.35;
     flash(h.end.x, h.end.y, h.end.z, 2 + charge * 2, 0x9af6ff); emit(18 * charge + 6, h.end.x, h.end.y, h.end.z, 14, '#ffffff', '#7af0ff', 0.5);
     SFX.play('rail', { p: 0.5 + charge * 0.5 }); M.shake = Math.max(M.shake, 0.35 + charge * 0.4); cockpit.cmd('fire'); notify('rail');
+  }
+  function setMove(x, y) {        // pad vector relative to the torso: y forward, x right
+    var m = Math.min(1, Math.hypot(x, y));
+    if (m > 0.05) { M.travel = M.torso - Math.atan2(x, y); if (M.pad <= 0.05 && M.path.length) { M.path = []; M.pathV++; } }
+    M.pad = m;
+  }
+  function fireOnce(s) {          // v0.2: a quick tap on the thumb pad fires one shot of the current weapon
+    var w = curW(s); if (phase !== 'play' || M.eject || M.down > 0 || w.reload >= 0 || (s.seat === 0 && M.swap > 0)) return;
+    if (w.mag <= 0) { startReload(w, s); return; }
+    if (w.def.id === 'rail') { fireRail(s, w, 0.4); return; }
+    if (w.cool > 0) return; w.cool = 60 / w.def.rpm; w.mag--; if (w.def.id === 'cannon') fireCannon(s); else fireRocket(s); if (w.mag <= 0) startReload(w, s);
   }
   function selectWeapon(i) { if (i === wsel || !WEAP[i]) return; wsel = i; M.swap = 0.35; SFX.play('select'); cockpit.cmd('weapon'); if (seats[0]) { seats[0].charging = false; seats[0].charge = 0; } notify('weapon'); }
 
@@ -388,6 +406,10 @@
     var target = 0, desired = M.legYaw;
     if (M.down > 0) { M.down -= dt; if (M.down <= 0) respawn(); }
     else if (M.eject) { /* standing still while the pilot is out */ }
+    else if (M.pad > 0.05) {     // v0.2 thumb pad: walk toward the dragged direction (legs turn around to back up)
+      var dT = wrapA(M.travel - M.legYaw), back = Math.abs(dT) > 2.0; desired = back ? M.travel + Math.PI : M.travel;
+      target = C.mech.walkSpeed * M.pad * (back ? -C.mech.backSpeed : 1) * clamp(Math.cos(wrapA(desired - M.legYaw)) * 1.3, 0.12, 1);
+    }
     else if (M.autopilot && M.path.length) {
       while (M.pathIdx < M.path.length - 1 && Math.hypot(M.path[M.pathIdx][0] - M.x, M.path[M.pathIdx][1] - M.z) < C.mech.lookahead) M.pathIdx++;
       var p = M.path[M.pathIdx], dx = p[0] - M.x, dz = p[1] - M.z, d = Math.hypot(dx, dz);
@@ -395,9 +417,10 @@
       else { desired = Math.atan2(-dx, -dz); var diff = Math.abs(wrapA(desired - M.legYaw)); target = C.mech.walkSpeed * clamp(Math.cos(diff) * 1.2, 0.15, 1) * clamp(d / 6 + 0.3, 0.3, 1); }
     } else if (M.walk) { desired = M.walk > 0 ? M.torso : M.legYaw; target = C.mech.walkSpeed * (M.walk > 0 ? 1 : -0.5); }
     if (M.turn) desired = M.legYaw + M.turn;
+    if (M.faceTo != null) { var fd = wrapA(M.faceTo - M.torso), fr = C.mech.faceDegPerSec * D2R * dt; M.torso += clamp(fd, -fr, fr); if (Math.abs(fd) < 0.01) M.faceTo = null; }
     if (M.braceT > 0) target = 0;
     var tr = C.mech.turnDegPerSec * D2R * dt, dd = wrapA(desired - M.legYaw); M.legYaw += clamp(dd, -tr, tr);
-    if (!M.autopilot && !M.walk && !M.turn) { /* manual + idle: legs slowly settle under the torso */ var dd2 = wrapA(M.torso - M.legYaw); if (Math.abs(dd2) > 0.6) M.legYaw += clamp(dd2, -tr * 0.5, tr * 0.5); }
+    if (!M.autopilot && !M.walk && !M.turn && M.pad <= 0.05) { /* manual + idle: legs slowly settle under the torso */ var dd2 = wrapA(M.torso - M.legYaw); if (Math.abs(dd2) > 0.6) M.legYaw += clamp(dd2, -tr * 0.5, tr * 0.5); }
     M.speed += clamp(target - M.speed, -10 * dt, 4 * dt);
     var nx = M.x - Math.sin(M.legYaw) * M.speed * dt, nz = M.z - Math.cos(M.legYaw) * M.speed * dt, lim = Wd.half - 12;
     nx = clamp(nx, -lim, lim); nz = clamp(nz, -lim, lim);
@@ -446,6 +469,7 @@
       if (ex > 0.05 && !steer.whir) { SFX.play('servo'); steer.whir = 1; } else if (ex <= 0) steer.whir = 0;
     }
     if (phase === 'lobby') M.torso += dt * 0.06;
+    if (kbMode && (keys.q || keys.e)) { M.faceTo = null; M.torso += (keys.q ? 1 : -1) * A.turnDegPerSec * 0.8 * D2R * dt; }
   }
   function placeCamera(dt) {
     var gy = Wd.height(M.x, M.z), ph = M.phase * Math.PI * 2, crouch = M.braceT > 0 ? -1.6 : 0;
@@ -494,6 +518,9 @@
       case 'clear': if (s.seat === 0) { M.path = []; M.pathV++; } break;
       case 'auto': if (s.seat === 0) { M.autopilot = !!m.on; cockpit.cmd('auto'); SFX.play('click'); flashMsg(M.autopilot ? 'AUTOPILOT ON' : 'MANUAL: hold STRIDE to walk', '#5dff9a'); } break;
       case 'walk': if (s.seat === 0) M.walk = +m.d || 0; break;
+      case 'move': if (s.seat === 0) setMove(+m.x || 0, +m.y || 0); break;
+      case 'face': if (s.seat === 0 && isFinite(+m.a)) { M.faceTo = wrapA((M.faceTo != null ? M.faceTo : M.torso) - (+m.a)); SFX.play('servo'); } break;
+      case 'tap': fireOnce(s); break;
       case 'brace': brace(); break;
       case 'eject': if (s.seat === 0) eject(); break;
       case 'hands': cockpit.handsOn = !!m.on; flashMsg('HOLO HANDS ' + (m.on ? 'ON' : 'OFF'), '#7af0ff'); break;
@@ -507,11 +534,11 @@
   function notify(k) { notes.push(k); phoneDirty = true; }
   var phoneDirty = true, lastSend = 0, sentPathV = -1;
   function sendState(force) {
-    var now = performance.now(); if (!net || (!force && !phoneDirty && now - lastSend < 200) || (!force && now - lastSend < 100)) return;
+    var now = performance.now(); if (!net || (!force && !phoneDirty && now - lastSend < (phase === 'play' ? 80 : 200)) || (!force && now - lastSend < 70)) return;
     lastSend = now; phoneDirty = false;
     var en = enemies.map(function (e) { return [Math.round(e.x), Math.round(e.z), e.kind === 'tank' ? 1 : 0]; });
     var base = { t: 'st', phase: phase, hull: Math.round(M.hull), x: +M.x.toFixed(1), z: +M.z.toFixed(1), ly: +M.legYaw.toFixed(2), ty: +M.torso.toFixed(2), en: en, auto: M.autopilot, hands: cockpit.handsOn, score: M.score,
-      bay: M.inBay, brace: M.braceT > 0, ej: !!M.eject, down: M.down > 0, pathV: M.pathV, notes: notes.splice(0) };
+      bay: M.inBay, tv: [+wrapA(M.torso - (M.speed < 0 ? M.legYaw + Math.PI : M.legYaw)).toFixed(2), +clamp(Math.abs(M.speed) / C.mech.walkSpeed, 0, 1).toFixed(2)], brace: M.braceT > 0, ej: !!M.eject, down: M.down > 0, pathV: M.pathV, notes: notes.splice(0) };
     seats.forEach(function (s) {
       if (!s || !s.conn || !s.connected) return;
       var w = curW(s), msg = Object.assign({}, base, { seat: s.seat, w: s.seat === 0 ? wsel : 0, ammo: s.seat === 0 ? WEAP.map(function (q) { return [q.mag, q.res, q.reload >= 0 ? +q.reload.toFixed(2) : -1, q.def.mag, q.resMax]; }) : [[GUN2.mag, 0, GUN2.reload >= 0 ? +GUN2.reload.toFixed(2) : -1, 60, 0]], charge: +(s.charge || 0).toFixed(2), ready: !!s.ready });
@@ -574,11 +601,10 @@
     if (k === 'b') brace();
     if (k === 'x') eject();
     if (k === 'p') { M.autopilot = !M.autopilot; cockpit.cmd('auto'); }
-    if (k === 'w' || k === 's' || k === 'a' || k === 'd') { M.autopilot = false; M.path = []; M.pathV++; }
     kbMove();
   });
   window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; kbMove(); });
-  function kbMove() { if (!kbMode) return; M.walk = keys.w ? 1 : keys.s ? -1 : 0; M.turn = keys.a ? 0.8 : keys.d ? -0.8 : 0; }
+  function kbMove() { if (!kbMode) return; var x = (keys.d ? 1 : 0) - (keys.a ? 1 : 0), y = (keys.w ? 1 : 0) - (keys.s ? 1 : 0), m = Math.hypot(x, y) || 1; setMove(x / m, y / m); }
 
   // ================================================================== HUD state + messages
   var msg = { text: '', color: '', t: 0 };
@@ -592,8 +618,8 @@
       if (!s || (!s.connected && !s.kb)) return;
       if (s.calStep >= 0 && s.calStep < 3) { var m = CAL_MARK[s.calStep]; cal.push({ x: m.x, y: m.y, label: (s.seat ? 'GUNNER: ' : '') + m.label, color: s.color }); return; }
       if (M.eject) return;
-      var a = phase === 'play' ? assist(s) : null, L = a && a.t ? { x: a.t.x, y: a.t.y, r: 14 + 26 * (1 - a.tight) + clamp(60 / a.t.d, 0, 20), tight: a.tight } : null;
-      cross.push({ x: s.ax, y: s.ay, color: s.color, lock: L, charge: s.charging ? s.charge : 0 });
+      var a = assist(s), L = a && a.t ? { x: a.t.x, y: a.t.y, r: 14 + 26 * (1 - a.tight) + clamp(60 / a.t.d, 0, 20), tight: a.tight } : null;
+      cross.push({ x: s.ax, y: s.ay, ix: a.x, iy: a.y, tight: a.tight, color: s.color, lock: L, charge: s.charging ? s.charge : 0 });
     });
     var cs = Math.cos(M.torso), sn = Math.sin(M.torso);
     function rel(x, z) { var dx = x - M.x, dz = z - M.z; return [-(dx * cs - dz * sn) * -1, -(dx * sn + dz * cs)]; }   // [right, forward] in torso frame
@@ -620,7 +646,7 @@
       tickEnemies(dt);
     }
     steer(dt); tickMech(dt); tickEject(dt);
-    seats.forEach(function (s) { if (s) tickWeapon(s, dt); });
+    seats.forEach(function (s) { if (s) { tickIntent(s, dt); tickWeapon(s, dt); } });
     tickRockets(dt); tickParticles(dt); tickTracers(dt); tickFlashes(dt);
     if (rail.t > 0) { rail.t -= dt; railBeam.material.opacity = Math.max(0, rail.t / 0.35); if (rail.t <= 0) railBeam.visible = false; }
     bayLight.material.color.setHSL(0.55, 1, 0.45 + 0.2 * Math.sin(now / 300));

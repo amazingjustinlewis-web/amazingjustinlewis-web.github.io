@@ -202,11 +202,21 @@
   P.toPx = function (nx, ny) { return [(nx + 1) / 2 * this.W, (1 - ny) / 2 * this.H]; };
   P.drawCross = function (c, x) {
     var p = this.toPx(x.x, x.y), k = Math.max(0.6, this.k), r = 18 * k;
-    c.strokeStyle = x.color; c.lineWidth = 2.5 * k; c.globalAlpha = 0.95;
+    c.strokeStyle = x.color; c.lineWidth = 2.5 * k; c.globalAlpha = 0.8;
     c.beginPath(); c.arc(p[0], p[1], r, 0, TAU); c.stroke();
     c.beginPath(); c.moveTo(p[0] - r * 1.8, p[1]); c.lineTo(p[0] - r * 0.6, p[1]); c.moveTo(p[0] + r * 0.6, p[1]); c.lineTo(p[0] + r * 1.8, p[1]);
     c.moveTo(p[0], p[1] - r * 1.8); c.lineTo(p[0], p[1] - r * 0.6); c.moveTo(p[0], p[1] + r * 0.6); c.lineTo(p[0], p[1] + r * 1.8); c.stroke();
     c.fillStyle = x.color; c.fillRect(p[0] - 1.5 * k, p[1] - 1.5 * k, 3 * k, 3 * k);
+    if (x.ix != null) {      // v0.2 intent reticle: bigger, brighter, bolder; its gap opens up when the aim is shaky
+      var q2 = this.toPx(x.ix, x.iy), R2 = (30 + 16 * (1 - (x.tight == null ? 1 : x.tight))) * k;
+      for (var pass = 0; pass < 2; pass++) {
+        c.globalAlpha = pass ? 1 : 0.35; c.lineWidth = (pass ? 3.5 : 10) * k; c.strokeStyle = pass ? '#ffffff' : x.color;
+        for (var qd = 0; qd < 4; qd++) { var a0 = qd * Math.PI / 2 + Math.PI / 4; c.beginPath(); c.arc(q2[0], q2[1], R2, a0 - 0.5, a0 + 0.5); c.stroke(); }
+        c.beginPath(); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { c.moveTo(q2[0] + d[0] * R2 * 0.55, q2[1] + d[1] * R2 * 0.55); c.lineTo(q2[0] + d[0] * R2 * 1.3, q2[1] + d[1] * R2 * 1.3); }); c.stroke();
+      }
+      c.fillStyle = '#ffffff'; c.beginPath(); c.arc(q2[0], q2[1], 3.5 * k, 0, TAU); c.fill(); c.globalAlpha = 0.95;
+      p = q2;                 // the charge ring follows the intent reticle (that's where the shot goes)
+    }
     if (x.charge > 0) { c.lineWidth = 5 * k; c.strokeStyle = x.charge >= 1 ? '#ffffff' : '#7af0ff'; c.beginPath(); c.arc(p[0], p[1], r * 1.45, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, x.charge)); c.stroke(); }
     if (x.lock) {        // lock bracket: tight + solid when steady, wide + soft when shaky
       var q = this.toPx(x.lock.x, x.lock.y), s = (x.lock.r || 24) * k, a = x.lock.tight;
