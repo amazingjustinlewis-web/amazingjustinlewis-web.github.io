@@ -240,10 +240,17 @@ window.GAMES = [
     ],
     versions: [
       {
-        id: 'v0.1',
-        name: 'First steps',
+        id: 'v0.2',
+        name: 'Thumb pad',
         current: true,
         play: 'games/mech/index.html',
+        notes: 'Projector-night control pass: a thumb pad on the phone that walks the mech in the direction you drag (further = faster), a facing ring you can drag to swing the torso while you keep walking the same way, an arrow for travel direction and speed, a faint holographic mini-map inside the pad, tap the pad to fire, a second big intent reticle that smooths out hand jitter (shots go there, tighter when you hold steady), full look range straight up to the sky and down at your feet, and WASD movement with mouse aim on a laptop.'
+      },
+      {
+        id: 'v0.1',
+        name: 'First steps',
+        current: false,
+        play: 'games/mech/v0.1/index.html',
         notes: 'Wraparound cockpit with heading, hull, radar and weapon readouts; phone motion steering and aiming with a 3-tap calibration; hidden aim assist that locks tight when you hold steady and loosely when you are shaky; autocannon, rockets and a charged rail shot with reload animations; a topographic map where you tap to walk or draw a path that becomes a smooth curve; autopilot, brace and eject; holographic hands on the controls (toggle); drones and tanks; exploding barrels; a mech bay that rearms and repairs; a co-pilot gunner phone; mouse + keys on a laptop; auto quality for slow TV sticks.'
       }
     ]
