@@ -53,7 +53,8 @@
     dry: function (A, t) { tone(A, 'square', 1300, 1200, t, 0.025, 0.06); },
     beep: function (A, t) { tone(A, 'square', NOTE(84), 0, t, 0.07, 0.07); },
     beep2: function (A, t) { tone(A, 'square', NOTE(79), 0, t, 0.06, 0.06); tone(A, 'square', NOTE(86), 0, t + 0.08, 0.08, 0.06); },
-    lock: function (A, t) { tone(A, 'triangle', NOTE(96), 0, t, 0.05, 0.05); },
+    lock: function (A, t) { tone(A, 'square', NOTE(88), 0, t, 0.05, 0.05); },
+    lockon: function (A, t) { tone(A, 'square', NOTE(93), 0, t, 0.09, 0.09); tone(A, 'square', NOTE(100), 0, t + 0.09, 0.16, 0.09); },
     warn: function (A, t) { tone(A, 'square', NOTE(76), 0, t, 0.12, 0.08); tone(A, 'square', NOTE(76), 0, t + 0.18, 0.12, 0.08); },
     alarm: function (A, t) { tone(A, 'sawtooth', 600, 900, t, 0.25, 0.1); tone(A, 'sawtooth', 600, 900, t + 0.3, 0.25, 0.1); },
     select: function (A, t) { tone(A, 'square', 700, 900, t, 0.04, 0.08); tone(A, 'square', 400, 300, t + 0.06, 0.06, 0.1); },
@@ -64,7 +65,7 @@
     go: function (A, t) { tone(A, 'square', NOTE(72), 0, t, 0.2, 0.1); tone(A, 'square', NOTE(79), 0, t + 0.15, 0.4, 0.12); },
     click: function (A, t) { tone(A, 'square', 900, 700, t, 0.03, 0.06); }
   };
-  var MIN_GAP = { cannon: 45, boom: 70, hit: 40, clang: 40, stomp: 120, servo: 300, lock: 150, hurt: 120, beep: 60 };   // do not stack identical sounds (Chromecast CPU)
+  var MIN_GAP = { cannon: 45, boom: 70, hit: 40, clang: 40, stomp: 120, servo: 300, lock: 140, lockon: 60, hurt: 120, beep: 60 };   // do not stack identical sounds (Chromecast CPU)
   function play(name, o) {
     if (S.muted || !SOUNDS[name]) return; var A = live(); if (!A || (A.state !== 'running' && !S.autoSusp)) return;   // asleep on purpose: it wakes and plays
     var now = Date.now(), gap = MIN_GAP[name] || 0; if (S.lite) gap *= 2;

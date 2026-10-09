@@ -159,7 +159,7 @@
 
   // ================================================================== the mech
   var M = { x: 0, z: -2, legYaw: 0, torso: 0, pitch: 0, speed: 0, phase: 0, lastStep: 0, hull: C.mech.hull, path: [], pathIdx: 0, pathV: 0, autopilot: true, walk: 0, turn: 0,
-    pad: 0, travel: 0, faceTo: null, bob: 0, dip: 0, dipV: 0, shake: 0, braceT: 0, braceCd: 0, eject: null, down: 0, inBay: false, score: 0, kills: 0, hurt: 0, swap: 0 };
+    pad: 0, padRel: -1, travel: 0, faceTo: null, bob: 0, dip: 0, dipV: 0, shake: 0, braceT: 0, braceCd: 0, eject: null, down: 0, inBay: false, score: 0, kills: 0, hurt: 0, swap: 0 };
   var WEAP = C.weapons.map(function (w) { return { def: w, mag: w.mag, res: w.id === 'rocket' ? 24 : w.id === 'rail' ? 8 : 0, resMax: w.id === 'rocket' ? 24 : w.id === 'rail' ? 8 : 0, reload: -1, cool: 0 }; });
   var GUN2 = { def: C.weapons[0], mag: 60, res: 0, resMax: 0, reload: -1, cool: 0, magMax: 60 };
   var wsel = 0;
@@ -327,6 +327,23 @@
   // ================================================================== weapons
   function curW(s) { return s.seat === 1 ? GUN2 : WEAP[wsel]; }
   function startReload(w, s) { if (w.reload >= 0) return; if (w.resMax && w.res <= 0) { if (s.seat === 0) { flashMsg(w.def.short + ' EMPTY - rearm at the bay', '#ff8a5a'); SFX.play('dry'); } return; } w.reload = 0; SFX.play('reload'); if (s.seat === 0) cockpit.cmd('reload'); notify('reload'); }
+  function tickLocks(s, dt) {     // v0.3 rocket lock-on: forgiving cone around the intent reticle, up to C.lock.max targets
+    var L = C.lock; s.locks = s.locks || [];
+    if (curW(s).def.id !== 'rocket' || phase !== 'play' || M.eject || M.down > 0) { s.locks.length = 0; return; }
+    var a = assist(s), asp = camera.aspect, seen = {};
+    s.locks.forEach(function (l) { l.seen = false; });
+    targetsOnScreen().forEach(function (t) {
+      if (!t.e) return; var d = Math.hypot(t.x - a.x, (t.y - a.y) / asp) - clamp(25 / t.d, 0, 0.1);
+      var l = s.locks.find(function (q) { return q.e === t.e; });
+      if (!l && d < L.radius) { l = { e: t.e, p: 0, on: false, out: 0 }; s.locks.push(l); }
+      if (!l) return; l.seen = true; l.x = t.x; l.y = t.y;
+      if (d < (l.on ? L.keepRadius : L.radius)) { l.out = 0; if (!l.on) { var lockedN = s.locks.filter(function (q) { return q.on; }).length; if (lockedN < L.max) { l.p += dt / L.acquireSec; if (l.p >= 1) { l.on = true; l.p = 1; SFX.play('lockon'); notify('lock'); } } } }
+      else l.out += dt;
+    });
+    for (var i = s.locks.length - 1; i >= 0; i--) { var l = s.locks[i]; if (!l.seen || enemies.indexOf(l.e) < 0 || l.out > (l.on ? L.loseSec : 0.15)) s.locks.splice(i, 1); }
+    if (s.locks.some(function (q) { return !q.on; }) && !s.lockBeep) { SFX.play('lock'); s.lockBeep = 0.16; }
+    s.lockBeep = Math.max(0, (s.lockBeep || 0) - dt);
+  }
   function tickWeapon(s, dt) {
     var w = curW(s), def = w.def;
     if (w.reload >= 0) { w.reload += dt / (s.seat === 1 ? 2 : def.reloadSec); if (w.reload >= 1) { var need = (w.magMax || def.mag) - w.mag, take = w.resMax ? Math.min(need, w.res) : need; w.mag += take; if (w.resMax) w.res -= take; w.reload = -1; SFX.play('loaded'); } }
@@ -341,6 +358,7 @@
     if (s.fire && w.cool <= 0) {
       if (w.reload >= 0) return;
       if (w.mag <= 0) { startReload(w, s); return; }
+      if (def.id === 'rocket' && rocketSalvo(s, w)) return;
       w.cool = 60 / def.rpm; w.mag--; if (def.id === 'cannon') fireCannon(s); else fireRocket(s);
       if (w.mag <= 0) startReload(w, s);
     }
@@ -354,11 +372,18 @@
     else emit(3, h.end.x, h.end.y, h.end.z, 5, '#c9c1a8', '#8a8170', 0.4);
     lastAim[s.seat] = a;
   }
-  function fireRocket(s) {
+  function rocketSalvo(s, w) {     // every locked target gets a rocket, staggered
+    var on = (s.locks || []).filter(function (l) { return l.on; }); if (!on.length) return false;
+    on = on.slice(0, w.mag); w.mag -= on.length; w.cool = 60 / w.def.rpm * Math.max(1, on.length * 0.8);
+    on.forEach(function (l, i) { setTimeout(function () { fireRocket(s, l.e); }, i * 130); });
+    if (w.mag <= 0) startReload(w, s); return true;
+  }
+  function fireRocket(s, lockT) {
     var a = shotAim(s), r = castFrom(a.x, a.y), from = muzzleOf(rockets.length % 2 ? -1 : 1), m = rocketPool.find(function (q) { return !q.visible; });
     if (!m) return; m.visible = true; m.position.copy(from);
     var dir = r.direction.clone();
-    rockets.push({ m: m, v: dir.multiplyScalar(C.weapons[1].speed * 0.55), target: a.t && a.t.e ? a.t.e : null, life: 4, seat: s.seat, smoke: 0 });
+    if (lockT) dir.y += 0.25;
+    rockets.push({ m: m, v: dir.multiplyScalar(C.weapons[1].speed * 0.55), locked: !!lockT, target: lockT || (a.t && a.t.e ? a.t.e : null), life: 4, seat: s.seat, smoke: 0 });
     SFX.play('rocket'); M.shake = Math.max(M.shake, 0.2); cockpit.cmd('fire');
   }
   function tickRockets(dt) {
@@ -366,7 +391,7 @@
     for (var i = rockets.length - 1; i >= 0; i--) {
       var k = rockets[i], p = k.m.position; k.life -= dt;
       var sp = Math.min(def.speed, k.v.length() + 60 * dt);
-      if (k.target && enemies.indexOf(k.target) >= 0) { var want = enemyPos(k.target).sub(p).normalize(); k.v.normalize().lerp(want, clamp(def.homing * dt, 0, 1)).normalize(); } else k.v.normalize();
+      if (k.target && enemies.indexOf(k.target) >= 0) { var want = enemyPos(k.target).sub(p).normalize(); k.v.normalize().lerp(want, clamp((k.locked ? def.lockHoming : def.homing) * dt, 0, 1)).normalize(); } else k.v.normalize();
       k.v.multiplyScalar(sp); p.addScaledVector(k.v, dt); k.m.lookAt(p.clone().add(k.v));
       k.m.rotateY(Math.PI);
       k.smoke -= dt; if (k.smoke <= 0) { k.smoke = 0.03 / fxk(); emit(1, p.x, p.y, p.z, 1, '#ddd', '#aaa', 0.7, 1, -1); }
@@ -393,6 +418,7 @@
     var w = curW(s); if (phase !== 'play' || M.eject || M.down > 0 || w.reload >= 0 || (s.seat === 0 && M.swap > 0)) return;
     if (w.mag <= 0) { startReload(w, s); return; }
     if (w.def.id === 'rail') { fireRail(s, w, 0.4); return; }
+    if (w.def.id === 'rocket' && w.cool <= 0 && rocketSalvo(s, w)) return;
     if (w.cool > 0) return; w.cool = 60 / w.def.rpm; w.mag--; if (w.def.id === 'cannon') fireCannon(s); else fireRocket(s); if (w.mag <= 0) startReload(w, s);
   }
   function selectWeapon(i) { if (i === wsel || !WEAP[i]) return; wsel = i; M.swap = 0.35; SFX.play('select'); cockpit.cmd('weapon'); if (seats[0]) { seats[0].charging = false; seats[0].charge = 0; } notify('weapon'); }
@@ -407,6 +433,8 @@
     var target = 0, desired = M.legYaw;
     if (M.down > 0) { M.down -= dt; if (M.down <= 0) respawn(); }
     else if (M.eject) { /* standing still while the pilot is out */ }
+    if (M.padRel >= 0 && M.pad > 0) { if (M.padRel > 0) M.padRel = Math.max(0, M.padRel - dt); else { M.pad *= Math.exp(-dt / C.pad.decaySec); if (M.pad < 0.06) { M.pad = 0; M.padRel = -1; } } }   // v0.3 momentum after a swipe
+    if (false) {}
     else if (M.pad > 0.05) {     // v0.2 thumb pad: walk toward the dragged direction (legs turn around to back up)
       var dT = wrapA(M.travel - M.legYaw), back = Math.abs(dT) > 2.0; desired = back ? M.travel + Math.PI : M.travel;
       target = C.mech.walkSpeed * M.pad * (back ? -C.mech.backSpeed : 1) * clamp(Math.cos(wrapA(desired - M.legYaw)) * 1.3, 0.12, 1);
@@ -519,7 +547,7 @@
       case 'clear': if (s.seat === 0) { M.path = []; M.pathV++; } break;
       case 'auto': if (s.seat === 0) { M.autopilot = !!m.on; cockpit.cmd('auto'); SFX.play('click'); flashMsg(M.autopilot ? 'AUTOPILOT ON' : 'MANUAL: hold STRIDE to walk', '#5dff9a'); } break;
       case 'walk': if (s.seat === 0) M.walk = +m.d || 0; break;
-      case 'move': if (s.seat === 0) setMove(+m.x || 0, +m.y || 0); break;
+      case 'move': if (s.seat === 0) { setMove(+m.x || 0, +m.y || 0); M.padRel = m.rel ? C.pad.holdSec : -1; } break;
       case 'face': if (s.seat === 0 && isFinite(+m.a)) { M.faceTo = wrapA((M.faceTo != null ? M.faceTo : M.torso) - (+m.a)); SFX.play('servo'); } break;
       case 'tap': fireOnce(s); break;
       case 'brace': brace(); break;
@@ -542,7 +570,7 @@
       bay: M.inBay, tv: [+wrapA(M.torso - (M.speed < 0 ? M.legYaw + Math.PI : M.legYaw)).toFixed(2), +clamp(Math.abs(M.speed) / C.mech.walkSpeed, 0, 1).toFixed(2)], brace: M.braceT > 0, ej: !!M.eject, down: M.down > 0, pathV: M.pathV, notes: notes.splice(0) };
     seats.forEach(function (s) {
       if (!s || !s.conn || !s.connected) return;
-      var w = curW(s), msg = Object.assign({}, base, { seat: s.seat, w: s.seat === 0 ? wsel : 0, ammo: s.seat === 0 ? WEAP.map(function (q) { return [q.mag, q.res, q.reload >= 0 ? +q.reload.toFixed(2) : -1, q.def.mag, q.resMax]; }) : [[GUN2.mag, 0, GUN2.reload >= 0 ? +GUN2.reload.toFixed(2) : -1, 60, 0]], charge: +(s.charge || 0).toFixed(2), ready: !!s.ready });
+      var w = curW(s), msg = Object.assign({}, base, { seat: s.seat, w: s.seat === 0 ? wsel : 0, ammo: s.seat === 0 ? WEAP.map(function (q) { return [q.mag, q.res, q.reload >= 0 ? +q.reload.toFixed(2) : -1, q.def.mag, q.resMax]; }) : [[GUN2.mag, 0, GUN2.reload >= 0 ? +GUN2.reload.toFixed(2) : -1, 60, 0]], locks: (s.locks || []).filter(function (l) { return l.on; }).length, charge: +(s.charge || 0).toFixed(2), ready: !!s.ready });
       if (sentPathV !== M.pathV) msg.path = M.path.map(function (p) { return [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]; });
       net.send(s.conn, msg);
     });
@@ -620,7 +648,7 @@
       if (s.calStep >= 0 && s.calStep < 3) { var m = CAL_MARK[s.calStep]; cal.push({ x: m.x, y: m.y, label: (s.seat ? 'GUNNER: ' : '') + m.label, color: s.color }); return; }
       if (M.eject) return;
       var a = assist(s), L = a && a.t ? { x: a.t.x, y: a.t.y, r: 14 + 26 * (1 - a.tight) + clamp(60 / a.t.d, 0, 20), tight: a.tight } : null;
-      cross.push({ x: s.ax, y: s.ay, ix: a.x, iy: a.y, tight: a.tight, color: s.color, lock: L, charge: s.charging ? s.charge : 0 });
+      cross.push({ locks: (s.locks || []).map(function (l) { return { x: l.x, y: l.y, p: l.p, on: l.on }; }), x: s.ax, y: s.ay, ix: a.x, iy: a.y, tight: a.tight, color: s.color, lock: L, charge: s.charging ? s.charge : 0 });
     });
     var cs = Math.cos(M.torso), sn = Math.sin(M.torso);
     function rel(x, z) { var dx = x - M.x, dz = z - M.z; return [-(dx * cs - dz * sn) * -1, -(dx * sn + dz * cs)]; }   // [right, forward] in torso frame
@@ -647,7 +675,7 @@
       tickEnemies(dt);
     }
     steer(dt); tickMech(dt); tickEject(dt);
-    seats.forEach(function (s) { if (s) { tickIntent(s, dt); tickWeapon(s, dt); } });
+    seats.forEach(function (s) { if (s) { tickIntent(s, dt); tickLocks(s, dt); tickWeapon(s, dt); } });
     tickRockets(dt); tickParticles(dt); tickTracers(dt); tickFlashes(dt);
     if (rail.t > 0) { rail.t -= dt; railBeam.material.opacity = Math.max(0, rail.t / 0.35); if (rail.t <= 0) railBeam.visible = false; }
     bayLight.material.color.setHSL(0.55, 1, 0.45 + 0.2 * Math.sin(now / 300));

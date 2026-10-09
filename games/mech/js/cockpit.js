@@ -201,6 +201,7 @@
   };
   P.toPx = function (nx, ny) { return [(nx + 1) / 2 * this.W, (1 - ny) / 2 * this.H]; };
   P.drawCross = function (c, x) {
+    var self2 = this;
     var p = this.toPx(x.x, x.y), k = Math.max(0.6, this.k), r = 18 * k;
     c.strokeStyle = x.color; c.lineWidth = 2.5 * k; c.globalAlpha = 0.8;
     c.beginPath(); c.arc(p[0], p[1], r, 0, TAU); c.stroke();
@@ -218,7 +219,14 @@
       p = q2;                 // the charge ring follows the intent reticle (that's where the shot goes)
     }
     if (x.charge > 0) { c.lineWidth = 5 * k; c.strokeStyle = x.charge >= 1 ? '#ffffff' : '#7af0ff'; c.beginPath(); c.arc(p[0], p[1], r * 1.45, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, x.charge)); c.stroke(); }
-    if (x.lock) {        // lock bracket: tight + solid when steady, wide + soft when shaky
+    (x.locks || []).forEach(function (l) {   // v0.3 rocket locks: amber brackets close in while acquiring, flashing red once locked
+      var q = self2.toPx(l.x, l.y), s2 = (l.on ? 26 : 26 + 40 * (1 - l.p)) * k, fl = l.on ? (Math.floor(self2.t * 8) % 2 ? 1 : 0.45) : 0.8;
+      c.globalAlpha = fl; c.strokeStyle = l.on ? '#ff2a2a' : '#ffb02e'; c.lineWidth = (l.on ? 4 : 2.5) * k; var e2 = s2 * 0.5; c.beginPath();
+      [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(function (d) { c.moveTo(q[0] + d[0] * s2, q[1] + d[1] * s2 - d[1] * e2); c.lineTo(q[0] + d[0] * s2, q[1] + d[1] * s2); c.lineTo(q[0] + d[0] * s2 - d[0] * e2, q[1] + d[1] * s2); });
+      c.stroke(); if (l.on) { c.font = '700 ' + Math.round(14 * k) + 'px Fredoka, sans-serif'; c.textAlign = 'center'; c.fillStyle = '#ff2a2a'; c.fillText('LOCK', q[0], q[1] + s2 + 16 * k); }
+      c.globalAlpha = 1;
+    });
+    if (x.lock && !(x.locks && x.locks.length)) {        // lock bracket: tight + solid when steady, wide + soft when shaky
       var q = this.toPx(x.lock.x, x.lock.y), s = (x.lock.r || 24) * k, a = x.lock.tight;
       c.globalAlpha = 0.45 + 0.5 * a; c.lineWidth = (1.5 + 2 * a) * k; c.strokeStyle = a > 0.6 ? '#ff5a3a' : x.color;
       var e = s * 0.45; c.beginPath();

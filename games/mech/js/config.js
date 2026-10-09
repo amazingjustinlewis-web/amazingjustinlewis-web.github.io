@@ -2,7 +2,7 @@
    Every gameplay number lives here. The TV and the phones both read this file. */
 (function (root) {
   var C = root.MECH_CONFIG = {
-    version: '0.2',
+    version: '0.3',
     title: 'IRON STRIDE',
     peerPrefix: 'ztp-ironstride-v01-',
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }],
@@ -14,8 +14,8 @@
       sendHz: 30,
       defaultSpanDeg: 50,          // degrees of swing from the left edge of the TV to the right edge (before calibrating)
       minSpanDeg: 12,              // calibration refused if left and right are closer than this
-      edge: 0.6,                   // v0.2: the outer 20% of the screen on each side is the turn zone
-      turnDegPerSec: 115, turnCurve: 2.6,   // speed at the far edge; eased curve (u^2.6): a slight dip turns barely, deep turns fast           // torso turn speed at the very edge
+      edge: 0.35,                  // v0.3: the turn zone feathers in from 35% of the half-screen (wider, softer)
+      turnDegPerSec: 115, turnCurve: 2.8,   // speed at the far edge; eased curve (u^2.8): barely turns near the start, fast at the edge           // torso turn speed at the very edge
       pitchEdge: 0.5, pitchDegPerSec: 40, pitchLimitDeg: [-89, 89],
       filter: { minCutoff: 1.4, beta: 4, dCutoff: 1.0 }
     },
@@ -32,10 +32,13 @@
     },
     weapons: [
       { id: 'cannon', label: 'AUTOCANNON', short: 'CANNON', mag: 40, reloadSec: 1.8, rpm: 540, damage: 1, spread: 0.006, color: '#ffd84a' },
-      { id: 'rocket', label: 'ROCKETS', short: 'ROCKET', mag: 6, reloadSec: 3.0, rpm: 150, damage: 3, splash: 8, speed: 70, homing: 1.6, color: '#ff6a3d' },
+      { id: 'rocket', label: 'ROCKETS', short: 'ROCKET', mag: 6, reloadSec: 3.0, rpm: 150, damage: 3, splash: 8, speed: 70, homing: 1.6, lockHoming: 7, color: '#ff6a3d' },
       { id: 'rail', label: 'RAIL', short: 'RAIL', mag: 2, reloadSec: 2.6, chargeSec: 1.1, minCharge: 0.25, damage: 2, maxDamage: 8, color: '#7af0ff' }
     ],
     gunner: { weapon: 0 },         // co-pilot gunner phone: own crosshair, autocannon
+    pad: { holdSec: 0.8, decaySec: 3.5, swipeBoost: 1.0 },   // v0.3 thumb-pad momentum: hold the swipe speed, then fade (time constant)
+    tilt: { deadDeg: 6, fullDeg: 22 },   // v0.3 trackpad mode: lean the phone to walk
+    lock: { radius: 0.3, keepRadius: 0.5, acquireSec: 0.4, max: 3, loseSec: 0.8 },   // v0.3 rocket lock-on (fairly forgiving)
     mech: { faceDegPerSec: 150, backSpeed: 0.55, walkSpeed: 7, turnDegPerSec: 55, strideSec: 1.05, eyeHeight: 9.5, radius: 3.2, hull: 100, lookahead: 7, arriveDist: 3 },
     bay: { reloadPerSec: 1, repairPerSec: 18 },
     enemies: {
