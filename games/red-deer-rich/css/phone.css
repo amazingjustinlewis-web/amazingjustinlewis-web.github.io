@@ -498,3 +498,100 @@ body.observer #seatBox { display: none; }
   .tm-layout { grid-template-areas: "board hdr" "board ctl"; grid-template-columns: auto 1fr; grid-template-rows: auto 1fr; }
   .tm-wrap { width: calc(100vh - 106px); width: calc(100dvh - 106px); max-width: none; }
 }
+
+/* ================================================================ v0.5 */
+/* tidy pass: calmer spacing, consistent radii, bigger tap targets */
+.pane-main > .info, .pane-side > .info { border-radius: 12px; }
+.act { border-radius: 14px; }
+.hist-h { margin-top: 12px; }
+.info.timeleft { font-weight: 700; color: var(--gold); text-align: center; padding: 6px 10px; }
+b.amt { color: #ffe27a; font-weight: 900; }
+.pcard b.amt, .os-card b.amt { color: inherit; }
+/* dice box: wake toggle sits top-left beside the dice */
+.dicebox { position: relative; }
+.wakebtn { position: absolute; left: 8px; top: 8px; display: flex; flex-direction: column; align-items: center; gap: 1px; border: 1px solid #3a3352; background: var(--panel2); color: var(--muted); border-radius: 10px; padding: 4px 7px; font-size: 18px; line-height: 1; min-width: 44px; }
+.wakebtn small { font-size: 9px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+.wakebtn.on { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 10px rgba(242,194,48,.35); }
+/* lobby timer */
+.tmrbtn { margin-left: 6px; white-space: nowrap; padding: 7px 9px; font-size: 13px; font-weight: 700; border-radius: 10px; }
+.tmrbtn.on { color: var(--gold); border-color: var(--gold); }
+/* auto-raise plan */
+.plan { background: #1b2a1f; border: 1px solid #3fa76a; border-radius: 12px; padding: 8px 12px; margin: 8px 0; }
+.plan small { display: block; color: #8fd9a8; font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+.plan b { font-size: 15px; line-height: 1.35; }
+/* disaster badges */
+.dbadge { display: inline-block; margin-top: 3px; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 8px; background: #ffb347; color: #2a1600; white-space: nowrap; }
+.dbadge.closed { background: #ff5a5a; color: #fff; }
+.deedrow.damaged { background: linear-gradient(90deg, rgba(255,90,90,.12), transparent 70%); }
+.deedrow .dn .dbadge { display: table; }
+.sbtn.rushb, .rushb { background: #ffb347; color: #2a1600; font-weight: 800; }
+.rushb[disabled] { opacity: .5; }
+.fc-dmg { display: flex; align-items: center; justify-content: space-between; gap: .3em; margin: -.1em 0 .2em; }
+.fc-dmg .dbadge { font-size: .7em; margin: 0; }
+.fb.rush { font-size: .62em; padding: .25em .4em; border-radius: .4em; border: 0; }
+.mini .c .dmg { position: absolute; left: 0; bottom: 14%; font-style: normal; font-size: 6.5px; font-weight: 900; background: #ffb347; color: #2a1600; border-radius: 3px; padding: 0 1px; line-height: 1.2; }
+.mini .c .dmg.closed { background: #ff5a5a; color: #fff; }
+.dmgline { margin-bottom: 4px; }
+.fline.ev i { background: #ff7a2f; }
+.fline.deed { cursor: pointer; }
+.fline.deed:active { color: var(--ink); }
+/* disaster sheet */
+.dis-card { text-align: center; border-top-color: #ffb347; }
+.dis-card.closed { border-top-color: #ff5a5a; }
+.dis-card.alert { animation: disIn .55s cubic-bezier(.2,1.6,.4,1); }
+@keyframes disIn { 0% { transform: translateY(60%) scale(.9); } 100% { transform: none; } }
+.dis-ic { font-size: 64px; line-height: 1.1; animation: disWob 1.4s ease-in-out infinite; }
+.dis-card.sev3 .dis-ic { font-size: 78px; }
+@keyframes disWob { 0%,100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg) scale(1.06); } }
+.dis-sev { font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+.dis-h { font-size: 24px; font-weight: 900; margin: 2px 0 6px; }
+.dis-where { font-size: 15px; margin-bottom: 6px; } .dis-where .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.dis-eff { font-size: 16px; margin-bottom: 6px; } .dis-card.closed .dis-eff b { color: #ff6a6a; } .dis-eff b { color: #ffb347; }
+.dis-t { font-size: 14px; color: #d7d0ea; line-height: 1.4; margin-bottom: 10px; }
+.dis-left { font-weight: 800; margin-bottom: 10px; } .dis-left.done { color: #7ee2a0; }
+.dis-card .big-btn { margin-top: 8px; }
+.dis-card .rushb { width: 100%; }
+/* deed flip-card sheet */
+.deedsheet { align-items: center; }
+.dd-wrap { width: min(92vw, 360px); display: flex; flex-direction: column; align-items: stretch; }
+.dd-card { perspective: 1200px; height: min(66vh, 470px); cursor: pointer; }
+.dd-rot { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.3,1.3,.5,1); }
+.dd-card.flipped .dd-rot { transform: rotateY(180deg); }
+.dd-face { position: absolute; inset: 0; background: #fffaf0; color: #1d1d1d; border-radius: 16px; border: 6px solid var(--gc, #888); overflow: hidden; display: flex; flex-direction: column; -webkit-backface-visibility: hidden; backface-visibility: hidden; box-shadow: 0 18px 40px rgba(0,0,0,.55); }
+.dd-back { transform: rotateY(180deg); }
+.dd-band { color: #fff; text-align: center; padding: 10px 8px 9px; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+.dd-band b { display: block; font-size: 22px; font-weight: 900; }
+.dd-band small { font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; opacity: .9; }
+.dd-band.slim b { font-size: 18px; }
+.dd-body { flex: 1; display: flex; flex-direction: column; padding: 10px 12px 8px; min-height: 0; }
+.dd-owner { font-size: 14px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; } .dd-owner .hk { color: #b0261e; font-weight: 800; }
+.dd-dmg { margin-bottom: 6px; }
+.dd-val { display: flex; gap: 6px; margin-bottom: 8px; }
+.dd-val span { flex: 1; background: #f1e7cf; border-radius: 8px; padding: 4px 6px; font-size: 11px; color: #6b5d48; text-align: center; }
+.dd-val b { display: block; font-size: 16px; color: #1d1d1d; }
+.dd-body .ladder { flex: 1; }
+.dd-body .lr { font-size: 15px; padding: 4px 8px; }
+.steps { display: flex; flex-direction: column; gap: 4px; flex: 1; justify-content: center; }
+.steps .st { display: grid; grid-template-columns: 1.4fr .8fr .9fr 1fr; align-items: center; font-size: 14px; padding: 5px 8px; border-radius: 8px; background: #f4ecd8; }
+.steps .st .tot { color: #8a7b62; font-size: 12px; } .steps .st b { text-align: right; }
+.steps .st.built { background: var(--gc, #f2c230); color: #fff; } .steps .st.built .tot { color: #fff; opacity: .85; }
+.dd-note { font-size: 12.5px; color: #5a4d3a; line-height: 1.35; margin-top: 8px; }
+.dd-hint { text-align: center; font-size: 11px; color: #a3957c; margin-top: auto; padding-top: 6px; letter-spacing: 1px; }
+.dd-btns { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.dd-btns .big-btn { margin: 0; }
+/* cash animation */
+.cashfx { position: fixed; inset: 0; pointer-events: none; z-index: 90; overflow: hidden; }
+.cf-pop { position: absolute; color: #7dff8e; font-weight: 900; text-shadow: 0 2px 0 #0b3b16, 0 0 8px rgba(125,255,142,.6); transform: translate(-50%,-50%) scale(.3); opacity: 0; animation: cfPop 1.1s cubic-bezier(.2,.9,.3,1) forwards; }
+@keyframes cfPop { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.3); } 18% { opacity: 1; transform: translate(calc(-50% + var(--dx) * .35), calc(-50% + var(--dy) * .3)) scale(1.25); } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.8) rotate(20deg); } }
+.cf-lab { position: absolute; transform: translate(-50%, 0); font-size: 17px; font-weight: 900; white-space: nowrap; animation: cfLab 1.4s ease-out forwards; }
+.cf-lab.in { color: #7dff8e; text-shadow: 0 2px 0 #0b3b16; }
+.cf-lab.out { color: #ff7a7a; text-shadow: 0 2px 0 #3b0b0b; }
+@keyframes cfLab { 0% { opacity: 0; transform: translate(-50%, -6px) scale(.8); } 15% { opacity: 1; transform: translate(-50%, 14px) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, 40px) scale(1); } }
+.gh-cash { transition: color .2s; }
+.gh-cash.cash-in { animation: cashIn .6s cubic-bezier(.2,1.8,.4,1); color: #c8ffc8; }
+.gh-cash.cash-out { animation: crunch .55s ease-in-out; color: #ff9a9a; }
+@keyframes cashIn { 0% { transform: scale(1); } 40% { transform: scale(1.28); } 100% { transform: scale(1); } }
+@keyframes crunch { 0% { transform: scale(1); } 20% { transform: scale(1.12, .62) skewX(-8deg); } 40% { transform: scale(.86, 1.1) translateX(-3px); } 60% { transform: scale(1.05, .85) translateX(3px); } 80% { transform: scale(.97, 1.03); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cf-pop, .gh-cash.cash-in, .gh-cash.cash-out, .dis-ic, .dis-card.alert { animation: none; } }
+.dd-body .ladder { flex: 0 0 auto; justify-content: flex-start; margin-top: 4px; }
+.fc-body .ladder { justify-content: space-evenly; }

@@ -65,6 +65,7 @@
     ui.graceUntil = s.turn && s.turn.graceLeft ? Date.now() + s.turn.graceLeft : 0;
     (s.fades || []).forEach(function (f) { var cur = ui.fades[f[0]]; if (!cur || cur.from !== f[1] || Math.abs((Date.now() - f[2]) - cur.t0) > 1500) ui.fades[f[0]] = { from: f[1], t0: Date.now() - f[2] }; });
     handleFx(prev);
+    if (prev && prev.me && s.me && prev.phase === 'play' && s.phase === 'play' && !s.me.observer && prev.me.id === s.me.id && prev.me.cash !== s.me.cash) cashFx(s.me.cash - prev.me.cash);   // v0.5
     if (s.phase === 'lobby') { show('lobby'); renderLobby(); return; }
     if (s.phase === 'over') { show('over'); renderOver(); hidePayup(); return; }
     show('game');
@@ -86,6 +87,8 @@
     if (inc('auction') && !st.me.bankrupt) { SFX.play('click'); vib([50, 40, 50]); toast('\uD83D\uDD28 AUCTION! Bid with the buttons at the top', 2600); }
     if (inc('tab')) { vib([100, 50, 100]); }
     if (inc('paid')) paidInFull(f.paidData || {});                                                  // v0.4 PAID IN FULL
+    if (inc('disaster')) disasterAlert(f.disasterData || {}, true);                                   // v0.5 Disasters: the owner's phone
+    if (inc('repaired')) { var rd = f.repairedData || {}; if (rd.sp != null) { SFX.play('repair'); vib(30); toast('\uD83D\uDD27 ' + S[rd.sp].name + ' is open again' + (rd.how === 'rush' ? ' (rush repair)' : ''), 2200); if (!$('disSheet').hidden && ui.disSp === rd.sp) $('disSheet').hidden = true; } }
     if (inc('heckled')) heckled(Math.min(6, (f.heckled || 0) - (lastFx.heckled || 0)), f.heckledData || {});   // v0.4 Heckle
     lastFx = JSON.parse(JSON.stringify(f));
   }
@@ -146,7 +149,10 @@
       $('hAiCount').textContent = 'AI ' + nAi; $('hAiMinus').disabled = !nAi;
       $('hAiAdd').disabled = !ui.aiChar || st.players.length >= C.maxPlayers;
       setH($('hMode'), ['regular', 'medium', 'quick'].map(function (k) { return '<button data-mode="' + k + '" class="' + (st.mode === k ? 'on' : '') + '">' + C.modes[k].label + '</button>'; }).join(''));
-      $('hModeInfo').textContent = C.modes[st.mode] ? C.modes[st.mode].label + ': ' + C.modes[st.mode].blurb + ' \u00b7 start with ' + money(C.modes[st.mode].startCash) : '';
+      var tm = st.timer || { min: null, eff: 0 };
+      $('hTimer').innerHTML = '\u23F1 ' + (tm.eff ? tm.eff + ' min' : 'No timer');
+      $('hTimer').classList.toggle('on', !!tm.eff);
+      $('hModeInfo').textContent = C.modes[st.mode] ? C.modes[st.mode].label + ': ' + C.modes[st.mode].blurb + ' \u00b7 start with ' + money(C.modes[st.mode].startCash) + ' \u00b7 ' + (tm.eff ? 'ends after ' + tm.eff + ' min' : 'no timer') + (tm.min == null ? ' (mode default)' : '') : '';
       $('startBtn').disabled = st.players.length < 2;
       var h = st.hue;
       $('hHue').innerHTML = h && h.ok ? '<div class="hb-title">\uD83D\uDCA1 Philips Hue found. Use lights?</div><div class="chips"><button data-hue="on" class="' + (h.enabled ? 'on' : '') + '">Yes</button><button data-hue="off" class="' + (!h.enabled ? 'on' : '') + '">No</button>' +
@@ -176,7 +182,7 @@
   function showOptInfo(k) { var o = O.opt(k); if (!o) return; $('osH').textContent = o.icon + ' ' + o.label + (st.rules[k] ? ' (on)' : ' (off)'); $('osShort').textContent = o.short; $('osT').textContent = o.long; $('optSheet').hidden = false; }
   $('optSheet').onclick = function (e) { if (e.target === $('optSheet') || e.target === $('osOk')) $('optSheet').hidden = true; };
   // v0.2.1 remember last game: the host phone keeps the last-used setup and puts it back when it hosts again
-  function setupNow() { var r = {}; C.options.forEach(function (o) { r[o.k] = !!st.rules[o.k]; }); return { rules: r, mode: st.mode, ai: st.players.filter(function (p) { return p.ai; }).length, level: ui.aiLevel }; }
+  function setupNow() { var r = {}; C.options.forEach(function (o) { r[o.k] = !!st.rules[o.k]; }); return { rules: r, mode: st.mode, timer: st.timer ? st.timer.min : null, ai: st.players.filter(function (p) { return p.ai; }).length, level: ui.aiLevel }; }
   var saveT = 0;
   function saveSetupSoon() { clearTimeout(saveT); saveT = setTimeout(function () { if (st && st.me && st.me.vip && st.phase !== 'play') store.set('rdr_setup', JSON.stringify(setupNow())); }, 700); }
   function restoreSetup() {
@@ -186,7 +192,7 @@
     if (!saved || !saved.rules) return;
     if (saved.level && C.ai.levels[saved.level]) ui.aiLevel = saved.level;
     var nAi = st.players.filter(function (p) { return p.ai; }).length, add = Math.max(0, Math.min((saved.ai | 0) - nAi, C.maxPlayers - st.players.length));
-    send({ t: 'settings', rules: saved.rules, mode: saved.mode, addAI: add, level: ui.aiLevel });
+    var msg = { t: 'settings', rules: saved.rules, mode: saved.mode, addAI: add, level: ui.aiLevel }; if ('timer' in saved) msg.timer = saved.timer; send(msg);
     toast('Set up like last time. Change anything below.', 2400);
   }
   $('hostBox').addEventListener('click', function (e) {
@@ -196,6 +202,7 @@
     if (b.getAttribute('data-hue')) send({ t: 'hue', enabled: b.getAttribute('data-hue') === 'on' });
     if (b.getAttribute('data-hueg')) send({ t: 'hue', toggle: b.getAttribute('data-hueg') });
   });
+  $('hTimer').onclick = function () { var ch = C.timerChoices || [0, 20, 30, 45, 60, 90], cur = st.timer ? st.timer.eff || 0 : 0, i = ch.indexOf(cur); send({ t: 'timer', v: ch[(i + 1) % ch.length] }); vib(15); SFX.play('click'); saveSetupSoon(); };   // v0.5
   $('startBtn').onclick = function () { if (st) store.set('rdr_setup', JSON.stringify(setupNow())); send({ t: 'start' }); };
   function renderOver() {
     var r = st.results || [];
@@ -237,12 +244,16 @@
     var hk = !mine && t.heckle && st.rules.heckle;      // v0.4 Heckle: a tiny button beside a stalling player's name
     h += '<div class="whose">' + (mine ? '<b style="color:#ffd23f">YOUR TURN</b>' : pieceCv(cur, 40, 'wpc') + '<span><b>' + esc(t.name) + '</b>\'s turn</span>' +
       (hk ? '<button class="heckle' + (t.heckle.forever ? ' hot' : '') + '" data-act="heckle" aria-label="Heckle ' + esc(t.name) + '">\uD83D\uDE02</button>' : '')) + '</div>';
-    h += '<div class="dicebox" id="diceBox"><canvas id="pdice" width="360" height="180"></canvas>' + (mine && (t.stage === 'roll' || t.canRollAgain) ? '<div class="swipe">Swipe up or tap ROLL</div>' : '') + '</div>';
+    h += '<div class="dicebox" id="diceBox">' + wakeBtn() + '<canvas id="pdice" width="360" height="180"></canvas>' + (mine && (t.stage === 'roll' || t.canRollAgain) ? '<div class="swipe">Swipe up' + (shk.on ? ', shake' : '') + ' or tap ROLL</div>' : '') + '</div>';
     if (me.bankrupt) h += '<div class="info">You\'re bankrupt. Stick around: you can still chat and watch.</div>';
     else if (mine) {
       if (t.tab) {
         h += '<div class="info warn"><b>You owe ' + money(t.tab.amount) + '</b> (' + esc(t.tab.reason) + ').<br>Sell Shops or mortgage deeds in <b>My Stuff</b>, or make a deal: it pays itself the moment you have enough. Or let it raise the cash for you.</div>';
-        if (!t.tab.hopeless) h += '<button class="act buy" data-act="raise">AUTO-RAISE CASH</button>';
+        if (!t.tab.hopeless) {
+          var pl = t.tab.plan;    // v0.5 smarter auto-raise: show the plan, OK runs it, or do it by hand in My Stuff
+          if (pl && pl.text) h += '<div class="plan"><small>Auto-raise plan</small><b>' + boldMoney(esc(pl.text)) + '</b></div><div class="twoup"><button class="act buy" data-act="raise">OK, DO IT</button><button class="act" data-act="byHand">ADJUST BY HAND</button></div>';
+          else h += '<button class="act buy" data-act="raise">AUTO-RAISE CASH</button>';
+        }
         else h += '<div class="info">Even selling everything only raises ' + money(t.tab.raise) + '. Going bust sells your Shops back and pays ' + esc(t.tab.to === 'bank' || t.tab.to === 'pot' ? 'the bank' : t.tab.to) + ' everything you have' + (t.tab.amount > t.tab.raise ? ': you skip town owing ' + money(t.tab.amount - t.tab.raise) : '') + '.</div><button class="act bust" data-act="giveUp">GO BUST, PAY WHAT I CAN</button>';
       }
       if (t.stage === 'roll') {
@@ -276,7 +287,7 @@
     else if (st.lastFind && st.lastFind.fresh && B.FINDS[st.lastFind.idx]) side += cardHtml('finds', B.FINDS[st.lastFind.idx], st.lastFind.idx);
     else if (st.lastFind) { var lf = B.FINDS[st.lastFind.idx]; if (lf) side += '<div class="lastfind"><span>\uD83D\uDCDC Latest Secret Find<br><b>' + esc(lf.h) + '</b></span><button data-act="readFind" data-idx="' + st.lastFind.idx + '">READ MORE</button></div>'; }
     side += historyHtml(st.feed, st.feedCard, false);
-    if (st.endsIn) side = '<div class="info">' + (C.modes[st.mode] ? C.modes[st.mode].label : '') + ' game: ' + clock(st.endsIn) + ' left</div>' + side;
+    if (st.endsIn) side = '<div class="info timeleft">\u23F1 ' + clock(st.endsIn) + ' left' + (C.modes[st.mode] ? ' \u00b7 ' + C.modes[st.mode].label : '') + '</div>' + side;
     setH($('turnSide'), side);
     if (t.roll && t.rollSeq !== ui.lastRollSeq) { ui.lastRollSeq = t.rollSeq; ui.diceT = Date.now(); }
     drawDice(); updatePass(); bindSwipe();
@@ -296,10 +307,22 @@
   }
   $('findSheet').onclick = function (e) { if (e.target === $('findSheet') || e.target === $('fsOk')) $('findSheet').hidden = true; };
   // ---- v0.4 game history: every drawn card (both decks, anyone's) can be tapped open, like Secret Finds' READ MORE
-  function feedLines(feed, cards, newestFirst) {
+  function boldMoney(h) { return String(h).replace(/(\u2212|-|\+)?\$[0-9][0-9,]*/g, function (m) { return '<b class="amt">' + m + '</b>'; }); }   // v0.5
+  var NAMED = null;
+  function spInLine(l) {     // v0.5: the first deed a history line names (longest names first, so "Gasoline Alley West" beats "Gasoline Alley")
+    if (!NAMED) { NAMED = []; for (var i = 0; i < 40; i++) if (S[i].price) NAMED.push(i); NAMED.sort(function (a, b) { return S[b].name.length - S[a].name.length; }); }
+    for (var k = 0; k < NAMED.length; k++) if (l.indexOf(S[NAMED[k]].name) >= 0) return NAMED[k];
+    return -1;
+  }
+  function feedLines(feed, cards, newestFirst, evs) {
+    evs = evs || st.feedEv || [];
     var rows = (feed || []).map(function (l, i) {
-      var cd = cards && cards[i];
-      return cd ? '<button class="fline ' + cd[0] + '" data-act="readCard" data-deck="' + cd[0] + '" data-idx="' + cd[1] + '"><span>' + (cd[0] === 'finds' ? '\uD83D\uDCDC ' : '\u2684 ') + esc(l) + '</span><i>READ</i></button>' : '<div>' + esc(l) + '</div>';
+      var cd = cards && cards[i], ev = evs[i];
+      if (cd) return '<button class="fline ' + cd[0] + '" data-act="readCard" data-deck="' + cd[0] + '" data-idx="' + cd[1] + '"><span>' + (cd[0] === 'finds' ? '\uD83D\uDCDC ' : '\u2684 ') + boldMoney(esc(l)) + '</span><i>READ</i></button>';
+      if (ev) return '<button class="fline ev" data-act="readEv" data-e="' + ev[0] + '" data-sp="' + ev[1] + '"><span>' + boldMoney(esc(l)) + '</span><i>MORE</i></button>';
+      var sp = spInLine(l);
+      if (sp >= 0) return '<div class="fline deed" data-act="deed" data-sp="' + sp + '">' + boldMoney(esc(l)) + '</div>';
+      return '<div>' + boldMoney(esc(l)) + '</div>';
     });
     if (newestFirst) rows.reverse();
     return rows.join('');
@@ -387,13 +410,19 @@
     el.addEventListener('pointerdown', function (e) { if (e.pointerType === 'mouse') y0 = e.clientY; });
     el.addEventListener('pointerup', function (e) { if (e.pointerType === 'mouse' && y0 != null && e.clientY - y0 < -40) doRoll(); });
   }
-  function doRoll() { var t = st.turn; if (t && t.pid === st.me.id && (t.stage === 'roll' || t.canRollAgain)) { send({ t: 'roll' }); vib(40); SFX.play('dice'); ui.diceT = Date.now(); drawDice(); } }
+  function doRoll(viaShake) { if (!viaShake) askMotion(); var t = st.turn; if (t && t.pid === st.me.id && (t.stage === 'roll' || t.canRollAgain)) { send({ t: 'roll' }); vib(40); SFX.play('dice'); ui.diceT = Date.now(); drawDice(); } }
 
   // ------------------------------------------------------------------ My Stuff
   function myDeeds() { var out = []; st.props.forEach(function (pr, i) { if (pr && pr[0] === st.me.id) out.push(i); }); return out; }
   function ownsGroup(pid, gr) { return B.GROUP_MEMBERS[gr].every(function (i) { return st.props[i][0] === pid; }); }
   function rentNow(sp) {
     var s = S[sp], pr = st.props[sp]; if (pr[2]) return 0;
+    var dm = pr[4]; if (dm && dm[1]) return 0;                                   // v0.5 closed for repairs
+    if (dm) { var full = rentBase(sp); return typeof full === 'number' ? Math.floor(full / 2) : full + ' \u00f7 2'; }
+    return rentBase(sp);
+  }
+  function rentBase(sp) {
+    var s = S[sp], pr = st.props[sp];
     if (s.type === 'prop') return pr[1] ? s.rents[pr[1]] : s.rents[0] * (ownsGroup(pr[0], s.group) ? 2 : 1);
     if (s.type === 'whistle') return B.WHISTLE_RENT[B.WHISTLES.filter(function (w) { return st.props[w][0] === pr[0]; }).length];
     return 'dice\u00d7' + B.JUICE_MULT[B.GROUP_MEMBERS.juice.filter(function (w) { return st.props[w][0] === pr[0]; }).length];
@@ -442,7 +471,7 @@
       groups[gr].forEach(function (sp) {
         var I = deedInfo(sp), s = I.s, shops = I.shops;
         var stat = I.mort ? 'MORTGAGED' : shops === 5 ? 'MEGA-PLEX' : shops ? shops + ' Shop' + (shops > 1 ? 's' : '') : 'no Shops';
-        out += '<div class="deedrow' + (I.mort ? ' hocked' : '') + '" data-act="pingTile" data-sp="' + sp + '" style="border-left-color:' + G2.color + '"><div class="dn">' + (I.lock ? '\uD83D\uDD12 ' : '') + esc(s.name) + '<small>' + stat + ' \u00b7 rent ' + rentStr(sp) + '</small></div>';
+        out += '<div class="deedrow' + (I.mort ? ' hocked' : '') + (st.props[sp][4] ? ' damaged' : '') + '" data-act="pingTile" data-sp="' + sp + '" style="border-left-color:' + G2.color + '"><div class="dn">' + (I.lock ? '\uD83D\uDD12 ' : '') + esc(s.name) + '<small>' + stat + ' \u00b7 rent ' + rentStr(sp) + '</small>' + dmgBadge(sp) + '</div>' + rushBtn(sp, 'sbtn');
         if (s.type === 'prop' && I.full && !I.mort) out += '<button class="sbtn buy" data-act="build" data-sp="' + sp + '"' + (I.canB ? '' : ' disabled') + '>' + (shops === 4 ? 'MEGA' : 'BUY') + ' <small>(\u2212' + money(I.cost) + ')</small></button><button class="sbtn" data-act="sell" data-sp="' + sp + '"' + (I.canS ? '' : ' disabled') + '>SELL <small>(+' + money(I.back) + ')</small></button>';
         out += I.mort ? '<button class="sbtn" data-act="unhock" data-sp="' + sp + '"' + (me.cash >= I.unCost ? '' : ' disabled') + '>UNMORTGAGE <small>(\u2212' + money(I.unCost) + ')</small></button>' : '<button class="sbtn" data-act="hock" data-sp="' + sp + '"' + (I.canM ? '' : ' disabled') + '>MORTGAGE <small>(+' + money(s.hock) + ')</small></button>';
         out += '</div>';
@@ -468,6 +497,7 @@
       else h += '<div class="fc-btns need">' + (I.full ? 'Unmortgage the set to build' : 'Own all ' + I.members.length + ' to build \u00b7 ' + I.have + '/' + I.members.length) + '</div>';
     } else h += '<div class="fc-btns need">' + (s.type === 'whistle' ? 'Whistle Stop' : 'Utility') + ' \u00b7 ' + I.have + '/' + I.members.length + '</div>';
     h += '<div class="fc-band" style="background:' + col + '"><b>' + (I.lock ? '\uD83D\uDD12 ' : '') + esc(s.name) + '</b><small>' + esc(I.G.name) + '</small></div><div class="fc-body">';
+    if (st.props[sp][4]) h += '<div class="fc-dmg">' + dmgBadge(sp) + rushBtn(sp, 'fb rush') + '</div>';      // v0.5
     if (s.type === 'prop') {
       var cur = I.mort ? -1 : I.shops;
       h += '<div class="ladder">' + s.rents.map(function (r, k) { return '<div class="lr' + (k === cur ? ' on' : '') + '"><span>' + (k === 0 ? (I.full ? 'Rent \u00d72 (set)' : 'Rent') : k === 5 ? 'Mega-Plex' : '\uD83C\uDFE0'.repeat(k)) + '</span><b>' + money(k === 0 && I.full ? r * 2 : r) + '</b></div>'; }).join('') + '</div>';
@@ -504,7 +534,7 @@
   function sizeFlow() {
     var box = $('flowBox'), W = box.clientWidth || 360, cw, ch;
     if (landscape()) { var H = $('tab-stuff').clientHeight - $('stuffMain').offsetHeight - 30; ch = Math.max(190, Math.min(330, H - 24)); cw = ch / 1.42; }
-    else { cw = Math.min(260, W * 0.62); ch = cw * 1.42; }
+    else { var Hp = $('tab-stuff').clientHeight - $('stuffMain').offsetHeight - 70; cw = Math.min(300, W * 0.74, Hp > 200 ? Hp / 1.42 : 999); cw = Math.max(170, cw); ch = cw * 1.42; }   // v0.5: bigger portrait cards
     flow.cw = cw; flow.ch = ch; flow.land = landscape();
     box.style.height = Math.round(ch + 34) + 'px';
     box.style.setProperty('--cw', cw.toFixed(1) + 'px'); box.style.setProperty('--ch', ch.toFixed(1) + 'px');
@@ -644,6 +674,7 @@
         h += '<span class="nm">' + esc(s.short) + '</span>';
       }
       if (pr && pr[0] >= 0 && pr[1]) h += '<b class="sh">' + (pr[1] === 5 ? 'MP' : pr[1] + 'S') + '</b>';
+      if (pr && pr[4]) h += '<i class="dmg' + (pr[4][1] ? ' closed' : '') + '">' + ((B.DISASTERS[pr[4][2]] || {}).icon || '\uD83D\uDD27') + pr[4][0] + '</i>';   // v0.5
       h += '</div>';
     }
     h += '<div class="mid">RED DEER<br>RICH<small>' + (st.rules.jackpot ? 'Dirt Lot pot ' + money(st.pot) : 'Round ' + st.round) + '</small></div>';
@@ -653,6 +684,7 @@
     if (s0.price) {
       var o0 = pr0[0] >= 0 ? pById(pr0[0]) : null;
       side += '<div class="deedcard"><div class="top" style="background:' + gcol(ui.sel) + '">' + esc(s0.name) + '</div><div class="body">';
+      if (pr0[4]) side += '<div class="dmgline">' + dmgBadge(ui.sel) + '</div>';
       side += 'Owner: <b>' + (o0 ? esc(o0.name) : 'the bank (for sale)') + '</b>' + (pr0[2] ? ' \u00b7 MORTGAGED' : '') + (pr0[3] ? ' \u00b7 \uD83D\uDD12' : '') + '<br>Price ' + money(s0.price) + ' \u00b7 mortgage ' + money(s0.hock);
       if (s0.type === 'prop') { var mx = s0.rents[5]; side += '<div class="stairs">' + s0.rents.map(function (r, k) { return '<div class="' + (o0 && pr0[1] === k ? 'on' : '') + '" style="height:' + Math.max(16, Math.round(100 * Math.sqrt(r / mx))) + '%"><b>$' + r + '</b>' + ['rent', '1', '2', '3', '4', 'MP'][k] + '</div>'; }).join('') + '</div>Shop cost ' + money(B.GROUPS[s0.group].shop) + '. Full set doubles base rent.'; }
       else if (s0.type === 'whistle') side += '<br>Rent $30/$60/$120/$240 for 1-4 stops.<br><i>' + esc(B.STORIES[ui.sel] || '') + '</i>';
@@ -662,7 +694,7 @@
     side += '<h3>Standings</h3>' + st.players.slice().sort(function (a, b) { return (a.bankrupt - b.bankrupt) || (b.worth - a.worth); }).map(function (p) { return '<div class="standing">' + chip(p) + '<span class="nm">' + esc(p.name) + (p.ai ? ' <small class="muted">AI</small>' : '') + '</span><span>' + (p.bankrupt ? 'OUT' : money(p.cash) + ' \u00b7 <span class="badge ' + p.state + '">' + (p.state === 'gold' ? 'GOLD' : p.state === 'good' ? 'GOOD' : 'RAGS') + '</span>') + '</span></div>'; }).join('');
     var R2 = st.rules, on = [];
     if (R2.jackpot) on.push('Dirt Lot Jackpot (pot ' + money(st.pot) + ')'); if (R2.feesToPot) on.push('Fees feed the pot'); if (R2.bullseye) on.push('Bullseye Halfway $500');
-    on.push(R2.payupRace ? 'PAY UP race' + (R2.kidMode ? ' (Kid Mode 4 s)' : '') : 'Automatic rent'); if (R2.perks) on.push('Character perks'); if (R2.auctions) on.push('Auctions on passed deeds'); if (R2.heckle) on.push('Heckle');
+    on.push(R2.payupRace ? 'PAY UP race' + (R2.kidMode ? ' (Kid Mode 4 s)' : '') : 'Automatic rent'); if (R2.perks) on.push('Character perks'); if (R2.auctions) on.push('Auctions on passed deeds'); if (R2.heckle) on.push('Heckle'); if (R2.disasters) on.push('Disasters'); if (st.timer && st.timer.eff) on.push('Timer ' + st.timer.eff + ' min');
     side += '<h3>House rules</h3><div class="info">' + on.map(esc).join('<br>') + '<br>Game length: ' + (C.modes[st.mode] ? C.modes[st.mode].label : st.mode) + (st.endsIn ? ' (' + clock(st.endsIn) + ' left)' : '') + '</div>';
     setH($('boardSide'), side);
   }
@@ -689,7 +721,7 @@
     return 'inset 0 0 0 2px rgba(' + rgb + ',' + a + '), inset 0 0 6px 2px rgba(' + rgb + ',' + (0.55 * a).toFixed(2) + ')';
   }
   setInterval(function () { if (tab === 'board' && st && st.phase === 'play' && Object.keys(ui.fades).length) paintOwners(); }, 250);
-  $('mini').addEventListener('click', function (e) { if (zm.dragged) { zm.dragged = false; return; } var c = e.target.closest('.c'); if (c) { ui.sel = +c.getAttribute('data-sp'); renderBoard(); } });
+  $('mini').addEventListener('click', function (e) { if (zm.dragged) { zm.dragged = false; return; } var c = e.target.closest('.c'); if (c) { ui.sel = +c.getAttribute('data-sp'); renderBoard(); if (S[ui.sel].price) openDeed(ui.sel); } });   // v0.5: any deed opens its card
 
   // v0.1.1: one small dot per player in their colour; the active one pulses and steps along its path while moving
   var dotEls = {};
@@ -1031,12 +1063,12 @@
     // deeds: drag onto a piece to add, tap to light it up
     var board = $('tmBoard'), dd = null;
     board.addEventListener('pointerdown', function (e) {
-      var c = e.target.closest('.tc'); if (!c || c.classList.contains('faint') || c.classList.contains('corner')) return;
-      dd = { sp: +c.getAttribute('data-sp'), x0: e.clientX, y0: e.clientY, ghost: null, id: e.pointerId };
+      var c = e.target.closest('.tc'); if (!c || c.classList.contains('corner')) return;
+      dd = { sp: +c.getAttribute('data-sp'), x0: e.clientX, y0: e.clientY, ghost: null, id: e.pointerId, faint: c.classList.contains('faint') };
       try { board.setPointerCapture(e.pointerId); } catch (er) {}
     });
     board.addEventListener('pointermove', function (e) {
-      if (!dd || e.pointerId !== dd.id) return;
+      if (!dd || e.pointerId !== dd.id || dd.faint) return;
       if (!dd.ghost) {
         if (Math.abs(e.clientX - dd.x0) + Math.abs(e.clientY - dd.y0) < 8) return;
         if (tradeLocked(dd.sp)) { toast('\uD83D\uDD12 Locked: ' + (st.props[dd.sp][3] ? 'part of the active turn' : 'its set has Shops')); dd = null; return; }
@@ -1049,7 +1081,7 @@
       var d = dd; dd = null; if (!d) return;
       Array.prototype.forEach.call(document.querySelectorAll('.tm-side'), function (s2) { s2.classList.remove('over'); });
       var bb = ui.builder; if (!bb) { if (d.ghost) d.ghost.remove(); return; }
-      if (!d.ghost) { if (e.type === 'pointerup') { bb.lit[d.sp] = !bb.lit[d.sp]; SFX.play('click'); vib(8); paintTradeBoard(board, bb, true); } return; }
+      if (!d.ghost) { if (e.type === 'pointerup') { if (!d.faint) { bb.lit[d.sp] = !bb.lit[d.sp]; paintTradeBoard(board, bb, true); } SFX.play('click'); vib(8); if (S[d.sp].price) openDeed(d.sp); } return; }   // v0.5: tap = light it AND open its card
       var over = sideAt(e.clientX, e.clientY), k = over && over.getAttribute('data-side'), ow = st.props[d.sp][0], ok = false;
       if (k === 'them' && ow === st.me.id && bb.partner != null && bb.give.props.indexOf(d.sp) < 0) { bb.give.props.push(d.sp); ok = true; }
       if (k === 'me' && ow === bb.partner && bb.get.props.indexOf(d.sp) < 0) { bb.get.props.push(d.sp); ok = true; }
@@ -1066,6 +1098,7 @@
   document.addEventListener('click', function (e) {
     if (!st) return;
     if (tab === 'msgs' && builderClick(e)) return;
+    var tcl = e.target.closest('.tboard:not(.map) .tc'); if (tcl && S[+tcl.getAttribute('data-sp')].price) { openDeed(+tcl.getAttribute('data-sp')); return; }   // v0.5
     var el = e.target.closest('[data-act],[data-thread],[data-quick]'); if (!el) return;
     if (el.getAttribute('data-thread')) { var th = el.getAttribute('data-thread'); ui.thread = th === 'all' ? 'all' : +th; ui.builder = null; renderMsgs(); return; }
     if (el.getAttribute('data-quick')) { sendChat(el.getAttribute('data-quick')); return; }
@@ -1075,7 +1108,12 @@
       case 'buy': case 'skipBuy': case 'payTow': case 'usePass': case 'raise': case 'giveUp': send({ t: act }); vib(30); if (act === 'buy') SFX.play('buy'); break;
       case 'pass': send({ t: 'pass' }); vib(40); SFX.play('click'); break;
       case 'build': case 'sell': case 'hock': case 'unhock': send({ t: act, sp: +sp }); vib(25); if (act === 'hock' || act === 'unhock') delete flow.flip[+sp]; if (act === 'build') SFX.play('build'); if (act === 'hock' || act === 'unhock') SFX.play('card'); break;   // v0.4: no confirmation for BUY / SELL
-      case 'heckle': doHeckle(el); break;                                                     // v0.4
+      case 'heckle': doHeckle(el); break;
+      case 'rush': send({ t: 'rush', sp: +sp }); vib([30, 30, 60]); SFX.play('build'); $('disSheet').hidden = true; break;          // v0.5
+      case 'byHand': ui.stuffView = 'list'; store.set('rdr_stuffView', 'list'); setTab('stuff'); break;
+      case 'readEv': openEvent(+el.getAttribute('data-e'), +sp, false); break;
+      case 'deed': openDeed(+sp); break;
+      case 'wake': toggleWake(); break;                                                     // v0.4
       case 'readCard': $('cardList').hidden = true; openCard(el.getAttribute('data-deck'), +el.getAttribute('data-idx')); break;
       case 'cardList': openCardList(); break;
       case 'stuffView': ui.stuffView = ui.stuffView === 'cards' ? 'list' : 'cards'; store.set('rdr_stuffView', ui.stuffView); SFX.play('click'); vib(10); renderStuff(); break;
@@ -1084,7 +1122,7 @@
       case 'flipBack': delete flow.flip[+sp]; SFX.play('click'); renderStuff(); break;
       case 'bMap': if (ui.builder) { ui.builder.map = !ui.builder.map; store.set('rdr_tradeView', ui.builder.map ? 'map' : 'list'); ui.builderBuilt = false; SFX.play('click'); renderMsgs(); } break;
       case 'tmReset': if (ui.builder) { ui.builder.give = { cash: 0, props: [], passes: 0 }; ui.builder.get = { cash: 0, props: [], passes: 0 }; ui.builder.lit = {}; SFX.play('click'); vib(15); renderBuilder(); } break;
-      case 'pingTile': send({ t: 'pingTile', sp: +sp }); vib(12); el.classList.add('pinged'); setTimeout(function () { el.classList.remove('pinged'); }, 350); break;   // v0.3: bounce my tile on the TV (changes nothing)
+      case 'pingTile': if (e.target.closest('.dbadge')) { openDeed(+sp); break; } send({ t: 'pingTile', sp: +sp }); vib(12); el.classList.add('pinged'); setTimeout(function () { el.classList.remove('pinged'); }, 350); break;   // v0.3: bounce my tile on the TV (changes nothing)
       case 'readFind': openFind(+el.getAttribute('data-idx')); break;
       case 'leave': openLeave(1); break;
       case 'newgame': openNewGame(); break;
@@ -1152,6 +1190,135 @@
   });
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) { document.addEventListener(ev, function () { if (hold) { clearInterval(hold.timer); hold = null; var bars = document.querySelectorAll('.hold .bar'); Array.prototype.forEach.call(bars, function (x) { x.style.width = '0'; }); } }); });
 
+
+  // ================================================================== v0.5
+  // ---- Disasters: repair badge, RUSH REPAIR button, the owner's alert, and the history sheet
+  function dmgOf(sp) { var pr = st.props[sp]; return pr && pr[4] ? { left: pr[4][0], closed: !!pr[4][1], e: B.DISASTERS[pr[4][2]] || {}, ei: pr[4][2], cost: pr[4][3] } : null; }
+  function dmgBadge(sp) {
+    var d = dmgOf(sp); if (!d) return '';
+    return '<span class="dbadge' + (d.closed ? ' closed' : '') + '">' + (d.e.icon || '\uD83D\uDD27') + ' ' + (d.closed ? 'CLOSED' : 'HALF RENT') + ' \u00b7 ' + d.left + ' turn' + (d.left > 1 ? 's' : '') + '</span>';
+  }
+  function rushBtn(sp, cls) {
+    var d = dmgOf(sp); if (!d || st.props[sp][0] !== st.me.id || st.me.bankrupt) return '';
+    return '<button class="' + cls + ' rushb" data-act="rush" data-sp="' + sp + '"' + (st.me.cash >= d.cost ? '' : ' disabled') + '>\uD83D\uDD27 RUSH REPAIR <small>(\u2212' + money(d.cost) + ')</small></button>';
+  }
+  function openEvent(ei, sp, alert) {
+    var e = B.DISASTERS[ei]; if (!e || !S[sp]) return;
+    var d = dmgOf(sp), pr = st.props[sp], o = pById(pr[0]), mine = pr[0] === st.me.id, live = d && d.ei === ei;
+    ui.disSp = sp;
+    var h = '<div class="os-card dis-card sev' + e.sev + (e.mode === 'closed' ? ' closed' : '') + '"><div class="dis-ic">' + e.icon + '</div><div class="dis-sev">' + esc(B.SEV_NAMES[e.sev] || '') + ' \u00b7 ' + (e.when === 'night' ? 'night' : e.when === 'day' ? 'day' : 'any time') + '</div>' +
+      '<div class="dis-h">' + esc(e.h) + '</div><div class="dis-where"><span class="sw" style="background:' + gcol(sp) + '"></span>' + (mine ? 'Your ' : '') + '<b>' + esc(S[sp].name) + '</b>' + (o && !mine ? ' (' + esc(o.name) + ')' : '') + '</div>' +
+      '<div class="dis-eff">' + (e.mode === 'closed' ? '<b>CLOSED</b>: no rent' : '<b>HALF RENT</b>') + ' for ' + e.sev + ' turn' + (e.sev > 1 ? 's' : '') + '</div><div class="dis-t">' + esc(e.t) + '</div>';
+    if (live) h += '<div class="dis-left">\uD83D\uDD27 ' + d.left + ' turn' + (d.left > 1 ? 's' : '') + ' of repairs left</div>' + (mine ? rushBtn(sp, 'big-btn') : '');
+    else h += '<div class="dis-left done">\u2714 Repaired</div>';
+    h += '<button class="big-btn ghostbtn" data-dis="ok">' + (live && mine ? 'WAIT IT OUT' : 'CLOSE') + '</button></div>';
+    var el = $('disSheet'); el.innerHTML = h; el.hidden = false;
+    if (alert) { var c = el.querySelector('.dis-card'); c.classList.add('alert'); }
+  }
+  function disasterAlert(d, fresh) {
+    if (d.sp == null) return;
+    SFX.play('disaster' + Math.max(1, Math.min(3, d.sev || 1))); vib(d.sev >= 3 ? [120, 60, 120, 60, 200] : [80, 50, 80]);
+    openEvent(d.e, d.sp, fresh);
+  }
+  $('disSheet').addEventListener('click', function (e) { if (e.target === $('disSheet') || e.target.closest('[data-dis]')) $('disSheet').hidden = true; });
+
+  // ---- Deed card from any map: front = value and rent, back = every Shop / Mega-Plex step. Tap to flip.
+  function openDeed(sp) {
+    var s = S[sp]; if (!s || !s.price) return;
+    ui.deedSp = sp; ui.deedFlip = false; renderDeed(); $('deedSheet').hidden = false; SFX.play('card'); vib(10);
+  }
+  function renderDeed() {
+    var sp = ui.deedSp, s = S[sp], pr = st.props[sp], o = pr[0] >= 0 ? pById(pr[0]) : null, col = gcol(sp), G = B.GROUPS[s.group] || {}, set = o && ownsGroup(o.id, s.group), cur = pr[2] ? -1 : pr[1];
+    var front = '<div class="dd-band" style="background:' + col + '"><small>' + esc(G.name || '') + '</small><b>' + esc(s.name) + '</b></div><div class="dd-body">' +
+      '<div class="dd-owner">' + (o ? chip(o) + ' <b>' + esc(o.name) + '</b>' + (o.id === st.me.id ? ' (you)' : '') : 'For sale \u00b7 the bank') + (pr[2] ? ' \u00b7 <span class="hk">MORTGAGED</span>' : '') + '</div>' + (pr[4] ? '<div class="dd-dmg">' + dmgBadge(sp) + '</div>' : '') +
+      '<div class="dd-val"><span>Price<b>' + money(s.price) + '</b></span><span>Mortgage<b>' + money(s.hock) + '</b></span><span>Rent now<b>' + (o ? rentStr(sp) : '\u2014') + '</b></span></div>';
+    var back = '<div class="dd-band slim" style="background:' + col + '"><b>' + esc(s.name) + '</b><small>building costs</small></div><div class="dd-body">';
+    if (s.type === 'prop') {
+      front += '<div class="ladder">' + s.rents.map(function (r, k) { return '<div class="lr' + (o && k === cur ? ' on' : '') + '"><span>' + (k === 0 ? 'Rent' + (set ? ' \u00d72 (set)' : '') : k === 5 ? 'Mega-Plex' : k + ' Shop' + (k > 1 ? 's' : '')) + '</span><b>' + money(k === 0 && set ? r * 2 : r) + '</b></div>'; }).join('') + '</div>';
+      var cost = G.shop || 0, sell = Math.floor(cost * C.shopSellBack), tot = 0;
+      back += '<div class="steps">' + [1, 2, 3, 4, 5].map(function (k) { tot += cost; return '<div class="st' + (o && pr[1] >= k ? ' built' : '') + '"><span>' + (k === 5 ? '\uD83C\uDFE8 Mega-Plex' : '\uD83C\uDFE0 Shop ' + k) + '</span><span>' + money(cost) + '</span><span class="tot">' + money(tot) + ' in</span><b>\u2192 ' + money(s.rents[k]) + '</b></div>'; }).join('') + '</div>' +
+        '<div class="dd-note">Each step costs ' + money(cost) + '; selling one back returns ' + money(sell) + '. All ' + B.GROUP_MEMBERS[s.group].length + ' in the set are needed to build' + (st.rules.evenBuild ? ', evenly' : '') + '. Unmortgage costs ' + money(Math.ceil(s.hock * (1 + C.unhockFee))) + '.</div>';
+    } else if (s.type === 'whistle') {
+      front += '<div class="ladder">' + [1, 2, 3, 4].map(function (k) { return '<div class="lr"><span>' + k + ' stop' + (k > 1 ? 's' : '') + '</span><b>' + money(B.WHISTLE_RENT[k]) + '</b></div>'; }).join('') + '</div>';
+      back += '<div class="dd-note">Whistle Stops have no Shops or Mega-Plex: rent grows with how many stops the owner has. Unmortgage costs ' + money(Math.ceil(s.hock * (1 + C.unhockFee))) + '.</div>' + (B.STORIES[sp] ? '<div class="dd-note"><i>' + esc(B.STORIES[sp]) + '</i></div>' : '');
+    } else {
+      front += '<div class="ladder">' + [1, 2].map(function (k) { return '<div class="lr"><span>Own ' + k + '</span><b>dice \u00d7' + B.JUICE_MULT[k] + '</b></div>'; }).join('') + '</div>';
+      back += '<div class="dd-note">Utilities have no Shops or Mega-Plex: rent is the dice roll times 5 (one) or 12 (both). Unmortgage costs ' + money(Math.ceil(s.hock * (1 + C.unhockFee))) + '.</div>';
+    }
+    front += '<div class="dd-hint">tap to flip \u21BB</div></div>'; back += '<div class="dd-hint">tap to flip back \u21BB</div></div>';
+    var mine = pr[0] === st.me.id;
+    setH($('deedSheet'), '<div class="dd-wrap"><div class="dd-card' + (ui.deedFlip ? ' flipped' : '') + '" style="--gc:' + col + '"><div class="dd-rot"><div class="dd-face dd-front">' + front + '</div><div class="dd-face dd-back">' + back + '</div></div></div>' +
+      '<div class="dd-btns">' + (mine ? rushBtn(sp, 'big-btn') : '') + '<button class="big-btn ghostbtn" data-dd="close">CLOSE</button></div></div>');
+    paintPieces($('deedSheet'));
+  }
+  $('deedSheet').addEventListener('click', function (e) {
+    if (e.target.closest('[data-act]')) return;           // RUSH REPAIR goes through the normal action handler
+    if (e.target === $('deedSheet') || e.target.closest('[data-dd]')) { $('deedSheet').hidden = true; return; }
+    var c = e.target.closest('.dd-card'); if (c) { ui.deedFlip = !ui.deedFlip; c.classList.toggle('flipped', ui.deedFlip); SFX.play('card'); vib(8); }
+  });
+
+  // ---- Shake to roll (one tap of permission on iOS, then a firm shake rolls when a roll is available)
+  var shk = { on: false, asked: false, last: 0, prev: null };
+  function canRollNow() { var t = st && st.turn; return !!(t && st.phase === 'play' && t.pid === st.me.id && (t.stage === 'roll' || t.canRollAgain) && !t.tab && !st.me.bankrupt); }
+  function onMotion(e) {
+    var a = e.accelerationIncludingGravity || e.acceleration; if (!a || a.x == null) return;
+    var p = shk.prev; shk.prev = [a.x, a.y, a.z]; if (!p) return;
+    var jerk = Math.abs(a.x - p[0]) + Math.abs(a.y - p[1]) + Math.abs((a.z || 0) - (p[2] || 0)), now = Date.now();
+    if (jerk < ((C.shake && C.shake.jerk) || 28)) return;
+    if (now - shk.last < ((C.shake && C.shake.debounceMs) || 1500)) return;
+    if (!canRollNow()) return;
+    shk.last = now; doRoll(true);
+  }
+  function startMotion() { if (shk.on) return; shk.on = true; window.addEventListener('devicemotion', onMotion); if (st && st.phase === 'play' && tab === 'turn') renderTurn(); }
+  function askMotion() {
+    if (shk.on || shk.asked || typeof DeviceMotionEvent === 'undefined') return; shk.asked = true;
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {         // iOS 13+: needs a tap (this ROLL tap is it)
+      try { DeviceMotionEvent.requestPermission().then(function (r) { if (r === 'granted') { store.set('rdr_motion', '1'); startMotion(); toast('\uD83D\uDCF3 Shake to roll is on', 1800); } }).catch(function () {}); } catch (e) {}
+    } else startMotion();
+  }
+  if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) startMotion();   // Android: no prompt needed
+
+  // ---- Keep the screen awake (Wake Lock API): remembered per phone, re-acquired when the page comes back
+  var wake = { want: store.get('rdr_wake') === '1', lock: null };
+  function wakeOk() { return !!(navigator.wakeLock && navigator.wakeLock.request); }
+  function wakeBtn() { if (!wakeOk()) return ''; return '<button class="wakebtn' + (wake.want ? ' on' : '') + '" data-act="wake" aria-pressed="' + wake.want + '" aria-label="Keep screen awake">' + (wake.want ? '\uD83D\uDD06' : '\uD83C\uDF19') + '<small>' + (wake.want ? 'Awake' : 'Sleep') + '</small></button>'; }
+  function acquireWake() {
+    if (!wakeOk() || !wake.want || wake.lock || document.visibilityState !== 'visible') return;
+    try { navigator.wakeLock.request('screen').then(function (l) { wake.lock = l; if (l && l.addEventListener) l.addEventListener('release', function () { wake.lock = null; }); }).catch(function () { wake.lock = null; }); } catch (e) {}
+  }
+  function releaseWake() { var l = wake.lock; wake.lock = null; if (l && l.release) try { l.release(); } catch (e) {} }
+  function toggleWake() {
+    wake.want = !wake.want; store.set('rdr_wake', wake.want ? '1' : '0');
+    if (wake.want) acquireWake(); else releaseWake();
+    toast(wake.want ? '\uD83D\uDD06 Screen stays on' : '\uD83C\uDF19 Screen can sleep', 1400); vib(12); SFX.play('click');
+    if (st && st.phase === 'play' && tab === 'turn') renderTurn();
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { wake.lock = null; acquireWake(); } });
+  document.addEventListener('pointerdown', function () { if (wake.want && !wake.lock) acquireWake(); }, true);
+  acquireWake();
+
+  // ---- Cash animation: money in pops dollar signs (cha-ching), money out crunches
+  function cashFx(delta) {
+    if (!delta) return;
+    var el = $('myCash'), r = el.getBoundingClientRect(), box = $('cashFx'), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    var lab = document.createElement('span'); lab.className = 'cf-lab ' + (delta > 0 ? 'in' : 'out'); lab.textContent = (delta > 0 ? '+' : '\u2212') + money(Math.abs(delta));
+    lab.style.left = cx + 'px'; lab.style.top = (cy + 4) + 'px'; box.appendChild(lab); setTimeout(function () { lab.remove(); }, 1500);
+    el.classList.remove('cash-in', 'cash-out'); void el.offsetWidth;
+    if (delta > 0) {
+      el.classList.add('cash-in'); SFX.play('cashIn');
+      var n = Math.min(9, 3 + Math.floor(Math.log(delta / 20 + 1) * 1.6));
+      for (var i = 0; i < n; i++) (function (k) {
+        var d = document.createElement('span'); d.className = 'cf-pop'; d.textContent = '$';
+        d.style.left = (cx + (Math.random() - 0.5) * 30) + 'px'; d.style.top = cy + 'px';
+        d.style.setProperty('--dx', ((Math.random() - 0.5) * 140).toFixed(0) + 'px'); d.style.setProperty('--dy', (40 + Math.random() * 70).toFixed(0) + 'px');
+        d.style.animationDelay = (k * 45) + 'ms'; d.style.fontSize = (16 + Math.random() * 14).toFixed(0) + 'px';
+        box.appendChild(d); setTimeout(function () { d.remove(); }, 1300 + k * 45);
+      })(i);
+    } else { el.classList.add('cash-out'); SFX.play('cashOut'); vib(18); }
+    clearTimeout(cashFx._t); cashFx._t = setTimeout(function () { el.classList.remove('cash-in', 'cash-out'); }, 900);
+  }
+
   window.RDRC = { state: function () { return st; }, send: send, setTab: setTab, ui: ui, openBuilder: openBuilder, join: join,
-    flow: flow, openSet: openSet, closeSet: closeSet, openFrontSet: openFrontSet, openCard: openCard, openCardList: openCardList, renderStuff: renderStuff, renderBuilder: renderBuilder, flowTo: function (i) { flow.target = clampI(i); flow.vel = 0; kick(); } };   // v0.4 test hooks
+    flow: flow, openSet: openSet, closeSet: closeSet, openFrontSet: openFrontSet, openCard: openCard, openCardList: openCardList, renderStuff: renderStuff, renderBuilder: renderBuilder, flowTo: function (i) { flow.target = clampI(i); flow.vel = 0; kick(); },
+    openDeed: openDeed, openEvent: openEvent, disasterAlert: disasterAlert, cashFx: cashFx, onMotion: onMotion, startMotion: startMotion, shk: shk, wake: wake, toggleWake: toggleWake, sizeFlow: sizeFlow, spInLine: spInLine };   // v0.5 hooks   // v0.4 test hooks
 })();

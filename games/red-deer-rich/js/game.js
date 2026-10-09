@@ -222,15 +222,25 @@
     mine.filter(function (sp) { return !inSet(sp) && !sim[sp].hocked && !grpShops(S[sp].group); })
       .sort(function (a, b) { return S[a].price - S[b].price || a - b; })
       .forEach(function (sp) { if (done()) return; sim[sp].hocked = true; cash += S[sp].hock; steps.push({ k: 'hock', sp: sp, amt: S[sp].hock }); });
-    // 2) Shops, evenly, weakest set first
     var sets = []; mine.forEach(function (sp) { if (inSet(sp) && sets.indexOf(S[sp].group) < 0) sets.push(S[sp].group); });
     sets.sort(function (a, b) { return self.setStrength(a) - self.setStrength(b); });
+    // 1b) full sets with no Shops yet only earn double base rent: mortgage those (weakest set first) before selling any Shop
+    sets.filter(function (gr) { return !grpShops(gr); }).forEach(function (gr) {
+      B.GROUP_MEMBERS[gr].slice().sort(function (a, b) { return S[a].price - S[b].price || a - b; }).forEach(function (sp) {
+        if (done() || !sim[sp] || sim[sp].hocked) return; sim[sp].hocked = true; cash += S[sp].hock; steps.push({ k: 'hock', sp: sp, amt: S[sp].hock });
+      });
+    });
+    // 2) Shops, evenly, weakest set first
     sets.forEach(function (gr) {
       for (var guard = 0; guard < 30 && !done(); guard++) {
         var top = -1, most = 0; B.GROUP_MEMBERS[gr].forEach(function (i) { if (sim[i] && sim[i].shops > most) { most = sim[i].shops; top = i; } });
         if (top < 0) break;
         sim[top].shops--; cash += back(top); steps.push({ k: 'sell', sp: top, amt: back(top) });
       }
+      // an emptied weak set earns little: mortgage it before touching the next (stronger) set's Shops
+      B.GROUP_MEMBERS[gr].slice().sort(function (a, b) { return S[a].price - S[b].price || a - b; }).forEach(function (sp) {
+        if (done() || !sim[sp] || sim[sp].hocked || grpShops(gr)) return; sim[sp].hocked = true; cash += S[sp].hock; steps.push({ k: 'hock', sp: sp, amt: S[sp].hock });
+      });
     });
     // 3) set deeds, weakest set first, cheapest first
     sets.forEach(function (gr) {
@@ -245,8 +255,14 @@
     var parts = [], i = 0, st = plan.steps;
     while (i < st.length) {
       var a = st[i], n = 1; while (i + n < st.length && st[i + n].k === a.k && st[i + n].sp === a.sp) n++;
-      parts.push(a.k === 'hock' ? 'Mortgage ' + S[a.sp].name : 'sell ' + n + ' Shop' + (n > 1 ? 's' : '') + ' on ' + S[a.sp].name);
-      i += n;
+      if (a.k === 'hock') {      // consecutive mortgages read as one: "Mortgage A, B and C"
+        var names = []; while (i < st.length && st[i].k === 'hock') { names.push(S[st[i].sp].name); i++; }
+        parts.push('mortgage ' + (names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0]));
+        continue;
+      }
+      var cnt = {}, order = [];      // a run of Shop sales reads as "sell 2 Shops on A and 1 on B"
+      while (i < st.length && st[i].k === 'sell') { var q = st[i].sp; if (!cnt[q]) { cnt[q] = 0; order.push(q); } cnt[q]++; i++; }
+      parts.push('sell ' + order.map(function (q, k) { return cnt[q] + (k === 0 ? ' Shop' + (cnt[q] > 1 ? 's' : '') : '') + ' on ' + S[q].name; }).reduce(function (acc, x, k, arr) { return acc + (k === 0 ? '' : k === arr.length - 1 ? ' and ' : ', ') + x; }, ''));
     }
     if (!parts.length) return '';
     var txt = parts.join(', '); return txt.charAt(0).toUpperCase() + txt.slice(1) + ' = ' + money(plan.total);

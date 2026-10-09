@@ -65,6 +65,7 @@
     timerChoices: [0, 20, 30, 45, 60, 90],
     // v0.5 resting tokens let tile text show through; solid while moving and for the active player
     tokenRestAlpha: 0.7,
+  shake: { jerk: 28, debounceMs: 1500 },        // v0.5 shake to roll: summed axis jump (m/s²) between motion events, and the cool-down
     buildSeqMs: 3200,            // v0.5 Mega-Plex construction (saw + hammer on the tile)
     heckle: { afterMs: [15000, 5000, 3000], gapMs: 450, targetGapMs: 120, faces: ['\uD83D\uDE02', '\uD83E\uDD23', '\uD83D\uDE06', '\uD83D\uDE1D', '\uD83E\uDD2A'] },
 
