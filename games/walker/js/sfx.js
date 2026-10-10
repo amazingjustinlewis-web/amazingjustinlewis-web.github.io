@@ -56,6 +56,7 @@
     munch: function () { for (var i = 0; i < 3; i++) noise(1200, 2, 0.04, 0.03, i * 0.12); },
     hum: function () { if (!A) return; var t = A.currentTime, o = A.createOscillator(), v = A.createOscillator(), vg = A.createGain(), g = A.createGain(); o.type = 'sine'; o.frequency.value = 230 + Math.random() * 40; v.frequency.value = 5; vg.gain.value = 6; v.connect(vg); vg.connect(o.frequency); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.03, t + 0.3); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6); o.connect(g); g.connect(master); o.start(t); v.start(t); o.stop(t + 1.7); v.stop(t + 1.7); },
     squeak: function () { tone('sine', 1800, 2400, 0.06, 0.012); },
+    motor: function () { tone('sawtooth', 62, 96, 0.7, 0.03); tone('square', 124, 170, 0.55, 0.01); noise(260, 1, 0.6, 0.03, 0, 'lowpass'); },
     car: function () { noise(140, 1, 2.5, 0.025, 0, 'lowpass'); },
     speak: function (text, pitch, rate) {
       if (muted || !root.speechSynthesis) return;

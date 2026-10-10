@@ -230,7 +230,9 @@
     for (k = 0; k <= 64; k++) { var a = k / 64 * TAU * 2; hp.push(V(hc.x + Math.sin(a) * HR, 7.9 - k / 64 * 5.2, hc.z - Math.cos(a) * HR)); }
     hp.push(w(-9, 2.3, 5.4), w(-7.6, 1.1, 5.6), w(-6.2, 0.4, 5.9));
     var sc = new T.CatmullRomCurve3(hp); scene.add(channel(sc, 220, 0.7, '#ffd23f'));
-    for (k = 4; k < 64; k += 8) { var sp = hp[k]; mesh(new T.CylinderGeometry(0.08, 0.08, sp.y, 6), M('#e0e0e8'), sp.x, sp.y / 2 - 0.3, sp.z, scene); }
+    for (k = 4; k < 64; k += 8) { var sp = hp[k], ox = (sp.x - hc.x) / HR, oz = (sp.z - hc.z) / HR, R2 = HR + 1.0, px = hc.x + ox * R2, pz = hc.z + oz * R2;   // v0.3: poles stand just outside the helix with a short arm, so they don't pierce the turn below
+      mesh(new T.CylinderGeometry(0.08, 0.08, sp.y - 0.3, 6), M('#e0e0e8'), px, (sp.y - 0.3) / 2, pz, scene);
+      var arm = mesh(new T.BoxGeometry(0.1, 0.1, 1.05), M('#e0e0e8'), hc.x + ox * (HR + 0.5), sp.y - 0.38, hc.z + oz * (HR + 0.5), scene); arm.rotation.y = Math.atan2(ox, oz); }
     // a straight blue slide too (just to look at)
     var bs = mesh(new T.BoxGeometry(1.2, 0.2, 9.4), M('#7fb8ff'), tw.x + 2.8, 4.3, tw.z + 4.6, scene); bs.rotation.x = 0.88; bs.rotation.y = 0.35;
     // lazy river: ring of water round a little island with a palm

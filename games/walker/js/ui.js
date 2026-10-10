@@ -10,6 +10,7 @@
     box.classList.add('wpad'); if (o.compact) box.classList.add('compact');
     this.tabs = el('div', 'wtabs'); box.appendChild(this.tabs);
     C.pages.forEach(function (p) {
+      if (p.id === 'home') return;   // v0.3: no home tab, the category tabs are the way round
       var t = el('button', 'wtab', p.icon); t.style.setProperty('--c', p.border); t.dataset.page = p.id; t.setAttribute('aria-label', p.name);
       t.onclick = function () { self.manualAt = Date.now(); self.show(p.id); };
       self.tabs.appendChild(t);
@@ -17,8 +18,6 @@
     this.gear = el('button', 'wtab wgear', '\u2699\uFE0F'); this.gear.setAttribute('aria-label', 'Settings'); this.gear.onclick = function () { self.toggleSettings(); }; this.tabs.appendChild(this.gear);
     this.momBar = el('div', 'wmoms'); box.appendChild(this.momBar);
     this.grid = el('div', 'wgrid'); box.appendChild(this.grid);
-    this.backB = el('button', 'wback', '\u2B05\uFE0F'); this.backB.setAttribute('aria-label', 'Back'); box.appendChild(this.backB);
-    this.backB.onclick = function () { self.pulse(self.backB); o.send({ t: 'back' }); };
     this.setBox = el('div', 'wset hidden'); box.appendChild(this.setBox);
     this.show('home'); this.buildSettings();
   }
