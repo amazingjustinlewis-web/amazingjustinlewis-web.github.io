@@ -161,10 +161,17 @@ window.GAMES = [
     ],
     versions: [
       {
-        id: 'v0.5',
-        name: 'Weather and wear',
+        id: 'v0.6',
+        name: 'Family party',
         current: true,
         play: 'games/red-deer-rich/index.html',
+        notes: 'New Teams option (off unless you pick it): with 4 or more players, teams share one bank balance and own their deeds together. No rent between teammates, either teammate can build or hit PAY UP, and if the team can\u2019t pay, the whole team goes bust. When the game ends, every phone gets PLAY AGAIN and BACK TO GAMES LIST. Everything from v0.5 is unchanged.'
+      },
+      {
+        id: 'v0.5',
+        name: 'Weather and wear',
+        current: false,
+        play: 'games/red-deer-rich/v0.5/index.html',
         notes: 'A new Disasters option (on in Chaos): now and then hail, a car through the window, a burst pipe, raccoons or one of 20 small day or night mishaps closes a business or halves its rent for 1 to 3 turns. The icon flies in on the TV, the tile wears a repair pill, and the owner\u2019s phone offers RUSH REPAIR. AUTO-RAISE now shows its plan first (\u201cMortgage X, sell 1 Shop on Y = $340\u201d) with OK or adjust by hand. Tap any deed on the phone\u2019s maps or history for a flip card with rents and every building cost. Mega-Plexes get built with saw and hammer, amounts are bold, drawn cards stay up 12 s, resting tokens are see-through, and the phone gets shake to roll, a keep-screen-awake switch, a game timer for any length, and cash that pops or crunches.'
       },
       {

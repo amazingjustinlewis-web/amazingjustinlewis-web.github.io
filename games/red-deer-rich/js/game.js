@@ -100,6 +100,7 @@
     if (this.players.length < C.minPlayers) return false;
     this.resetBoard();
     var self = this, MD = C.modes[this.mode] || C.modes.regular;
+    this.players.forEach(function (p) { self.untie(p); });
     this.players.forEach(function (p) {
       p.cash = MD.startCash; p.stats = null; p.pos = 0; p.snow = false; p.snowTries = 0; p.passes = []; p.bankrupt = false; p.skip = 0; p.bustOwed = 0; p.bustTo = null; p.leftTo = null;
       p.perk = {}; p.laps = 0; p.halfwayPasses = 0; p.preLap = -1; p.state = 'rags'; p.place = 0;
@@ -108,13 +109,14 @@
     this.order = this.shuffle(this.players.map(function (p) { return p.id; }));
     this.players.sort(function (a, b) { return self.order.indexOf(a.id) - self.order.indexOf(b.id); });
     this.endsAt = 0;
+    this.tieTeams(MD.startCash);
     if (MD.deal === 'some') {
       var deeds = this.shuffle(S.filter(function (s) { return s.type === 'prop'; }).map(function (s) { return s.i; }));
       var each = this.players.length <= 3 ? C.quick.dealSmall : C.quick.dealBig;
-      this.players.forEach(function (p) { for (var k = 0; k < each; k++) { var sp = deeds.pop(); self.props[sp].owner = p.id; } });
+      this.players.forEach(function (p) { for (var k = 0; k < each; k++) { var sp = deeds.pop(); self.props[sp].owner = self.oid(p); } });
     } else if (MD.deal === 'all') {      // every ownable space (deeds, Whistle Stops, City Juice), round-robin
       var all = this.shuffle(this.props.map(function (pr, i) { return pr ? i : -1; }).filter(function (i) { return i >= 0; }));
-      all.forEach(function (sp, k) { self.props[sp].owner = self.players[k % self.players.length].id; });
+      all.forEach(function (sp, k) { self.props[sp].owner = self.oid(self.players[k % self.players.length]); });
     }
     var mins = this.timerFor(); if (mins) this.endsAt = this.now + mins * 60000 / (this.speed >= 20 ? this.speed : 1);   // v0.5 timer
     this.phase = 'play'; this.startedAt = this.now; this.round = 1;
@@ -126,6 +128,67 @@
   };
 
   // ------------------------------------------------------------------ helpers: ownership, rent, worth
+  // ------------------------------------------------------------------ v0.6 Teams (house rule, off by default)
+  // 4+ players split into 2-4 teams by turn order (teammates never sit next to each other). Each team shares ONE wallet
+  // (every member's cash reads and writes it) and owns its deeds together under the team's anchor id (oid). When the
+  // wallet can't pay, the whole team goes bust. Teams off: oid(p) === p.id and nothing else changes.
+  G.oid = function (p) { return p && p.tm ? p.tm : (p ? p.id : -1); };
+  G.teamOf = function (p) { var self = this; return p && p.tm ? this.players.filter(function (q) { return q.tm === p.tm; }) : (p ? [p] : []); };
+  G.teamName = function (p) { return p && p.team != null ? 'Team ' + 'ABCD'.charAt(p.team) : ''; };
+  G.sidesLeft = function () { var seen = {}, self = this, n = 0; this.alive().forEach(function (q) { var k = self.oid(q); if (!seen[k]) { seen[k] = 1; n++; } }); return n; };
+  G.untie = function (p) {
+    if (!p) return; var c = p.cash; if (Object.getOwnPropertyDescriptor(p, 'cash') && Object.getOwnPropertyDescriptor(p, 'cash').get) { delete p.cash; p.cash = c || 0; }
+    p.tm = 0; p.team = null;
+  };
+  G.tieTeams = function (startCash) {
+    this.teams = null;
+    var n = this.players.length; if (!this.rules.teams || n < 4) { if (this.rules.teams) this.addLog('Teams needs 4 or more players: everyone plays solo this time.'); return; }
+    var nT = Math.min(4, Math.floor(n / 2)), self = this, teams = [];
+    for (var k = 0; k < nT; k++) teams.push([]);
+    this.players.forEach(function (p, i) { teams[i % nT].push(p); });     // players are already in turn order
+    teams.forEach(function (mem, k) {
+      var w = { cash: startCash * mem.length }, anchor = mem[0].id;
+      mem.forEach(function (p) {
+        delete p.cash;
+        Object.defineProperty(p, 'cash', { get: function () { return w.cash; }, set: function (v) { w.cash = v; }, enumerable: true, configurable: true });
+        p.tm = anchor; p.team = k;
+      });
+    });
+    this.teams = teams.map(function (mem, k) { return { k: k, name: 'Team ' + 'ABCD'.charAt(k), anchor: mem[0].id, ids: mem.map(function (p) { return p.id; }) }; });
+    this.addLog('Teams! ' + teams.map(function (mem, k) { return 'Team ' + 'ABCD'.charAt(k) + ': ' + mem.map(function (p) { return p.name; }).join(' + '); }).join(' \u00b7 '));
+  };
+  // the wallet just hit zero for good: every teammate is out too (their deeds already went with the bust)
+  G.teamBust = function (p) {
+    var self = this; if (!p.tm) return;
+    this.teamOf(p).forEach(function (q) {
+      if (q === p || q.bankrupt) return;
+      q.passes.forEach(function (d) { self.returnPass(d); }); q.passes = [];
+      q.bankrupt = true; q.snow = false; q.place = p.place; q.bustOwed = 0; q.bustTo = p.bustTo;
+      self.trades.forEach(function (t) { if (t.status === 'open' && (t.a === q.id || t.b === q.id)) { t.status = 'cancelled'; t.why = self.teamName(q) + ' went bankrupt'; } });
+      self.addLog(q.name + ' is out with ' + self.teamName(q) + '.');
+      self.emit('bankrupt', { pid: q.id, to: null, paid: 0, owed: 0, deeds: 0, team: true });
+      if (self.turn && self.turn.pid === q.id) { var t = self.turn; t.tab = null; t.payup = null; t.buy = null; t.canRollAgain = false; t.stage = 'ended'; t.endAt = self.now + self.ms(1200); }
+    });
+  };
+  // a teammate leaves: the team keeps every deed and the wallet; the anchor moves on if needed
+  G.leaveTeam = function (p) {
+    var self = this, mates = this.teamOf(p).filter(function (q) { return q !== p && !q.bankrupt; }), old = this.oid(p);
+    this.trades.forEach(function (t) { if (t.status === 'open' && (t.a === p.id || t.b === p.id)) { t.status = 'cancelled'; t.why = p.name + ' left the game'; } });
+    if (old === p.id) {
+      var na = mates[0].id;
+      this.props.forEach(function (pr) { if (pr && pr.owner === old) pr.owner = na; });
+      this.teamOf(p).forEach(function (q) { q.tm = na; });
+      if (this.teams) this.teams.forEach(function (T) { if (T.anchor === old) T.anchor = na; });
+    }
+    mates[0].passes = mates[0].passes.concat(p.passes); p.passes = [];
+    var team = this.teamName(p); this.untie(p); p.cash = 0;
+    p.bankrupt = true; p.left = 'team'; p.leftTo = mates[0].id; p.snow = false; p.place = this.alive().length + 1; p.clientId = null;
+    this.addLog(p.name + ' left the game: ' + team + ' keeps everything.');
+    this.emit('left', { pid: p.id, how: 'team', to: mates[0].id, amount: 0, detail: team + ' keeps everything' });
+    if (this.turn && this.turn.pid === p.id) { var t = this.turn; t.buy = null; t.tab = null; t.payup = null; t.canRollAgain = false; t.stage = 'ended'; t.endAt = this.now + this.ms(1200); }
+    this.checkTrades(); this.updateStates(); this.changed(); return '';
+  };
+
   G.ownerOf = function (sp) { var pr = this.props[sp]; return pr && pr.owner >= 0 ? this.byId(pr.owner) : null; };
   G.ownsGroup = function (pid, group) { var self = this; return B.GROUP_MEMBERS[group].every(function (i) { return self.props[i].owner === pid; }); };
   G.groupShops = function (group) { var self = this; return B.GROUP_MEMBERS[group].map(function (i) { return self.props[i].shops; }); };
@@ -146,16 +209,16 @@
   G.shopCost = function (sp) { return B.GROUPS[S[sp].group].shop || 0; };
   G.worthOf = function (p) {
     var self = this, w = p.cash;
-    this.props.forEach(function (pr, i) { if (pr && pr.owner === p.id) { w += pr.hocked ? S[i].hock : S[i].price; w += pr.shops * self.shopCost(i); } });
+    this.props.forEach(function (pr, i) { if (pr && pr.owner === self.oid(p)) { w += pr.hocked ? S[i].hock : S[i].price; w += pr.shops * self.shopCost(i); } });
     return w;
   };
   G.liquidValue = function (p) {
     var self = this, v = p.cash;
-    this.props.forEach(function (pr, i) { if (pr && pr.owner === p.id) { v += Math.floor(pr.shops * self.shopCost(i) * C.shopSellBack); if (!pr.hocked) v += S[i].hock; } });
+    this.props.forEach(function (pr, i) { if (pr && pr.owner === self.oid(p)) { v += Math.floor(pr.shops * self.shopCost(i) * C.shopSellBack); if (!pr.hocked) v += S[i].hock; } });
     return v;
   };
   G.hasFullSet = function (p) {
-    var self = this; return Object.keys(B.GROUP_MEMBERS).some(function (g) { return g !== 'whistle' && g !== 'juice' && self.ownsGroup(p.id, g); });
+    var self = this; return Object.keys(B.GROUP_MEMBERS).some(function (g) { return g !== 'whistle' && g !== 'juice' && self.ownsGroup(self.oid(p), g); });
   };
   G.updateStates = function () {
     var self = this, alive = this.alive();
@@ -214,8 +277,8 @@
   G.setStrength = function (gr) { return B.GROUP_MEMBERS[gr].reduce(function (a, i) { return a + (S[i].rents ? S[i].rents[5] : S[i].price); }, 0); };
   G.planRaise = function (p, need) {
     var self = this, cash = p.cash, steps = [], back = function (sp) { return Math.floor(self.shopCost(sp) * C.shopSellBack); };
-    var sim = {}; this.props.forEach(function (pr, i) { if (pr && pr.owner === p.id) sim[i] = { shops: pr.shops, hocked: pr.hocked }; });
-    var mine = Object.keys(sim).map(Number), inSet = function (sp) { return S[sp].type === 'prop' && self.ownsGroup(p.id, S[sp].group); };
+    var sim = {}; this.props.forEach(function (pr, i) { if (pr && pr.owner === self.oid(p)) sim[i] = { shops: pr.shops, hocked: pr.hocked }; });
+    var mine = Object.keys(sim).map(Number), inSet = function (sp) { return S[sp].type === 'prop' && self.ownsGroup(self.oid(p), S[sp].group); };
     var grpShops = function (gr) { return B.GROUP_MEMBERS[gr].some(function (i) { return sim[i] && sim[i].shops > 0; }); };
     var done = function () { return cash >= need; };
     // 1) outside full sets, cheapest first
@@ -285,7 +348,7 @@
   G.bustPlan = function (p, to, debt) {
     var self = this, creditor = typeof to === 'number' ? this.byId(to) : null, shopCash = 0, deeds = [];
     this.props.forEach(function (pr, i) {
-      if (!pr || pr.owner !== p.id) return;
+      if (!pr || pr.owner !== self.oid(p)) return;
       shopCash += Math.floor(pr.shops * self.shopCost(i) * C.shopSellBack);
       var P = S[i].price, H = S[i].hock, U = self.unhockCost(i);
       var give = pr.hocked ? P - U : P, hockPay = pr.hocked ? -1 : H + (creditor ? P - U : 0);
@@ -298,13 +361,13 @@
     if (p.bankrupt) return;
     var self = this, plan = this.bustPlan(p, to, debt), creditor = plan.creditor, gave = 0, queue = [];
     this.props.forEach(function (pr, i) {     // the bank buys every Shop back first
-      if (pr && pr.owner === p.id && pr.shops) { p.cash += Math.floor(pr.shops * self.shopCost(i) * C.shopSellBack); self.returnShops(pr.shops); pr.shops = 0; }
+      if (pr && pr.owner === self.oid(p) && pr.shops) { p.cash += Math.floor(pr.shops * self.shopCost(i) * C.shopSellBack); self.returnShops(pr.shops); pr.shops = 0; }
     });
     plan.deeds.forEach(function (d) { var pr = self.props[d.sp]; if (d.how === 'hock' && !pr.hocked) { pr.hocked = true; p.cash += S[d.sp].hock; } });
     var cash = Math.max(0, p.cash);
     plan.deeds.forEach(function (d) {
       var pr = self.props[d.sp];
-      if (creditor) { pr.owner = creditor.id; gave++; }                 // hocked deeds stay hocked
+      if (creditor) { pr.owner = self.oid(creditor); gave++; }                 // hocked deeds stay hocked
       else { pr.owner = -1; pr.hocked = false; queue.push(d.sp); }
     });
     p.cash = 0;
@@ -319,7 +382,8 @@
     this.emit('bankrupt', { pid: p.id, to: creditor ? creditor.id : null, paid: cash, owed: plan.owed, deeds: gave });
     if (!creditor && queue.length && this.rules.auctions) this.auctionQ = (this.auctionQ || []).concat(queue);
     if (this.turn && this.turn.pid === p.id) { this.turn.tab = null; this.turn.payup = null; this.turn.buy = null; this.turn.canRollAgain = false; this.turn.stage = 'ended'; this.turn.endAt = this.now + this.ms(1200); }
-    if (this.alive().length <= 1) this.finish('last');
+    this.teamBust(p);
+    if (this.sidesLeft() <= 1) this.finish('last');
   };
   // ------------------------------------------------------------------ leaving mid-game (v0.1.1)
   G.canLeave = function (p) {
@@ -334,7 +398,7 @@
         if (t.stage === 'rolling' || t.stage === 'moving' || t.stage === 'card' || t.stage === 'closing') return 'Wait until your move finishes';
         if (t.auction) return 'Wait for the auction to finish';
       }
-      if (this.props.some(function (pr, i) { return pr && pr.owner === p.id && self.locked(i); })) return 'Some of your deeds are locked this turn: try again in a moment';
+      if (this.props.some(function (pr, i) { return pr && pr.owner === self.oid(p) && self.locked(i); })) return 'Some of your deeds are locked this turn: try again in a moment';
     }
     return '';
   };
@@ -347,22 +411,23 @@
       this.addLog(p.name + ' left the game. An AI plays their seat from here.');
       this.emit('left', { pid: p.id, how: 'ai' }); this.changed(); return '';
     }
+    if (this.teamOf(p).length > 1 && this.teamOf(p).some(function (q) { return q !== p && !q.bankrupt; })) return this.leaveTeam(p);
     if (how === 'one') { r = this.byId(+to); if (!r || r === p || r.bankrupt) return 'Pick a player to get everything'; }
     else if (how !== 'split' && how !== 'pot') return 'Pick an option';
     if (!others.length) return 'Nobody left to take it';
     this.trades.forEach(function (t) { if (t.status === 'open' && (t.a === p.id || t.b === p.id)) { t.status = 'cancelled'; t.why = p.name + ' left the game'; } });
-    var mine = []; this.props.forEach(function (pr, i) { if (pr && pr.owner === p.id) mine.push(i); });
+    var mine = []; this.props.forEach(function (pr, i) { if (pr && pr.owner === self.oid(p)) mine.push(i); });
     if (how !== 'one') mine.forEach(function (i) { var pr = self.props[i]; if (pr.shops) { p.cash += Math.floor(pr.shops * self.shopCost(i) * C.shopSellBack); self.returnShops(pr.shops); pr.shops = 0; } });   // the bank buys the Shops back first
     var cash = Math.max(0, p.cash), detail;
     if (how === 'one') {
-      r.cash += cash; mine.forEach(function (i) { self.props[i].owner = r.id; }); r.passes = r.passes.concat(p.passes);
+      r.cash += cash; mine.forEach(function (i) { self.props[i].owner = self.oid(r); }); r.passes = r.passes.concat(p.passes);
       detail = 'everything goes to ' + r.name;
     } else if (how === 'split') {
       var n = others.length, each = Math.floor(cash / n), got = {};
       others.forEach(function (q) { q.cash += each; got[q.id] = 0; });
       mine.sort(function (a, b) { return S[b].price - S[a].price; }).forEach(function (i) {    // deal the deeds out so everyone gets about the same value
         var best = others.slice().sort(function (a, b) { return (got[a.id] - got[b.id]) || (a.cash - b.cash); })[0];
-        self.props[i].owner = best.id; got[best.id] += S[i].price;
+        self.props[i].owner = self.oid(best); got[best.id] += S[i].price;
       });
       p.passes.forEach(function (d, k) { others[k % n].passes.push(d); });
       detail = money(each) + ' to each player and the deeds shared out';
@@ -377,7 +442,7 @@
     this.emit('left', { pid: p.id, how: how, to: r ? r.id : null, amount: cash, detail: detail });
     if (this.turn && this.turn.pid === p.id) { var t = this.turn; t.buy = null; t.tab = null; t.payup = null; t.canRollAgain = false; t.stage = 'ended'; t.endAt = this.now + this.ms(1200); }
     this.checkTrades(); this.updateStates();
-    if (this.alive().length <= 1) this.finish('last');
+    if (this.sidesLeft() <= 1) this.finish('last');
     this.changed(); return '';
   };
   // v0.1.1: an observer takes over an AI seat (after the players OK it)
@@ -395,8 +460,8 @@
   // ------------------------------------------------------------------ building, hocking
   G.groupHasShops = function (group) { var self = this; return B.GROUP_MEMBERS[group].some(function (i) { return self.props[i].shops > 0; }); };
   G.canBuild = function (p, sp) {
-    var s = S[sp], pr = this.props[sp]; if (!s || s.type !== 'prop' || !pr || pr.owner !== p.id || p.bankrupt) return 'Not yours';
-    if (!this.ownsGroup(p.id, s.group)) return 'Own the whole colour set first';
+    var s = S[sp], pr = this.props[sp]; if (!s || s.type !== 'prop' || !pr || pr.owner !== this.oid(p) || p.bankrupt) return 'Not yours';
+    if (!this.ownsGroup(this.oid(p), s.group)) return 'Own the whole colour set first';
     var self = this; if (B.GROUP_MEMBERS[s.group].some(function (i) { return self.props[i].hocked; })) return 'Unmortgage the set first';
     if (pr.shops >= 5) return 'Already a Mega-Plex';
     if (this.rules.evenBuild && pr.shops > Math.min.apply(null, this.groupShops(s.group))) return 'Build evenly';
@@ -415,7 +480,7 @@
     this.updateStates(); return '';
   };
   G.canSell = function (p, sp) {
-    var s = S[sp], pr = this.props[sp]; if (!pr || pr.owner !== p.id || !pr.shops) return 'No Shops here';
+    var s = S[sp], pr = this.props[sp]; if (!pr || pr.owner !== this.oid(p) || !pr.shops) return 'No Shops here';
     if (this.rules.evenBuild && pr.shops < Math.max.apply(null, this.groupShops(s.group))) return 'Sell evenly';
     return '';
   };
@@ -431,7 +496,7 @@
     this.emit('sell', { pid: p.id, sp: sp }); this.updateStates(); return '';
   };
   G.hock = function (p, sp, force) {
-    var pr = this.props[sp]; if (!pr || pr.owner !== p.id || pr.hocked) return 'Can\'t mortgage that';
+    var pr = this.props[sp]; if (!pr || pr.owner !== this.oid(p) || pr.hocked) return 'Can\'t mortgage that';
     if (this.groupHasShops(S[sp].group)) return 'Sell the Shops in this set first';
     if (!force && this.locked(sp)) return 'Locked during this turn';
     pr.hocked = true; p.cash += S[sp].hock;
@@ -440,7 +505,7 @@
   };
   G.unhockCost = function (sp) { return Math.ceil(S[sp].hock * (1 + C.unhockFee)); };
   G.unhock = function (p, sp) {
-    var pr = this.props[sp]; if (!pr || pr.owner !== p.id || !pr.hocked) return 'Not mortgaged';
+    var pr = this.props[sp]; if (!pr || pr.owner !== this.oid(p) || !pr.hocked) return 'Not mortgaged';
     var cost = this.unhockCost(sp); if (p.cash < cost) return 'Not enough cash';
     p.cash -= cost; pr.hocked = false;
     this.addLog(p.name + ' unmortgaged ' + S[sp].name);
@@ -454,7 +519,7 @@
     if (t.buy === sp) return true;
     return false;
   };
-  G.lockedCash = function (p) { var t = this.turn; return t && t.tab && t.pid === p.id ? p.cash : 0; };
+  G.lockedCash = function (p) { var t = this.turn; var cp = t && t.tab ? this.byId(t.pid) : null; return cp && this.oid(cp) === this.oid(p) ? p.cash : 0; };
 
   // ------------------------------------------------------------------ v0.5 DISASTERS (house rule)
   G.isNight = function () { return this.nightFn ? !!this.nightFn() : (this.turnCount % 3 === 2); };   // the TV hands over its day/night clock
@@ -497,12 +562,12 @@
     this.props.forEach(function (pr, i) {
       if (!pr || !pr.dmg) return;
       if (pr.owner < 0) { delete pr.dmg; return; }
-      if (pr.owner !== p.id) return;
+      if (pr.owner !== self.oid(p)) return;
       if (--pr.dmg.left <= 0) { delete pr.dmg; self.addLog(S[i].name + ' is repaired and open again.'); self.emit('repaired', { sp: i, pid: p.id, how: 'time' }); }
     });
   };
   G.rush = function (p, sp) {
-    var pr = this.props[sp]; if (!pr || pr.owner !== p.id || !pr.dmg) return 'Nothing to repair';
+    var pr = this.props[sp]; if (!pr || pr.owner !== this.oid(p) || !pr.dmg) return 'Nothing to repair';
     var cost = this.rushCost(sp); if (p.cash < cost) return 'Not enough cash';
     delete pr.dmg;
     this.transfer(p, cost, this.feeDest(), 'rush repair on ' + S[sp].name);
@@ -615,12 +680,12 @@
     var titles = this.awardTitles(ranked);
     this.results = ranked.map(function (p, k) {
       var st = self.statsOf(p);
-      return { pid: p.id, name: p.name, charId: p.charId, color: p.color, worth: p.bankrupt ? 0 : self.worthOf(p), bankrupt: p.bankrupt, left: p.left || null, owed: p.bankrupt && !p.left ? p.bustOwed || 0 : 0, place: k + 1, state: p.state,
+      return { pid: p.id, team: p.team != null ? self.teamName(p) : null, name: p.name, charId: p.charId, color: p.color, worth: p.bankrupt ? 0 : self.worthOf(p), bankrupt: p.bankrupt, left: p.left || null, owed: p.bankrupt && !p.left ? p.bustOwed || 0 : 0, place: k + 1, state: p.state,
         title: titles[p.id], stats: { bigRent: st.bigRent, bigRentAt: self.placeName(st.bigRentSp), bestTrade: st.bestTrade, caught: st.caught, missed: st.missed, auctions: st.auctions, snow: st.snow, rent: st.rent } };
     });
     this.phase = 'over'; this.overWhy = why;
     if (this.turn) this.turn.stage = 'over';
-    this.addLog(ranked[0].name + ' WINS!');
+    this.addLog((ranked[0].tm ? this.teamName(ranked[0]) + ' (' + this.teamOf(ranked[0]).map(function (q) { return q.name; }).join(' + ') + ')' : ranked[0].name) + ' WINS!');
     this.emit('over', { winner: ranked[0].id, why: why });
   };
 
@@ -690,7 +755,7 @@
     this.emit('land', { pid: p.id, sp: p.pos });
     if (pr) {
       if (pr.owner < 0) { t.buy = p.pos; this.emit('offer', { pid: p.id, sp: p.pos }); }
-      else if (pr.owner !== p.id) {
+      else if (pr.owner !== this.oid(p)) {
         var owner = this.byId(pr.owner);
         if (pr.hocked) this.addLog(s.name + ' is mortgaged: no rent.');
         else if (pr.dmg && pr.dmg.mode === 'closed') { this.addLog(s.name + ' is closed for repairs: no rent.'); this.emit('closedLand', { pid: p.id, sp: p.pos }); }
@@ -757,14 +822,14 @@
         else { p.skip++; this.addLog(p.name + ' will miss a turn.'); }
         break;
       case 'repairs':
-        var shops = 0, megas = 0; this.props.forEach(function (pr) { if (pr && pr.owner === p.id) { if (pr.shops === 5) megas++; else shops += pr.shops; } });
+        var shops = 0, megas = 0; this.props.forEach(function (pr) { if (pr && pr.owner === self.oid(p)) { if (pr.shops === 5) megas++; else shops += pr.shops; } });
         var amt = capped(shops * fx.shop + megas * fx.mega);
         if (amt) { this.charge(p, amt, this.feeDest(), card.h); this.afterPay(); } else this.addLog('No Shops, nothing to pay.');
         break;
       case 'pay': this.charge(p, capped(fx.n), this.feeDest(), card.h); this.afterPay(); break;
       case 'collect': this.give(p, bless(fx.n), 'card'); break;
       case 'collectEach':
-        this.alive().forEach(function (q) { if (q !== p) self.charge(q, fx.n, p.id, card.h); });
+        this.alive().forEach(function (q) { if (q !== p && self.oid(q) !== self.oid(p)) self.charge(q, fx.n, p.id, card.h); });
         if (this.perk(p, 'grace')) this.give(p, 25, 'blessing');
         this.afterPay(); break;
       case 'whiteout': this.sendToSnowbank(p, 'card'); break;
@@ -790,7 +855,7 @@
     }
   };
   G.payup = function (pid) {
-    var t = this.turn, pu = t && t.payup; if (!pu || pu.done || pu.caught || pu.owner !== pid) return false;
+    var t = this.turn, pu = t && t.payup; if (!pu || pu.done || pu.caught || !this.byId(pid) || pu.owner !== this.oid(this.byId(pid))) return false;
     var owner = this.byId(pid), mover = this.byId(pu.mover); if (!owner || owner.bankrupt) return false;
     pu.caught = true; pu.caughtAt = this.now;
     var amt = this.rentFor(pu.sp, pu.roll, pu.dbl); pu.amount = amt;
@@ -811,7 +876,7 @@
     if (side.passes > p.passes.length) return p.name + ' doesn\'t have that many Tow Passes';
     for (var i = 0; i < side.props.length; i++) {
       var sp = side.props[i], pr = this.props[sp];
-      if (!pr || pr.owner !== pid) return S[sp] ? S[sp].name + ' isn\'t ' + p.name + '\'s' : 'bad deed';
+      if (!pr || pr.owner !== this.oid(p)) return S[sp] ? S[sp].name + ' isn\'t ' + p.name + '\'s' : 'bad deed';
       if (this.groupHasShops(S[sp].group)) return 'Sell the Shops on ' + B.GROUPS[S[sp].group].name + ' first';
       if (this.locked(sp)) return S[sp].name + ' is locked by the active turn \uD83D\uDD12';
     }
@@ -819,6 +884,7 @@
   };
   G.tradeValid = function (t) {
     if (t.a === t.b) return 'Can\'t trade with yourself';
+    var ta = this.byId(t.a), tb = this.byId(t.b); if (ta && tb && this.oid(ta) === this.oid(tb)) return 'You share everything with your teammate already';
     var e = this.sideOk(t.a, t.aGives) || this.sideOk(t.b, t.bGives); if (e) return e;
     var empty = function (s) { return !s.cash && !s.props.length && !s.passes; };
     if (empty(t.aGives) && empty(t.bGives)) return 'The deal is empty';
@@ -851,7 +917,7 @@
     var A = this.byId(t.a), Bp = this.byId(t.b), self = this;
     var move = function (from, to, side) {
       from.cash -= side.cash; to.cash += side.cash;
-      side.props.forEach(function (sp) { self.props[sp].owner = to.id; });
+      side.props.forEach(function (sp) { self.props[sp].owner = self.oid(to); });
       for (var k = 0; k < side.passes; k++) to.passes.push(from.passes.pop());
     };
     move(A, Bp, t.aGives); move(Bp, A, t.bGives);
@@ -876,7 +942,7 @@
       var bad = false;
       [[t.a, t.aGives], [t.b, t.bGives]].forEach(function (x) {
         var p = self.byId(x[0]); if (!p || p.bankrupt) { bad = true; return; }
-        (x[1].props || []).forEach(function (sp) { if (self.props[sp].owner !== x[0]) bad = true; });
+        (x[1].props || []).forEach(function (sp) { if (self.props[sp].owner !== self.oid(p)) bad = true; });
         if ((x[1].passes || 0) > p.passes.length) bad = true;
       });
       if (bad) { t.status = 'stale'; t.why = 'something in it changed hands'; self.emit('tradeStale', { id: t.id }); }
@@ -928,7 +994,7 @@
         if (!active || t.stage !== 'act' || t.buy !== p.pos) return 'Nothing to buy';
         var price = this.priceFor(p, p.pos);
         if (p.cash < price) return 'Not enough cash';
-        p.cash -= price; this.props[p.pos].owner = p.id; t.buy = null;
+        p.cash -= price; this.props[p.pos].owner = this.oid(p); t.buy = null;
         if (this.perk(p, 'priya') && price < S[p.pos].price) p.preLap = p.laps;
         this.addLog(p.name + ' bought ' + S[p.pos].name + ' for ' + money(price));
         this.emit('buy', { pid: p.id, sp: p.pos, price: price }); this.updateStates(); return '';
@@ -998,7 +1064,7 @@
     t.auction = null;
     var w = a.leader >= 0 ? this.byId(a.leader) : null, s = S[a.sp];
     if (w && !w.bankrupt && w.cash >= a.bid && this.props[a.sp].owner < 0) {
-      w.cash -= a.bid; this.props[a.sp].owner = w.id;
+      w.cash -= a.bid; this.props[a.sp].owner = this.oid(w);
       this.addLog(w.name + ' won ' + s.name + ' at auction for ' + money(a.bid) + '.');
       this.emit('auctionWon', { pid: w.id, sp: a.sp, price: a.bid });
       this.checkTrades(); this.updateStates();

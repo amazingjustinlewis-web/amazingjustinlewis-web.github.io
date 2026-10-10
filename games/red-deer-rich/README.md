@@ -1,4 +1,4 @@
-# Red Deer Rich - v0.5 (placeholder art)
+# Red Deer Rich - v0.6 (placeholder art)
 
 A Red Deer-themed property trading board game by Zero to Phi. The spec is the design doc
 (`red-deer-rich/design-doc.md`, outside this repo). Same architecture as Zombie Tiles: plain
@@ -31,6 +31,22 @@ Live: https://amazingjustinlewis-web.github.io/games/red-deer-rich/
 
 v0.5: the timer is its own setting. The ⏱ button beside the length picker (phone) or the Timer button in the TV lobby
 cycles Off / 20 / 30 / 45 / 60 / 90 min and works with any length. Until you touch it, each length keeps the default above.
+
+### What's new in v0.6 (Family party)
+Everything from v0.5 is unchanged (Disasters, the AUTO-RAISE plan, Mega-Plex construction, bold amounts, deed flip
+cards, 12 s card hold, outlines, see-through resting tokens, shake to roll, keep-awake, the timer toggle and the cash
+pop/crunch all carry over). Two additions, both safe to ignore:
+- **Teams (Game options; off in every preset).** With 4 or more players, everyone is split into 2 to 4 teams by turn
+  order (teams of 2, a 5th or 7th player joins a team of 3), so teammates never go back to back. A team shares **one
+  wallet** (start cash x members) and owns its deeds together: no rent between teammates, either teammate can buy,
+  build, mortgage, rush-repair or hit PAY UP on the team's deeds, and no trades inside a team. When the wallet can't
+  pay, **the whole team goes bust**. A teammate who leaves hands everything to the team. With fewer than 4 players the
+  option is ignored (the log says so). The TV shows a team letter on each name card, phones show "Team A" in the
+  header, and the results title names the winning team. Code: `G.oid(p)` (the team's owner id, `p.id` with Teams
+  off), `tieTeams`, `teamBust`, `leaveTeam`.
+- **After the game, every phone** gets **PLAY AGAIN** (same players and setup; from a non-host phone it works 4 s after
+  the results come up) and **BACK TO GAMES LIST** (leaves the room and opens the family games page). The host still
+  also has CHANGE PLAYERS.
 
 ### What's new in v0.5 (Weather and wear)
 Everything from v0.4 is unchanged. The core stays small: the new house rule hides in Game options, and the rest is feel and polish.

@@ -45,7 +45,7 @@
     var v = (theirs.cash || 0) - (mine.cash || 0) + 25 * ((theirs.passes || 0) - (mine.passes || 0));
     (theirs.props || []).forEach(function (sp) { v += worthTo(g, p.id, sp, 'get'); });
     (mine.props || []).forEach(function (sp) { v -= worthTo(g, p.id, sp, 'lose'); });
-    var theyComplete = completesFor(g, other, mine.props || []), iComplete = completesFor(g, p.id, theirs.props || []);
+    var theyComplete = completesFor(g, g.oid(g.byId(other)), mine.props || []), iComplete = completesFor(g, g.oid(p), theirs.props || []);
     theyComplete.forEach(function (gr) { var gp = B.GROUP_MEMBERS[gr].reduce(function (s, i) { return s + S[i].price; }, 0); v -= gp * (iComplete.length ? 0.25 : 0.5); });
     if ((mine.cash || 0) > p.cash - lvl(p).reserve * 0.5) v -= 200;    // would leave the bot broke
     return v;
@@ -76,11 +76,11 @@
   function manage(g, p) {                    // unhock, then build evenly while there's spare cash
     var L = lvl(p), did = false, reserve = L.reserve * 1.4;
     g.props.forEach(function (pr, i) {
-      if (pr && pr.owner === p.id && pr.hocked && p.cash - g.unhockCost(i) > reserve * 2 && g.rand() < L.build) { if (!g.intent(p.id, { t: 'unhock', sp: i })) did = true; }
+      if (pr && pr.owner === g.oid(p) && pr.hocked && p.cash - g.unhockCost(i) > reserve * 2 && g.rand() < L.build) { if (!g.intent(p.id, { t: 'unhock', sp: i })) did = true; }
     });
     // v0.5 Disasters: rush a repair when the business is worth it and the cash is comfortable (sets with Shops first)
     g.props.forEach(function (pr, i) {
-      if (!pr || pr.owner !== p.id || !pr.dmg) return;
+      if (!pr || pr.owner !== g.oid(p) || !pr.dmg) return;
       var cost = g.rushCost(i), base = g.rentBase(i, 7, false), lost = (pr.dmg.mode === 'closed' ? base : base / 2) * pr.dmg.left;
       if (lost * (0.6 + L.build) > cost && p.cash - cost > reserve * 1.5) { if (!g.intent(p.id, { t: 'rush', sp: i })) did = true; }
     });
@@ -88,7 +88,7 @@
     for (var guard = 0; guard < 12; guard++) {
       var best = -1, bestShops = 9;
       g.props.forEach(function (pr, i) {
-        if (!pr || pr.owner !== p.id || S[i].type !== 'prop') return;
+        if (!pr || pr.owner !== g.oid(p) || S[i].type !== 'prop') return;
         if (!g.canBuild(p, i) && p.cash - g.shopCost(i) >= reserve && pr.shops < bestShops) { bestShops = pr.shops; best = i; }
       });
       if (best < 0) break;
@@ -107,7 +107,7 @@
   function proposeTrade(g, p) {
     var L = lvl(p), m = mem(g, p);
     if (g.rand() > L.trade + 0.25) return false;
-    var wants = nearSets(g, p.id);
+    var wants = nearSets(g, g.oid(p));
     for (var k = 0; k < wants.length; k++) {
       var w = wants[k], owner = g.byId(w.owner), sp = w.sp;
       if (!owner || owner.bankrupt || g.locked(sp)) continue;
@@ -115,7 +115,7 @@
       m.trade[key] = g.turnCount;
       var give = { cash: 0, props: [], passes: 0 }, get = { cash: 0, props: [sp], passes: 0 };
       // 1) swap: they also need a deed I hold to finish a set
-      var theirs = nearSets(g, owner.id).filter(function (x) { return x.owner === p.id && x.gr !== w.gr && !g.locked(x.sp); })[0];
+      var theirs = nearSets(g, g.oid(owner)).filter(function (x) { return x.owner === g.oid(p) && x.gr !== w.gr && !g.locked(x.sp); })[0];
       if (theirs) {
         give.props = [theirs.sp];
         var diff = Math.round((S[sp].price - S[theirs.sp].price) / 10) * 10;
@@ -126,9 +126,9 @@
         else {                                  // sweeten with a deed that doesn't hand them a set
           var spare = -1;
           g.props.forEach(function (q, i) {
-            if (spare >= 0 || !q || q.owner !== p.id || S[i].group === w.gr || g.groupHasShops(S[i].group) || g.locked(i)) return;
-            if (completesFor(g, owner.id, [i]).length || g.ownsGroup(p.id, S[i].group)) return;
-            if (nearSets(g, p.id).some(function (x) { return x.gr === S[i].group; })) return;
+            if (spare >= 0 || !q || q.owner !== g.oid(p) || S[i].group === w.gr || g.groupHasShops(S[i].group) || g.locked(i)) return;
+            if (completesFor(g, g.oid(owner), [i]).length || g.ownsGroup(g.oid(p), S[i].group)) return;
+            if (nearSets(g, g.oid(p)).some(function (x) { return x.gr === S[i].group; })) return;
             spare = i;
           });
           if (spare < 0) continue;
@@ -150,7 +150,7 @@
       var m = mem(g, p), L = lvl(p);
       // PAY UP reflexes (on or off turn)
       var pu = t && t.payup;
-      if (pu && !pu.done && pu.owner === p.id) {
+      if (pu && !pu.done && pu.owner === g.oid(p)) {
         var lv = (p.ai && p.ai.level) || 'normal';
         if (!m.payup[pu.seq + ':' + g.turnCount]) m.payup[pu.seq + ':' + g.turnCount] = pu.openedAt + g.ms(rnd(g, C.payup.aiReflexMs[lv] || C.payup.aiReflexMs.normal));
         if (now >= m.payup[pu.seq + ':' + g.turnCount]) { if (g.payup(p.id)) { var mover = g.byId(pu.mover); say(g, p, mover.id, 'caught', true); if (mover && g.isBot(mover)) say(g, mover, p.id, 'gotCaught', false); } }

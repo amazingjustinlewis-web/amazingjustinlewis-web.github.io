@@ -1,4 +1,4 @@
-/* RED DEER RICH - TV / host page (v0.1.1 .. v0.5). Holds the true game state, renders the board, talks to phones,
+/* RED DEER RICH - TV / host page (v0.1.1 .. v0.6). Holds the true game state, renders the board, talks to phones,
    runs the AI and (optionally) the Hue Lights Helper. */
 (function () {
   'use strict';
@@ -13,7 +13,7 @@
   var net = null, lightsDoor = null, clients = {}, dirty = true, phoneDirty = true, lastVersion = -1;
   // the host phone is sticky: the first person to join stays host even after the turn order shuffles the seats
   // (v0.1.2 fix: before, whoever went first among the humans silently became host when the game started)
-  var vipCid = null;
+  var vipCid = null, overAt = 0;   // v0.6 overAt: when the results came up (PLAY AGAIN from any phone waits 4 s)
   var vip = function () {
     var i, p;
     if (vipCid) for (i = 0; i < game.players.length; i++) { p = game.players[i]; if (!p.ai && p.clientId === vipCid) return p; }
@@ -98,6 +98,8 @@
   var caughtPay = null;      // v0.3: set by a PAY UP catch, consumed by the rent payment right after it
   var phoneFx = {};          // per-player one-shot counters the phones watch (boom, missed, alarm, toast)
   function pfx(pid, k, extra) { var f = phoneFx[pid] = phoneFx[pid] || {}; f[k] = (f[k] || 0) + 1; if (extra) f[k + 'Data'] = extra; phoneDirty = true; }
+  // v0.6 Teams: PAY UP alarms reach every teammate of the deed's owner
+  function pfxTeam(pid, k, extra) { var o = game.byId(pid); game.teamOf(o).forEach(function (q) { if (!q.bankrupt || q.id === pid) pfx(q.id, k, extra); }); if (!o) pfx(pid, k, extra); }
   game.onBubble = function (p, txt) { rnd.bubble(p.id, txt, p.color); };
   game.on(function (type, d) {
     var p = d.pid != null ? game.byId(d.pid) : null;
@@ -108,20 +110,20 @@
       case 'turn': SFX.play('turn'); if (p) banner(p, 'It\'s ' + p.name + '\'s turn', p.snow ? 'Stuck in the Snowbank: roll doubles, pay ' + money(C.towFee) + ' or use a Tow Pass' : 'Roll the dice!'); pfx(d.pid, 'turn'); break;
       case 'roll': SFX.play('dice'); diceAnim(d.d, Date.now()); rnd.rollDice(d.d, d.pid, C.timing.roll / game.speed); if (p) banner(p, p.name + ' rolled ' + d.total + (d.dbl ? ' (DOUBLES!)' : ''), ''); break;
       case 'move': break;
-      case 'land': if (p) { var lpr = game.props[d.sp], lown = lpr && lpr.owner >= 0 && lpr.owner !== p.id && !lpr.hocked ? game.byId(lpr.owner) : null; rnd.landBurst(p, d.sp, lown ? lown.color : null); } break;
+      case 'land': if (p) { var lpr = game.props[d.sp], lown = lpr && lpr.owner >= 0 && lpr.owner !== game.oid(p) && !lpr.hocked ? game.byId(lpr.owner) : null; rnd.landBurst(p, d.sp, lown ? lown.color : null); } break;
       case 'halfway': SFX.play('cash'); if (d.exact) big(d.amount >= C.bullseyePay ? 'BULLSEYE!' : 'THE HALFWAY', '+' + money(d.amount) + ' for ' + p.name, '#7dff7d'); break;
       case 'offer': SFX.play('click'); showDeed(d.sp, true); break;
       case 'buy': SFX.play('buy'); rnd.camMoment(d.pid, 1600, 1.28); big('SOLD!', p.name + ' bought ' + S[d.sp].name, B.GROUPS[S[d.sp].group].color); break;
       case 'skipBuy': hideDeed(); break;
       case 'card': SFX.play('card'); showCard(d.deck, d.idx); if (d.deck === 'finds') lastFind = { idx: d.idx, n: (lastFind ? lastFind.n : 0) + 1, at: Date.now() }; break;
       case 'cardDone': break;      // v0.2: the card stays up (fading after a few seconds) until something replaces it
-      case 'payupOpen': hideDeed(); payupBar('open', d); pfx(d.owner, 'alarm', { sp: d.sp }); break;
+      case 'payupOpen': hideDeed(); payupBar('open', d); pfxTeam(d.owner, 'alarm', { sp: d.sp }); break;
       case 'caught':
         SFX.play('caught'); setTimeout(function () { SFX.play('boom'); }, 150); shake(true); flash('#ff3030', (C.payup.boom || {}).flash);   // v0.3: half-strength boom
         caughtPay = { from: d.pid, to: d.owner, at: Date.now() };     // v0.3: the rent that follows explodes out of the caught token
-        payupBar('caught', d); pfx(d.pid, 'boom', { amount: d.amount, owner: (game.byId(d.owner) || {}).name, sp: d.sp }); pfx(d.owner, 'gotEm', { amount: d.amount });
+        payupBar('caught', d); pfx(d.pid, 'boom', { amount: d.amount, owner: (game.byId(d.owner) || {}).name, sp: d.sp }); pfxTeam(d.owner, 'gotEm', { amount: d.amount });
         break;
-      case 'slipped': SFX.play('tiptoe'); payupBar('slipped', d); pfx(d.owner, 'missed', { sp: d.sp, name: p ? p.name : '' }); break;
+      case 'slipped': SFX.play('tiptoe'); payupBar('slipped', d); pfxTeam(d.owner, 'missed', { sp: d.sp, name: p ? p.name : '' }); break;
       case 'loudAmp': banner(game.byId(d.owner), 'LOUD AMP! The window stays open 1 more second\u2026', ''); break;
       case 'passDice': hidePayupSoon(); hideDeed(); break;
       case 'tax': SFX.play('cash'); break;
@@ -161,7 +163,7 @@
       case 'left': if (p) { var who = d.to != null ? game.byId(d.to) : null; big(p.name.toUpperCase() + ' LEFT THE GAME', d.how === 'ai' ? 'An AI plays their seat from here' : d.how === 'one' ? 'Everything goes to ' + (who ? who.name : '?') : d.how === 'split' ? 'Cash and deeds shared out among everyone' : money(d.amount || 0) + ' into the Dirt Lot pot \u00b7 deeds back to the bank', p.color === '#1d1d24' ? '#ff6a6a' : p.color); SFX.play('tarnish'); } break;
       case 'joined': if (p) big(p.name.toUpperCase() + ' JOINS!', (p.ai ? 'AI ' + C.ai.levels[p.ai.level].label + ' takes a seat' : 'New player') + ' \u00b7 starts with ' + money(p.cash), p.color === '#1d1d24' ? '#ff6a6a' : p.color); break;
       case 'chat': if (d.to === 'all') { pfx(-1, 'x'); } else pfx(d.to, 'msg'); break;
-      case 'over': SFX.play('fanfare'); setTimeout(showResults, 2500 / FAST); break;
+      case 'over': overAt = Date.now(); SFX.play('fanfare'); setTimeout(showResults, 2500 / FAST); break;
     }
   });
 
@@ -340,10 +342,10 @@
   function renderSide() {
     var g = game, cur = g.turn ? g.turn.pid : -1;
     var sideH = g.phase === 'lobby' ? '' : g.players.map(function (p) {
-      var deeds = g.props.filter(function (pr) { return pr && pr.owner === p.id; }).length;
+      var deeds = g.props.filter(function (pr) { return pr && pr.owner === g.oid(p); }).length;
       var cd = countdown(p), pl = plaque(p);
       return '<div class="pcard' + (p.id === cur ? ' cur' : '') + (p.bankrupt ? ' out' : '') + '" data-pid="' + p.id + '" style="border-color:' + (p.id === cur ? p.color : '') + '">' +
-        '<div class="prow">' + pieceCv(p) + '<span class="pname">' + esc(p.name) + '</span>' + (cd >= 0 ? '<span class="pcd" title="AI takes over in">\u23F1 ' + cd + '</span>' : '') +
+        '<div class="prow">' + pieceCv(p) + '<span class="pname">' + esc(p.name) + (p.team != null ? ' <span class="pteam">' + 'ABCD'.charAt(p.team) + '</span>' : '') + '</span>' + (cd >= 0 ? '<span class="pcd" title="AI takes over in">\u23F1 ' + cd + '</span>' : '') +
         '<span class="pcash" data-pid="' + p.id + '">' + (p.bankrupt ? (p.left ? 'LEFT' : 'OUT') : money(Math.round(cashShown[p.id] != null ? cashShown[p.id] : p.cash))) + '</span></div>' +
         (pl ? '<div class="plaque">' + esc(pl) + '</div>' : '') +
         (p.bankrupt ? '' : '<div class="psub"><span class="badge ' + p.state + '">' + stateLabel(p.state) + '</span><span>' + deeds + ' deeds</span>' +
@@ -500,7 +502,7 @@
   // Purely visual: it never changes the game. Only your own deeds, a few per second at most.
   function pingTile(pl, sp) {
     if (!inGame() || !pl || pl.bankrupt || !(sp >= 0 && sp < 40)) return;
-    var pr = game.props[sp]; if (!pr || pr.owner !== pl.id) return;
+    var pr = game.props[sp]; if (!pr || pr.owner !== game.oid(pl)) return;
     var now = Date.now(); if (now - (pingAt[pl.id] || 0) < ((C.ping || {}).gapMs || 600)) return;
     pingAt[pl.id] = now; rnd.pingTile(sp, pl.color); dirty = true;
   }
@@ -549,7 +551,7 @@
   }
   function showResults() {
     var r = game.results || [];
-    $('resTitle').textContent = r.length ? r[0].name.toUpperCase() + ' IS RED DEER RICH!' : 'GAME OVER';
+    $('resTitle').textContent = r.length ? (r[0].team ? r[0].team.toUpperCase() : r[0].name.toUpperCase()) + ' IS RED DEER RICH!' : 'GAME OVER';
     $('podium').innerHTML = r.slice(0, 3).map(function (x, k) {
       return '<div class="pcol p' + (k + 1) + '"><div class="podcard">' + (k === 0 ? '<div class="crown">\uD83D\uDC51</div>' : '') + resCard(x) + '</div><div class="step">' + (k + 1) + '</div></div>';
     }).join('');
@@ -738,7 +740,7 @@
     if (!pl.connected) { pl.connected = true; dirty = true; handBack(pl); }
     if (m.t === 'ping') { send(conn, { t: 'pong' }); return; }
     var isVip = vip() === pl, lobbyish = game.phase === 'lobby' || game.phase === 'over';
-    if (m.t === 'start') { if (isVip && lobbyish) startGame(); return; }
+    if (m.t === 'start') { if ((isVip && lobbyish) || (game.phase === 'over' && Date.now() - (overAt || 0) > 4000)) startGame(); return; }   // v0.6: anyone can PLAY AGAIN from the results (after 4 s)
     if (m.t === 'toLobby') { if (isVip && game.phase === 'over') toLobby(); return; }
     if (m.t === 'newGame') {        // v0.1.2: host phone ends the game early and takes everyone back to setup
       if (!isVip || game.phase === 'lobby') return;
@@ -865,10 +867,10 @@
     var g = game, t = g.turn, cur = g.cur(), now = g.now;
     var st = { t: 'state', phase: g.phase, mode: g.mode, rules: g.rules, pot: g.pot, round: g.round, endsIn: g.timed() && g.phase === 'play' ? Math.max(0, g.endsAt - now) : 0, maxPlayers: C.maxPlayers,
       me: { id: p.id, name: p.name, charId: p.charId, color: p.color, cash: p.cash, pos: p.pos, snow: p.snow, snowTries: p.snowTries, passes: p.passes.length, state: p.state,
-        worth: g.worthOf(p), bankrupt: p.bankrupt, vip: vip() === p, aiCover: !!p.aiTakeover, skip: p.skip, place: p.place || 0, lockedCash: g.lockedCash(p) },
+        worth: g.worthOf(p), bankrupt: p.bankrupt, vip: vip() === p, aiCover: !!p.aiTakeover, skip: p.skip, place: p.place || 0, lockedCash: g.lockedCash(p), tm: g.oid(p), team: g.teamName(p) },
       fx: phoneFx[p.id] || {},
       players: g.players.map(function (q) { return { id: q.id, name: q.name, charId: q.charId, color: q.color, cash: q.cash, state: q.state, bankrupt: q.bankrupt, ai: q.ai ? q.ai.level : null,
-        connected: q.connected, pos: q.pos, snow: q.snow, passes: q.passes.length, worth: g.phase === 'play' ? q.worth : 0 }; }),
+        connected: q.connected, pos: q.pos, snow: q.snow, passes: q.passes.length, worth: g.phase === 'play' ? q.worth : 0, tm: g.oid(q), team: q.team != null ? q.team : -1 }; }),
       props: g.props.map(function (pr, i) { return pr ? [pr.owner, pr.shops, pr.hocked ? 1 : 0, g.locked(i) ? 1 : 0, pr.dmg && pr.owner >= 0 ? [pr.dmg.left, pr.dmg.mode === 'closed' ? 1 : 0, pr.dmg.e, g.rushCost(i)] : 0] : null; }),   // v0.5 [4] = repair [turns left, closed, event, rush cost]
       fades: fadeList(),
       feed: g.log.slice(-14).map(function (l) { return l.s; }),

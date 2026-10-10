@@ -1,5 +1,5 @@
 /* =====================================================================
-   RED DEER RICH - TUNABLE NUMBERS  v0.5 (placeholder art)
+   RED DEER RICH - TUNABLE NUMBERS  v0.6 (placeholder art)
    ---------------------------------------------------------------------
    Every rule number lives here. Change a value, save, refresh the TV.
    Phones read the same file (colours, labels, characters).
@@ -109,6 +109,7 @@
       camera: true,              // TV camera gently follows the active player (also the C key on the TV)
       evenBuild: true,           // build evenly across a colour set
       shopShortage: true,        // limited bank stock
+      teams: false,              // v0.6: 4+ players pair up into teams with shared cash and deeds
       disasters: false,          // v0.5: mild local mishaps close or halve a business's rent for 1-3 turns
       heckle: true               // v0.4: everyone can heckle a player who stalls on their turn (escalating 15 s / 5 s / 3 s)
     },
@@ -135,13 +136,15 @@
       { k: 'heckle', icon: '\uD83D\uDE02', tag: 'Heckle', label: 'Heckle', short: 'Stall on your turn and everyone gets a heckle button',
         long: 'If the player whose turn it is sits still for 15 seconds, a tiny laughing-face button pops up beside their name on everyone else\'s phone. Every tap floats laughing faces up their screen and buzzes their phone. It locks again the moment they do something. Stall a second time and it unlocks after 5 seconds, a third time after 3 seconds, and then it stays open until their turn is over.' },
       { k: 'disasters', icon: '\u26C8\uFE0F', tag: 'Disasters', label: 'Disasters', short: 'Hail, floods, raccoons: a business closes or earns half for a turn or three',
-        long: 'Now and then a mild local mishap hits a random owned business: hail, a water main break on Gaetz, a goose standoff, a break-in at night. Minor ones last 1 turn, medium 2, major 3, and the business is closed (no rent) or earns half rent until it is fixed. Never two on the same deed, a few per round at most. The owner can pay for a RUSH REPAIR (about 10% of the price per turn skipped). No tornadoes.' }
+        long: 'Now and then a mild local mishap hits a random owned business: hail, a water main break on Gaetz, a goose standoff, a break-in at night. Minor ones last 1 turn, medium 2, major 3, and the business is closed (no rent) or earns half rent until it is fixed. Never two on the same deed, a few per round at most. The owner can pay for a RUSH REPAIR (about 10% of the price per turn skipped). No tornadoes.' },
+      { k: 'teams', icon: '\uD83E\uDD1D', tag: 'Teams', label: 'Teams', short: '4+ players pair up: shared cash, shared deeds, bust together',
+        long: 'With 4 or more players, everyone is split into teams of 2 (or 3) by turn order, so teammates never go back to back. A team shares one bank balance and owns its deeds together: no rent between teammates, either teammate can build, mortgage or hit PAY UP on the team\'s deeds. If the team can\'t pay, the whole team goes bust. Fewer than 4 players: everyone plays solo.' }
     ],
     // one-tap presets (camera is a TV preference and is left alone). Edit anything afterwards and setup shows "Custom".
     presets: {
-      classic: { label: 'Classic', blurb: 'The game as designed', rules: { payupRace: true, auctions: true, perks: true, jackpot: false, feesToPot: false, bullseye: false, kidMode: false, heckle: true, disasters: false } },
-      chaos:   { label: 'Chaos', blurb: 'Everything on, big swings', rules: { payupRace: true, auctions: true, perks: true, jackpot: true, feesToPot: true, bullseye: true, kidMode: false, heckle: true, disasters: true } },
-      chill:   { label: 'Chill', blurb: 'Automatic rent, no auctions, bonus cash', rules: { payupRace: false, auctions: false, perks: true, jackpot: true, feesToPot: false, bullseye: true, kidMode: false, heckle: false, disasters: false } }
+      classic: { label: 'Classic', blurb: 'The game as designed', rules: { payupRace: true, auctions: true, perks: true, jackpot: false, feesToPot: false, bullseye: false, kidMode: false, heckle: true, disasters: false, teams: false } },
+      chaos:   { label: 'Chaos', blurb: 'Everything on, big swings', rules: { payupRace: true, auctions: true, perks: true, jackpot: true, feesToPot: true, bullseye: true, kidMode: false, heckle: true, disasters: true, teams: false } },
+      chill:   { label: 'Chill', blurb: 'Automatic rent, no auctions, bonus cash', rules: { payupRace: false, auctions: false, perks: true, jackpot: true, feesToPot: false, bullseye: true, kidMode: false, heckle: false, disasters: false, teams: false } }
     },
 
     // ---- timing (ms). &fast in the URL divides these by 4 ----

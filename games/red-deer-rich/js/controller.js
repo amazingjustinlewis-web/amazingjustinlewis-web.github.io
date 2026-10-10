@@ -1,4 +1,4 @@
-/* RED DEER RICH - phone controller (v0.1.1 .. v0.5). Four tabs (My Turn, My Stuff, Board, Deals & Chat) that adapt to
+/* RED DEER RICH - phone controller (v0.1.1 .. v0.6). Four tabs (My Turn, My Stuff, Board, Deals & Chat) that adapt to
    portrait (bottom tab bar) and landscape (left rail + two panes). PAY UP and BOOM take over the whole screen. */
 (function () {
   'use strict';
@@ -103,7 +103,7 @@
   // PAY UP takeover (owner's phone, whatever tab is open)
   var puLoop = 0;
   function payupOverlay() {
-    var pu = st.turn && st.turn.payup, mine = pu && pu.open && !pu.caught && pu.owner === st.me.id && !st.me.bankrupt;
+    var pu = st.turn && st.turn.payup, mine = pu && pu.open && !pu.caught && pu.owner === myOid() && !st.me.bankrupt;
     if (mine) {
       if ($('payup').hidden) { $('payup').hidden = false; vib([80, 40, 80, 40, 80]); SFX.play('payupAlarm'); clearInterval(puLoop); puLoop = setInterval(function () { SFX.play('payupAlarm'); vib(40); }, 650); }
       var mover = pById(pu.mover);
@@ -206,11 +206,13 @@
   $('startBtn').onclick = function () { if (st) store.set('rdr_setup', JSON.stringify(setupNow())); send({ t: 'start' }); };
   function renderOver() {
     var r = st.results || [];
-    $('oTitle').textContent = r.length ? r[0].name + ' is RED DEER RICH!' : 'GAME OVER';
-    setH($('oList'), r.map(function (x) { return '<li>' + esc(x.name) + ' \u2014 ' + (x.bankrupt ? (x.left ? 'left' : x.owed > 0 ? 'bust, owed ' + money(x.owed) : 'bankrupt') : money(x.worth)) + (x.title ? '<br><small class="otitle">' + esc(x.title) + '</small>' : '') + '</li>'; }).join(''));
-    $('againBtn').hidden = $('lobbyBtn').hidden = !st.me.vip; $('oWait').textContent = st.me.vip ? '' : 'Waiting for the host\u2026';
+    $('oTitle').textContent = r.length ? (r[0].team ? r[0].team + ' is RED DEER RICH!' : r[0].name + ' is RED DEER RICH!') : 'GAME OVER';
+    setH($('oList'), r.map(function (x) { return '<li>' + esc(x.name) + (x.team ? ' <small>(' + esc(x.team) + ')</small>' : '') + ' \u2014 ' + (x.bankrupt ? (x.left ? 'left' : x.owed > 0 ? 'bust, owed ' + money(x.owed) : 'bankrupt') : money(x.worth)) + (x.title ? '<br><small class="otitle">' + esc(x.title) + '</small>' : '') + '</li>'; }).join(''));
+    // v0.6: every phone gets PLAY AGAIN (same players, same setup) and BACK TO GAMES; the host also gets CHANGE PLAYERS
+    $('againBtn').hidden = false; $('gamesBtn').hidden = false; $('lobbyBtn').hidden = !st.me.vip; $('oWait').textContent = '';
   }
-  $('againBtn').onclick = function () { send({ t: 'start' }); }; $('lobbyBtn').onclick = function () { send({ t: 'toLobby' }); };
+  $('againBtn').onclick = function () { vib(20); send({ t: 'start' }); };
+  $('gamesBtn').onclick = function () { try { send({ t: 'leave' }); } catch (e) {} vib(20); setTimeout(function () { location.href = '../../family.html#family-games'; }, 350); }; $('lobbyBtn').onclick = function () { send({ t: 'toLobby' }); };
 
   // ------------------------------------------------------------------ header + tabs
   function renderHead() {
@@ -220,7 +222,7 @@
     pc.hidden = false;
     var pk = [p.charId, p.color, p.state, p.name, me.snow].join('|');     // v0.4: my real piece, redrawn only when it changes
     if (pc._k !== pk) { pc._k = pk; var pcx = pc.getContext('2d'); pcx.clearRect(0, 0, pc.width, pc.height); R.drawPiece(pcx, { charId: p.charId, color: p.color, name: p.name, state: p.state, snow: me.snow }, pc.width / 2, pc.height * 0.57, pc.width * 0.27, 0); }
-    $('myName').textContent = me.name + (me.aiCover ? ' (AI covering)' : '');
+    $('myName').textContent = me.name + (me.team ? ' \u00b7 ' + me.team : '') + (me.aiCover ? ' (AI covering)' : '');
     var b = $('myBadge'); b.className = 'badge ' + me.state; b.textContent = me.bankrupt ? 'BANKRUPT' : me.state === 'gold' ? 'GOLD' : me.state === 'good' ? 'DOING GOOD' : 'RAGS';
     $('myCash').textContent = me.bankrupt ? 'OUT' : money(me.cash);
   }
@@ -275,7 +277,7 @@
       }
     } else {
       var pu = t.payup;
-      if (pu && pu.open) { var ow = pById(pu.owner), mv = pById(pu.mover); h += '<div class="info warn">' + esc(mv.name) + ' is on ' + esc(ow.name) + '\'s ' + esc(S[pu.sp].name) + '. ' + (pu.owner === me.id ? '<b>HIT PAY UP!</b>' : 'Will ' + esc(ow.name) + ' catch them?') + '</div>'; }
+      if (pu && pu.open) { var ow = pById(pu.owner), mv = pById(pu.mover); h += '<div class="info warn">' + esc(mv.name) + ' is on ' + esc(ow.name) + '\'s ' + esc(S[pu.sp].name) + '. ' + (pu.owner === myOid() ? '<b>HIT PAY UP!</b>' : 'Will ' + esc(ow.name) + ' catch them?') + '</div>'; }
       else if (t.buy) h += '<div class="info">' + esc(t.name) + ' is thinking about buying ' + esc(S[t.buy.sp].name) + '.' + (st.rules.auctions ? ' If they pass, it goes to auction.' : '') + '</div>';
       if (t.auction) h += '<div class="info">\uD83D\uDD28 <b>' + esc(S[t.auction.sp].name) + '</b> is up for auction. Bid with the buttons at the top!</div>';
       if (st.round <= 1) h += '<div class="info">PAY UP zone: when someone lands on your deed, a giant button takes over this phone. Hit it before they pass the dice.</div>';
@@ -413,7 +415,9 @@
   function doRoll(viaShake) { if (!viaShake) askMotion(); var t = st.turn; if (t && t.pid === st.me.id && (t.stage === 'roll' || t.canRollAgain)) { send({ t: 'roll' }); vib(40); SFX.play('dice'); ui.diceT = Date.now(); drawDice(); } }
 
   // ------------------------------------------------------------------ My Stuff
-  function myDeeds() { var out = []; st.props.forEach(function (pr, i) { if (pr && pr[0] === st.me.id) out.push(i); }); return out; }
+  function tmOf(pid) { var q = pById(pid); return (q && q.tm) || pid; }
+  function myOid() { return (st && st.me && (st.me.tm || st.me.id)) || 0; }
+  function myDeeds() { var out = []; st.props.forEach(function (pr, i) { if (pr && pr[0] === myOid()) out.push(i); }); return out; }
   function ownsGroup(pid, gr) { return B.GROUP_MEMBERS[gr].every(function (i) { return st.props[i][0] === pid; }); }
   function rentNow(sp) {
     var s = S[sp], pr = st.props[sp]; if (pr[2]) return 0;
@@ -440,10 +444,10 @@
   function firstRank(gr) { return Math.min.apply(null, B.GROUP_MEMBERS[gr].map(boardRank)); }
   function deedInfo(sp) {
     var s = S[sp], pr = st.props[sp], me = st.me, gr = s.group, G = B.GROUPS[gr], members = B.GROUP_MEMBERS[gr];
-    var full = ownsGroup(me.id, gr), shops = pr[1], setShops = members.map(function (i) { return st.props[i][1]; });
+    var full = ownsGroup(myOid(), gr), shops = pr[1], setShops = members.map(function (i) { return st.props[i][1]; });
     var anyShops = setShops.some(function (x) { return x > 0; }), anyMort = members.some(function (i) { return st.props[i][2]; });
     var cost = G.shop || 0, back = Math.floor(cost * C.shopSellBack), even = st.rules.evenBuild;
-    return { s: s, G: G, members: members, have: members.filter(function (i) { return st.props[i][0] === me.id; }).length, full: full, shops: shops, mort: !!pr[2], lock: !!pr[3], cost: cost, back: back,
+    return { s: s, G: G, members: members, have: members.filter(function (i) { return st.props[i][0] === myOid(); }).length, full: full, shops: shops, mort: !!pr[2], lock: !!pr[3], cost: cost, back: back,
       canB: s.type === 'prop' && full && !anyMort && shops < 5 && (!even || shops <= Math.min.apply(null, setShops)) && me.cash >= cost && !pr[3],
       canS: shops > 0 && (!even || shops >= Math.max.apply(null, setShops)),
       canM: !pr[2] && !anyShops && !pr[3], unCost: Math.ceil(s.hock * (1 + C.unhockFee)) };
@@ -466,7 +470,7 @@
     var me = st.me, groups = {}, order = [], out = '';
     deeds.forEach(function (sp) { var gr = S[sp].group; if (!groups[gr]) { groups[gr] = []; order.push(gr); } groups[gr].push(sp); });
     order.forEach(function (gr) {
-      var G2 = B.GROUPS[gr], full = ownsGroup(me.id, gr);
+      var G2 = B.GROUPS[gr], full = ownsGroup(myOid(), gr);
       out += '<div class="grp"><div class="grp-h"><span class="sw" style="background:' + G2.color + '"></span>' + G2.name + (full && G2.shop ? ' \u00b7 FULL SET' : ' \u00b7 ' + groups[gr].length + '/' + B.GROUP_MEMBERS[gr].length) + '</div>';
       groups[gr].forEach(function (sp) {
         var I = deedInfo(sp), s = I.s, shops = I.shops;
@@ -503,10 +507,10 @@
       h += '<div class="ladder">' + s.rents.map(function (r, k) { return '<div class="lr' + (k === cur ? ' on' : '') + '"><span>' + (k === 0 ? (I.full ? 'Rent \u00d72 (set)' : 'Rent') : k === 5 ? 'Mega-Plex' : '\uD83C\uDFE0'.repeat(k)) + '</span><b>' + money(k === 0 && I.full ? r * 2 : r) + '</b></div>'; }).join('') + '</div>';
       h += I.full && !I.mort && I.shops < 5 ? '<div class="fc-next">Next ' + (I.shops === 4 ? 'Mega-Plex' : 'Shop #' + (I.shops + 1)) + ' <b>' + money(I.cost) + '</b> \u2192 rent ' + money(s.rents[I.shops + 1]) + '</div>' : '<div class="fc-next">' + (I.shops === 5 ? 'Maxed out: Mega-Plex' : 'Rent now ' + rentStr(sp)) + '</div>';
     } else if (s.type === 'whistle') {
-      var nW = B.WHISTLES.filter(function (w) { return st.props[w][0] === st.me.id; }).length;
+      var nW = B.WHISTLES.filter(function (w) { return st.props[w][0] === myOid(); }).length;
       h += '<div class="ladder">' + [1, 2, 3, 4].map(function (k) { return '<div class="lr' + (k === nW && !I.mort ? ' on' : '') + '"><span>' + k + ' stop' + (k > 1 ? 's' : '') + '</span><b>' + money(B.WHISTLE_RENT[k]) + '</b></div>'; }).join('') + '</div><div class="fc-next">Rent now ' + rentStr(sp) + '</div>';
     } else {
-      var nJ = B.GROUP_MEMBERS.juice.filter(function (w) { return st.props[w][0] === st.me.id; }).length;
+      var nJ = B.GROUP_MEMBERS.juice.filter(function (w) { return st.props[w][0] === myOid(); }).length;
       h += '<div class="ladder">' + [1, 2].map(function (k) { return '<div class="lr' + (k === nJ && !I.mort ? ' on' : '') + '"><span>Own ' + k + '</span><b>dice \u00d7' + B.JUICE_MULT[k] + '</b></div>'; }).join('') + '</div><div class="fc-next">Rent is the dice roll times that</div>';
     }
     h += '<div class="fc-foot"><span>Price ' + money(s.price) + '</span><button class="fb mort" data-act="flipMort" data-sp="' + sp + '"' + (I.canM ? '' : ' disabled') + '>MORTGAGE<small>(+' + money(s.hock) + ')</small></button></div></div>';
@@ -642,14 +646,14 @@
     var members = B.GROUP_MEMBERS[gr].slice().sort(function (a, b) { return boardRank(a) - boardRank(b); }), n = members.length, land = landscape();
     o.hidden = false;
     var W = o.clientWidth - 24, H = o.clientHeight - 44, cols = land ? n : (n === 1 ? 1 : 2), rows = Math.ceil(n / cols), gap = 10;
-    var cw = Math.min((W - (cols - 1) * gap) / cols, (H - (rows - 1) * gap) / rows / 1.42, 260), key = gr + ':' + members.map(function (sp) { return st.props[sp][0] === st.me.id ? 1 : 0; }).join('') + ':' + Math.round(cw) + ':' + cols;
+    var cw = Math.min((W - (cols - 1) * gap) / cols, (H - (rows - 1) * gap) / rows / 1.42, 260), key = gr + ':' + members.map(function (sp) { return st.props[sp][0] === myOid() ? 1 : 0; }).join('') + ':' + Math.round(cw) + ':' + cols;
     if (fresh || o._key !== key) {
       o._key = key;
       o.innerHTML = '<div class="fs-title"><span class="sw" style="background:' + B.GROUPS[gr].color + '"></span>' + esc(B.GROUPS[gr].name) + '<small>tap outside or pinch to close</small></div><div class="fs-grid" style="--cw:' + cw.toFixed(1) + 'px;--ch:' + (cw * 1.42).toFixed(1) + 'px;grid-template-columns:repeat(' + cols + ',var(--cw))"></div>';
       var grid = o.querySelector('.fs-grid');
       members.forEach(function (sp, i) {
         var el;
-        if (st.props[sp][0] === st.me.id) { el = makeCard(sp); el.classList.add('front'); }
+        if (st.props[sp][0] === myOid()) { el = makeCard(sp); el.classList.add('front'); }
         else { el = document.createElement('div'); el.className = 'fcard ghost'; el.setAttribute('data-sp', sp); }
         el.style.animationDelay = (i * 45) + 'ms'; grid.appendChild(el);
       });
@@ -944,7 +948,7 @@
       if (pid == null) return '<span class="muted">Pick who to deal with first.</span>';
       var h = '', groupShops = function (sp) { return B.GROUP_MEMBERS[S[sp].group].some(function (i) { return st.props[i][1] > 0; }); };
       st.props.forEach(function (pr, sp) {
-        if (!pr || pr[0] !== pid) return;
+        if (!pr || pr[0] !== tmOf(pid)) return;
         var locked = pr[3] || groupShops(sp), on = sel.props.indexOf(sp) !== -1;
         h += '<button data-tray="' + side + '" data-sp="' + sp + '" class="' + (on ? 'in' : '') + '" style="border-left-color:' + gcol(sp) + '"' + (locked && !on ? ' disabled' : '') + '>' + (locked ? '\uD83D\uDD12 ' : '') + esc(S[sp].short) + (pr[2] ? ' (M)' : '') + '</button>';
       });
@@ -980,7 +984,7 @@
     return h + '<div class="tmid"></div>';
   }
   function paintTradeBoard(root, b, map) {
-    if (!root) return; var me = st.me.id, pa = b.partner, deal = b.give.props.concat(b.get.props), cells = root.querySelectorAll('.tc');
+    if (!root) return; var me = myOid(), pa = b.partner != null ? tmOf(b.partner) : b.partner, deal = b.give.props.concat(b.get.props), cells = root.querySelectorAll('.tc');
     for (var n = 0; n < cells.length; n++) {
       var el = cells[n], sp = +el.getAttribute('data-sp'), pr = st.props[sp], ow = pr ? pr[0] : -1, ours = ow >= 0 && (ow === me || ow === pa);
       var cls = 'tc' + (sp % 10 === 0 ? ' corner' : '') + (!ours ? ' faint' : ow === me ? ' mine' : ' theirs') + (deal.indexOf(sp) >= 0 ? (map ? ' indeal' : ' lit') : '') + (map && b.lit[sp] ? ' lit' : '') + (ours && tradeLocked(sp) ? ' locked' : '');
@@ -1083,8 +1087,8 @@
       var bb = ui.builder; if (!bb) { if (d.ghost) d.ghost.remove(); return; }
       if (!d.ghost) { if (e.type === 'pointerup') { if (!d.faint) { bb.lit[d.sp] = !bb.lit[d.sp]; paintTradeBoard(board, bb, true); } SFX.play('click'); vib(8); if (S[d.sp].price) openDeed(d.sp); } return; }   // v0.5: tap = light it AND open its card
       var over = sideAt(e.clientX, e.clientY), k = over && over.getAttribute('data-side'), ow = st.props[d.sp][0], ok = false;
-      if (k === 'them' && ow === st.me.id && bb.partner != null && bb.give.props.indexOf(d.sp) < 0) { bb.give.props.push(d.sp); ok = true; }
-      if (k === 'me' && ow === bb.partner && bb.get.props.indexOf(d.sp) < 0) { bb.get.props.push(d.sp); ok = true; }
+      if (k === 'them' && ow === myOid() && bb.partner != null && bb.give.props.indexOf(d.sp) < 0) { bb.give.props.push(d.sp); ok = true; }
+      if (k === 'me' && ow === tmOf(bb.partner) && bb.get.props.indexOf(d.sp) < 0) { bb.get.props.push(d.sp); ok = true; }
       var g = d.ghost;
       if (ok) { g.classList.add('drop'); SFX.play('buy'); vib(20); renderBuilder(); }
       else { g.classList.add('back'); }          // wrong way (or nowhere): nothing happens
@@ -1142,7 +1146,7 @@
   // v0.1.1 Leave game: strong confirm, then pick what happens to your stuff
   function leaveBlock() {
     var t = st && st.turn, me = st && st.me; if (!t || !me) return '';
-    if (t.payup && t.payup.open && (t.payup.mover === me.id || t.payup.owner === me.id)) return 'You can\'t leave during a PAY UP window.';
+    if (t.payup && t.payup.open && (t.payup.mover === me.id || t.payup.owner === myOid())) return 'You can\'t leave during a PAY UP window.';
     if (t.pid === me.id && t.tab) return 'Settle your debt first (sell, mortgage or make a deal).';
     if (t.auction && t.auction.leader === me.id) return 'You can\'t leave while you lead an auction.';
     if (t.pid === me.id && (t.stage === 'rolling' || t.stage === 'moving' || t.stage === 'card')) return 'Wait until your move finishes.';
@@ -1199,12 +1203,12 @@
     return '<span class="dbadge' + (d.closed ? ' closed' : '') + '">' + (d.e.icon || '\uD83D\uDD27') + ' ' + (d.closed ? 'CLOSED' : 'HALF RENT') + ' \u00b7 ' + d.left + ' turn' + (d.left > 1 ? 's' : '') + '</span>';
   }
   function rushBtn(sp, cls) {
-    var d = dmgOf(sp); if (!d || st.props[sp][0] !== st.me.id || st.me.bankrupt) return '';
+    var d = dmgOf(sp); if (!d || st.props[sp][0] !== myOid() || st.me.bankrupt) return '';
     return '<button class="' + cls + ' rushb" data-act="rush" data-sp="' + sp + '"' + (st.me.cash >= d.cost ? '' : ' disabled') + '>\uD83D\uDD27 RUSH REPAIR <small>(\u2212' + money(d.cost) + ')</small></button>';
   }
   function openEvent(ei, sp, alert) {
     var e = B.DISASTERS[ei]; if (!e || !S[sp]) return;
-    var d = dmgOf(sp), pr = st.props[sp], o = pById(pr[0]), mine = pr[0] === st.me.id, live = d && d.ei === ei;
+    var d = dmgOf(sp), pr = st.props[sp], o = pById(pr[0]), mine = pr[0] === myOid(), live = d && d.ei === ei;
     ui.disSp = sp;
     var h = '<div class="os-card dis-card sev' + e.sev + (e.mode === 'closed' ? ' closed' : '') + '"><div class="dis-ic">' + e.icon + '</div><div class="dis-sev">' + esc(B.SEV_NAMES[e.sev] || '') + ' \u00b7 ' + (e.when === 'night' ? 'night' : e.when === 'day' ? 'day' : 'any time') + '</div>' +
       '<div class="dis-h">' + esc(e.h) + '</div><div class="dis-where"><span class="sw" style="background:' + gcol(sp) + '"></span>' + (mine ? 'Your ' : '') + '<b>' + esc(S[sp].name) + '</b>' + (o && !mine ? ' (' + esc(o.name) + ')' : '') + '</div>' +
@@ -1230,7 +1234,7 @@
   function renderDeed() {
     var sp = ui.deedSp, s = S[sp], pr = st.props[sp], o = pr[0] >= 0 ? pById(pr[0]) : null, col = gcol(sp), G = B.GROUPS[s.group] || {}, set = o && ownsGroup(o.id, s.group), cur = pr[2] ? -1 : pr[1];
     var front = '<div class="dd-band" style="background:' + col + '"><small>' + esc(G.name || '') + '</small><b>' + esc(s.name) + '</b></div><div class="dd-body">' +
-      '<div class="dd-owner">' + (o ? chip(o) + ' <b>' + esc(o.name) + '</b>' + (o.id === st.me.id ? ' (you)' : '') : 'For sale \u00b7 the bank') + (pr[2] ? ' \u00b7 <span class="hk">MORTGAGED</span>' : '') + '</div>' + (pr[4] ? '<div class="dd-dmg">' + dmgBadge(sp) + '</div>' : '') +
+      '<div class="dd-owner">' + (o ? chip(o) + ' <b>' + esc(o.name) + '</b>' + (o.id === myOid() ? (o.id === st.me.id ? " (you)" : " (your team)") : "") : 'For sale \u00b7 the bank') + (pr[2] ? ' \u00b7 <span class="hk">MORTGAGED</span>' : '') + '</div>' + (pr[4] ? '<div class="dd-dmg">' + dmgBadge(sp) + '</div>' : '') +
       '<div class="dd-val"><span>Price<b>' + money(s.price) + '</b></span><span>Mortgage<b>' + money(s.hock) + '</b></span><span>Rent now<b>' + (o ? rentStr(sp) : '\u2014') + '</b></span></div>';
     var back = '<div class="dd-band slim" style="background:' + col + '"><b>' + esc(s.name) + '</b><small>building costs</small></div><div class="dd-body">';
     if (s.type === 'prop') {
@@ -1246,7 +1250,7 @@
       back += '<div class="dd-note">Utilities have no Shops or Mega-Plex: rent is the dice roll times 5 (one) or 12 (both). Unmortgage costs ' + money(Math.ceil(s.hock * (1 + C.unhockFee))) + '.</div>';
     }
     front += '<div class="dd-hint">tap to flip \u21BB</div></div>'; back += '<div class="dd-hint">tap to flip back \u21BB</div></div>';
-    var mine = pr[0] === st.me.id;
+    var mine = pr[0] === myOid();
     setH($('deedSheet'), '<div class="dd-wrap"><div class="dd-card' + (ui.deedFlip ? ' flipped' : '') + '" style="--gc:' + col + '"><div class="dd-rot"><div class="dd-face dd-front">' + front + '</div><div class="dd-face dd-back">' + back + '</div></div></div>' +
       '<div class="dd-btns">' + (mine ? rushBtn(sp, 'big-btn') : '') + '<button class="big-btn ghostbtn" data-dd="close">CLOSE</button></div></div>');
     paintPieces($('deedSheet'));

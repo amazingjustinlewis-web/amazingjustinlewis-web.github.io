@@ -311,3 +311,4 @@ b.amt { font-weight: 900; color: #ffe27a; }
 .card .t b.amt { color: inherit; font-weight: 900; }
 .cfloat { font-weight: 900; }
 #timerRow button small { display: block; }
+.pteam { display: inline-block; margin-left: .5vh; padding: 0 .6vh; border-radius: .6vh; background: rgba(255,255,255,.18); font-size: 1.6vh; font-weight: 800; vertical-align: middle; }
