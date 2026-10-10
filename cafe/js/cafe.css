@@ -1,0 +1,12 @@
+@font-face{font-family:Fredoka;src:url(../assets/fredoka-latin-var.woff2) format('woff2');font-weight:300 700}
+:root{--accent:#c8682f;--accent2:#2f6f5e;--bg:#fbf3e6;--ink:#3b2a20;--muted:#8a7363;--card:#fffaf2;--line:#e8d9c4}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Fredoka,system-ui,sans-serif}
+button{font:inherit;cursor:pointer;border:0;border-radius:14px;padding:.7em 1.1em;background:var(--accent);color:#fff;font-weight:600;box-shadow:0 3px 0 rgba(0,0,0,.18);touch-action:manipulation}
+button:active{transform:translateY(2px);box-shadow:none}
+button.ghost{background:var(--card);color:var(--ink);border:2px solid var(--line)}
+button.alt{background:var(--accent2)}
+.noapp{display:inline-block;background:var(--accent2);color:#fff;font-weight:700;border-radius:999px;padding:.35em 1em;letter-spacing:.02em}
+.hide{display:none!important}
+input,textarea,select{font:inherit;border:2px solid var(--line);border-radius:10px;padding:.5em .6em;background:#fff;color:var(--ink);width:100%}
+.card{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:1rem}
