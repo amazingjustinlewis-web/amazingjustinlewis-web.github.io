@@ -49,18 +49,13 @@
     tap: function (A, t) { tone(A, 'sine', 900, 400, t, 0.05, 0.12); hiss(A, t, 0.05, 0.15, 'bandpass', 2500, 2); },
     burn: function (A, t) { hiss(A, t, 3.5, 0.3, 'lowpass', 300, 0, 1400, 0.8); tone(A, 'sawtooth', 45, 70, t, 3.5, 0.06, 0.8); },
     deflector: function (A, t) { tone(A, 'sine', 200, 1600, t, 0.6, 0.12); hiss(A, t, 0.8, 0.2, 'bandpass', 600, 1, 6000); },
-    phaser: function (A, t) { tone(A, 'sawtooth', 880, 520, t, 0.22, 0.035, 0.01); tone(A, 'sine', 1320, 700, t, 0.25, 0.04); },
-    ping: function (A, t) { tone(A, 'sine', N(86), N(86), t, 0.5, 0.025, 0.01); },
-    sweep: function (A, t) { tone(A, 'sine', 300, 1200, t, 1.2, 0.04, 0.3); hiss(A, t, 1.2, 0.04, 'bandpass', 600, 4, 3000, 0.4); },
     raider: function (A, t) { tone(A, 'sawtooth', 58, 52, t, 2.5, 0.08, 0.6); tone(A, 'sawtooth', 87, 80, t, 2.5, 0.05, 0.6); }
   };
-  var LIMIT = { impact: 70, shieldHit: 80, reading: 120, static: 300, blip: 50, phaser: 200, ping: 900 };
-  var LITE_SKIP = { reading: 1, tap: 1, blip: 1, ping: 1, static: 1 };   // in lite mode these cosmetic sounds are dropped so the hum never stutters
+  var LIMIT = { impact: 70, shieldHit: 80, reading: 120, static: 300, blip: 50 };
   function play(name, o) {
     var A = ready(); if (!A || S.muted || !SOUNDS[name]) return;
     var now = performance.now(); if (LIMIT[name] && now - (S.last[name] || 0) < LIMIT[name]) return; S.last[name] = now;
-    if (S.lite && LITE_SKIP[name]) return;
-    if (S.buses > (S.lite ? 4 : SLOW_UA ? 6 : 14)) return;
+    if (S.buses > (SLOW_UA ? 6 : 14)) return;
     var bus = A.createGain(); bus.connect(sfxBus); cur = bus; S.buses++;
     try { SOUNDS[name](A, A.currentTime + 0.01, o); } catch (e) {}
     cur = null; setTimeout(function () { try { bus.disconnect(); } catch (e) {} S.buses--; }, 5000);
@@ -124,17 +119,7 @@
     } catch (e) { return false; }
   }
   if (root.speechSynthesis && root.speechSynthesis.addEventListener) root.speechSynthesis.addEventListener('voiceschanged', function () { VOICE.voice = pickVoice(); });
-  // audio health: if the audio clock falls behind the wall clock, the device is starving the audio thread
-  var AH = { lastWall: 0, lastAudio: 0, glitch: 0 };
-  setInterval(function () {
-    if (!AC || AC.state !== 'running') { AH.lastWall = 0; return; }
-    var wall = performance.now() / 1000, au = AC.currentTime;
-    if (AH.lastWall) { var dw = wall - AH.lastWall, da = au - AH.lastAudio; if (dw > 0.5 && dw < 5 && da / dw < 0.9) AH.glitch++; }
-    AH.lastWall = wall; AH.lastAudio = au;
-  }, 1000);
   root.SSFX = {
-    lite: function (on) { S.lite = !!on; if (S.beds.hum && on && AC) { /* keep the hum: it's the soul of the ship */ } },
-    glitches: function () { var g = AH.glitch; AH.glitch = 0; return g; },
     play: play, say: say, setWarp: setWarp, S: S, VOICE: VOICE,
     unlock: function () { live(); syncBeds(); },
     bed: function (name, on) { if (name === 'drone') S.droneOn = !!on; else S.humOn = !!on; syncBeds(); },

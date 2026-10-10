@@ -25,7 +25,7 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Qy.rungs[rung].scale)); renderer.setSize(w, h, false);
     camera.aspect = w / h; camera.updateProjectionMatrix();
     [$('frame'), $('hud')].forEach(function (c) { c.width = w; c.height = h; });
-    frameDirty = true; if (typeof sizePost === 'function') sizePost();
+    frameDirty = true;
   }
   var frameDirty = true; window.addEventListener('resize', resize);
 
@@ -335,7 +335,7 @@
     say(e.say, e.tone);
     var ahead = fwd(new T.Vector3());
     if (e.kind === 'storm') { storm = { t: 18, acc: 0 }; ev.active = null; ev.cool = 40; return true; }
-    if (e.kind === 'raider') { H.raider.visible = true; A.a = 0; A.dur = 90; startFight(A); SFX.play('raider'); setTimeout(function () { startEncounter('raider'); }, 6000); }
+    if (e.kind === 'raider') { H.raider.visible = true; A.a = 0; A.dur = 45; SFX.play('raider'); setTimeout(function () { startEncounter('raider'); }, 6000); }
     if (e.kind === 'envoy' || e.kind === 'alien') { A.ship = makeEnvoy(); A.ship.position.copy(ship.pos).addScaledVector(ahead, 900).add(new T.Vector3(200, 80, 0)); scene.add(A.ship); A.dur = 70; setTimeout(function () { startEncounter('envoy'); }, 3500); }
     if (e.kind === 'distress') { A.ship = H.objs.drifter.clone(); A.ship.scale.setScalar(0.7); A.ship.position.copy(ship.pos).addScaledVector(ahead, 520).add(new T.Vector3(-90, -30, 0)); scene.add(A.ship); A.dur = 75; A.tow = 0; log('COMMS \u203A Distress: "Our engines are dead and the current is pulling us apart!"', 'com'); }
     if (e.kind === 'colossus') { A.ship = W.makeColossus(T, H.glow); A.ship.position.copy(ship.pos).addScaledVector(ahead, 3900).add(new T.Vector3(0, 250, 0)); A.ship.lookAt(ship.pos); A.ship.scale.setScalar(0.01); scene.add(A.ship); A.dur = 50; SFX.play('raider'); allStop(); }
@@ -348,14 +348,19 @@
     var gl = new T.Sprite(new T.SpriteMaterial({ map: H.glow, color: 0x9fe8ff, blending: T.AdditiveBlending, depthWrite: false })); gl.scale.set(220, 220, 1); g.add(gl);
     return g;
   }
-  function endEvent() { var A = ev.active; if (!A) return; if (fight && fight.evade) ship.course = fight.saved || null; fight = null; if (phaserMesh) phaserMesh.visible = false; if (boltMesh) boltMesh.visible = false; if (A.ship && A.ship !== H.raider) scene.remove(A.ship); H.raider.visible = false; ev.active = null; ev.cool = 45; if (enc && !enc.done) enc.done = true; dirty = true; }
+  function endEvent() { var A = ev.active; if (!A) return; if (A.ship && A.ship !== H.raider) scene.remove(A.ship); H.raider.visible = false; ev.active = null; ev.cool = 45; if (enc && !enc.done) enc.done = true; dirty = true; }
   function updateEvents(dt) {
     ev.cool -= dt;
     var rate = C.danger[settings.danger] || 0;
     if (!ev.active && ev.cool <= 0 && ship.loc === 'space' && Math.random() < rate * dt) startEvent(pickEvent());
     var A = ev.active; if (!A) return; A.t += dt;
     var ahead = fwd(tmpV);
-    if (A.def.kind === 'raider') { updateFight(A, dt); } else if (A.def.kind === 'envoy' || A.def.kind === 'alien') {
+    if (A.def.kind === 'raider') {   // no combat: it just circles, matches you and shows off
+      A.a += dt * 0.22; var rr = 260 + Math.sin(A.t * 0.3) * 80;
+      var right = tmpV2.set(1, 0, 0).applyQuaternion(ship.quat);
+      H.raider.position.copy(ship.pos).addScaledVector(ahead, Math.cos(A.a) * rr + 200).addScaledVector(right, Math.sin(A.a) * rr).add(new T.Vector3(0, Math.sin(A.t * 0.4) * 60, 0));
+      H.raider.lookAt(ship.pos); if (A.t > A.dur) { say('The raider has broken off. For now.', 'calm'); endEvent(); }
+    } else if (A.def.kind === 'envoy' || A.def.kind === 'alien') {
       A.ship.rotation.y += dt * 0.3; A.ship.children.forEach(function (c, i) { if (i) c.rotation.x += dt * (0.3 + i * 0.2); });
       if (enc && enc.left) A.ship.position.addScaledVector(tmpV2.set(0, 0.2, -1).applyQuaternion(ship.quat), dt * (A.t * 30));
       if (A.t > A.dur) endEvent();
@@ -430,8 +435,8 @@
   // ================================================================== crew + stations + networking
   var crew = [], asg = {}, net = null, dirty = true;
   var ORDER = ['helm', 'sci', 'tac', 'eng', 'com'];
-  var ACT_STATION = { course: 'helm', stop: 'helm', warp: 'helm', view: 'helm', orbit: 'helm', site: 'helm', descend: 'helm', liftoff: 'helm', scan: 'sci', probe: 'sci', shields: 'tac', deflector: 'tac', alert: 'tac', power: 'eng', beacon: 'com', hail: 'com', tow: 'com', sweep: 'sci', magnify: 'sci', evade: 'tac', fire: 'tac', grab: 'helm', roll: 'helm' };
-  var LABEL = { course: 'Set course', stop: 'All stop', warp: 'Change warp', view: 'View screen', orbit: 'Orbit step', site: 'Landing site', descend: 'Begin descent', liftoff: 'Lift off', scan: 'Scan', probe: 'Launch probe', shields: 'Shields', deflector: 'Deflector pulse', alert: 'Alert level', power: 'Reroute power', beacon: 'Distress beacon', hail: 'Hail', tow: 'Tractor tow', sweep: 'Sensor sweep', magnify: 'Magnify', evade: 'Evasive manoeuvres', fire: 'Fire phasers', grab: 'Grabber arms', roll: 'Barrel roll' };
+  var ACT_STATION = { course: 'helm', stop: 'helm', warp: 'helm', view: 'helm', orbit: 'helm', site: 'helm', descend: 'helm', liftoff: 'helm', scan: 'sci', probe: 'sci', shields: 'tac', deflector: 'tac', alert: 'tac', power: 'eng', beacon: 'com', hail: 'com', tow: 'com' };
+  var LABEL = { course: 'Set course', stop: 'All stop', warp: 'Change warp', view: 'View screen', orbit: 'Orbit step', site: 'Landing site', descend: 'Begin descent', liftoff: 'Lift off', scan: 'Scan', probe: 'Launch probe', shields: 'Shields', deflector: 'Deflector pulse', alert: 'Alert level', power: 'Reroute power', beacon: 'Distress beacon', hail: 'Hail', tow: 'Tractor tow' };
   function member(cid) { return crew.find(function (m) { return m.cid === cid; }); }
   function active() { return crew.filter(function (m) { return m.connected && m.onBridge; }); }
   function rebalance() {
@@ -458,7 +463,7 @@
       var first = isNew && crew.filter(function (q) { return q.connected; }).length === 0 && !asg.cap;
       me.conn = conn; me.connected = true; me.seen = performance.now(); if (m.name) me.name = String(m.name).slice(0, 14);
       // welcome FIRST: nothing cosmetic (sound, voice, log) may stand between a phone and its welcome
-      net.send(conn, { t: 'welcome', cid: me.cid, sector: C.sector.map(function (d) { return { id: d.id, kind: d.kind, cat: d.cat, name: d.name, x: d.x, y: d.y, z: d.z, r: d.r, flavour: d.flavour, landable: !!d.landable, reviews: d.reviews }; }), topo: topo, sites: SITES, pois: POIS });
+      net.send(conn, { t: 'welcome', cid: me.cid, sector: C.sector.map(function (d) { return { id: d.id, kind: d.kind, cat: d.cat, name: d.name, x: d.x, y: d.y, z: d.z, r: d.r, flavour: d.flavour, landable: !!d.landable, reviews: d.reviews }; }), topo: topo, sites: SITES });
       try { rebalance(); sendState(true); } catch (e) { if (window.console) console.error(e); }
       if (isNew) try { SFX.play('join'); log(me.name + ' came aboard.', 'crew'); if (first) say('Welcome aboard, Captain ' + me.name + '.', 'calm'); else say(me.name + ' is on the bridge.', 'calm', true); } catch (e) {}
       return;
@@ -492,7 +497,7 @@
   function act(me, m) {
     var st = ACT_STATION[m.a]; if (!st) return;
     var owner = member(asg[st]);
-    if (asg[st] !== me.cid && m.a !== 'tow') {   // v0.2: anyone can answer a distress card with the tractor
+    if (asg[st] !== me.cid) {
       if (asg.cap !== me.cid) return;
       if (owner && owner.connected && owner.cid !== me.cid && !m.override) {   // captain taps a crew member's station: it becomes a request on their phone
         net.send(owner.conn, { t: 'prompt', from: me.name, a: m, label: (LABEL[m.a] || m.a) + (m.id && defs[m.id] ? ': ' + defs[m.id].name : m.label ? ': ' + m.label : '') });
@@ -521,12 +526,6 @@
       case 'beacon': ship.beacon = !!m.on; say(ship.beacon ? 'Distress beacon active on all frequencies.' : 'Beacon off.', 'alert'); break;
       case 'hail': if (enc) break; if (ev.active && ev.active.def.kind === 'raider') startEncounter('raider'); else if (ev.active && /envoy|alien/.test(ev.active.def.kind)) startEncounter('envoy'); else say('Hailing frequencies open. Nobody is answering. Which is honestly relaxing.', 'calm'); break;
       case 'tow': tow(me); break;
-      case 'sweep': sweep(m.size); break;
-      case 'magnify': magnify(m.id); break;
-      case 'evade': evade(m.on); break;
-      case 'fire': firePhasers(); break;
-      case 'grab': grabber(m.on); break;
-      case 'roll': if (startRoll(m.kind === 'corkscrew' ? 'corkscrew' : 'roll')) say(m.kind === 'corkscrew' ? 'Corkscrew.' : 'Barrel roll. Gently.', 'calm', true); break;
     }
     dirty = true;
   }
@@ -547,8 +546,6 @@
       probes: probes.slice(-6).map(function (p) { return { n: p.n, id: p.id, st: p.st, last: p.last || '' }; }), log: logLines.slice(-14),
       land: { step: land.step, site: land.site, phase: land.phase }, set: settings,
       ev: ev.active ? { kind: ev.active.def.kind, towing: !!ev.active.towing, outcome: ev.active.outcome || null } : null,
-      contacts: contacts().map(function (c) { return { id: c.id, k: c.kind, d: c.d, tier: c.tier, n: c.name, l: c.line, mag: c.mag, surf: c.surf }; }), sweeps: { small: Math.max(0, Math.round(sweeps.small)), medium: Math.max(0, Math.round(sweeps.medium)), large: Math.max(0, Math.round(sweeps.large)) },
-      fight: fight ? { hp: Math.round(fight.hp), evade: fight.evade, firing: fight.shots > 0, d: Math.round(H.raider.position.distanceTo(ship.pos)) } : null, grab: grab ? grab.st : null, lite: lite,
       enc: enc ? { id: enc.id, phase: enc.phase, sp: enc.sp.name, text: enc.phase === 'ask' ? enc.d.open : enc.text, opts: enc.phase === 'ask' ? enc.d.options.map(function (o) { return { id: o.id, label: o.label }; }) : [], left: Math.max(0, Math.round(enc.wait - enc.t)) } : null };
     crew.forEach(function (m) { if (m.connected && m.conn) net.send(m.conn, base); });
   }
@@ -567,7 +564,7 @@
 
   // ================================================================== the bulkhead (drawn once) + the holographic HUD (every frame)
   var fctx = $('frame').getContext('2d'), hctx = $('hud').getContext('2d');
-  function winRect(w, h) { return { x0: w * 0.012, x1: w * 0.988, y0: h * 0.022, y1: h * 0.835, ch: h * 0.05 }; }
+  function winRect(w, h) { return { x0: w * 0.04, x1: w * 0.96, y0: h * 0.055, y1: h * 0.76, ch: h * 0.07 }; }
   function winPath(g, r) { g.beginPath(); g.moveTo(r.x0 + r.ch, r.y0); g.lineTo(r.x1 - r.ch, r.y0); g.lineTo(r.x1, r.y0 + r.ch); g.lineTo(r.x1, r.y1 - r.ch * 0.6); g.lineTo(r.x1 - r.ch * 2.2, r.y1); g.lineTo(r.x0 + r.ch * 2.2, r.y1); g.lineTo(r.x0, r.y1 - r.ch * 0.6); g.lineTo(r.x0, r.y0 + r.ch); g.closePath(); }
   function drawFrame() {
     frameDirty = false; var c = $('frame'), w = c.width, h = c.height, g = fctx, r = winRect(w, h); g.clearRect(0, 0, w, h);
@@ -581,20 +578,20 @@
     g.save(); winPath(g, r); g.lineWidth = 2; g.strokeStyle = 'rgba(120,220,255,.55)'; g.shadowColor = '#5fd8ff'; g.shadowBlur = 14; g.stroke(); g.restore();
     // console top surface
     var cy = r.y1 + h * 0.02, cg = g.createLinearGradient(0, cy, 0, h); cg.addColorStop(0, '#2a3340'); cg.addColorStop(0.15, '#161c25'); cg.addColorStop(1, '#0b0e13'); g.fillStyle = cg;
-    g.beginPath(); g.moveTo(0, h); g.lineTo(w * 0.05, cy); g.lineTo(w * 0.95, cy); g.lineTo(w, h); g.fill();
-    g.strokeStyle = 'rgba(140,200,255,.18)'; g.beginPath(); g.moveTo(w * 0.05, cy); g.lineTo(w * 0.95, cy); g.stroke();
+    g.beginPath(); g.moveTo(w * 0.02, h); g.lineTo(w * 0.1, cy); g.lineTo(w * 0.9, cy); g.lineTo(w * 0.98, h); g.fill();
+    g.strokeStyle = 'rgba(140,200,255,.18)'; g.beginPath(); g.moveTo(w * 0.1, cy); g.lineTo(w * 0.9, cy); g.stroke();
     // engraved name in the console
-    g.font = '600 ' + Math.round(h * 0.022) + 'px Fredoka, system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(0,0,0,.55)'; g.fillText(C.TITLE.split('').join(' '), w * 0.5 + 1, h * 0.975 + 1); g.fillStyle = 'rgba(160,190,220,.22)'; g.fillText(C.TITLE.split('').join(' '), w * 0.5, h * 0.975);
+    g.font = '600 ' + Math.round(h * 0.022) + 'px Fredoka, system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(0,0,0,.55)'; g.fillText(C.TITLE.split('').join(' '), w * 0.5 + 1, h * 0.965 + 1); g.fillStyle = 'rgba(160,190,220,.22)'; g.fillText(C.TITLE.split('').join(' '), w * 0.5, h * 0.965);
     // the QR code, etched into a brushed plate in the bulkhead (high contrast so it scans off a projector)
-    var qs = Math.round(h * 0.135), qx = Math.round(w * 0.975 - qs), qy = Math.round(h - qs - h * 0.012);
+    var qs = Math.round(h * 0.205), qx = Math.round(w * 0.955 - qs), qy = Math.round(h - qs - h * 0.018);
     var pg = g.createLinearGradient(qx, qy, qx + qs, qy + qs); pg.addColorStop(0, '#e4e8ec'); pg.addColorStop(0.5, '#cfd5db'); pg.addColorStop(1, '#e9edf0'); g.fillStyle = pg; roundRect(g, qx - 6, qy - 6, qs + 12, qs + 12, 8); g.fill();
     g.strokeStyle = '#59636f'; g.lineWidth = 2; g.stroke();
     if (qrM) { var n = qrM.getModuleCount(), m = Math.floor(qs / (n + 2)), o = Math.floor((qs - m * n) / 2);
       for (var rr = 0; rr < n; rr++) for (var cc = 0; cc < n; cc++) if (qrM.isDark(rr, cc)) { var x = qx + o + cc * m, yy = qy + o + rr * m; g.fillStyle = '#10161d'; g.fillRect(x, yy, m, m); }
       g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1; for (rr = 0; rr < n; rr++) for (cc = 0; cc < n; cc++) if (qrM.isDark(rr, cc) && !(rr + 1 < n && qrM.isDark(rr + 1, cc))) { g.beginPath(); g.moveTo(qx + o + cc * m, qy + o + (rr + 1) * m + 0.5); g.lineTo(qx + o + (cc + 1) * m, qy + o + (rr + 1) * m + 0.5); g.stroke(); } }
-    g.textAlign = 'right'; g.fillStyle = 'rgba(190,225,255,.75)'; g.font = '600 ' + Math.round(h * 0.02) + 'px Fredoka, system-ui, sans-serif'; g.fillText('SCAN TO COME ABOARD', qx - 18, qy + qs * 0.22);
-    g.font = '700 ' + Math.round(h * 0.042) + 'px Fredoka, system-ui, sans-serif'; g.fillStyle = '#e8f6ff'; g.fillText(roomCode, qx - 18, qy + qs * 0.6);
-    g.font = Math.round(h * 0.015) + 'px system-ui, sans-serif'; g.fillStyle = 'rgba(160,190,220,.6)'; g.fillText(joinUrl.replace(/^https?:\/\//, '').replace(/\?.*$/, '') || 'connecting\u2026', qx - 18, qy + qs * 0.86);
+    g.textAlign = 'right'; g.fillStyle = 'rgba(190,225,255,.75)'; g.font = '600 ' + Math.round(h * 0.02) + 'px Fredoka, system-ui, sans-serif'; g.fillText('SCAN TO COME ABOARD', qx - 18, qy + qs * 0.3);
+    g.font = '700 ' + Math.round(h * 0.05) + 'px Fredoka, system-ui, sans-serif'; g.fillStyle = '#e8f6ff'; g.fillText(roomCode, qx - 18, qy + qs * 0.62);
+    g.font = Math.round(h * 0.015) + 'px system-ui, sans-serif'; g.fillStyle = 'rgba(160,190,220,.6)'; g.fillText(joinUrl.replace(/^https?:\/\//, '').replace(/\?.*$/, '') || 'connecting\u2026', qx - 18, qy + qs * 0.82);
   }
   function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
   var HC = '#8fe6ff', HC2 = 'rgba(143,230,255,', proj = new T.Vector3();
@@ -657,14 +654,13 @@
       [0.2, 0.8].forEach(function (q) { var x = gx + w * 0.1 * q; g.beginPath(); g.moveTo(x, gy + 10); g.lineTo(x + 6 * k, gy + 10 + 22 * k); g.lineTo(x + 14 * k, gy + 10 + 22 * k); g.stroke(); });
       g.fillStyle = k >= 1 ? '#9effc4' : '#ffd27a'; g.textAlign = 'left'; g.fillText(down ? (k >= 1 ? 'GEAR DOWN \u2714' : 'GEAR DEPLOYING') : 'GEAR RETRACTING', gx, gy - 8); }
     // crew list on the console (left)
-    var cx = w * 0.06, cy = r.y1 + h * 0.05; g.textAlign = 'left'; g.font = '600 ' + Math.round(f * 0.85) + 'px Fredoka'; g.fillStyle = 'rgba(190,225,255,.6)'; g.fillText('CREW ' + active().length + '/' + C.maxCrew + (active().length ? '' : ' \u00B7 scan the plate to come aboard'), cx, cy);
-    crew.forEach(function (m, i) { var sts = C.stations.filter(function (s) { return asg[s.id] === m.cid; }), y = cy + f * 1.05 * (i + 1); if (i > 5) return;
+    var cx = w * 0.12, cy = r.y1 + h * 0.07; g.textAlign = 'left'; g.font = '600 ' + Math.round(f * 0.9) + 'px Fredoka'; g.fillStyle = 'rgba(190,225,255,.6)'; g.fillText('CREW ' + active().length + '/' + C.maxCrew + (active().length ? '' : ' \u00B7 scan the plate to come aboard'), cx, cy);
+    crew.forEach(function (m, i) { var sts = C.stations.filter(function (s) { return asg[s.id] === m.cid; }), y = cy + f * 1.25 * (i + 1); if (i > 5) return;
       g.fillStyle = !m.connected ? 'rgba(255,255,255,.3)' : !m.onBridge ? 'rgba(255,255,255,.45)' : '#e8f6ff'; g.fillText(m.name, cx, y);
-      var sx2 = cx + w * 0.08; if (!m.connected) { g.fillText('signal lost\u2026', sx2, y); return; } if (!m.onBridge) { g.fillText('off the bridge', sx2, y); return; }
+      var sx2 = cx + w * 0.09; if (!m.connected) { g.fillText('signal lost\u2026', sx2, y); return; } if (!m.onBridge) { g.fillText('off the bridge', sx2, y); return; }
       (asg.cap === m.cid ? [C.stations[0]] : sts).forEach(function (s) { g.fillStyle = s.color; g.fillText(s.short, sx2, y); sx2 += g.measureText(s.short).width + 10; });
       if (asg.cap === m.cid && sts.length > 1) { g.fillStyle = 'rgba(190,225,255,.5)'; g.fillText('+' + (sts.length - 1) + ' stations', sx2, y); } });
     if (ship.beacon && (simT * 2 | 0) % 2) { g.fillStyle = '#ff6a6a'; g.textAlign = 'center'; g.fillText('\u25C9 DISTRESS BEACON ACTIVE', w / 2, r.y1 + h * 0.06); }
-    drawV02Hud(g, w, h, r, f, dt);
   }
   function wrap(g, text, x, y, mw, lh) { var words = String(text).split(' '), line = ''; for (var i = 0; i < words.length; i++) { var t = line + words[i] + ' '; if (g.measureText(t).width > mw && line) { g.fillText(line, x, y); y += lh; line = words[i] + ' '; } else line = t; } g.fillText(line, x, y); }
   function viewTarget() {
@@ -674,250 +670,20 @@
   }
   var lastFocus = 'thal';
 
-  // ================================================================== v0.2: ship motion (bank into turns, rare slow barrel rolls / corkscrews)
-  var MO = C.motion, mot = { bank: 0, roll: 0, dip: 0, off: new T.Vector3(), rollT: -1, dir: 1, kind: 'roll', cool: MO.rollCool[0], prevF: new T.Vector3(0, 0, -1), yawRate: 0, pendingBig: false };
-  var motQ = new T.Quaternion(), motE = new T.Euler(), _f = new T.Vector3();
-  function startRoll(kind, dir) { if (mot.rollT >= 0 || ship.view || ship.loc !== 'space') return false; mot.rollT = 0; mot.kind = kind || (Math.random() < 0.5 ? 'roll' : 'corkscrew'); mot.dir = dir || (mot.bank > 0 ? 1 : -1); mot.cool = MO.rollCool[0] + Math.random() * (MO.rollCool[1] - MO.rollCool[0]); if (mot.kind === 'corkscrew') say('Corkscrew. Lining back up with the heading.', 'calm', true); return true; }
-  function updateMotion(dt) {
-    fwd(_f); var cr = mot.prevF.x * _f.z - mot.prevF.z * _f.x;   // signed yaw change (horizontal plane)
-    mot.yawRate = lerp(mot.yawRate, cr / Math.max(dt, 1e-3), 1 - Math.exp(-dt * 3)); mot.prevF.copy(_f);
-    var want = ship.loc === 'space' && !ship.view ? clamp(mot.yawRate * MO.bankK, -MO.bankMax, MO.bankMax) : 0;
-    if (fight && fight.evade) want = clamp(want * 1.3, -MO.bankMax * 1.3, MO.bankMax * 1.3);
-    mot.bank = lerp(mot.bank, want, 1 - Math.exp(-dt * 1.2));
-    // big turns sometimes earn a lazy roll; cruising occasionally does one just because
-    if (ship.mode === 'align' && Math.abs(mot.yawRate) > 0.08) mot.pendingBig = true;
-    if (mot.pendingBig && ship.mode !== 'align') { mot.pendingBig = false; if (Math.random() < 0.45) startRoll(null, mot.bank >= 0 ? 1 : -1); }
-    if (ship.course && ship.mode !== 'align' && !fight && !grab) { mot.cool -= dt; if (mot.cool <= 0) startRoll(); }
-    if (mot.rollT >= 0) {
-      mot.rollT += dt / MO.rollDur; var p = clamp(mot.rollT, 0, 1), e = p * p * p * (p * (p * 6 - 15) + 10);   // smootherstep: no jerk at either end
-      mot.roll = e * Math.PI * 2 * mot.dir;
-      if (mot.kind === 'corkscrew') { mot.dip = -Math.sin(p * Math.PI) * 0.1; mot.off.set(Math.sin(e * Math.PI * 2) * 9 * mot.dir, (Math.cos(e * Math.PI * 2) - 1) * 9 - Math.sin(p * Math.PI) * 14, 0); }
-      else { mot.dip = 0; mot.off.set(0, 0, 0); }
-      if (mot.rollT >= 1) { mot.rollT = -1; mot.roll = 0; mot.dip = 0; mot.off.set(0, 0, 0); }
-    }
-  }
-  function motionQ() { motE.set(mot.dip, 0, mot.bank + mot.roll, 'YXZ'); return motQ.setFromEuler(motE); }
-
-  // ================================================================== v0.2: warp distortion (post pass) + mid-distance star trails
-  var post = null, fxOff = Q.has('nopost');
-  function makePost(N) {
-    var rt = new T.WebGLRenderTarget(4, 4), sc = new T.Scene(), cam = new T.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    var U = { tex: { value: rt.texture }, k: { value: 0 }, t: { value: 0 }, asp: { value: 1.78 } };
-    var m = new T.ShaderMaterial({ uniforms: U, depthTest: false, depthWrite: false,
-      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
-      fragmentShader: 'uniform sampler2D tex; uniform float k; uniform float t; uniform float asp; varying vec2 vUv;\n' +
-        'void main(){ vec2 c = vec2(0.5, 0.46); vec2 d = vUv - c; vec2 da = vec2(d.x*asp, d.y); float r = length(da); float ang = atan(da.y, da.x);\n' +
-        ' float m = smoothstep(0.34 - 0.24*k, 0.78 - 0.3*k, r) * k;\n' +           // outside the warp field; the field shrinks as warp rises
-        ' vec2 uv = vUv + d * m * 0.05 * sin(ang*5.0 + t*1.7 + r*16.0);\n' +       // wobble / ripple distortion
-        ' vec3 acc = vec3(0.0); float tw = 0.0;\n' +
-        ' for (int i = 0; i < ' + N + '; i++) { float f = float(i)/' + (N - 1) + '.0; float s = 1.0 - f*m*0.26; vec2 u = c + (uv - c)*s; float w = 1.0 - f*0.55;\n' +
-        '  acc.r += texture2D(tex, c + (u - c)*(1.0 + m*0.018)).r*w; acc.g += texture2D(tex, u).g*w; acc.b += texture2D(tex, c + (u - c)*(1.0 - m*0.018)).b*w; tw += w; }\n' +
-        ' vec3 col = acc/tw; col += vec3(0.22,0.28,0.65) * m * 0.12 * (0.5 + 0.5*sin(r*26.0 - t*5.0));\n' +
-        ' gl_FragColor = vec4(col, 1.0); }' });
-    var q = new T.Mesh(new T.PlaneGeometry(2, 2), m); q.frustumCulled = false; sc.add(q); return { rt: rt, sc: sc, cam: cam, U: U, N: N };
-  }
-  function postAllowed() { return !fxOff && rung <= 3 && !lite; }   // rung 3 (Chromecast) gets a 4-tap version at its lower resolution
-  function sizePost() { if (!post) return; var v = renderer.getDrawingBufferSize(new T.Vector2()); post.rt.setSize(Math.max(4, v.x), Math.max(4, v.y)); post.U.asp.value = v.x / Math.max(1, v.y); }
-  function renderMain(onSurf, wv) {
-    var target = onSurf && surf ? surf : scene, k = onSurf ? 0 : clamp((ship.warp - 0.6) / 7, 0, 1);
-    if (k > 0.02 && postAllowed()) {
-      var wantN = rung >= 3 ? 4 : 8; if (!post || post.N !== wantN) { if (post) post.rt.dispose(); post = makePost(wantN); sizePost(); }
-      post.U.k.value = k; post.U.t.value = simT;
-      renderer.setRenderTarget(post.rt); renderer.render(target, camera); renderer.setRenderTarget(null); renderer.render(post.sc, post.cam);
-    } else renderer.render(target, camera);
-  }
-  var trails = (function () {   // mid-distance stars that leave little trails at warp
-    var n = Math.round(240 * Math.max(0.4, FX)), g = new T.BufferGeometry(), seed = new Float32Array(n * 3), Rr = C.rng(7);
-    for (var i = 0; i < n; i++) { var a = Rr() * 6.283, rad = 40 + Math.pow(Rr(), 0.7) * 260; seed[i * 3] = Math.cos(a) * rad; seed[i * 3 + 1] = Math.sin(a) * rad * 0.7; seed[i * 3 + 2] = -60 - Rr() * 1400; }
-    g.setAttribute('position', new T.BufferAttribute(new Float32Array(n * 6), 3)); g.setAttribute('color', new T.BufferAttribute(new Float32Array(n * 6), 3));
-    var L = new T.LineSegments(g, new T.LineBasicMaterial({ vertexColors: true, transparent: true, blending: T.AdditiveBlending, depthWrite: false, opacity: 0 })); L.frustumCulled = false; camera.add(L);
-    return { L: L, n: n, seed: seed };
-  })();
-  function updateTrails(dt, wv, wOn) {
-    var on = wOn && rung < 4; trails.L.visible = on; if (!on) return;
-    var n = rung >= 3 ? trails.n >> 1 : trails.n, sa = trails.L.geometry.attributes.position.array, ca = trails.L.geometry.attributes.color.array, sd = trails.seed, vz = 60 + wv * 700, len = 3 + wv * 70, spread = 0.75 + wv * 0.9;
-    for (var i = 0; i < trails.n; i++) {
-      if (i >= n) { sa[i * 6 + 2] = sa[i * 6 + 5] = 10; continue; }
-      sd[i * 3 + 2] += vz * dt; if (sd[i * 3 + 2] > -40) sd[i * 3 + 2] -= 1400;
-      var x = sd[i * 3] * spread, y = sd[i * 3 + 1] * spread, z = sd[i * 3 + 2], b = 0.55 + (i % 5) * 0.09;
-      sa[i * 6] = x; sa[i * 6 + 1] = y; sa[i * 6 + 2] = z; sa[i * 6 + 3] = x; sa[i * 6 + 4] = y; sa[i * 6 + 5] = z - len;
-      ca[i * 6] = b; ca[i * 6 + 1] = b; ca[i * 6 + 2] = b * 1.1; ca[i * 6 + 3] = 0; ca[i * 6 + 4] = 0; ca[i * 6 + 5] = 0;
-    }
-    trails.L.geometry.attributes.position.needsUpdate = true; trails.L.geometry.attributes.color.needsUpdate = true; trails.L.material.opacity = clamp((ship.warp - 0.6) / 1.5, 0, 0.9);
-    H.streaks.scale.set(0.8 + wv * 1.4, 0.8 + wv * 1.4, 1);   // higher warp: the streak field wraps further around you
-  }
-
-  // ================================================================== v0.2: dogfights (raider): orbit each other, evade, phasers, glass pings, holo
-  var fight = null, boltMesh = null, phaserMesh = null;
-  function lineMesh(col, op) { var m = new T.Mesh(new T.CylinderGeometry(0.8, 0.8, 1, 6, 1, true), new T.MeshBasicMaterial({ color: col, transparent: true, opacity: op, blending: T.AdditiveBlending, depthWrite: false })); m.visible = false; m.frustumCulled = false; scene.add(m); return m; }
-  function placeLine(m, a, b, t) { var mid = a.clone().add(b).multiplyScalar(0.5); m.position.copy(mid); m.scale.set(1, a.distanceTo(b), 1); m.lookAt(b); m.rotateX(Math.PI / 2); m.visible = true; m.userData.t = t; }
-  function startFight(A) { fight = { A: A, hp: 100, evade: false, e: 0, c: new T.Vector3(), fireT: 0, shots: 0, shotCool: 0, enemyCool: 6, hits: 0, lastFire: null, bolts: [], pingT: 0 }; A.fight = fight; }
-  function fightPilot(dt) {   // returns true when the fight owns the helm (evasive orbit)
-    if (!fight || !fight.evade) return false;
-    var F = fight; F.e += dt * 0.32;
-    var R = 300, tgt = tmpV.copy(F.c).add(new T.Vector3(Math.cos(F.e) * R, Math.sin(F.e * 0.5) * 70, Math.sin(F.e) * R));
-    var tan = tmpV2.set(-Math.sin(F.e), Math.cos(F.e * 0.5) * 0.12, Math.cos(F.e)).normalize();
-    ship.pos.lerp(tgt, 1 - Math.exp(-dt * 0.8)); faceToward(tan, dt, 2.2); ship.speed = R * 0.32; ship.mode = 'evasive'; return true;
-  }
-  function updateFight(A, dt) {
-    var F = fight; if (!F) return;
-    var ahead = fwd(new T.Vector3()), right = new T.Vector3(1, 0, 0).applyQuaternion(ship.quat);
-    A.a += dt * (F.evade ? 0.32 : 0.22);
-    if (F.evade) H.raider.position.copy(F.c).add(new T.Vector3(Math.cos(F.e + Math.PI) * 260, -Math.sin(F.e * 0.5) * 60, Math.sin(F.e + Math.PI) * 260));   // circling each other
-    else { var rr = 260 + Math.sin(A.t * 0.3) * 80; H.raider.position.copy(ship.pos).addScaledVector(ahead, Math.cos(A.a) * rr + 200).addScaledVector(right, Math.sin(A.a) * rr).add(new T.Vector3(0, Math.sin(A.t * 0.4) * 60, 0)); }
-    H.raider.lookAt(ship.pos);
-    // our phasers: a short burst of three pulses
-    if (F.shots > 0) { F.shotCool -= dt; if (F.shotCool <= 0) { F.shots--; F.shotCool = 0.5;
-      var from = ship.pos.clone().add(new T.Vector3(0, -6, -20).applyQuaternion(ship.quat)), hit = Math.random() < (F.evade ? 0.55 : 0.78);
-      var to = H.raider.position.clone(); if (!hit) to.add(new T.Vector3((Math.random() - 0.5) * 80, (Math.random() - 0.5) * 50, 0));
-      placeLine(phaserMesh || (phaserMesh = lineMesh(0xffa040, 0.85)), from, to, 0.28); SFX.play('phaser');
-      var rel = H.raider.position.clone().sub(ship.pos).applyQuaternion(ship.quat.clone().invert()); F.lastFire = { x: rel.x, z: rel.z, t: 0.6, hit: hit };
-      if (hit) { F.hp = Math.max(0, F.hp - (9 + ship.power.engines * 0.5 + Math.random() * 5)); F.hits++; }
-      dirty = true; } }
-    // their shots: slow, telegraphed, mostly glancing off shields
-    F.enemyCool -= dt; if (F.enemyCool <= 0 && F.hp > 0) { F.enemyCool = 5 + Math.random() * 4;
-      var miss = Math.random() < (F.evade ? 0.7 : 0.25), aim = ship.pos.clone(); if (miss) aim.addScaledVector(right, (Math.random() < 0.5 ? -1 : 1) * 60).add(new T.Vector3(0, 25, 0));
-      placeLine(boltMesh || (boltMesh = lineMesh(0xff3040, 0.7)), H.raider.position.clone(), aim, 0.35); var relb = H.raider.position.clone().sub(ship.pos).applyQuaternion(ship.quat.clone().invert()); F.bolts.push({ x: relb.x, z: relb.z, t: 0.6, miss: miss });
-      if (!miss) addImpact(1.6 + Math.random()); else SFX.play('shieldHit'); }
-    F.bolts = F.bolts.filter(function (b) { b.t -= dt; return b.t > 0; }); if (F.lastFire) { F.lastFire.t -= dt; if (F.lastFire.t <= 0) F.lastFire = null; }
-    F.pingT -= dt; if (F.pingT <= 0) { F.pingT = 2.2; SFX.play('ping'); }
-    [phaserMesh, boltMesh].forEach(function (m) { if (m && m.visible) { m.userData.t -= dt; if (m.userData.t <= 0) m.visible = false; } });
-    if (F.hp <= 0 && !F.done) { F.done = true; say('Raider disabled. It is limping away. Standing down.', 'calm'); F.evade = false; A.dur = A.t + 8; A.leaving = true; }
-    if (A.leaving) H.raider.position.addScaledVector(H.raider.position.clone().sub(ship.pos).normalize(), dt * 120);
-    if (A.t > A.dur) { if (!F.done) say('The raider has broken off. For now.', 'calm'); fight = null; endEvent(); }
-  }
-  function evade(on) {
-    if (!fight) { say('Nothing to evade. Relaxing instead.', 'calm', true); return; }
-    fight.evade = on == null ? !fight.evade : !!on;
-    if (fight.evade) { fight.c.copy(ship.pos).addScaledVector(fwd(tmpV), 240); fight.e = Math.atan2(ship.pos.z - fight.c.z, ship.pos.x - fight.c.x); fight.saved = ship.course; ship.course = null; ship.orbit = null; say('Evasive pattern. Circling.', 'alert'); }
-    else { ship.course = fight.saved || null; say('Holding steady.', 'calm', true); }
-    dirty = true;
-  }
-  function firePhasers() { if (!fight || fight.hp <= 0) { say('No target.', 'calm', true); return; } if (fight.shots > 0) return; fight.shots = 3; fight.shotCool = 0; }
-
-  // ================================================================== v0.2: tiered sensors (default range + small/medium/large sweeps, interference)
-  var SN = C.sensors, sweeps = { small: 0, medium: 0, large: 0 }, sweepFx = null;
-  function sensK() { return 0.7 + ship.power.sensors * 0.15; }
-  function sweep(size) {
-    if (!SN[size]) return; var dur = size === 'large' ? 4 : size === 'medium' ? 2.5 : 1.2;
-    SFX.play('sweep'); sweepFx = { size: size, t: 0, dur: dur }; say((size === 'large' ? 'Long-range' : size === 'medium' ? 'Medium-range' : 'Close') + ' sensor sweep.', 'calm', true);
-    setTimeout(function () { sweeps[size] = SN.sweepHold; var n = contacts().filter(function (c) { return c.tier !== 'none'; }).length; log('SWEEP \u203A ' + size.toUpperCase() + ': ' + n + ' contacts', 'sci'); dirty = true; }, dur * 1000);
-  }
-  function tierFor(dist) {
-    var k = sensK();
-    if (dist <= SN.base * k || (sweeps.small > 0 && dist <= SN.small * k)) return 'full';
-    if (sweeps.medium > 0 && dist <= SN.medium * k) return 'detail';
-    if (sweeps.large > 0 && dist <= SN.large * k) return 'broad';
-    return 'none';
-  }
-  function garble(s) { return corrupt(s, 0.35); }
-  function contactLine(d, tier, dist) {
-    var itf = C.interference[d.id], cat = C.broad[d.kind] || 'Contact';
-    if (tier === 'full') return { name: d.name, line: d.flavour + (itf ? ' \u26A0 ' + itf + ' around it.' : ''), mag: true };
-    if (tier === 'detail') return itf ? { name: d.name, line: cat + '. ' + itf + ': ' + garble('surface readings unclear') + ' Hostile life: unknown.' } : { name: d.name, line: cat + '. ' + d.flavour.split('.')[0] + '.' };
-    if (tier === 'broad') { var fz = Math.round(dist / 1000) * 1000; return { name: cat, line: 'Approx. ' + (fz / 1000) + 'k km' + (itf ? '. Largely unexplored. ' + itf + ' blocks detail.' : '. Sweep closer for detail.') }; }
-    return { name: d.name, line: 'Charted. Out of sensor range.' };
-  }
-  function contacts() {
-    if (ship.loc !== 'space') return surfaceContacts();
-    var list = C.sector.map(function (d) { var dist = H.objs[d.id].position.distanceTo(ship.pos), tier = tierFor(dist), cl = contactLine(d, tier, dist); return { id: d.id, kind: d.kind, d: Math.round(dist), tier: tier, name: cl.name, line: cl.line, mag: !!cl.mag }; });
-    if (ev.active && (ev.active.ship || H.raider.visible)) { var es = ev.active.ship || H.raider, dd = es.position.distanceTo(ship.pos); list.push({ id: '_ev', kind: 'ship', d: Math.round(dd), tier: 'full', name: ev.active.def.kind === 'raider' ? 'Raider (Krr\u2019tak)' : ev.active.def.kind === 'colossus' ? 'MASS: ???' : 'Contact', line: fight ? 'Hostile. Hull ' + Math.round(fight.hp) + '%.' : 'Close contact.', mag: true }); }
-    return list.sort(function (a, b) { return a.d - b.d; });
-  }
-  // surface: points of interest around the landing site; some readings are garbled by the planet itself
-  var POIS = [
-    { id: 'shelf', name: 'Shoreline shelf', u: 0.36, v: 0.44, kind: 'site', line: 'Landing site. Shallow, stable-ish.' },
-    { id: 'isle', name: 'Basalt island', u: 0.62, v: 0.58, kind: 'site', line: 'Rocky, mostly dry.' },
-    { id: 'watch', name: 'Watcher sightings', u: 0.47, v: 0.36, kind: 'life', line: 'Tall shapes. They surface, stare, sink.' },
-    { id: 'acid', name: 'Acidic river', u: 0.2, v: 0.62, kind: 'hazard', line: 'pH 1.8 outflow. Hostile life: unknown.', garble: true },
-    { id: 'em', name: 'EM field', u: 0.78, v: 0.3, kind: 'interference', line: 'Readings garbled. Compass spinning.', garble: true },
-    { id: 'ruin', name: 'Unknown structure', u: 0.84, v: 0.74, kind: 'mystery', line: 'Geometric. Largely unexplored.', garble: true },
-    { id: 'vent', name: 'Thermal vents', u: 0.12, v: 0.22, kind: 'feature', line: 'Warm water, mineral plumes.' }
-  ];
-  function surfaceContacts() {
-    var s = SITES.find(function (q) { return q.id === land.site; }) || SITES[0];
-    return POIS.map(function (p) { var dist = Math.hypot(p.u - s.u, (p.v - s.v) * 0.62) * 120, near = dist < 30; return { id: 'poi:' + p.id, kind: p.kind, d: Math.round(dist), tier: near ? 'full' : 'detail', name: p.name, line: p.garble && !near ? corrupt(p.line, 0.3) : p.line, surf: true }; }).sort(function (a, b) { return a.d - b.d; });
-  }
-  function magnify(id) { if (id === '_ev' || defs[id]) { if (defs[id]) lastFocus = id; ship.view = true; SFX.play('blip'); say('Magnifying' + (defs[id] ? ': ' + defs[id].name : '') + '.', 'calm', true); dirty = true; } }
-
-  // ================================================================== v0.2: grabber arms: latch onto a small asteroid and tumble with it
-  var grab = null;
-  function makeRock() { var g = new T.Group(), m = new T.MeshLambertMaterial({ color: 0x6b6258, flatShading: true }), geo = new T.DodecahedronGeometry(38, 1), pa = geo.attributes.position, Rr = C.rng(99);
-    for (var i = 0; i < pa.count; i++) { var v = new T.Vector3(pa.getX(i), pa.getY(i), pa.getZ(i)), k = 0.75 + Math.sin(v.x * 0.13) * 0.12 + Math.cos(v.y * 0.17 + v.z * 0.07) * 0.12; pa.setXYZ(i, v.x * k, v.y * k * 0.8, v.z * k); }
-    geo.computeVertexNormals(); g.add(new T.Mesh(geo, m));
-    var arm = new T.MeshLambertMaterial({ color: 0x9aa6b4, emissive: 0x111820 }); g.userData.arms = [];
-    [-1, 1].forEach(function (sx) { var a = new T.Mesh(new T.BoxGeometry(2.2, 2.2, 40), arm); a.visible = false; camera.add(a); g.userData.arms.push(a); a.userData.sx = sx; });
-    return g; }
-  function grabber(on) {
-    if (on === false || (grab && on == null)) { if (!grab) return; grab.st = 'release'; grab.t = 0; say('Releasing the asteroid. Arms retracting.', 'calm'); dirty = true; return; }
-    if (grab || ship.loc !== 'space' || fight) return;
-    var rock = makeRock(); rock.position.copy(ship.pos).addScaledVector(fwd(tmpV), 260).add(new T.Vector3(0, -40, 0)); scene.add(rock);
-    grab = { rock: rock, st: 'approach', t: 0, axis: new T.Vector3(0.3, 1, 0.2).normalize(), drift: fwd(new T.Vector3()).multiplyScalar(3) };
-    ship.course = null; ship.orbit = null; SFX.play('gear'); say('Small asteroid ahead. Extending grabber arms.', 'calm'); dirty = true;
-  }
-  var gq = new T.Quaternion();
-  function grabPilot(dt) {
-    if (!grab) return false; var G = grab; G.t += dt;
-    var hold = new T.Vector3(0, -48, -78).applyQuaternion(ship.quat).add(ship.pos);
-    if (G.st === 'approach') { var k = clamp(G.t / 7, 0, 1); G.rock.position.lerp(hold, dt * 0.5 * k + 0.002); ship.speed = 6 * (1 - k);
-      if (G.t > 7) { G.st = 'tumble'; G.t = 0; SFX.play('thud'); ship.shake = 0.3; say('Latched. Tumbling with it. Engines idle.', 'calm'); dirty = true; } }
-    else if (G.st === 'tumble') { gq.setFromAxisAngle(G.axis, dt * 0.05); ship.quat.premultiply(gq); G.rock.position.copy(hold); G.rock.quaternion.premultiply(gq); ship.pos.addScaledVector(G.drift, dt); ship.speed = 3; }
-    else if (G.st === 'release') { G.rock.position.addScaledVector(G.drift, dt * 3).add(new T.Vector3(0, -dt * 4, 0)); if (G.t > 4) { scene.remove(G.rock); G.rock.userData.arms.forEach(function (a) { camera.remove(a); }); grab = null; ship.mode = 'idle'; dirty = true; return false; } }
-    var ext = G.st === 'approach' ? clamp(G.t / 3, 0, 1) : G.st === 'release' ? 1 - clamp(G.t / 2.5, 0, 1) : 1;
-    G.rock.userData.arms.forEach(function (a) { a.visible = ext > 0.02; a.position.set(a.userData.sx * 14, -26 - ext * 6, -20 - ext * 28); a.scale.set(1, 1, 0.3 + ext * 0.9); a.rotation.set(-0.45, -a.userData.sx * 0.18, 0); });
-    ship.mode = 'grab'; return true;
-  }
-
-  // ================================================================== v0.2: performance + audio guard (steps effects down when audio stutters or fps drops)
-  var lite = false, longFrames = 0, perfLog = [];
-  function perfStep(reason) { if (rung < Qy.rungs.length - 1) { rung++; resize(); } if (!lite && (reason === 'audio' || rung >= 3)) { lite = true; SFX.lite(true); } perfLog.push(reason + '\u2192q' + rung); if (perfLog.length > 8) perfLog.shift(); }
-
-  // ================================================================== v0.2 HUD: glass pings, tactical holo, sweep ring, grab tag
-  function drawV02Hud(g, w, h, r, f, dt) {
-    var space = ship.loc === 'space';
-    if (sweepFx) { sweepFx.t += dt; var p = sweepFx.t / sweepFx.dur, cx = (r.x0 + r.x1) / 2, cy = (r.y0 + r.y1) / 2, maxR = (r.x1 - r.x0) * (sweepFx.size === 'large' ? 0.6 : sweepFx.size === 'medium' ? 0.42 : 0.25);
-      g.save(); g.beginPath(); g.rect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); g.clip(); [0, 0.18, 0.36].forEach(function (o) { var q = clamp(p - o, 0, 1); if (q <= 0 || q >= 1) return; g.strokeStyle = 'rgba(157,140,255,' + (0.5 * (1 - q)).toFixed(2) + ')'; g.lineWidth = 2; g.beginPath(); g.ellipse(cx, cy, maxR * q, maxR * q * 0.45, 0, 0, 6.283); g.stroke(); }); g.restore();
-      g.fillStyle = 'rgba(190,175,255,.85)'; g.textAlign = 'center'; g.fillText(sweepFx.size.toUpperCase() + ' SENSOR SWEEP', cx, r.y0 + f * 5.6); if (p >= 1.4) sweepFx = null; }
-    if (grab) { g.fillStyle = HC; g.textAlign = 'left'; g.fillText(grab.st === 'tumble' ? 'GRABBER ARMS: LATCHED \u00B7 TUMBLING' : grab.st === 'approach' ? 'GRABBER ARMS EXTENDING' : 'RELEASING', r.x0 + w * 0.02, r.y1 - h * 0.11); }
-    if (!fight || !space) return;
-    var F = fight, es = H.raider; proj.copy(es.position).project(camera);
-    var on = proj.z < 1 && Math.abs(proj.x) < 0.92 && Math.abs(proj.y) < 0.9, pulse = (simT % 2.2) / 2.2;
-    if (on) { var ex = (proj.x + 1) / 2 * w, ey = (1 - proj.y) / 2 * h; g.strokeStyle = 'rgba(255,90,90,' + (0.7 * (1 - pulse)).toFixed(2) + ')'; g.lineWidth = 2; g.beginPath(); g.arc(ex, ey, 24 + pulse * 60, 0, 6.283); g.stroke(); g.fillStyle = '#ff7a7a'; g.textAlign = 'left'; g.fillText('RAIDER \u00B7 ' + Math.round(es.position.distanceTo(ship.pos)) + ' km \u00B7 HULL ' + Math.round(F.hp) + '%', ex + 26, ey + f * 1.3); }
-    else {   // off the glass: an arrow on the window rim pointing at it
-      var rel = es.position.clone().sub(camera.position).applyQuaternion(camera.quaternion.clone().invert()), a = Math.atan2(-rel.y, rel.x), cx2 = (r.x0 + r.x1) / 2, cy2 = (r.y0 + r.y1) / 2, rx = (r.x1 - r.x0) / 2 - 40, ry = (r.y1 - r.y0) / 2 - 40;
-      var px = cx2 + Math.cos(a) * rx, py = cy2 + Math.sin(a) * ry; g.save(); g.translate(px, py); g.rotate(a); g.fillStyle = 'rgba(255,90,90,' + (0.55 + 0.45 * Math.sin(simT * 5)).toFixed(2) + ')'; g.beginPath(); g.moveTo(18, 0); g.lineTo(-10, -12); g.lineTo(-4, 0); g.lineTo(-10, 12); g.closePath(); g.fill(); g.restore();
-      g.fillStyle = '#ff7a7a'; g.textAlign = 'center'; g.fillText('RAIDER ' + (rel.z > 0 ? 'BEHIND' : '') , px - Math.cos(a) * 46, py - Math.sin(a) * 30); }
-    // the holo: top-down, your ship in the middle, which way the phasers are firing
-    var S0 = h * 0.24, hx = r.x1 - S0 - w * 0.02, hy = r.y1 - S0 - h * 0.05, mx = hx + S0 / 2, my = hy + S0 / 2, sc = S0 / 2 / 520;
-    g.save(); g.fillStyle = 'rgba(10,30,45,.45)'; g.beginPath(); g.arc(mx, my, S0 / 2, 0, 6.283); g.fill(); g.strokeStyle = HC2 + '.4)'; g.lineWidth = 1; [0.33, 0.66, 1].forEach(function (k) { g.beginPath(); g.arc(mx, my, S0 / 2 * k, 0, 6.283); g.stroke(); });
-    g.beginPath(); g.moveTo(mx - S0 / 2, my); g.lineTo(mx + S0 / 2, my); g.moveTo(mx, my - S0 / 2); g.lineTo(mx, my + S0 / 2); g.stroke();
-    for (var yy = hy; yy < hy + S0; yy += 3) { g.fillStyle = HC2 + ((0.03 + 0.03 * Math.sin(yy * 0.3 + simT * 8)).toFixed(3)) + ')'; g.fillRect(hx, yy, S0, 1); }
-    // your ship: a wireframe chevron, banked shading
-    g.strokeStyle = '#9fffd8'; g.lineWidth = 2; g.save(); g.translate(mx, my); g.scale(1 - Math.abs(mot.bank + mot.roll % 6.283) * 0.0, 1); g.beginPath(); g.moveTo(0, -16); g.lineTo(11, 12); g.lineTo(0, 6); g.lineTo(-11, 12); g.closePath(); g.stroke(); g.beginPath(); g.moveTo(0, -16); g.lineTo(0, 6); g.stroke(); g.restore();
-    var rl = es.position.clone().sub(ship.pos).applyQuaternion(ship.quat.clone().invert()), rx2 = clamp(mx + rl.x * sc, hx, hx + S0), ry2 = clamp(my + rl.z * sc, hy, hy + S0);
-    g.fillStyle = '#ff6a6a'; g.beginPath(); g.arc(rx2, ry2, 6, 0, 6.283); g.fill(); g.strokeStyle = 'rgba(255,106,106,.5)'; g.beginPath(); g.arc(rx2, ry2, 6 + pulse * 14, 0, 6.283); g.stroke();
-    if (F.lastFire) { g.strokeStyle = 'rgba(255,170,70,' + clamp(F.lastFire.t * 2, 0, 1).toFixed(2) + ')'; g.lineWidth = 3; g.beginPath(); g.moveTo(mx, my - 8); g.lineTo(clamp(mx + F.lastFire.x * sc, hx, hx + S0) + (F.lastFire.hit ? 0 : 14), clamp(my + F.lastFire.z * sc, hy, hy + S0)); g.stroke(); }
-    F.bolts.forEach(function (b) { g.strokeStyle = 'rgba(255,60,70,' + clamp(b.t * 2, 0, 1).toFixed(2) + ')'; g.lineWidth = 2; g.setLineDash([5, 5]); g.beginPath(); g.moveTo(clamp(mx + b.x * sc, hx, hx + S0), clamp(my + b.z * sc, hy, hy + S0)); g.lineTo(mx + (b.miss ? 22 : 0), my); g.stroke(); g.setLineDash([]); });
-    g.restore(); g.fillStyle = HC; g.textAlign = 'center'; g.fillText('TACTICAL HOLO' + (F.evade ? ' \u00B7 EVASIVE' : ''), mx, hy - 8);
-  }
-
   // ================================================================== frame loop
   var last = performance.now(), fpsN = 0, fpsT = 0, lowT = 0, highT = 0, fps = 60, frameN = 0, camQ = new T.Quaternion(), shakeV = new T.Vector3();
   function tick(now) {
     requestAnimationFrame(tick);
     var dt = Math.min(0.1, (now - last) / 1000); last = now; simT += dt; frameN++;
     fpsN++; fpsT += dt; if (fpsT >= 1) { fps = fpsN / fpsT; fpsN = 0; fpsT = 0; autoQuality(); }
-    if (ship.loc === 'space') { if (!grabPilot(dt) && !fightPilot(dt)) pilot(dt); hazards(dt); updateEvents(dt); }
+    if (ship.loc === 'space') { pilot(dt); hazards(dt); updateEvents(dt); }
     else { hazards(dt); updateLanding(dt); }
-    for (var sk in sweeps) if (sweeps[sk] > 0) sweeps[sk] -= dt;
-    if (dt > 0.055) longFrames++;
     if (ship.loc === 'descentSurf' || ship.loc === 'surface' || ship.loc === 'ascent') updateSurface(dt);
-    updateProbes(dt); updateEncounter(dt); updateMotion(dt);
+    updateProbes(dt); updateEncounter(dt);
     H.shieldU.t.value = simT; H.shieldU.base.value = ship.deflT > 0 ? 0.8 : 0;
     if (beamLine && beamLine.visible) { beamLine.userData.t -= dt; if (beamLine.userData.t < 0) beamLine.visible = false; }
     // world animation
     Object.keys(H.objs).forEach(function (id) { var o = H.objs[id], u = o.userData; if (!u || !u.def) return;
-      if (u.def.kind === 'planet') { var pd = o.position.distanceTo(ship.pos), pk = clamp(1 - (pd - u.def.r * 3) / (u.def.r * 12), 0, 1), ps = 0.68 + 0.57 * pk * pk; o.scale.setScalar(lerp(o.scale.x, ps, 1 - Math.exp(-dt * 2))); }
       if (u.clouds) u.clouds.rotation.y += dt * 0.006; if (u.body) u.body.rotation.y += dt * 0.003; if (u.spin) o.rotation.z += dt * u.spin; if (u.diskU) u.diskU.t.value = simT;
       if (u.blink) o.material.opacity = 0.4 + 0.6 * Math.abs(Math.sin(simT * 2.3));
       if (u.tail) { var tl = u.tail, a = tl.geo.attributes.position.array; for (var i = 0; i < tl.n; i++) { var s = (tl.seed[i * 4] + simT * 0.012 * tl.seed[i * 4 + 3]) % 1, sp = tl.rad * (0.15 + s * 1.6); a[i * 3] = tl.dir.x * tl.len * s + tl.seed[i * 4 + 1] * sp; a[i * 3 + 1] = tl.dir.y * tl.len * s + tl.seed[i * 4 + 2] * sp; a[i * 3 + 2] = tl.dir.z * tl.len * s + (tl.seed[i * 4 + 1] - tl.seed[i * 4 + 2]) * sp; } tl.geo.attributes.position.needsUpdate = true; }
@@ -926,8 +692,8 @@
     ship.shake = Math.max(0, ship.shake - dt * 0.6); shakeV.set((Math.random() - 0.5), (Math.random() - 0.5), 0).multiplyScalar(ship.shake * ship.shake * 1.2);
     var onSurf = ship.loc === 'descentSurf' || ship.loc === 'surface' || ship.loc === 'ascent';
     if (!onSurf) {
-      camera.position.copy(ship.pos).add(shakeV).add(tmpV.copy(mot.off).applyQuaternion(ship.quat));
-      camQ.copy(ship.quat).multiply(motionQ()); var fov = 62 + Math.min(14, ship.warp * 1.4);
+      camera.position.copy(ship.pos).add(shakeV);
+      camQ.copy(ship.quat); var fov = 62 + Math.min(14, ship.warp * 1.4);
       var vt = ship.view ? viewTarget() : null;
       if (vt) { tmpM.lookAt(camera.position, vt.pos, UP); tmpQ.setFromRotationMatrix(tmpM); camQ.copy(tmpQ); var dist = vt.pos.distanceTo(camera.position); fov = clamp(2 * Math.atan(vt.r * 2.4 / dist) * 57.3, 0.8, 62); }
       camera.quaternion.slerp(camQ, ship.view ? 1 - Math.exp(-dt * 3) : 1); camera.fov = lerp(camera.fov, fov, 1 - Math.exp(-dt * 2.5)); camera.updateProjectionMatrix();
@@ -943,30 +709,25 @@
       for (i = 0; i < H.streakN; i++) { ss[i * 3 + 2] += vz * dt; if (ss[i * 3 + 2] > 0) ss[i * 3 + 2] -= 400; var x = ss[i * 3], y = ss[i * 3 + 1], z = ss[i * 3 + 2]; sa[i * 6] = x; sa[i * 6 + 1] = y; sa[i * 6 + 2] = z; sa[i * 6 + 3] = x; sa[i * 6 + 4] = y; sa[i * 6 + 5] = z - len;
         ca[i * 6] = col.r; ca[i * 6 + 1] = col.g; ca[i * 6 + 2] = col.b; ca[i * 6 + 3] = col2.r * 0.2; ca[i * 6 + 4] = col2.g * 0.2; ca[i * 6 + 5] = col2.b * 0.2; }
       H.streaks.geometry.attributes.position.needsUpdate = true; H.streaks.geometry.attributes.color.needsUpdate = true; H.streaks.material.opacity = clamp((ship.warp - 0.6) / 2, 0, 1); }
-    updateTrails(dt, wv, wOn);
     $('warpglow').style.opacity = wOn ? (0.15 + wv * 0.6).toFixed(2) : 0; $('warpglow').style.background = 'radial-gradient(ellipse at 50% 42%, rgba(0,0,0,0) 25%, ' + (wv > 0.85 ? 'rgba(255,80,160,.35)' : 'rgba(90,120,255,.3)') + ' 75%)';
     SFX.setWarp(ship.warp); if (wOn && !wasWarp) SFX.play('warpIn'); if (!wOn && wasWarp) SFX.play('warpOut'); wasWarp = wOn;
     camera.updateMatrixWorld(true);
-    renderMain(onSurf, wv);
+    renderer.render(onSurf && surf ? surf : scene, camera);
     if (frameDirty) drawFrame();
     if (rung < 3 || frameN % 2 === 0) drawHud(rung < 3 ? dt : dt * 2);
     sendState(false);
-    if (Q.has('fps') && frameN % 30 === 0) $('fxInfo').textContent = Math.round(fps) + ' fps \u00B7 q' + rung + ' \u00B7 ' + renderer.info.render.calls + ' calls' + (lite ? ' \u00B7 lite' : '') + (perfLog.length ? ' \u00B7 ' + perfLog[perfLog.length - 1] : '');
+    if (Q.has('fps') && frameN % 30 === 0) $('fxInfo').textContent = Math.round(fps) + ' fps \u00B7 q' + rung + ' \u00B7 ' + renderer.info.render.calls + ' calls';
   }
   var wasWarp = false;
   function autoQuality() {
-    var lf = longFrames; longFrames = 0;
-    if (!SFX.S.muted && SFX.glitches && SFX.glitches() > 0) { perfStep('audio'); return; }   // audio first: any underrun steps the visuals down
     if (Q.has('q')) return;
-    if (lf >= 6 && rung < Qy.rungs.length - 1) { perfStep('hitch'); return; }
-    if (fps < Qy.downBelowFps) { lowT++; highT = 0; if (lowT >= Qy.downAfterSec && rung < Qy.rungs.length - 1) { lowT = 0; perfStep('fps'); } }
-    else if (fps > Qy.upAboveFps && !lite) { highT++; lowT = 0; if (highT >= Qy.upAfterSec && rung > 1) { rung--; highT = 0; resize(); } } else { lowT = 0; highT = 0; }
+    if (fps < Qy.downBelowFps) { lowT++; highT = 0; if (lowT >= Qy.downAfterSec && rung < Qy.rungs.length - 1) { rung++; lowT = 0; resize(); } }
+    else if (fps > Qy.upAboveFps) { highT++; lowT = 0; if (highT >= Qy.upAfterSec && rung > 1) { rung--; highT = 0; resize(); } } else { lowT = 0; highT = 0; }
   }
   // ================================================================== boot
   $('ttl').textContent = C.TITLE; $('ver').textContent = 'v' + C.version;
   setTimeout(function () { $('title').classList.add('gone'); }, Q.has('shots') ? 200 : 7000);
-  ['pointerdown', 'keydown'].forEach(function (ev2) { window.addEventListener(ev2, function () { SFX.unlock(); SFX.bed('drone', settings.drone); maximise(); }, { passive: true }); });
-  function maximise() { if (Q.has('shots') || Q.has('nofs')) return; var d = document.documentElement; try { if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen().catch(function () {}); } catch (e) {} }
+  ['pointerdown', 'keydown'].forEach(function (ev2) { window.addEventListener(ev2, function () { SFX.unlock(); SFX.bed('drone', settings.drone); }, { passive: true }); });
   window.addEventListener('keydown', function (e) {
     if (e.key === 'm' || e.key === 'M') SFX.mute(); if (e.key === 'v' || e.key === 'V') ship.view = !ship.view;
     var n = +e.key; if (n >= 1 && n <= 9 && C.sector[n - 1]) setCourse(C.sector[n - 1].id, 9);
@@ -978,7 +739,6 @@
   window.SPACE = { ship: ship, defs: defs, H: H, crew: function () { return crew; }, asg: function () { return asg; }, settings: function () { return settings; }, land: function () { return land; }, setCourse: setCourse, launchProbe: launchProbe, probes: probes,
     event: function (id) { ev.active = null; return startEvent(pickEvent(id)); }, encounter: startEncounter, glass: function () { glassT = 0; }, enc: function () { return enc; }, ev: function () { return ev; },
     jump: function (id, k) { var d = defs[id], o = H.objs[id].position; ship.course = null; ship.orbit = null; ship.speed = 0; ship.pos.copy(o).add(new T.Vector3(0, d.r * 0.3, standoff(d) * (k || 1) + d.r * 0.2)); faceNow(o); },
-    face: function (id) { faceNow(H.objs[id].position); }, log: function () { return logLines; }, alert: function () { return alertState; }, fps: function () { return fps; }, rung: function () { return rung; }, calls: function () { return renderer.info.render.calls; }, lastSpoken: function () { return SFX.lastText(); },
-    mot: function () { return mot; }, roll: startRoll, fight: function () { return fight; }, evade: evade, fire: firePhasers, sweep: sweep, contacts: contacts, grab: function () { return grab; }, grabber: grabber, perfStep: perfStep, lite: function () { return lite; }, post: function () { return !!post && postAllowed(); } };
+    face: function (id) { faceNow(H.objs[id].position); }, log: function () { return logLines; }, alert: function () { return alertState; }, fps: function () { return fps; }, rung: function () { return rung; }, calls: function () { return renderer.info.render.calls; }, lastSpoken: function () { return SFX.lastText(); } };
   function faceNow(p) { tmpM.lookAt(ship.pos, p, UP); ship.quat.setFromRotationMatrix(tmpM); camera.quaternion.copy(ship.quat); }
 })();

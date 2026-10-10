@@ -48,14 +48,3 @@ details { background: #0a1220; border: 1px solid #142233; border-radius: 12px; m
 .sheet.enc { border-color: #c9b8ff; } .sh-t { font-size: 16px; margin: 4px 0 10px; } .sh-s { font-size: 12px; letter-spacing: .1em; color: #c9b8ff; font-weight: 600; }
 #encOpts button { display: block; width: 100%; text-align: left; margin: 6px 0; padding: 12px; border-radius: 12px; border: 1px solid #3a3a6a; background: #141a32; font-size: 15px; }
 .toast { position: fixed; left: 50%; top: 70px; transform: translateX(-50%); background: #14283a; padding: 10px 16px; border-radius: 12px; z-index: 30; font-size: 14px; }
-.cubelbl { position: absolute; left: 10px; top: 10px; font-size: 13px; font-weight: 600; letter-spacing: .08em; color: #8fe6ff; background: rgba(5,10,18,.75); padding: 5px 9px; border-radius: 8px; pointer-events: none; }
-.zoom button.on { background: #1b4a66; border-color: #5fd8ff; }
-.fightbox { background: #1a0d12; border: 1px solid #803040; border-radius: 14px; padding: 2px 12px 8px; margin: 10px 0; } .fightbox h3 { color: #ff9a9a; }
-.tier { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; margin-left: 6px; letter-spacing: .05em; vertical-align: middle; }
-.tier.full { background: #1d5a3a; color: #bfffd8; } .tier.detail { background: #2a3a66; color: #c9d8ff; } .tier.broad { background: #4a3a1a; color: #ffe0a0; } .tier.none { background: #222a33; color: #7d9ab0; }
-.ent .ed b { color: #dbeefa; } .ent.none { opacity: .55; }
-.sheet.big { top: 18vh; bottom: auto; border-width: 2px; box-shadow: 0 0 0 100vmax rgba(0,0,0,.55), 0 0 40px rgba(201,184,255,.35); }
-.sh-h { font-size: 13px; font-weight: 700; letter-spacing: .14em; color: #ffd27a; animation: blink 1.2s infinite; } @keyframes blink { 50% { opacity: .45; } }
-.sheet.big .sh-t { font-size: 20px; line-height: 1.35; } .sh-r { font-size: 12px; letter-spacing: .12em; color: #8fe6ff; margin-top: 6px; }
-.sheet.big #encOpts button { font-size: 17px; padding: 16px; }
-.encpill { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 14px); transform: translateX(-50%); z-index: 19; padding: 14px 20px; border-radius: 30px; border: 2px solid #c9b8ff; background: #1a1730; color: #fff; font-weight: 600; font-size: 16px; }

@@ -46,12 +46,10 @@
     </div>
     <div class="pane" data-pane="helm">
       <div class="mapwrap"><canvas id="map" width="720" height="720" aria-label="Star map: drag to pan, pinch to zoom, tap a destination"></canvas>
-        <div class="zoom"><button id="zin">+</button><button id="zout">&minus;</button><button id="zme">&#9673;</button><button id="zcube" title="3D cube map">&#9634;</button></div>
-        <div id="cubeLbl" class="cubelbl" hidden></div>
+        <div class="zoom"><button id="zin">+</button><button id="zout">&minus;</button><button id="zme">&#9673;</button></div>
         <div id="pop" class="pop" hidden></div></div>
       <div class="warp"><div class="wl"><span id="warpLbl">WARP 6.0</span><span id="etaLbl"></span></div><input id="warp" type="range" min="0" max="9.9" step="0.1" value="6"></div>
       <div class="row"><button class="act" data-act='{"a":"stop"}'>All stop</button><button class="act tog" id="helmView">View screen</button></div>
-      <div class="row"><button class="act" data-act='{"a":"roll","kind":"roll"}'>Barrel roll</button><button class="act" data-act='{"a":"roll","kind":"corkscrew"}'>Corkscrew</button><button class="act tog" id="grabBtn">Grabber arms</button></div>
       <div id="landBox" class="landbox" hidden>
         <h3>Landing &middot; <span id="landPlanet">Thalassa-4471</span></h3>
         <div class="row"><button class="act" id="lMatch">1 &middot; Match orbit</button><button class="act" id="lAlign">2 &middot; Align corridor</button></div>
@@ -62,9 +60,7 @@
       <h3>Scan categories</h3><div id="cats"></div>
     </div>
     <div class="pane" data-pane="sci">
-      <h3>Sensor sweep <small>Default range always gives full detail. Bigger sweeps reach further but see less.</small></h3>
-      <div class="seg" id="sweepSeg"><button class="act" data-act='{"a":"sweep","size":"small"}'>Small</button><button class="act" data-act='{"a":"sweep","size":"medium"}'>Medium</button><button class="act" data-act='{"a":"sweep","size":"large"}'>Large</button></div>
-      <h3 id="sciHead">Contacts <small>nearest first, updating live</small></h3><div id="sciTargets" class="tlist"></div>
+      <h3>Targets</h3><div id="sciTargets" class="tlist"></div>
       <h3>Probes</h3><ul id="probeList" class="log"></ul>
       <h3>Readings</h3><ul id="sciLog" class="log"></ul>
     </div>
@@ -73,12 +69,7 @@
       <div class="row"><button class="act tog" id="shBtn">Shields</button><button class="act" data-act='{"a":"deflector"}'>Deflector pulse</button></div>
       <h3>Alert level</h3>
       <div class="seg"><button class="act" data-act='{"a":"alert","level":"auto"}'>Auto</button><button class="act" data-act='{"a":"alert","level":"yellow"}'>Yellow</button><button class="act warn" data-act='{"a":"alert","level":"red"}'>Red</button></div>
-      <div id="fightBox" class="fightbox" hidden>
-        <h3>Raider engaged <small id="fightInfo"></small></h3>
-        <div class="bars"><div>Raider hull <span id="fightHp"></span><i><b id="fightBar" style="background:#ff6a6a"></b></i></div></div>
-        <div class="row"><button class="act tog" id="evadeBtn">Evasive manoeuvres</button><button class="act warn" id="fireBtn">Fire phasers</button></div>
-      </div>
-      <p class="small" id="tacCalm">Out here, the best move is usually to look harmless, keep your shields up and fly away slowly. If a raider engages, evade and phaser controls appear here.</p>
+      <p class="small">No weapons yet. Out here, the best move is usually to look harmless, keep your shields up and fly away slowly.</p>
     </div>
     <div class="pane" data-pane="eng">
       <p class="small">Drag from one system to another to move one unit of power. Everything is a trade.</p>
@@ -115,8 +106,7 @@
 </section>
 
 <div id="prompt" class="sheet" hidden><div class="sh-t" id="prT"></div><div class="row"><button id="prYes" class="act go">Do it</button><button id="prNo" class="act">Not now</button></div></div>
-<div id="encSheet" class="sheet enc big" hidden><div class="sh-h">&#128225; INCOMING MESSAGE</div><div class="sh-s" id="encSp"></div><div class="sh-t" id="encText"></div><div class="sh-r">RESPOND:</div><div id="encOpts"></div><div class="row"><button class="act" id="encLater">Later</button></div><div class="small" id="encLeft"></div></div>
-<button id="encPill" class="encpill" hidden>&#128172; Message waiting &middot; tap to respond</button>
+<div id="encSheet" class="sheet enc" hidden><div class="sh-s" id="encSp"></div><div class="sh-t" id="encText"></div><div id="encOpts"></div><div class="small" id="encLeft"></div></div>
 <div id="toast" class="toast" hidden></div>
 
 <script src="js/vendor/peerjs.min.js"></script>

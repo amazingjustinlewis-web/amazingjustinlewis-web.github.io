@@ -4,10 +4,10 @@
   var TITLE = 'DRIFT SIGNAL';              // <-- the one place to rename the game
   var C = root.SPACE_CONFIG = {
     TITLE: TITLE, workingTitle: false,
-    version: '0.2',
-    peerPrefix: 'ztp-driftsignal-v02-',
+    version: '0.1',
+    peerPrefix: 'ztp-driftsignal-v01-',
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }],
-    liveControllerUrl: 'https://amazingjustinlewis-web.github.io/games/space/controller.html',
+    liveControllerUrl: 'https://amazingjustinlewis-web.github.io/games/space/v0.1/controller.html',
     maxCrew: 6,
     // crew stations; order = auto-assign priority for people who join after the captain
     stations: [
@@ -87,13 +87,7 @@
       { id: 'steal', weight: 1, text: 'It was a trap. They latch on, siphon 15% of your fuel and flee laughing.' },
       { id: 'royal', weight: 1, text: 'A royal message arrives: "Her Radiance did NOT require assistance and finds your tractor beam presumptuous."' }
     ],
-    shipStart: { x: 420, y: 80, z: 300 },
-    // v0.2 tiered sensors: default range always gives full detail; sweeps reach further with less detail
-    sensors: { base: 2600, small: 5200, medium: 11000, large: 26000, sweepHold: 75 },
-    interference: { thal: 'EM field', neb: 'dust fog', bh: 'gravitational shear', gas: 'radiation belts', echo: 'signal echo' },
-    broad: { station: 'Artificial structure', planet: 'Planetary body', blackhole: 'Gravitational anomaly', nebula: 'Diffuse gas cloud', comet: 'Small icy body', signal: 'Repeating transmission', ship: 'Small vessel' },
-    // v0.2 ship motion: gentle banking, rare slow barrel rolls / corkscrews
-    motion: { bankMax: 0.42, bankK: 2.4, rollDur: 9, rollCool: [110, 200] }
+    shipStart: { x: 420, y: 80, z: 300 }
   };
   // seeded random shared by TV and phone (mulberry32)
   C.rng = function (seed) { var a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
