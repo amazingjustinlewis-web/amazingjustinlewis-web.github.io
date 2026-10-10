@@ -6,7 +6,7 @@
   function saveSet(s) { try { localStorage.setItem('walker-settings', JSON.stringify(s)); } catch (e) {} }
 
   function Pad(box, o) {
-    var self = this; this.o = o; this.box = box; this.page = 'go'; this.manualAt = 0; this.s = loadSet(); this.moms = [];
+    var self = this; this.o = o; this.box = box; this.page = 'home'; this.manualAt = 0; this.s = loadSet(); this.moms = [];
     box.classList.add('wpad'); if (o.compact) box.classList.add('compact');
     this.tabs = el('div', 'wtabs'); box.appendChild(this.tabs);
     C.pages.forEach(function (p) {
@@ -20,7 +20,7 @@
     this.backB = el('button', 'wback', '\u2B05\uFE0F'); this.backB.setAttribute('aria-label', 'Back'); box.appendChild(this.backB);
     this.backB.onclick = function () { self.pulse(self.backB); o.send({ t: 'back' }); };
     this.setBox = el('div', 'wset hidden'); box.appendChild(this.setBox);
-    this.show('go'); this.buildSettings();
+    this.show('home'); this.buildSettings();
   }
   Pad.prototype.pulse = function (b) { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); if (navigator.vibrate) try { navigator.vibrate(12); } catch (e) {} };
   Pad.prototype.show = function (id) {
@@ -30,7 +30,7 @@
     this.grid.innerHTML = '';
     p.buttons.forEach(function (b) {
       var e = el('button', 'wbtn', '<span>' + b.pic + '</span>'); e.style.setProperty('--c', b.color); e.dataset.id = b.id; e.setAttribute('aria-label', b.say || b.id);
-      e.addEventListener('pointerdown', function (ev) { ev.preventDefault(); self.pulse(e); self.o.send({ t: 'tap', id: b.id }); });
+      e.addEventListener('pointerdown', function (ev) { ev.preventDefault(); self.pulse(e); self.o.send({ t: 'tap', id: b.id }); if (b.page) { self.manualAt = Date.now(); setTimeout(function () { self.show(b.page); }, 180); } });
       self.grid.appendChild(e);
     });
   };

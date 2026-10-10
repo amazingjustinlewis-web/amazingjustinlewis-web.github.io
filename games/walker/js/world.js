@@ -165,7 +165,7 @@
 
     // ---- trees, bushes, flowers
     var trunk = M('#a07850'), leaves = [M('#7fc46a'), M('#94d47a'), M('#6bb86a'), M('#b6dc7a')];
-    function clear(x, z) { if (Math.abs(z - pathZ(x)) < 4 && Math.abs(x) < 42) return false; if (Math.hypot(x - W.B.x, z) < 14 || Math.hypot(x - W.P.x, z) < 16 || Math.hypot(x - W.R.x, z - W.R.z) < 6 || Math.hypot(x - W.POND.x, z - W.POND.z) < 7) return false; if (Math.abs(x) < 2 && z < 0 && z > -22) return false; if (Math.abs(z + 70) < 5) return false; return true; }
+    function clear(x, z) { if (Math.abs(z - pathZ(x)) < 4 && Math.abs(x) < 42) return false; if (Math.hypot(x - W.B.x, z) < 14 || Math.hypot(x - W.P.x, z) < 16 || Math.hypot(x - W.R.x, z - W.R.z) < 6 || Math.hypot(x - W.POND.x, z - W.POND.z) < 7) return false; if (Math.abs(x) < 2 && z < 0 && z > -22) return false; if (Math.abs(z + 70) < 5) return false; if (root.WalkerWorld2 && !root.WalkerWorld2.clear(x, z)) return false; return true; }
     var nT = q.trees, n = 0, tries = 0;
     while (n < nT && tries++ < 2000) {
       var tx = (rnd() - 0.5) * 180, tz = (rnd() - 0.5) * 140; if (!clear(tx, tz)) continue;
@@ -195,6 +195,7 @@
     var rb = new T.Group(); ['#ff8080', '#ffb060', '#ffe070', '#90e090', '#80c0ff', '#b090ff'].forEach(function (c, i) { mesh(new T.TorusGeometry(70 - i * 2, 1, 6, 48, Math.PI), new T.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, fog: false }), 0, 0, 0, { parent: rb }); }); rb.position.set(10, -5, -150); scene.add(rb); W.rainbow = rb;
     var sg = new T.BufferGeometry(), spp = new Float32Array(1500 * 3); for (k = 0; k < 1500; k++) { var th = rnd() * Math.PI * 2, ph = rnd() * Math.PI * 0.5, R0 = 300; spp[k * 3] = Math.cos(th) * Math.cos(ph) * R0; spp[k * 3 + 1] = Math.sin(ph) * R0 + 40; spp[k * 3 + 2] = Math.sin(th) * Math.cos(ph) * R0; }
     sg.setAttribute('position', new T.BufferAttribute(spp, 3)); W.stars = new T.Points(sg, new T.PointsMaterial({ color: '#ffffff', size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0, fog: false })); W.stars.visible = false; scene.add(W.stars);
+    if (root.WalkerWorld2) root.WalkerWorld2.build(scene, W, q);
     return W;
   }
   root.WalkerWorld = { build: build, pathZ: pathZ };

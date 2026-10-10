@@ -2,9 +2,9 @@
 .wpad { --border: #7ed957; font-family: Fredoka, system-ui, sans-serif; display: flex; flex-direction: column; gap: 10px; padding: 10px; box-sizing: border-box; border: 8px solid var(--border); border-radius: 26px; background: #fffaf0; transition: border-color .5s; position: relative; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .wpad button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .wtabs { display: flex; gap: 8px; }
-.wtab { flex: 1; font-size: 30px; padding: 6px 0; border-radius: 16px; background: #f1ebe0; opacity: .6; border-bottom: 5px solid var(--c, #ccc) !important; }
+.wtab { flex: 1; font-size: min(30px, 7vw); padding: 6px 0; border-radius: 16px; background: #f1ebe0; opacity: .6; border-bottom: 5px solid var(--c, #ccc) !important; }
 .wtab.on { opacity: 1; background: #fff; box-shadow: 0 2px 8px #0002; }
-.wgear { flex: 0 0 56px; border-bottom-color: #bbb !important; }
+.wgear { flex: 0 0 44px; border-bottom-color: #bbb !important; }
 .wmoms { display: flex; gap: 8px; min-height: 0; justify-content: center; }
 .wmom { font-size: 40px; width: 74px; height: 74px; border-radius: 50%; background: #fff; box-shadow: 0 3px 10px #0003; animation: float 3s ease-in-out infinite, fadein .8s; }
 .wmom.gone { opacity: .3; }
@@ -29,9 +29,9 @@
 .wclose { align-self: flex-end; font-size: 26px; background: #ece4d6; border-radius: 14px; padding: 6px 14px; }
 /* compact = a strip along the bottom of the TV/iPad screen */
 .wpad.compact { flex-direction: row; align-items: stretch; height: 100%; border-radius: 22px 22px 0 0; border-bottom: 0; }
-.wpad.compact .wtabs { flex-direction: column; flex: 0 0 64px; }
-.wpad.compact .wtab { font-size: 24px; }
-.wpad.compact .wgear { flex: 1; }
+.wpad.compact .wtabs { flex: 0 0 150px; flex-wrap: wrap; align-content: stretch; gap: 4px; }
+.wpad.compact .wtab { font-size: min(22px, 3.4vh); flex: 0 0 calc(50% - 2px); padding: 0; }
+.wpad.compact .wgear { flex: 0 0 calc(50% - 2px); }
 .wpad.compact .wgrid { grid-template-columns: repeat(6, 1fr); grid-template-rows: 1fr; }
 .wpad.compact .wbtn { font-size: min(7vw, 9vh); }
 .wpad.compact .wmoms { position: absolute; bottom: calc(100% + 10px); left: 0; right: 0; }

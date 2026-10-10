@@ -28,7 +28,7 @@
 
   // ---------------------------------------------------------------- state
   var settings = walkerLoadSettings();
-  var st = { mode: 'start', place: 'path', page: 'go', act: null, energy: 0, lastTap: 0, idle: 0, route: null, dest: null, running: 0, moments: [], momentOn: null, t: 0, rocket: null };
+  var st = { mode: 'start', place: 'path', page: 'home', act: null, energy: 0, lastTap: -9, idle: 0, route: null, dest: null, running: 0, spd: 1.5, taps: [], moments: [], momentOn: null, t: 0, rocket: null, camQ: null, windAmt: 0, zooF: null };
   var pos = V(-6, 0, W.pathZ(-6)), heading = 0;    // the kid's feet
   var camPos = V(-6, EYE, W.pathZ(-6)), camLook = V(0, EYE, W.pathZ(0)), tPos = camPos.clone(), tLook = camLook.clone(), k = 4, roll = 0, tRoll = 0, flip = 0, twist = 0;
   var glance = V(0, 0, 0), glanceT = 0, nextGlance = 6, glanceAt = null, glanceAtT = 0;
@@ -39,11 +39,18 @@
     play: { door: V(W.P.x - 12, 0, W.pathZ(W.P.x - 12)), in: [V(W.P.x - 1, 0, 2)], look: V(W.P.x + 3, 1.5, -4), px: 34 },
     rocket: { door: V(0, 0, -2), in: [V(0, 0, -10), V(0, 0, -18)], look: V(0, 6, -24), px: 0 },
     pond: { door: V(1, 0, W.pathZ(1)), in: [V(3, 0, 8), V(4, 0, 11.2)], look: V(5, 0.3, 17), px: 1 },
-    bench: { door: V(-14, 0, W.pathZ(-14)), in: [V(-14, 0, -7.3)], look: V(-10, 1, 2), px: -14, sit: true }
+    bench: { door: V(-14, 0, W.pathZ(-14)), in: [V(-14, 0, -7.3)], look: V(-10, 1, 2), px: -14, sit: true },
+    coaster: { door: V(-34, 0, W.pathZ(-34)), in: [V(-35, 0, -18), V(-36, 0, -27.6)], look: V(-30, 6, -40) },
+    zoo: { door: V(28, 0, W.pathZ(28)), in: [V(28, 0, -14), V(28, 0, -22)], look: V(28, 1.2, -36) },
+    water: { door: V(-24, 0, W.pathZ(-24)), in: [V(-24, 0, 14), V(-24, 0, 21.5)], look: V(-26, 2, 36) },
+    boats: { door: V(26, 0, W.pathZ(26)), in: [V(27, 0, 14), V(27, 0, 21.2)], look: V(28, 0.5, 32) }
   };
   function groundY(x, z) { return (Math.abs(x - W.B.x) < 6.6 && Math.abs(z - W.B.z) < 6.6) ? W.floorY : 0; }
   function inCastle() { return groundY(pos.x, pos.z) > 0; }
-  function pageFor(place) { return place === 'bouncy' ? 'bouncy' : place === 'play' ? 'play' : 'go'; }
+  var PAGE_OF = { bouncy: 'bouncy', play: 'play', zoo: 'zoo', water: 'water', boats: 'water', coaster: 'rides', rocket: 'rides', pond: 'quiet', bench: 'quiet' };
+  function pageFor(place) { return PAGE_OF[place] || null; }
+  function placeFor(id) { var p = id.slice(0, 2); if (p === 'b_') return 'bouncy'; if (p === 'p_') return 'play'; if (p === 'z_') return 'zoo'; if (id === 'w_boats') return 'boats'; if (p === 'w_') return 'water'; if (id === 'r_coaster') return 'coaster'; if (id === 'q_sky') return 'bench'; return null; }
+  var CAT_PLACE = { cat_bouncy: 'bouncy', cat_play: 'play', cat_zoo: 'zoo', cat_water: 'water' }, GO_PLACE = { q_bench: 'bench', q_pond: 'pond' };
 
   // ---------------------------------------------------------------- routes
   function pathX(p) { return clamp(p.x, -38, 38); }
@@ -57,14 +64,15 @@
     return r;
   }
   function goTo(dest, run) {
-    if (st.dest === dest && st.mode === 'travel') { st.running = Math.min(2, st.running + 1); return; }
+    if (st.dest === dest && st.mode === 'travel') return;   // extra taps just speed us up (tap rate, see update)
     if (st.place === dest && st.mode !== 'travel') return;
     stopAct(); st.momentOn = null;
-    st.route = buildRoute(dest); st.dest = dest; st.mode = 'travel'; st.running = run ? 1 : 0; st.place = 'path'; st.ri = 0;
+    if (st.mode !== 'travel') st.spd = settings.car ? 6 : 1.8;
+    st.route = buildRoute(dest); st.dest = dest; st.mode = 'travel'; st.place = 'path'; st.ri = 0;
   }
   function walkOut(run) {
     stopAct();
-    if (SPOTS[st.place]) { var sp = SPOTS[st.place], r = []; for (var i = sp.in.length - 2; i >= 0; i--) r.push(sp.in[i].clone()); r.push(sp.door.clone()); var dx = sp.door.x > 0 ? -5 : 5; r.push(V(sp.door.x + dx, 0, W.pathZ(sp.door.x + dx))); st.route = r; st.ri = 0; st.dest = null; st.mode = 'travel'; st.place = 'path'; st.running = run ? 1 : 0; }
+    if (SPOTS[st.place]) { var sp = SPOTS[st.place], r = []; for (var i = sp.in.length - 2; i >= 0; i--) r.push(sp.in[i].clone()); r.push(sp.door.clone()); var dx = sp.door.x > 0 ? -5 : 5; r.push(V(sp.door.x + dx, 0, W.pathZ(sp.door.x + dx))); st.route = r; st.ri = 0; st.dest = null; st.mode = 'travel'; st.place = 'path'; st.spd = settings.car ? 6 : 1.8; }
   }
   function lookAhead(d) {
     var p = pos.clone(), i = st.ri, left = d;
@@ -73,24 +81,35 @@
   }
 
   // ---------------------------------------------------------------- activities
-  var ACT_PLACE = { b_: 'bouncy', p_: 'play' };
-  function stopAct() { st.act = null; flip = 0; twist = 0; tRoll = 0; }
-  function startAct(id) { st.act = { id: id, t: 0, lvl: 1, last: st.t, q: 0, ph: 0, phase: 'start', pt: 0, flips: [] }; actTap(st.act, true); }
+  function stopAct() { if (st.act && st.act.cleanup) st.act.cleanup(); st.act = null; flip = 0; twist = 0; tRoll = 0; hand.visible = false; myTube.visible = false; st.zooF = null; W.wp.level = 0.35; }
+  function startAct(id) { st.act = { id: id, t: 0, lvl: 1, last: st.t, q: 0, ph: 0, phase: 'start', pt: 0, flips: [], stage: 1, mult: 1 }; actTap(st.act, true); }
   function actTap(a, first) {
-    a.last = st.t; if (!first) a.lvl = Math.min(6, a.lvl + 1);
-    if (a.id === 'b_flip' && a.flips.length < 3) a.flips.push(0);
+    a.last = st.t; if (!first) a.lvl = Math.min(a.id.indexOf('b_') === 0 ? 8 : 6, a.lvl + 1);
+    if (a.id.indexOf('b_') === 0) st.energy += 1.5;
+    if (a.id.indexOf('z_') === 0) { if (!first) a.stage++; a.more = Math.max(0, a.stage - 4); a.stageT = 0; a.from = pos.clone(); }
+    if (a.id === 'r_coaster' && !first) { if (a.phase === 'ride' || a.phase === 'board') a.mult = Math.min(1.6, a.mult + 0.12); a.again = true; }
+    if (a.id === 'w_slide' && !first) { a.again = true; a.mult = Math.min(1.5, (a.mult || 1) + 0.1); }
+    if (a.id === 'w_river' && !first) { a.mult = Math.min(2.2, (a.mult || 1) + 0.25); a.spinT = 0; }
+    if (a.id === 'w_bucket') { var B = W.wp.bucket; if (B.tip <= 0) B.fill = Math.min(1, B.fill + (first ? 0.1 : 0.17)); }
+    if (a.id === 'w_float' && !first) { a.kick = 1; S.splash(false); }
+    if (a.id === 'w_boats' && !first) { a.burst = 1.4; }
+    if (a.id === 'q_sky' && !first) { a.pick = (a.pick || 0) + 1; }
+    if (a.id === 'b_flip' && a.flips.length < 4) a.flips.push(0);
     if (a.id === 'b_ball') a.q++;
     if ((a.id === 'b_slide' || a.id === 'p_slide') && !first) a.q = Math.min(3, a.q + 1);
     if (a.id === 'p_sand') { W.sandPile.scale.set(1 + a.lvl * 0.15, 0.4 + a.lvl * 0.12, 1 + a.lvl * 0.15); S.step('dirt', 2); if (a.lvl >= 4) S.pop(); }
     if (a.id === 'b_kids') { st.energy += 3; setTimeout(function () { S.giggle(1.2); }, 300); }
   }
   function tap(id) {
-    S.init(); hideStart(); st.lastTap = st.t; st.idle = 0; st.energy += 1;
+    S.init(); hideStart(); st.lastTap = st.t; st.idle = 0; st.energy += 1; st.taps.push(st.t);
     if (id === 'buddy') return buddyTap();
-    if (id.indexOf('go_') === 0) { var dest = { go_bouncy: 'bouncy', go_play: 'play', go_rocket: 'rocket', go_pond: 'pond', go_bench: 'bench' }[id]; var fast = st.t - (st.lastGo || -9) < 1.3 && st.lastGoId === id; st.lastGo = st.t; st.lastGoId = id; if (dest === 'rocket' && st.place === 'rocket') return rocketTap(); goTo(dest, fast); if (dest === 'rocket') st.pendingAct = 'rocket'; return; }
-    var need = ACT_PLACE[id.slice(0, 2)];
-    if (st.place !== need) { var fast2 = st.pendingAct === id; goTo(need, fast2); st.pendingAct = id; return; }
-    if (st.act && st.act.id === id) actTap(st.act); else startAct(id);
+    if (id === 'r_car') { applySettings({ car: !settings.car }); S.pop(); if (settings.car) S.car(); return; }
+    if (id.indexOf('cat_') === 0) { var cp = CAT_PLACE[id]; if (cp && st.place !== cp && !(st.mode === 'travel' && st.dest === cp)) { st.pendingAct = null; goTo(cp); } return; }
+    if (GO_PLACE[id]) { if (st.place !== GO_PLACE[id]) { st.pendingAct = null; goTo(GO_PLACE[id]); } return; }
+    if (id === 'r_rocket') { if (st.place === 'rocket' && st.mode !== 'travel') return rocketTap(); goTo('rocket'); st.pendingAct = 'rocket'; return; }
+    var need = placeFor(id); if (!need) return;
+    if (st.place !== need || st.mode === 'travel') { goTo(need); st.pendingAct = id; return; }
+    if (st.act && st.act.id === id) actTap(st.act); else { stopAct(); startAct(id); }
   }
   function back() {
     S.init(); st.lastTap = st.t; st.idle = 0;
@@ -98,7 +117,7 @@
     if (st.rocket) { st.rocket.t = Math.max(st.rocket.t, st.rocket.dur - 6); return; }
     if (st.momentOn) { endMoment(); return; }
     if (st.act) { stopAct(); return; }
-    if (st.mode === 'travel') { if (fast) { st.running = 1; return; } if (!st.dest) return; st.route = null; st.dest = null; st.mode = 'area'; st.pendingAct = null; return; }
+    if (st.mode === 'travel') { if (fast) { st.taps.push(st.t, st.t); st.lastTap = st.t; return; } if (!st.dest) return; st.route = null; st.dest = null; st.mode = 'area'; st.pendingAct = null; return; }
     walkOut(fast);
   }
 
@@ -107,31 +126,57 @@
   var tmp = V(0, 0, 0);
   function poseAct(a, dt) {
     a.t += dt;
-    if (st.t - a.last > 7 && a.lvl > 0) { a.lvl = Math.max(0, a.lvl - 1); a.last = st.t; }
+    if (st.t - a.last > (a.id.indexOf('b_') === 0 ? 4 : 7) && a.lvl > 0) { a.lvl = Math.max(0, a.lvl - 1); a.last = st.t; }
     var L = a.lvl, B = W.B, P = W.P;
     switch (a.id) {
       case 'b_bounce': case 'b_flip': case 'b_kids': {
-        var freq = 0.8 + Math.min(L, 4) * 0.12; a.ph += dt * freq * Math.PI;
-        var h = a.id === 'b_kids' ? 0.35 : L === 0 ? 0.06 : 0.25 + Math.min(L, 6) * 0.32 + (a.id === 'b_flip' ? 0.8 : 0);
-        var s = Math.abs(Math.sin(a.ph)); if (a.prevS !== undefined && s < a.prevS && a.down === false) {} if (a.prevS !== undefined && a.prevS < 0.12 && s >= 0.12 && L > 0) S.boing(h); a.prevS = s;
+        var freq = 0.8 + Math.min(L, 5) * 0.1; a.ph += dt * freq * Math.PI;
+        var h = a.id === 'b_kids' ? 0.35 + Math.min(L, 8) * 0.12 : L === 0 ? 0.06 : 0.25 + Math.min(L, 8) * 0.42 + (a.id === 'b_flip' ? 0.8 : 0);
+        var s = Math.abs(Math.sin(a.ph)); if (a.prevS !== undefined && s < a.prevS && a.down === false) {} if (a.prevS !== undefined && a.prevS < 0.12 && s >= 0.12 && L > 0) { S.boing(h); if (a.id === 'b_bounce' && L >= 4 && !a.flips.length && Math.random() < (L - 3) * 0.2) a.flips.push(0); if (L >= 6 && Math.random() < 0.3) S.giggle(0.7); } a.prevS = s;
         var wander = L >= 3 ? 1.6 : 0.4, cx = B.x + 2 + Math.sin(a.t * 0.23) * wander, cz = B.z + 1 + Math.cos(a.t * 0.19) * wander;
         pos.set(cx, 0, cz);
         var look = a.id === 'b_kids' ? V(cx - 3, W.floorY + 1, cz) : V(B.x - 6 + Math.sin(a.t * 0.1) * 3, W.floorY + 1.5 + s * 0.5, B.z + Math.cos(a.t * 0.13) * 4);
         set(V(cx, W.floorY + EYE + h * s, cz), look, 14);
         // flips: each queued flip plays near the top
-        if (a.flips.length) { a.flips[0] += dt / 1.3; flip = -TAU * ease(a.flips[0]); twist = L >= 5 ? TAU * ease(a.flips[0]) : 0; if (a.flips[0] >= 1) { a.flips.shift(); flip = 0; twist = 0; S.whee(); } }
+        if (a.flips.length) { a.flips[0] += dt / (L >= 6 ? 1.0 : 1.3); flip = -TAU * ease(a.flips[0]); twist = L >= 5 ? TAU * ease(a.flips[0]) : 0; if (a.flips[0] >= 1) { a.flips.shift(); flip = 0; twist = 0; S.whee(); } }
         break; }
       case 'b_ball': {
-        var d = Math.max(1.6, 4.5 - L * 0.5), spot = V(W.hoop.x + d * 0.75, W.floorY, W.hoop.z + d * 0.75); pos.set(spot.x, 0, spot.z);
-        var dunk = L >= 5 && a.throwT !== undefined;
-        set(V(spot.x, W.floorY + EYE + (dunk ? Math.sin(clamp(a.throwT, 0, 1) * Math.PI) * 1.6 : 0), spot.z), V(W.hoop.x, W.hoop.y - 0.3, W.hoop.z), 6);
-        if (a.throwT === undefined && a.q > 0) { a.q--; a.throwT = 0; a.from = V(spot.x - 0.3, W.floorY + 1.2, spot.z - 0.3); }
-        if (a.throwT !== undefined) {
-          a.throwT += dt / 1.1; var t = a.throwT;
-          if (t < 1) { W.ball.position.lerpVectors(a.from, W.hoop, t); W.ball.position.y += Math.sin(t * Math.PI) * (1.2 + d * 0.2); }
-          else { if (!a.swished) { a.swished = true; S.swish(); if (Math.random() < 0.5) S.giggle(0.6); } W.ball.position.set(W.hoop.x, W.hoop.y - (t - 1) * 3, W.hoop.z); if (W.ball.position.y < W.floorY + 0.2) W.ball.position.y = W.floorY + 0.2; }
-          if (t > 1.8) { a.throwT = undefined; a.swished = false; }
-        } else { W.ball.position.set(spot.x - 0.3, W.floorY + 1.0 + Math.abs(Math.sin(a.t * 3)) * 0.15, spot.z - 0.3); }
+        var dist = Math.max(1.8, 4.2 - L * 0.35), dir = V(1, 0, 1).normalize(), spot = V(W.hoop.x + dir.x * dist, W.floorY, W.hoop.z + dir.z * dist); pos.set(spot.x, 0, spot.z);
+        var handP = V(spot.x - dir.x * 0.8, W.floorY + 0.95, spot.z - dir.z * 0.8), b = a.ball || (a.ball = { ph: 'hold', t: 0, p: W.ball.position.clone(), v: V(0, 0, 0) });
+        b.t += dt; var bl = W.ball.position;
+        set(V(spot.x, W.floorY + EYE, spot.z), b.ph === 'fly' ? V(W.hoop.x, W.hoop.y - 0.1, W.hoop.z).lerp(bl, 0.35) : b.ph === 'dribble' ? V(W.hoop.x, W.hoop.y - 0.6, W.hoop.z).lerp(handP.clone().setY(W.floorY), 0.6) : V(W.hoop.x, W.hoop.y - 0.2, W.hoop.z), 6);
+        if (b.ph === 'hold' || b.ph === 'back') {
+          if (b.ph === 'back') { bl.lerp(handP, Math.min(1, dt * 4)); if (b.t > 0.8) { b.ph = 'hold'; b.t = 0; } }
+          else bl.set(handP.x, handP.y + Math.sin(a.t * 2) * 0.03, handP.z);
+          if (b.ph === 'hold' && a.q > 0) { a.q--; b.ph = 'dribble'; b.t = 0; b.n = 0; }
+        } else if (b.ph === 'dribble') {
+          var per = 0.5, f = (b.t / per) % 1, top = handP.y - (W.floorY + 0.2);
+          bl.set(handP.x, W.floorY + 0.2 + top * Math.pow(Math.abs(1 - 2 * f), 0.75), handP.z);
+          var nb = Math.floor(b.t / per + 0.5); if (nb > (b.n || 0)) { b.n = nb; S.step('soft', 3); S.boing(0.05); }
+          if (b.t > per * 2) { b.ph = 'rise'; b.t = 0; }
+        } else if (b.ph === 'rise') {
+          var rel = V(spot.x - dir.x * 0.3, W.floorY + 2.05, spot.z - dir.z * 0.3); bl.lerpVectors(handP, rel, ease(b.t / 0.35));
+          if (b.t > 0.38) {
+            var swish = Math.random() < 0.72, tg = W.hoop.clone(); b.rimHits = 0; b.made = false;
+            if (!swish) { var side = Math.random() < 0.5 ? 1 : -1, r0 = Math.random(); if (r0 < 0.4) tg.add(V(-dir.z * side * 0.3, 0, dir.x * side * 0.3)); else tg.addScaledVector(dir, r0 < 0.7 ? 0.27 : -0.29); }
+            var Tt = 0.8 + dist * 0.08; b.p.copy(rel); b.v.set((tg.x - rel.x) / Tt, (tg.y + 0.02 - rel.y + 0.5 * 9.8 * Tt * Tt) / Tt, (tg.z - rel.z) / Tt); b.ph = 'fly'; b.t = 0; S.whoosh(0.3);
+          }
+        } else if (b.ph === 'fly') {
+          var H = W.hoop, Bx = W.B.x - 5.9, Bz = W.B.z - 5.9;
+          for (var ss = 0; ss < 6; ss++) {
+            var h6 = dt / 6, py = b.p.y; b.v.y -= 9.8 * h6; b.p.addScaledVector(b.v, h6);
+            var rx = b.p.x - H.x, rz = b.p.z - H.z, rh = Math.hypot(rx, rz) || 1e-4, qx = H.x + rx / rh * 0.32, qz = H.z + rz / rh * 0.32;
+            var nx = b.p.x - qx, ny = b.p.y - H.y, nz = b.p.z - qz, nd = Math.sqrt(nx * nx + ny * ny + nz * nz);
+            if (nd < 0.245) { nx /= nd; ny /= nd; nz /= nd; var vn = b.v.x * nx + b.v.y * ny + b.v.z * nz; if (vn < 0) { b.v.x -= 1.55 * vn * nx; b.v.y -= 1.55 * vn * ny; b.v.z -= 1.55 * vn * nz; b.rimHits++; S.pluck(520 + Math.random() * 80, 0.6); } b.p.set(qx + nx * 0.245, H.y + ny * 0.245, qz + nz * 0.245); }
+            var bd = (b.p.x - Bx) * dir.x + (b.p.z - Bz) * dir.z, lat = (b.p.x - Bx) * -dir.z + (b.p.z - Bz) * dir.x, vb = b.v.x * dir.x + b.v.z * dir.z;
+            if (bd < 0.25 && bd > -0.3 && Math.abs(lat) < 0.7 && Math.abs(b.p.y - 3.8) < 0.55 && vb < 0) { b.v.x -= 1.6 * vb * dir.x; b.v.z -= 1.6 * vb * dir.z; S.boing(0.2); }
+            if (!b.made && py > H.y && b.p.y <= H.y && rh < 0.3) { b.made = true; S.swish(); if (Math.random() < 0.6) setTimeout(function () { S.giggle(0.7); }, 300); b.v.multiplyScalar(0.45); }
+            if (b.p.y < W.floorY + 0.2) { b.p.y = W.floorY + 0.2; if (b.v.y < -1) S.step('soft', Math.min(3, -b.v.y)); b.v.y = -b.v.y * 0.55; b.v.x *= 0.8; b.v.z *= 0.8; }
+            var lx = b.p.x - W.B.x, lz = b.p.z - W.B.z; if (Math.abs(lx) > 6.3) { b.v.x = -b.v.x * 0.5; b.p.x = W.B.x + Math.sign(lx) * 6.3; } if (Math.abs(lz) > 6.3) { b.v.z = -b.v.z * 0.5; b.p.z = W.B.z + Math.sign(lz) * 6.3; }
+          }
+          bl.copy(b.p); a.lastShot = { made: b.made, rim: b.rimHits };
+          if (b.t > 3.2) { b.ph = 'back'; b.t = 0; window.WALKER.shots = (window.WALKER.shots || []).concat([a.lastShot]); }
+        }
         break; }
       case 'b_slide': case 'p_slide': {
         var top = a.id === 'b_slide' ? W.bSlideTop : W.pSlideTop, bot = a.id === 'b_slide' ? W.bSlideBot : W.pSlideBot;
@@ -178,20 +223,212 @@
       case 'p_sand': {
         var sd = W.sandC; set(V(sd.x - 1.6, 0.85, sd.z + 0.6), V(sd.x + 0.5, 0.2, sd.z - 0.4), 3); pos.set(sd.x - 1.6, 0, sd.z + 0.6);
         break; }
+      case 'r_coaster': poseCoaster(a, dt); break;
+      case 'z_horse': case 'z_pony': case 'z_goat': case 'z_bunny': case 'z_alpaca': case 'z_duck': poseZoo(a, dt); break;
+      case 'w_slide': case 'w_river': case 'w_splash': case 'w_bucket': case 'w_float': poseWater(a, dt); break;
+      case 'w_boats': poseBoats(a, dt); break;
+      case 'q_sky': {
+        var bc = W.BENCH, gp = V(bc.x + 2.5, 0, bc.z + 2.5); pos.set(gp.x, 0, gp.z);
+        var lie = ease(a.t / 2.5), cl = W.clouds[(a.pick || 0) % W.clouds.length].position;
+        tmp.set(gp.x, 0.35 + (EYE - 0.35) * (1 - lie), gp.z);
+        set(tmp, lie < 1 ? V(gp.x, EYE, gp.z - 6).lerp(V(gp.x + Math.sin(a.t * 0.05) * 3, 30, gp.z - 12), lie) : V(cl.x * 0.15 + gp.x * 0.85 + Math.sin(a.t * 0.05) * 4, 30, gp.z - 14 + Math.cos(a.t * 0.04) * 4), 1.2);
+        tRoll = Math.sin(a.t * 0.2) * 0.04;
+        break; }
     }
+  }
+
+  // ---------------------------------------------------------------- v0.2: hand, tube, overlays
+  var skinM = new T.MeshLambertMaterial({ color: '#f2c9a0' });
+  var hand = new T.Group(); cam.add(hand); hand.visible = false; hand.position.set(0.22, -0.4, -0.7);
+  var sleeve = new T.Mesh(new T.CylinderGeometry(0.055, 0.065, 0.5, 8), new T.MeshLambertMaterial({ color: '#7fb8ff' })); sleeve.rotation.x = Math.PI / 2 - 0.25; sleeve.position.set(0, -0.05, 0.25); hand.add(sleeve);
+  var palm = new T.Mesh(new T.SphereGeometry(0.07, 10, 8), skinM); palm.scale.set(1.1, 0.6, 1.3); hand.add(palm);
+  var treat = new T.Mesh(new T.SphereGeometry(0.035, 8, 6), new T.MeshLambertMaterial({ color: '#ff9a3d' })); treat.position.set(0, 0.05, -0.02); hand.add(treat);
+  var myTube = new T.Mesh(new T.TorusGeometry(0.55, 0.2, 8, 20), new T.MeshLambertMaterial({ color: '#ff8fc7' })); myTube.rotation.x = Math.PI / 2 - 0.3; myTube.position.set(0, -0.62, -0.35); myTube.visible = false; cam.add(myTube);
+  var portEl = document.getElementById('port'), splashEl = document.getElementById('splashfx');
+  function splashFx(big) { if (!splashEl) return; splashEl.classList.remove('go', 'big'); void splashEl.offsetWidth; splashEl.classList.add('go'); if (big) splashEl.classList.add('big'); }
+  W.wp.onTip = function () { var B = W.wp.bucket.pivot.position, d = Math.hypot(pos.x - B.x, pos.z - B.z); if (d < 2.2) { setTimeout(function () { S.splash(true); splashFx(true); S.giggle(1.2); }, 450); } else if (d < 20) setTimeout(function () { S.splash(false); }, 450); };
+  W.bb.onBump = function (mine, v) { if (mine) { S.boing(0.6 + v * 0.3); bumpShake = 0.5; if (Math.random() < 0.7) setTimeout(function () { S.giggle(1); }, 200); } else if (st.place === 'boats') S.boing(0.2); };
+  var bumpShake = 0;
+  var QY = new T.Quaternion(), QX = new T.Quaternion(), QB = new T.Quaternion(), MB = new T.Matrix4(), AY = V(0, 1, 0), AX = V(1, 0, 0);
+
+  // ---------------------------------------------------------------- roller coaster
+  function poseCoaster(a, dt) {
+    var CO = W.co, fr = a.fr || (a.fr = {}), s0 = CO.iPark * CO.ds; a.pt += dt;
+    if (a.phase === 'start') { a.phase = 'board'; a.pt = 0; a.from = camPos.clone(); a.dist = 0; a.v = 0; a.pause = 0; a.clank = 0; CO.placeTrain(s0); }
+    if (a.phase === 'board') {
+      CO.frame(s0, fr); var seat = fr.p.clone().addScaledVector(fr.u, 1.3).addScaledVector(fr.t, -0.35);
+      tmp.lerpVectors(a.from, seat, ease(a.pt / 2.2)); tmp.y += Math.sin(clamp(a.pt / 2.2, 0, 1) * Math.PI) * 0.4;
+      set(tmp, fr.p.clone().addScaledVector(fr.t, 8).addScaledVector(fr.u, 1.2), 10); pos.set(tmp.x, 0, tmp.z);
+      if (a.pt > 2.5) { a.phase = 'ride'; a.pt = 0; S.pop(); }
+      return;
+    }
+    var s = s0 + a.dist, yaw = 0, pitch = 0, dLift = CO.iLift0 * CO.ds - s0, dTop = CO.iTop * CO.ds - s0 - 0.4;
+    CO.frame(s, fr);
+    if (a.phase === 'ride') {
+      var v;
+      if (a.dist < dLift) { v = Math.min(2.4, a.v + dt * 1.5); }
+      else if (a.dist < dTop) { v = 2.0; a.clank += v * dt; if (a.clank > 0.5) { a.clank = 0; S.clank(); } yaw = Math.sin(a.pt * 0.35) * 0.55; pitch = 0.05 + Math.sin(a.pt * 0.23) * 0.1; }
+      else if (a.pause < 1.8) { v = Math.max(0, a.v - dt * 4); a.pause += dt; pitch = -0.5 * ease(a.pause / 1.2); if (a.pause >= 1.8) { S.whee(); S.whoosh(2); } }
+      else { v = Math.max(3, Math.sqrt(Math.max(0, 2 * 9.8 * (CO.yTop + 0.7 - fr.p.y)))) * 0.88 * a.mult; var left = CO.L - a.dist; if (left < 16) v = Math.min(v, 1.2 + left * 0.5); }
+      a.v = v; a.dist += v * dt;
+      if (a.dist > dTop && a.pause >= 1.8) { var sl = (s % CO.L + CO.L) % CO.L, li = Math.floor(sl / CO.ds); if (li >= CO.iLoop0 && !a.looped) { a.looped = true; S.whee(); if (Math.random() < 0.7) S.giggle(0.8); } }
+      st.windAmt = clamp(v / 14, 0, 1) * 0.16;
+      if (v > 7 && Math.random() < dt * 0.8) S.whoosh(0.6);
+      if (a.dist >= CO.L) { a.dist = CO.L; a.phase = 'done'; a.pt = 0; S.giggle(1); st.windAmt = 0; }
+    } else if (a.phase === 'done') {
+      yaw = Math.sin(a.pt * 0.25) * 0.7; pitch = Math.sin(a.pt * 0.17) * 0.12;
+      if (a.again && a.pt > 1.4) { a.again = false; a.dist = 0; a.v = 0; a.pause = 0; a.looped = false; a.phase = 'ride'; a.pt = 0; }
+    }
+    CO.placeTrain(s0 + a.dist); CO.frame(s0 + a.dist, fr);
+    var shake = a.v > 6 ? (Math.random() - 0.5) * 0.02 * (a.v / 10) : 0;
+    tPos.copy(fr.p).addScaledVector(fr.u, 1.3).addScaledVector(fr.t, -0.35).addScaledVector(fr.r, shake); st.camHard = true; pos.set(tPos.x, 0, tPos.z);
+    MB.makeBasis(fr.r, fr.u, tmp.copy(fr.t).negate()); QB.setFromRotationMatrix(MB);
+    a.yaw = (a.yaw || 0) + (yaw - (a.yaw || 0)) * Math.min(1, dt * 2); a.pitch = (a.pitch || 0) + (pitch - (a.pitch || 0)) * Math.min(1, dt * 2);
+    QY.setFromAxisAngle(AY, a.yaw); QX.setFromAxisAngle(AX, a.pitch); st.camQ = QB.multiply(QY).multiply(QX).clone();
+    tLook.copy(fr.p).addScaledVector(fr.t, 5);
+  }
+
+  // ---------------------------------------------------------------- petting zoo
+  function agentsOf(kind) { return W.zoo.agents.filter(function (g) { return g.kind === kind; }); }
+  function headOf(ag) { return ag.g.userData.head.getWorldPosition(V(0, 0, 0)); }
+  var HE = { horse: 1.9, pony: 1.3, goat: 0.8, bunny: 0.35, alpaca: 1.9, duck: 0.25 };
+  function poseZoo(a, dt) {
+    var kind = a.id.slice(2), pen = W.zoo.pens[kind], stg = Math.min(4, a.stage), ags = agentsOf(kind), main = ags[0];
+    a.stageT = (a.stageT || 0) + dt; a.pt += dt;
+    if (!a.from) a.from = pos.clone();
+    var goal = stg === 1 ? pen.out : stg <= 3 ? pen.fence : pen.inside, wd = Math.max(1.2, a.from.distanceTo(goal) / 1.3), u = clamp(a.stageT / wd, 0, 1);
+    var gp = V(0, 0, 0).lerpVectors(a.from, goal, ease(u)); if (u < 1) stepSounds(dt, 1);
+    var fwd = V(pen.c.x - gp.x, 0, pen.c.z - gp.z).normalize();
+    // the closest animal of this kind = what we look at
+    var best = main, bd = 1e9; ags.forEach(function (g) { var d = g.pos.distanceTo(gp); if (d < bd) { bd = d; best = g; } });
+    var look = headOf(best), eye = EYE - (stg >= 2 ? 0.08 : 0) - (stg >= 3 ? 0.08 : 0);
+    if (kind === 'bunny' || kind === 'duck') eye -= stg >= 3 ? 0.25 : 0.1;
+    var F = { kind: kind, stage: stg, at: stg < 4 ? V(pen.fence.x, 0, pen.fence.z).addScaledVector(fwd, 0.8) : gp.clone().addScaledVector(fwd, 0.6), fwd: fwd };
+    hand.visible = false; treat.visible = false;
+    if (stg === 3) { hand.visible = u >= 1; hand.position.set(0.2 + Math.sin(a.t * 2.4) * 0.07, -0.33 + Math.sin(a.t * 4.8) * 0.02, -0.82); if (Math.random() < dt * 0.35) zooSound(kind); }
+    if (stg < 4 || u < 1) { if (a.ride) endRide(a); pos.set(gp.x, 0, gp.z); set(V(gp.x, eye, gp.z), look, 3); st.zooF = F; return; }
+    // stage 4: inside
+    if (kind === 'horse' || kind === 'pony') {
+      if (!a.ride) { a.ride = { t: 0, ang: Math.atan2(main.pos.z - pen.c.z, main.pos.x - pen.c.x), dist: 0, from: camPos.clone(), clop: 0 }; main.ridden = true; a.cleanup = function () { endRide(a); }; S.giggle(0.6); }
+      var R = a.ride, rr0 = pen.r * (kind === 'horse' ? 0.58 : 0.55), sp = (kind === 'horse' ? 1.0 : 0.95) + Math.min(a.more, 5) * 0.28; R.t += dt;
+      var mount = clamp(R.t / 2, 0, 1); if (mount >= 1) { R.ang += dt * sp / rr0; R.dist += sp * dt; R.clop += sp * dt; if (R.clop > (kind === 'horse' ? 0.7 : 0.45)) { R.clop = 0; S.clop(kind === 'horse' ? 1 : 0.7); } }
+      var hx = pen.c.x + Math.cos(R.ang) * rr0, hz = pen.c.z + Math.sin(R.ang) * rr0; main.pos.set(hx, 0, hz); main.g.position.set(hx, 0, hz);
+      var tx = -Math.sin(R.ang), tz = Math.cos(R.ang); main.g.rotation.y = Math.atan2(tx, tz);
+      main.g.userData.legs.forEach(function (l, i) { l.rotation.x = mount >= 1 ? Math.sin(R.dist * (kind === 'horse' ? 3.2 : 5) + (i === 0 || i === 3 ? 0 : Math.PI)) * (0.35 + sp * 0.08) : 0; });
+      var bob = kind === 'horse' ? Math.sin(R.dist * 6.4) * 0.035 : Math.abs(Math.sin(R.dist * 5)) * 0.13, seat = V(hx - tx * (kind === 'horse' ? 0.5 : 0.3), (kind === 'horse' ? 2.5 : 1.75) + bob, hz - tz * (kind === 'horse' ? 0.5 : 0.3));
+      if (mount < 1) { tmp.lerpVectors(R.from, seat, ease(mount)); set(tmp, seat.clone().add(V(tx * 4, -0.6, tz * 4)), 8); }
+      else { var gl = Math.sin(st.t * 0.21) * 1.4; set(seat, V(hx + tx * 5 + Math.cos(R.ang) * gl, seat.y - 1.3, hz + tz * 5 + Math.sin(R.ang) * gl), 12); tRoll = -0.04 - (kind === 'pony' ? Math.sin(R.dist * 5) * 0.015 : 0); }
+      pos.set(hx, 0, hz); st.zooF = F; return;
+    }
+    if (kind === 'bunny') {
+      var sit = ease(clamp((a.stageT - wd) / 1.5, 0, 1)); pos.set(gp.x, 0, gp.z);
+      F.at = gp.clone().addScaledVector(fwd, 0.55);
+      set(V(gp.x, EYE - (EYE - 0.9) * sit, gp.z), look.clone().setY(0.05), 2);
+      hand.visible = sit >= 1 && Math.sin(a.t * 0.4) > -0.3; hand.position.set(0.16 + Math.sin(a.t * 2) * 0.06, -0.38, -0.6);
+      if (Math.random() < dt * 0.25) S.squeak(); st.zooF = F; return;
+    }
+    if (kind === 'duck') {
+      if (!a.walk) a.walk = { ang: Math.atan2(gp.z - pen.c.z, gp.x - pen.c.x), from: gp.clone(), t: 0 }; var Wk = a.walk; Wk.t += dt;
+      var rx = 2.2, rz = 1.4, sp2 = 0.32 + Math.min(a.more, 4) * 0.08; Wk.ang += dt * sp2 / 1.8;
+      var on = V(pen.c.x + Math.cos(Wk.ang) * rx, 0, pen.c.z + Math.sin(Wk.ang) * rz), w0 = ease(clamp(Wk.t / 2, 0, 1)), wp = V(0, 0, 0).lerpVectors(Wk.from, on, w0);
+      pos.set(wp.x, 0, wp.z); stepSounds(dt, 0.7);
+      var ahead = V(pen.c.x + Math.cos(Wk.ang + 0.6) * rx, 0, pen.c.z + Math.sin(Wk.ang + 0.6) * rz), glanceBack = Math.sin(a.t * 0.3) > -0.3;
+      set(V(wp.x, EYE - 0.1, wp.z), glanceBack ? headOf(ags[2]).setY(0) : ahead.setY(0.4), 2);
+      F.trail = function (d) { var aa = Wk.ang - d / 1.8; return V(pen.c.x + Math.cos(aa) * rx, 0, pen.c.z + Math.sin(aa) * rz); }; F.at = wp.clone();
+      if (Math.random() < dt * 0.8) S.squeak(); st.zooF = F; return;
+    }
+    // goats / alpaca: feeding from the hand
+    pos.set(gp.x, 0, gp.z); hand.visible = true; F.at = gp.clone().addScaledVector(fwd, 0.55);
+    var near = ags.some(function (g) { return g.pos.distanceTo(F.at) < (kind === 'alpaca' ? 1.3 : 0.95); });
+    a.treat = a.treat === undefined ? 1 : a.treat; if (a.more !== a.lastMore) { a.lastMore = a.more; a.treat = 1; }
+    if (near && a.treat > 0) { a.treat -= dt * 0.25; if (Math.random() < dt * 2) S.munch(); } else if (a.treat <= 0 && Math.random() < dt * 0.3) a.treat = 1;
+    treat.visible = a.treat > 0; treat.scale.setScalar(0.4 + Math.max(0, a.treat) * 0.8);
+    hand.position.set(0.12, -0.36 + Math.sin(a.t * 1.5) * 0.01, -0.75);
+    if (kind === 'alpaca' && near && Math.random() < dt * 0.3) S.hum();
+    if (kind === 'goat' && Math.random() < dt * 0.2) zooSound('goat');
+    set(V(gp.x, eye, gp.z), look, 2.5); st.zooF = F;
+  }
+  function endRide(a) { if (!a.ride) return; var m = agentsOf(a.id.slice(2))[0]; m.ridden = false; m.tgt.copy(m.pos); m.g.position.y = 0; a.ride = null; }
+  function zooSound(kind) { if (kind === 'goat') { S.ctx() && (function () { var f = 480 + Math.random() * 80; S.pluck(f, 0.3); })(); } else if (kind === 'alpaca') S.hum(); else if (kind === 'bunny' || kind === 'duck') S.squeak(); else S.clop(0.4); }
+
+  // ---------------------------------------------------------------- water park
+  function poseWater(a, dt) {
+    var WP = W.wp, pool = WP.pool; a.pt += dt; myTube.visible = false;
+    if (a.id === 'w_slide') {
+      var tw = WP.tower, foot = V(tw.x + 2.4, 0, tw.z - 1.6), top = V(tw.x + 0.3, 8.1 + EYE, tw.z + 0.4);
+      if (a.phase === 'start') { a.phase = 'walk'; a.pt = 0; a.from = pos.clone(); }
+      if (a.phase === 'walk') { var wd = Math.max(1, a.from.distanceTo(foot) / 2.4), u = ease(a.pt / wd); tmp.lerpVectors(a.from, foot, u); pos.set(tmp.x, 0, tmp.z); set(V(tmp.x, EYE, tmp.z), V(tw.x, 6, tw.z), 4); stepSounds(dt); if (a.pt > wd) { a.phase = 'climb'; a.pt = 0; } }
+      else if (a.phase === 'climb') { var c = ease(a.pt / 4.5); tmp.lerpVectors(V(foot.x, EYE, foot.z), top, c); tmp.y += Math.sin(a.pt * 7) * 0.04 * (1 - c); set(tmp, V(tw.x + 6, tmp.y - 1.5, tw.z + 4), 6); pos.set(tmp.x, 0, tmp.z); if (a.pt > 4.5) { a.phase = 'top'; a.pt = 0; } }
+      else if (a.phase === 'top') { var p0 = WP.slide.getPointAt(0.02); set(V(p0.x, p0.y + 0.9, p0.z), WP.slide.getPointAt(0.08).setY(4), 5); if (a.pt > 1.4) { a.phase = 'down'; a.pt = 0; a.s = 0; a.v = 1; S.whee(); } }
+      else if (a.phase === 'down') {
+        a.v = Math.min(7.5 * (a.mult || 1), a.v + dt * 4); a.s += a.v * dt; var f = Math.min(1, a.s / WP.slideL), p = WP.slide.getPointAt(f), ah = WP.slide.getPointAt(Math.min(1, f + 3 / WP.slideL));
+        set(V(p.x, p.y + 0.5, p.z), ah.setY(ah.y + 0.25), 30); tRoll = f < 0.85 ? -0.28 : 0; pos.set(p.x, 0, p.z);
+        if (Math.random() < dt * 2) S.whoosh(0.4);
+        if (f >= 1) { a.phase = 'splash'; a.pt = 0; S.splash(true); splashFx(true); WP.spray(p.x + 1, 0.15, p.z, 30, 3); }
+      } else if (a.phase === 'splash') {
+        var sp = V(pool.c.x - 4.6, 0, pool.c.z - 2.2); set(V(sp.x, pool.y + 0.42 - Math.sin(clamp(a.pt / 1.2, 0, 1) * Math.PI) * 0.22, sp.z), V(sp.x + 6, 0.5, sp.z + 1), 6); pos.set(sp.x, 0, sp.z);
+        if (a.pt > 1.6) { if (Math.random() < 0.8) S.giggle(0.9); a.phase = 'swim'; a.pt = 0; }
+      } else if (a.phase === 'swim') {
+        var s1 = V(pool.c.x - 4.6, 0, pool.c.z - 2.2), s2 = V(pool.c.x - 6.2, 0, pool.c.z - 3.2); tmp.lerpVectors(s1, s2, ease(a.pt / 3)); set(V(tmp.x, pool.y + 0.42 + Math.sin(a.pt * 2) * 0.03, tmp.z), V(tw.x, 5, tw.z + 4), 3); pos.set(tmp.x, 0, tmp.z);
+        if (a.pt > 3.5) { if (a.again) { a.again = false; a.phase = 'climb'; a.pt = 0; foot.copy(pos); } else { a.phase = 'rest'; a.pt = 0; } }
+      } else { set(V(pos.x, pool.y + 0.42 + Math.sin(a.pt * 1.5) * 0.03, pos.z), V(tw.x + Math.sin(a.pt * 0.1) * 4, 5, tw.z + 5), 2); if (a.again) { a.again = false; a.phase = 'climb'; a.pt = 0; } }
+      return;
+    }
+    if (a.id === 'w_river') {
+      var R = WP.river; if (!a.r) { a.r = { ang: Math.atan2(pos.z - R.c.z, pos.x - R.c.x), t: 0, from: camPos.clone(), spin: 0 }; }
+      var r = a.r; r.t += dt; var enter = clamp(r.t / 2.5, 0, 1); r.ang += dt * 0.085 * (a.mult || 1) * (enter >= 1 ? 1 : 0);
+      if (a.spinT !== undefined) { a.spinT += dt; r.spin = TAU * ease(a.spinT / 6); if (a.spinT > 6) { a.spinT = undefined; r.spin = 0; } }
+      var px = R.c.x + Math.cos(r.ang) * (R.r - 0.8), pz = R.c.z + Math.sin(r.ang) * (R.r - 0.8), tx = -Math.sin(r.ang), tz = Math.cos(r.ang), yy = 0.62 + Math.sin(st.t * 1.4) * 0.03;
+      var g0 = Math.sin(st.t * 0.13) * 1.1 + r.spin, lx = tx * Math.cos(g0) - tz * Math.sin(g0) * -1, lz = tz * Math.cos(g0) + tx * Math.sin(g0) * -1;
+      lx = Math.cos(g0) * tx - Math.sin(g0) * tz; lz = Math.sin(g0) * tx + Math.cos(g0) * tz;
+      if (enter < 1) { tmp.lerpVectors(r.from, V(px, yy, pz), ease(enter)); set(tmp, V(px + tx * 6, 0.6, pz + tz * 6), 6); }
+      else set(V(px, yy, pz), V(px + lx * 6, 0.9 + Math.sin(st.t * 0.09) * 1.2, pz + lz * 6), 3);
+      myTube.visible = enter > 0.6; pos.set(px, 0, pz); tRoll = Math.sin(st.t * 0.9) * 0.02;
+      if (Math.random() < dt * 0.4) S.drip(0.8);
+      return;
+    }
+    if (a.id === 'w_splash' || a.id === 'w_bucket') {
+      var pad = WP.pad, B = WP.bucket.pivot.position, spot = a.id === 'w_bucket' ? V(B.x, 0, B.z + 0.4) : V(pad.x + 0.6, 0, pad.z + 1.6);
+      if (!a.from) a.from = pos.clone(); var wd2 = Math.max(1, a.from.distanceTo(spot) / 1.4), u2 = ease(a.pt / wd2); tmp.lerpVectors(a.from, spot, u2); pos.set(tmp.x, 0, tmp.z); if (u2 < 1) stepSounds(dt);
+      WP.level = a.id === 'w_splash' ? Math.min(1.1, 0.35 + a.lvl * 0.13) : 0.5;
+      if (a.id === 'w_bucket') { WP.bucket.rate = 0.05 + a.lvl * 0.03; set(V(tmp.x, EYE, tmp.z), u2 < 1 ? V(B.x, 3, B.z) : V(B.x + Math.sin(a.t * 0.4) * 0.6, B.y - 0.3, B.z - 0.2), 3); }
+      else { var ga = a.t * 0.18; set(V(tmp.x, EYE + (a.lvl > 3 ? Math.abs(Math.sin(a.t * 4)) * 0.08 : 0), tmp.z), V(pad.x + Math.cos(ga) * 4, 0.4 + Math.max(0, Math.sin(a.t * 0.3)) * 1.2, pad.z + Math.sin(ga) * 4), 2.5); if (Math.random() < dt * WP.level * 1.2) S.splash(false); if (a.lvl >= 4 && Math.random() < dt * 0.4) S.giggle(0.8); if (Math.random() < dt * WP.level * 0.5) splashFx(false); }
+      return;
+    }
+    if (a.id === 'w_float') {
+      if (!a.from) a.from = pos.clone(); var c2 = V(pool.c.x + Math.sin(a.t * 0.05) * 3, 0, pool.c.z + Math.cos(a.t * 0.04) * 1.6), w2 = ease(a.pt / 3);
+      tmp.lerpVectors(a.from, c2, w2); pos.set(tmp.x, 0, tmp.z); a.kick = Math.max(0, (a.kick || 0) - dt);
+      var lie = ease((a.pt - 2) / 2.5);
+      set(V(tmp.x, pool.y + 0.4 + (EYE - 0.4) * (1 - w2) + Math.sin(a.t * 1.2) * 0.03 + a.kick * 0.05, tmp.z), V(tmp.x + 6 * (1 - lie) + Math.sin(a.t * 0.07) * 3, 1 + lie * 9, tmp.z + 1 + Math.cos(a.t * 0.06) * 3), 1.5);
+      tRoll = Math.sin(a.t * 0.5) * 0.03; return;
+    }
+  }
+
+  // ---------------------------------------------------------------- bumper boats
+  function poseBoats(a, dt) {
+    var BB = W.bb, me = BB.me; a.pt += dt;
+    if (a.phase === 'start') { a.phase = 'board'; a.pt = 0; a.from = camPos.clone(); me.yaw = 0; a.cleanup = function () { me.thrust = 0; }; }
+    if (a.phase === 'board') { var seat = V(me.pos.x, 1.0, me.pos.z); tmp.lerpVectors(a.from, seat, ease(a.pt / 2)); set(tmp, V(BB.c.x, 0.6, BB.c.z), 8); pos.set(tmp.x, 0, tmp.z); if (a.pt > 2.1) { a.phase = 'drive'; a.pt = 0; S.pop(); } return; }
+    a.burst = Math.max(0, (a.burst || 0) - dt);
+    if (a.burst > 0) { var tgt = null, bd = 1e9; BB.list.forEach(function (b, i) { if (i) { var d = b.pos.distanceTo(me.pos); if (d < bd) { bd = d; tgt = b; } } }); var want = Math.atan2(tgt.pos.x - me.pos.x, tgt.pos.z - me.pos.z), dy = want - me.yaw; while (dy > Math.PI) dy -= TAU; while (dy < -Math.PI) dy += TAU; me.yaw += dy * Math.min(1, dt * 3); me.thrust = 2.6; if (Math.random() < dt * 3) S.drip(1); }
+    else { me.thrust = 0.35; me.spin += Math.sin(a.pt * 0.3) * dt * 0.15; }
+    bumpShake = Math.max(0, bumpShake - dt);
+    var fx = Math.sin(me.yaw), fz = Math.cos(me.yaw), sh = bumpShake * (Math.random() - 0.5) * 0.15;
+    set(V(me.pos.x - fx * 0.2 + sh, 1.0 + Math.sin(st.t * 2) * 0.03, me.pos.z - fz * 0.2), V(me.pos.x + fx * 6 + Math.sin(st.t * 0.2) * 1.5, 0.7, me.pos.z + fz * 6), 25);
+    tRoll = -me.spin * 0.08 + sh; pos.set(me.pos.x, 0, me.pos.z);
   }
 
   // ---------------------------------------------------------------- rocket ride (stub)
   function rocketTap() { if (!st.rocket) st.rocket = { t: 0, dur: 26, hi: 1 }; else st.rocket.hi = Math.min(3, st.rocket.hi + 0.5); }
   function poseRocket(r, dt) {
-    r.t += dt; var R = W.R, u = r.t, alt;
+    r.t += dt; var R = W.R, u = r.t, alt; if (portEl) portEl.classList.toggle('on', u > 2.5 && u < r.dur - 1.5);
     if (u < 4) alt = 0; else if (u < r.dur - 8) alt = Math.pow(ease((u - 4) / 8), 1.6) * 90 * r.hi; else alt = 90 * r.hi * ease((r.dur - u) / 8);
     if (u > 2 && u < 5) S.rumble(0.3);
     W.rocket.position.y = alt; W.flame.material.opacity = (u > 3 && u < r.dur - 2) ? 0.6 + Math.random() * 0.3 : 0;
     var shake = (u > 3 && u < 9) ? 0.02 : 0;
     set(V(R.x + rr(-shake, shake), alt + 6, R.z + 1.0), V(R.x + Math.sin(u * 0.1) * 30, alt + 3 + Math.sin(u * 0.15) * 6, R.z + 40), 20);
     var sky = W.sky; var sp = clamp(alt / 120, 0, 0.85); scene.background = tmpC.copy(sky).lerp(SPACE, sp); scene.fog.color.copy(scene.background); scene.fog.far = 160 + alt * 3; W.stars.visible = sp > 0.2; W.stars.material.opacity = clamp((sp - 0.2) * 2, 0, 1); W.stars.position.y = alt;
-    if (u >= r.dur) { scene.fog.far = 160; W.stars.visible = false; st.rocket = null; W.rocket.position.y = 0; W.flame.material.opacity = 0; pos.set(R.x, 0, R.z + 6); st.place = 'rocket'; set(V(R.x, EYE, R.z + 6), V(R.x, 5, R.z), 3); }
+    if (u >= r.dur) { if (portEl) portEl.classList.remove('on'); scene.fog.far = 160; W.stars.visible = false; st.rocket = null; W.rocket.position.y = 0; W.flame.material.opacity = 0; pos.set(R.x, 0, R.z + 6); st.place = 'rocket'; set(V(R.x, EYE, R.z + 6), V(R.x, 5, R.z), 3); }
   }
   var SPACE = new T.Color('#1a1a3a'), tmpC = new T.Color();
 
@@ -218,7 +455,7 @@
   function endMoment() { var r = st.momentOn.resume; st.momentOn = null; st.place = 'path'; st.mode = 'area'; if (r) { goTo(r, false); } }
   function poseMoment(mo, dt) {
     mo.t += dt; var walk = clamp(mo.t / 3, 0, 1), p = V(0, 0, 0).lerpVectors(mo.from, mo.spot, ease(walk));
-    pos.set(p.x, 0, p.z); set(V(p.x, EYE + (mo.id === 'fish' || mo.id === 'chip' ? -0.35 : 0), p.z), mo.look, 3);
+    pos.set(p.x, 0, p.z); set(V(p.x, EYE + (mo.id === 'fish' || mo.id === 'chip' ? -0.35 : 0) + (settings.car && walk < 1 ? -0.3 : 0), p.z), mo.look, 3);
     if (walk < 1) stepSounds(dt, 1.2);
     var id = mo.id, t = mo.t;
     if (id === 'busker' && t > 2 && Math.random() < dt * 2.6) { var scale = [262, 294, 330, 392, 440, 523, 587]; S.pluck(pick(scale), 1); W.mom.busker.obj.userData.head.rotation.z = Math.sin(t * 3) * 0.1; }
@@ -231,9 +468,9 @@
   }
 
   // ---------------------------------------------------------------- other kids
-  var KC = ['#ff8f8f', '#8fc7ff', '#ffd86b', '#b49bff', '#7fe0a0'];
-  var kids = [0, 1, 2, 3, 4].map(function (i) { var g = W.person(KC[i], 0.68); scene.add(g); return { g: g, home: i < 3 ? 'bouncy' : 'play', ph: Math.random() * 6, pos: V(0, 0, 0), tgt: V(0, 0, 0), wander: 0, near: false }; });
-  var BG = { bouncy: [V(-50, 0, 4.5), V(-51, 0, -3), V(-41, 0, -5)], play: [V(54, 0, -2), V(41, 0, 9)] };
+  var KC = ['#ff8f8f', '#8fc7ff', '#ffd86b', '#ffb36b', '#ff9fcf', '#b49bff', '#7fe0a0'];
+  var kids = [0, 1, 2, 3, 4, 5, 6].map(function (i) { var g = W.person(KC[i], 0.68); scene.add(g); return { g: g, home: i < 5 ? 'bouncy' : 'play', flip: -1, ph: Math.random() * 6, pos: V(0, 0, 0), tgt: V(0, 0, 0), wander: 0, near: false }; });
+  var BG = { bouncy: [V(-50, 0, 4.5), V(-51, 0, -3), V(-41, 0, -5), V(-44, 0, 4), V(-49, 0, -1)], play: [V(54, 0, -2), V(41, 0, 9)] };
   kids.forEach(function (kd, i) { var l = BG[kd.home]; kd.pos.copy(l[i % l.length]); kd.tgt.copy(kd.pos); });
   var rockAmt = 0;
   function updateKids(dt) {
@@ -241,7 +478,7 @@
     rockAmt = 0;
     kids.forEach(function (kd, i) {
       var idx = kids.filter(function (o) { return o.home === kd.home; }).indexOf(kd);
-      var active = idx === 0 || (idx === 1 && e > 3) || (idx === 2 && e > 7);
+      var active = idx === 0 || e > [0, 3, 6, 9, 12][idx];
       kd.g.visible = active || kd.g.visible && kd.fade > 0; if (!active) { kd.g.visible = false; return; }
       kd.wander -= dt;
       var near = here === kd.home && e > 5 + idx * 2;
@@ -253,7 +490,7 @@
       else if (near) kd.g.rotation.y = Math.atan2(camPos.x - kd.pos.x, camPos.z - kd.pos.z);
       kd.ph += dt * (near ? 4.2 : 3.2);
       var y = groundY(kd.pos.x, kd.pos.z), bounce = 0;
-      if (kd.home === 'bouncy') { bounce = Math.abs(Math.sin(kd.ph)) * (near ? 0.9 : 0.5); var dist = kd.pos.distanceTo(V(pos.x, 0, pos.z)); if (here === 'bouncy' && dist < 9) rockAmt += Math.abs(Math.cos(kd.ph)) * (1 - dist / 9); }
+      if (kd.home === 'bouncy') { var sb = Math.abs(Math.sin(kd.ph)); bounce = sb * (near ? 0.9 + Math.min(e, 16) * 0.05 : 0.5); if (kd.flip < 0 && near && e > 9 && kd.prevSb < 0.1 && sb >= 0.1 && Math.random() < 0.35) kd.flip = 0; kd.prevSb = sb; if (kd.flip >= 0) { kd.flip += dt / 1.0; kd.g.rotation.x = -TAU * ease(kd.flip); if (kd.flip >= 1) { kd.flip = -1; kd.g.rotation.x = 0; } } var dist = kd.pos.distanceTo(V(pos.x, 0, pos.z)); if (here === 'bouncy' && dist < 9) rockAmt += Math.abs(Math.cos(kd.ph)) * (1 - dist / 9); }
       else bounce = dl > 0.2 ? Math.abs(Math.sin(kd.ph * 2)) * 0.06 : 0;
       kd.g.position.set(kd.pos.x, y + bounce, kd.pos.z);
       kd.g.userData.aL.rotation.z = near ? Math.sin(kd.ph * 2) * 0.9 + 0.8 : 0.15; kd.g.userData.aR.rotation.z = near ? -Math.sin(kd.ph * 2) * 0.9 - 0.8 : -0.15;
@@ -291,6 +528,8 @@
     else if (bud.play) { bud.play.t += dt; var pl = bud.play, top = pl.top, bot = pl.bot;
       if (pl.t < 3) tgt = V(top.x, 0, top.z + 1); else if (pl.t < 5) { var uu = (pl.t - 3) / 2; tgt = V(0, 0, 0).lerpVectors(top, bot, uu); buddy.position.copy(tgt); buddy.rotation.y = Math.atan2(bot.x - top.x, bot.z - top.z); if (!pl.glanced) { pl.glanced = true; glanceAt = buddy; glanceAtT = 3; S.whee(); if (Math.random() < 0.5) say('Wheee!', true); } }
       else { bud.play = null; bud.nextPlay = st.t + rr(35, 70); tgt = bud.pos.clone(); } }
+    else if (st.zooF && st.zooF.stage >= 2) { var zp = W.zoo.pens[st.zooF.kind].out; tgt = V(zp.x + 1.2, 0, zp.z + 0.8); }
+    else if (st.act && /^(w_|r_)/.test(st.act.id) && st.act.id !== 'w_splash' && st.act.id !== 'w_bucket') { var sp0 = SPOTS[st.place]; tgt = sp0 ? sp0.in[sp0.in.length - 1].clone() : bud.pos.clone(); }
     else tgt = V(camPos.x + right.x * 1.5 + fwd.x * 1.3, 0, camPos.z + right.z * 1.5 + fwd.z * 1.3);
     if (!(bud.play && bud.play.t >= 3 && bud.play.t < 5)) {
       var d = tgt.clone().sub(bud.pos); d.y = 0; var dl = d.length(), sp = Math.min(6, 0.5 + dl * 1.6);
@@ -323,6 +562,7 @@
   var wMix = 0, hue = { color: '#ffd9a0', bri: 0 };
   function updateWorld(dt) {
     var t = st.t;
+    WalkerWorld2.update(W, dt, t, { zoo: st.zooF, wp: { near: Math.hypot(pos.x - W.wp.pad.x, pos.z - W.wp.pad.z) < 30 } });
     W.birds.forEach(function (b) { var u = b.userData, a = t * u.sp + u.ph; b.position.set(u.cx + Math.cos(a) * u.r, u.h + Math.sin(a * 2) * 0.6, u.cz + Math.sin(a) * u.r); b.rotation.y = -a; var f = Math.sin(t * 9 + u.ph) * 0.5; u.w1.rotation.z = f; u.w2.rotation.z = -f; });
     W.clouds.forEach(function (c, i) { c.position.x += dt * (0.4 + i * 0.05); if (c.position.x > 180) c.position.x = -180; });
     W.ducks.forEach(function (d, i) { var a = t * 0.08 + i * 2; d.position.set(W.POND.x + Math.cos(a) * (2 + i * 0.6), 0.05, W.POND.z + Math.sin(a) * (1.4 + i * 0.4)); d.rotation.y = -a; });
@@ -335,7 +575,7 @@
     carT -= dt; if (carT < 0 && W.car.position.x < -250) { W.car.position.x = -200; carT = rr(50, 90); }
     if (W.car.position.x > -250) { W.car.position.x += dt * 14; if (W.car.position.x > 220) W.car.position.x = -300; if (Math.abs(W.car.position.x - W.deer.position.x) < 45 && !deerRun && !(st.momentOn && st.momentOn.id === 'deer')) { deerRun = 18; } }
     var dh = W.deer.userData.home;
-    if (deerRun > 0) { deerRun -= dt; var away = deerRun > 9; var tg = away ? V(dh.x + 22, 0, dh.z - 25) : dh; var d = tg.clone().sub(W.deer.position); d.y = 0; var l = d.length(); if (l > 0.2) { W.deer.position.add(d.multiplyScalar(Math.min(1, (away ? 7 : 1.5) * dt / l))); W.deer.rotation.y = Math.atan2(tg.x - W.deer.position.x, tg.z - W.deer.position.z); W.deer.position.y = away ? Math.abs(Math.sin(t * 10)) * 0.3 : 0; } if (deerRun <= 0) deerRun = 0; }
+    if (deerRun > 0) { deerRun -= dt; var away = deerRun > 9; var tg = away ? V(dh.x - 6, 0, dh.z - 26) : dh; var d = tg.clone().sub(W.deer.position); d.y = 0; var l = d.length(); if (l > 0.2) { W.deer.position.add(d.multiplyScalar(Math.min(1, (away ? 7 : 1.5) * dt / l))); W.deer.rotation.y = Math.atan2(tg.x - W.deer.position.x, tg.z - W.deer.position.z); W.deer.position.y = away ? Math.abs(Math.sin(t * 10)) * 0.3 : 0; } if (deerRun <= 0) deerRun = 0; }
     else if (!(st.momentOn && st.momentOn.id === 'deer')) { W.deer.userData.neck.rotation.x = 0.9 + Math.sin(t * 0.5) * 0.1; var dd = Math.hypot(pos.x - W.deer.position.x, pos.z - W.deer.position.z); if (dd < 16) { W.deer.userData.neck.rotation.x = Math.sin(t * 1.5) > 0.7 ? 0.3 : 0; W.deer.lookAt(pos.x, 0, pos.z); } }
     // weather cycle
     weather.t += dt; if (weather.t > WEA[weather.ph] && !q.get('weather')) { weather.t = 0; weather.ph = NEXT[weather.ph]; }
@@ -357,25 +597,32 @@
   var birdT = 3;
   function stepSounds(dt, mult) {
     var sp = st.running ? (st.running > 1 ? 1.4 : 1.1) : 0.7; stride += dt * (mult || 1) * (st.running ? 2.6 : 1.6);
-    if (stride > sp) { stride = 0; var srf = inCastle() ? 'soft' : W.surface(pos.x, pos.z); if (Math.hypot(pos.x + 8, pos.z - W.pathZ(-8) - 2.6) < 1.2) srf = 'puddle'; if (!(settings.car && st.mode === 'travel')) S.step(srf, st.running ? 1.4 : 1); }
+    if (stride > sp) { stride = 0; var srf = inCastle() ? 'soft' : W.surface(pos.x, pos.z); if (Math.hypot(pos.x + 8, pos.z - W.pathZ(-8) - 2.6) < 1.2) srf = 'puddle'; if (!(settings.car && (st.mode === 'travel' || st.mode === 'moment'))) S.step(srf, st.running ? 1.4 : 1); }
   }
   function updateSound(dt) {
     var dB = Math.hypot(pos.x - W.B.x, pos.z - W.B.z), dP = Math.hypot(pos.x - W.P.x, pos.z - W.P.z), dW = Math.min(Math.hypot(pos.x - W.POND.x, pos.z - W.POND.z), Math.hypot(pos.x + 8, pos.z - 2));
     var crowd = 0.035 * clamp(1 - (Math.min(dB, dP) - 8) / 16, 0, 1) * (0.5 + Math.min(st.energy, 8) / 10);
-    S.setBeds({ crowd: st.rocket ? 0 : crowd, water: 0.025 * clamp(1 - dW / 9, 0, 1) + (weather.ph === 'rain' ? 0.02 : 0), breeze: 0.03 + wMix * 0.02, wind: st.rocket ? 0.12 : 0.02 });
+    var dWP = Math.min(Math.hypot(pos.x - W.WP_C.x, pos.z - W.WP_C.z), Math.hypot(pos.x - W.BL_C.x, pos.z - W.BL_C.z));
+    S.setBeds({ crowd: st.rocket ? 0 : crowd, water: 0.025 * clamp(1 - dW / 9, 0, 1) + 0.03 * clamp(1 - (dWP - 8) / 14, 0, 1) + (weather.ph === 'rain' ? 0.02 : 0), breeze: 0.03 + wMix * 0.02, wind: st.rocket ? 0.12 : 0.02 + st.windAmt });
     birdT -= dt; if (birdT < 0) { birdT = rr(4, 13) * (crowd > 0.02 ? 2 : 1); if (weather.ph !== 'rain') S.bird(crowd > 0.02 ? 0.5 : 1); }
   }
 
   // ---------------------------------------------------------------- the main pose
   function update(dt) {
     st.t += dt; st.idle += dt; st.energy *= Math.exp(-dt / 14);
-    tRoll = 0;
+    tRoll = 0; st.camQ = null; st.camHard = false; if (!(st.act && st.act.id === 'r_coaster')) st.windAmt = 0;
     if (st.rocket) poseRocket(st.rocket, dt);
     else if (st.momentOn) poseMoment(st.momentOn, dt);
     else if (st.mode === 'travel') {
-      var spd = settings.car ? 5.5 : st.running ? (st.running > 1 ? 4.6 : 3.4) : 1.5, left = spd * dt;
+      // tap-to-run: speed follows how fast the buttons are being tapped, and eases back to a stroll when they stop
+      var base = settings.car ? 6 : 1.8; st.taps = st.taps.filter(function (x) { return st.t - x < 2.5; });
+      var rate = Math.max(0, st.taps.length - 1) / 2.5, tgtS = base + Math.min(rate, 5) * (settings.car ? 1.0 : 1.5);
+      if (st.t - st.lastTap > 1.5) tgtS = base;
+      st.spd += (tgtS - st.spd) * (1 - Math.exp(-dt * (tgtS > st.spd ? 3 : 0.6)));
+      st.running = settings.car ? 0 : st.spd > 2.6 ? (st.spd > 5 ? 2 : 1) : 0;
+      var spd = st.spd, left = spd * dt;
       while (left > 0 && st.ri < st.route.length) { var tg = st.route[st.ri], d = V(tg.x - pos.x, 0, tg.z - pos.z), l = d.length(); if (l <= left) { pos.set(tg.x, 0, tg.z); left -= l; st.ri++; } else { pos.add(d.multiplyScalar(left / l)); left = 0; } }
-      var ahead = lookAhead(5); var bob = settings.car ? 0 : Math.sin(st.t * (st.running ? 11 : 6.5)) * (st.running ? 0.05 : 0.02);
+      var ahead = lookAhead(4 + spd * 0.6); st.bobPh = (st.bobPh || 0) + dt * (5.5 + spd * 1.1); var bob = settings.car ? Math.sin(st.t * 9) * 0.006 : Math.sin(st.bobPh) * (0.02 + clamp((spd - 1.5) / 6, 0, 1) * 0.05);
       // glances: mostly look ahead, sometimes up and around
       nextGlance -= dt; if (nextGlance < 0 && glanceT <= 0) { glanceT = rr(2.5, 4); nextGlance = rr(7, 14); glance.set(rr(-4, 4), rr(0, 1) < 0.4 ? rr(3, 6) : rr(-0.5, 1), rr(-3, 3)); }
       var gw = glanceT > 0 ? Math.sin(clamp(1 - glanceT / 3.5, 0, 1) * Math.PI) : 0; glanceT -= dt;
@@ -388,14 +635,19 @@
     if (glanceAt && glanceAtT > 0) { glanceAtT -= dt; var w = Math.sin(clamp(1 - glanceAtT / 3, 0, 1) * Math.PI) * 0.7; tLook.lerp(glanceAt.position.clone().setY(glanceAt.position.y + 0.4), w); }
     // castle rocks when other kids bounce
     if (st.place === 'bouncy' && !st.rocket) { tPos.y += rockAmt * 0.06; tRoll += Math.sin(st.t * 3.1) * rockAmt * 0.01; }
-    var a = 1 - Math.exp(-k * dt); camPos.lerp(tPos, a); camLook.lerp(tLook, 1 - Math.exp(-Math.min(k, 8) * dt));
+    var a = 1 - Math.exp(-k * dt); if (st.camHard) camPos.copy(tPos); else camPos.lerp(tPos, a); camLook.lerp(tLook, 1 - Math.exp(-Math.min(k, 8) * dt));
     roll += (tRoll - roll) * (1 - Math.exp(-4 * dt));
-    cam.position.copy(camPos); cam.lookAt(camLook); cam.rotateZ(roll); if (flip) cam.rotateX(flip); if (twist) cam.rotateY(twist);
-    W.myCar.visible = !!settings.car && st.mode === 'travel';
+    cam.position.copy(camPos);
+    if (st.camQ) { cam.quaternion.copy(st.camQ); roll = 0; }
+    else { cam.lookAt(camLook); cam.rotateZ(roll); if (flip) cam.rotateX(flip); if (twist) cam.rotateY(twist); }
+    var carOn = !!settings.car && (st.mode === 'travel' || (st.momentOn && st.momentOn.t < 3));
+    W.myCar.visible = carOn;
+    var fovT = 66 + (st.mode === 'travel' ? clamp((st.spd - (settings.car ? 6 : 1.8)) * 1.3, 0, 9) : 0); if (Math.abs(cam.fov - fovT) > 0.05) { cam.fov += (fovT - cam.fov) * Math.min(1, dt * 2); cam.updateProjectionMatrix(); }
+    if (carOn) { st.carT = (st.carT || 0) - dt; if (st.carT < 0) { st.carT = 2.4; S.car(); } }
   }
   function arrive() {
     st.mode = 'area'; st.route = null; st.place = st.dest || 'path'; st.dest = null; st.running = 0; st.idle = 0;
-    if (st.pendingAct) { var p = st.pendingAct; st.pendingAct = null; if (p === 'rocket') rocketTap(); else if (ACT_PLACE[p.slice(0, 2)] === st.place) startAct(p); }
+    if (st.pendingAct) { var p = st.pendingAct; st.pendingAct = null; if (p === 'rocket') rocketTap(); else if (placeFor(p) === st.place) startAct(p); }
     pushState();
   }
   var watch = { tgt: V(0, 0, 0), t: 0 };
@@ -419,12 +671,12 @@
 
   // ---------------------------------------------------------------- networking
   var phones = {}, nPhones = 0;
-  function stateMsg() { return { t: 'st', area: st.mode === 'travel' ? (st.pendingAct && st.pendingAct.slice ? pageFor(ACT_PLACE[st.pendingAct.slice(0, 2)] || 'go') : 'go') : pageFor(st.place), moments: st.moments.map(function (m) { return { id: m.id, pic: m.pic }; }), s: settings }; }
+  function stateMsg() { return { t: 'st', area: st.mode === 'travel' ? (st.pendingAct && st.pendingAct !== 'rocket' ? pageFor(placeFor(st.pendingAct)) : pageFor(st.dest)) : pageFor(st.place), place: st.place, moments: st.moments.map(function (m) { return { id: m.id, pic: m.pic }; }), s: settings }; }
   var lastPush = 0;
   function pushState() { var m = stateMsg(); for (var id in phones) net.send(phones[id], m); if (localPad) localPad.setState(m); lastPush = st.t; }
   function onMsg(conn, m) {
     if (!m || !m.t) return;
-    if (!phones[conn.connectionId]) { phones[conn.connectionId] = conn; nPhones++; }
+    if (!phones[conn.connectionId]) { phones[conn.connectionId] = conn; nPhones++; document.body.classList.add('linked'); }
     hideStart();
     if (m.t === 'hello') { net.send(conn, stateMsg()); }
     else if (m.t === 'tap') tap(m.id);
@@ -434,7 +686,7 @@
   }
   function applySettings(s) { for (var k in s) if (k in C.defaults) settings[k] = s[k]; walkerSaveSettings(settings); setBuddy(); pushState(); }
   var useLocal = q.get('local') === '1';
-  var net = new (useLocal ? LRNet.LocalHost : LRNet.Host)({ code: q.get('room') || undefined, onStatus: function (s, code) { showCode(); }, onMessage: onMsg, onJoin: function (c) { if (!phones[c.connectionId]) { phones[c.connectionId] = c; nPhones++; } hideStart(); }, onClose: function (c) { if (phones[c.connectionId]) { delete phones[c.connectionId]; nPhones--; } } });
+  var net = new (useLocal ? LRNet.LocalHost : LRNet.Host)({ code: q.get('room') || undefined, onStatus: function (s, code) { showCode(); }, onMessage: onMsg, onJoin: function (c) { if (!phones[c.connectionId]) { phones[c.connectionId] = c; nPhones++; } hideStart(); document.body.classList.add('linked'); }, onClose: function (c) { if (phones[c.connectionId]) { delete phones[c.connectionId]; nPhones--; } document.body.classList.toggle('linked', nPhones > 0); } });
 
   // ---------------------------------------------------------------- start screen + Play here
   var startEl = document.getElementById('start'), localPad = null;

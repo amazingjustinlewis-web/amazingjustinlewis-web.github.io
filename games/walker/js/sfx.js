@@ -50,6 +50,12 @@
     pluck: function (f, vol) { tone('triangle', f, f * 0.995, 0.9, 0.05 * (vol || 1)); tone('sine', f * 2, f * 2, 0.4, 0.015 * (vol || 1)); },
     rumble: function (d) { noise(90, 0.7, d || 2, 0.14, 0, 'lowpass'); },
     quack: function () { tone('sawtooth', 300, 220, 0.12, 0.02); },
+    clank: function () { noise(1900, 6, 0.04, 0.035); tone('square', 180, 160, 0.03, 0.008); },
+    clop: function (v) { noise(900, 3, 0.05, 0.04 * (v || 1)); tone('sine', 320, 260, 0.05, 0.015 * (v || 1)); },
+    splash: function (big) { noise(1500, 0.5, big ? 1.2 : 0.5, big ? 0.12 : 0.06); noise(400, 0.7, big ? 0.8 : 0.3, 0.05, 0.05, 'lowpass'); },
+    munch: function () { for (var i = 0; i < 3; i++) noise(1200, 2, 0.04, 0.03, i * 0.12); },
+    hum: function () { if (!A) return; var t = A.currentTime, o = A.createOscillator(), v = A.createOscillator(), vg = A.createGain(), g = A.createGain(); o.type = 'sine'; o.frequency.value = 230 + Math.random() * 40; v.frequency.value = 5; vg.gain.value = 6; v.connect(vg); vg.connect(o.frequency); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.03, t + 0.3); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6); o.connect(g); g.connect(master); o.start(t); v.start(t); o.stop(t + 1.7); v.stop(t + 1.7); },
+    squeak: function () { tone('sine', 1800, 2400, 0.06, 0.012); },
     car: function () { noise(140, 1, 2.5, 0.025, 0, 'lowpass'); },
     speak: function (text, pitch, rate) {
       if (muted || !root.speechSynthesis) return;
