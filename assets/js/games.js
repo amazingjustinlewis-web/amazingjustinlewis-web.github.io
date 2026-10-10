@@ -218,6 +218,36 @@ window.GAMES = [
     ]
   },
   {
+    id: 'walker',
+    title: 'Walker',
+    pitch: 'A calm, soft 3D play world made for Walker. Six big picture buttons take you to a bouncy castle, a playground and a quiet path full of friendly little moments. No scores, no rush.',
+    cover: 'assets/img/walker/cover-card.webp',
+    coverAlt: 'Walker: a first-person view from a swing in a bright playground with a puppy buddy',
+    details: 'games/walker.html',
+    status: 'First prototype',
+    tags: ['1 player', 'TV + phone or iPad', 'Calm'],
+    accent: '#ff8fc7',
+    sections: ['family'],
+    intensity: 1,
+    goodToKnow: [
+      'Made for kids who love calm and predictable: big buttons, no failing, no text to read, quiet sounds.',
+      'Tap once to do a thing, tap again to go deeper (bounce higher, flip, swing higher). Tap a place fast to run there.',
+      'Optional buddy (monkey, dog or teddy bear) who pads along and points things out with your browser\u2019s voice. Chattiness: Off / Once in a while / Often / Everything.',
+      'On an iPad, Play here puts the six buttons along the bottom of the screen; no phone needed.',
+      'Philips Hue is a settings preview only (sunny warm, rainy blue, 2\u2013100% brightness cap); the lights hookup comes later.',
+      'First prototype: simple shapes and synthesized sounds. Tested with simulated phones so far.'
+    ],
+    versions: [
+      {
+        id: 'v0.1',
+        name: 'First stroll',
+        current: true,
+        play: 'games/walker/index.html',
+        notes: 'A bouncy castle (bounce, flips, basketball hoop, inflatable slide, lie back and watch the sky, bounce with other kids), a playground (slide, swings, climbing dome, merry-go-round, seesaw, sandbox), a quiet path with moments to stop for (a busker, a fish in a puddle, a deer, chipmunks, people laughing, ducks), a rocket ride stub, a pond and a bench, an optional buddy, soft weather with rain and a rainbow, idle people-watching, phone or Play here mode.'
+      }
+    ]
+  },
+  {
     id: 'space',
     title: 'Drift Signal',
     pitch: 'The chillest space sim: the TV is your ship\u2019s bridge window and every phone is a crew station. Warp between planets, probe a black hole, land on a creepy ocean world. 1 to 6 crew.',

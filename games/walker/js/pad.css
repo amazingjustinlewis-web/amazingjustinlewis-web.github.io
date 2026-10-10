@@ -1,0 +1,39 @@
+@font-face { font-family: Fredoka; src: url(../assets/fredoka-latin-var.woff2) format('woff2'); font-weight: 300 700; }
+.wpad { --border: #7ed957; font-family: Fredoka, system-ui, sans-serif; display: flex; flex-direction: column; gap: 10px; padding: 10px; box-sizing: border-box; border: 8px solid var(--border); border-radius: 26px; background: #fffaf0; transition: border-color .5s; position: relative; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.wpad button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.wtabs { display: flex; gap: 8px; }
+.wtab { flex: 1; font-size: 30px; padding: 6px 0; border-radius: 16px; background: #f1ebe0; opacity: .6; border-bottom: 5px solid var(--c, #ccc) !important; }
+.wtab.on { opacity: 1; background: #fff; box-shadow: 0 2px 8px #0002; }
+.wgear { flex: 0 0 56px; border-bottom-color: #bbb !important; }
+.wmoms { display: flex; gap: 8px; min-height: 0; justify-content: center; }
+.wmom { font-size: 40px; width: 74px; height: 74px; border-radius: 50%; background: #fff; box-shadow: 0 3px 10px #0003; animation: float 3s ease-in-out infinite, fadein .8s; }
+.wmom.gone { opacity: .3; }
+@keyframes float { 50% { transform: translateY(-6px); } }
+@keyframes fadein { from { opacity: 0; transform: translateX(40px); } }
+.wgrid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr); gap: 12px; min-height: 0; }
+.wbtn { background: var(--c); border-radius: 28px; box-shadow: inset 0 -8px 0 #0002, 0 4px 10px #0002; font-size: min(15vw, 9vh); display: flex; align-items: center; justify-content: center; }
+.wbtn span { filter: drop-shadow(0 3px 2px #0003); }
+.pop { animation: pop .35s; }
+@keyframes pop { 40% { transform: scale(.9); } }
+.wback { font-size: 36px; padding: 8px; border-radius: 20px; background: #e8e2d6; }
+.wset { position: absolute; inset: 0; background: #fffaf0f6; border-radius: 18px; padding: 16px; overflow: auto; display: flex; flex-direction: column; gap: 14px; z-index: 5; }
+.wset.hidden { display: none; }
+.wrow { display: flex; flex-direction: column; gap: 6px; }
+.wlab { font-size: 18px; color: #6b5a48; font-weight: 600; }
+.wch { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.wch button, .wtog { font-size: 20px; padding: 10px 14px; border-radius: 14px; background: #ece4d6; color: #5a4636; }
+.wch button.on, .wtog.on { background: #7ed957; color: #fff; }
+.wch input[type=range] { flex: 1; min-width: 160px; }
+.wval { font-size: 18px; color: #6b5a48; }
+.wnote { font-size: 14px; color: #9a8a78; }
+.wclose { align-self: flex-end; font-size: 26px; background: #ece4d6; border-radius: 14px; padding: 6px 14px; }
+/* compact = a strip along the bottom of the TV/iPad screen */
+.wpad.compact { flex-direction: row; align-items: stretch; height: 100%; border-radius: 22px 22px 0 0; border-bottom: 0; }
+.wpad.compact .wtabs { flex-direction: column; flex: 0 0 64px; }
+.wpad.compact .wtab { font-size: 24px; }
+.wpad.compact .wgear { flex: 1; }
+.wpad.compact .wgrid { grid-template-columns: repeat(6, 1fr); grid-template-rows: 1fr; }
+.wpad.compact .wbtn { font-size: min(7vw, 9vh); }
+.wpad.compact .wmoms { position: absolute; bottom: calc(100% + 10px); left: 0; right: 0; }
+.wpad.compact .wback { flex: 0 0 80px; }
+.wpad.compact .wset { position: fixed; inset: 6vh 20vw; border: 6px solid #7ed957; }
