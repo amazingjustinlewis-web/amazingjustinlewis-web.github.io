@@ -455,17 +455,18 @@
     if (!m || !m.t) return;
     var me = crew.find(function (q) { return q.conn === conn; });
     if (m.t === 'hello') {
-      me = member(m.clientId);
+      me = member(m.clientId); var isNew = !me;
       if (!me) {
         if (crew.filter(function (q) { return q.connected; }).length >= C.maxCrew) { net.send(conn, { t: 'reject', reason: 'The bridge is full (' + C.maxCrew + ' crew). Watch the big screen!' }); return; }
         me = { cid: m.clientId, name: String(m.name || 'Crew').slice(0, 14), onBridge: true }; crew.push(me);
-        SFX.play('join'); log(me.name + ' came aboard.', 'crew');
-        if (crew.filter(function (q) { return q.connected; }).length === 0 && !asg.cap) say('Welcome aboard, Captain ' + me.name + '.', 'calm');
-        else say(me.name + ' is on the bridge.', 'calm', true);
       }
+      var first = isNew && crew.filter(function (q) { return q.connected; }).length === 0 && !asg.cap;
       me.conn = conn; me.connected = true; me.seen = performance.now(); if (m.name) me.name = String(m.name).slice(0, 14);
+      // welcome FIRST: nothing cosmetic (sound, voice, log) may stand between a phone and its welcome
       net.send(conn, { t: 'welcome', cid: me.cid, sector: C.sector.map(function (d) { return { id: d.id, kind: d.kind, cat: d.cat, name: d.name, x: d.x, y: d.y, z: d.z, r: d.r, flavour: d.flavour, landable: !!d.landable, reviews: d.reviews }; }), topo: topo, sites: SITES });
-      rebalance(); sendState(true); return;
+      try { rebalance(); sendState(true); } catch (e) { if (window.console) console.error(e); }
+      if (isNew) try { SFX.play('join'); log(me.name + ' came aboard.', 'crew'); if (first) say('Welcome aboard, Captain ' + me.name + '.', 'calm'); else say(me.name + ' is on the bridge.', 'calm', true); } catch (e) {}
+      return;
     }
     if (!me) return;
     me.connected = true; me.seen = performance.now();

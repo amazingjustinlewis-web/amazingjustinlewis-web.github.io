@@ -424,7 +424,8 @@
   function pushState() { var m = stateMsg(); for (var id in phones) net.send(phones[id], m); if (localPad) localPad.setState(m); lastPush = st.t; }
   function onMsg(conn, m) {
     if (!m || !m.t) return;
-    if (!phones[conn.connectionId]) { phones[conn.connectionId] = conn; nPhones++; hideStart(); }
+    if (!phones[conn.connectionId]) { phones[conn.connectionId] = conn; nPhones++; }
+    hideStart();
     if (m.t === 'hello') { net.send(conn, stateMsg()); }
     else if (m.t === 'tap') tap(m.id);
     else if (m.t === 'back') back();
@@ -433,7 +434,7 @@
   }
   function applySettings(s) { for (var k in s) if (k in C.defaults) settings[k] = s[k]; walkerSaveSettings(settings); setBuddy(); pushState(); }
   var useLocal = q.get('local') === '1';
-  var net = new (useLocal ? LRNet.LocalHost : LRNet.Host)({ code: q.get('room') || undefined, onStatus: function (s, code) { showCode(); }, onMessage: onMsg, onClose: function (c) { if (phones[c.connectionId]) { delete phones[c.connectionId]; nPhones--; } } });
+  var net = new (useLocal ? LRNet.LocalHost : LRNet.Host)({ code: q.get('room') || undefined, onStatus: function (s, code) { showCode(); }, onMessage: onMsg, onJoin: function (c) { if (!phones[c.connectionId]) { phones[c.connectionId] = c; nPhones++; } hideStart(); }, onClose: function (c) { if (phones[c.connectionId]) { delete phones[c.connectionId]; nPhones--; } } });
 
   // ---------------------------------------------------------------- start screen + Play here
   var startEl = document.getElementById('start'), localPad = null;
@@ -444,7 +445,15 @@
     document.getElementById('mini').innerHTML = document.getElementById('qr').innerHTML; document.getElementById('minicode').textContent = net.code;
     window.WALKER.controllerUrl = url;
   }
-  function hideStart() { if (st.mode === 'start') { st.mode = 'area'; startEl.classList.add('gone'); S.init(); pushState(); } }
+  var started = false;
+  // the overlay goes on its own flag: st.mode can drift off 'start' (idle moments etc.) before a phone arrives, which used to leave the QR up forever
+  function hideStart() {
+    if (started) return; started = true;
+    startEl.classList.add('gone'); setTimeout(function () { startEl.style.display = 'none'; }, 900);
+    if (st.mode === 'start') st.mode = 'area';
+    try { S.init(); } catch (e) {}
+    try { pushState(); } catch (e) {}
+  }
   function playHere() {
     S.init(); hideStart(); if (localPad) return;
     document.body.classList.add('local');
@@ -454,9 +463,9 @@
   }
   document.getElementById('here').onclick = playHere;
   document.addEventListener('pointerdown', function () { S.init(); });
-  document.addEventListener('keydown', function (e) { S.init(); if (e.key === 'Enter' && st.mode === 'start') playHere(); });
+  document.addEventListener('keydown', function (e) { S.init(); if (e.key === 'Enter' && !started) playHere(); });
   var tablet = isTouch && minDim >= 600 && maxDim <= 1600;
-  if (tablet) { document.getElementById('here').classList.add('suggest'); setTimeout(function () { if (st.mode === 'start' && !nPhones) playHere(); }, 7000); }
+  if (tablet) { document.getElementById('here').classList.add('suggest'); setTimeout(function () { if (!started && !nPhones) playHere(); }, 7000); }
   if (q.get('auto') === 'here') setTimeout(playHere, 300);
   document.getElementById('ver').textContent = 'v' + C.version;
 
@@ -474,6 +483,6 @@
     if (fpsT > 2 && !q.has('q')) { var fps = fpsN / fpsAcc; if (fps < C.quality.downBelowFps && rung < C.quality.rungs.length - 1) { slow++; if (slow > 1) { rung++; applyQ(); slow = 0; } } else slow = 0; if (fps > C.quality.upAboveFps && rung > 0) { fast++; if (fast > 6) { rung--; applyQ(); fast = 0; } } else fast = 0; fpsAcc = fpsN = fpsT = 0; }
     requestAnimationFrame(frame);
   }
-  window.WALKER = { st: st, tap: tap, back: back, moment: momentTap, set: applySettings, settings: settings, playHere: playHere, hue: function () { return hue; }, pos: pos, W: W, weather: weather, step: function (sec) { for (var i = 0; i < sec * 30; i++) { update(1 / 30); updateKids(1 / 30); updateBuddy(1 / 30); updateWorld(1 / 30); updateMoments(1 / 30); } renderer.render(scene, cam); } };
+  window.WALKER = { st: st, tap: tap, back: back, moment: momentTap, set: applySettings, settings: settings, playHere: playHere, started: function () { return started; }, hue: function () { return hue; }, pos: pos, W: W, weather: weather, step: function (sec) { for (var i = 0; i < sec * 30; i++) { update(1 / 30); updateKids(1 / 30); updateBuddy(1 / 30); updateWorld(1 / 30); updateMoments(1 / 30); } renderer.render(scene, cam); } };
   requestAnimationFrame(frame);
 })();

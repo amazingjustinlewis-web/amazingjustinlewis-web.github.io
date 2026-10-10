@@ -24,7 +24,7 @@
     var peer = this.peer = new root.Peer((this.o.prefix || C.peerPrefix) + this.code, peerOpts());
     peer.on('open', function () { self.tries = 0; self.setStatus('online'); });
     peer.on('connection', function (conn) {
-      conn.on('open', function () { self.conns[conn.connectionId] = conn; });
+      conn.on('open', function () { self.conns[conn.connectionId] = conn; if (self.o.onJoin) try { self.o.onJoin(conn); } catch (e) {} });
       conn.on('data', function (d) { self.conns[conn.connectionId] = conn; if (self.o.onMessage) self.o.onMessage(conn, d); });
       conn.on('close', function () { delete self.conns[conn.connectionId]; if (self.o.onClose) self.o.onClose(conn); });
       conn.on('error', function () { delete self.conns[conn.connectionId]; if (self.o.onClose) self.o.onClose(conn); });
@@ -92,9 +92,13 @@
     var self = this;
     if (this.conn) try { this.conn.close(); } catch (e) {}
     var conn = this.conn = this.peer.connect(C.peerPrefix + this.code, { reliable: true });
-    var timer = setTimeout(function () { if (conn === self.conn && !conn.open) { self.setStatus('reconnecting', 'timeout'); self.retry(1000); } }, 9000);
+    // a busy TV (Chromecast drawing 3D) can take well over 9 s to answer; a short fixed timeout kept killing a handshake that was about to land
+    this.attempt = (this.attempt || 0) + 1;
+    var wait = Math.min(30000, 15000 + 5000 * (this.attempt - 1));
+    if (this.o.onAttempt) try { this.o.onAttempt(this.attempt, wait); } catch (e) {}
+    var timer = setTimeout(function () { if (conn === self.conn && !conn.open) { self.setStatus('reconnecting', 'timeout'); self.retry(1000); } }, wait);
     conn.on('open', function () {
-      clearTimeout(timer); self.tries = 0; self.lastHeard = Date.now();
+      clearTimeout(timer); self.tries = 0; self.attempt = 0; self.lastHeard = Date.now();
       self.setStatus('online');
       if (self.o.onOpen) self.o.onOpen();
     });

@@ -15,8 +15,13 @@ html,body{margin:0;height:100%;background:#fdf3e1;overflow:hidden;font-family:Fr
 #dot{position:absolute;top:4px;right:10px;width:12px;height:12px;border-radius:50%;background:#ccc;z-index:8}
 #dot.on{background:#7ed957}
 .hide{display:none!important}
+#linking{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#fdf3e1;z-index:10;text-align:center;padding:24px;font-size:24px}
+#linking .sp{font-size:64px;animation:wb 1.2s ease-in-out infinite}@keyframes wb{50%{transform:translateY(-14px)}}
+#linking small{font-size:16px;opacity:.75;max-width:22em}
+#linking button{font:inherit;font-size:22px;padding:10px 26px;border-radius:18px;border:0;background:#7ed957;color:#fff}
 </style></head><body>
 <div id="pad"></div><div id="dot"></div>
+<div id="linking" class="hide"><div class="sp">&#x1F642;</div><div id="lkMsg">Connecting…</div><small id="lkSub"></small><button id="lkRetry" class="hide">Try again</button></div>
 <div id="join" class="hide"><div style="font-size:60px">&#x1F642;</div><input id="code" maxlength="4" placeholder="ABCD" autocomplete="off"><button id="go">&#x25B6;</button></div>
 <script src="js/vendor/peerjs.min.js"></script>
 <script>if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>

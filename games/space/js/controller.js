@@ -14,21 +14,38 @@
   function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms || 15); } catch (e) {} }
 
   // ================================================================== join
+  var dock = { t0: 0, timer: null, hellos: 0, attempt: 0 };
+  function jstat(t) { $('joinStatus').textContent = t; }
+  function dockWatch() {        // 'Coming aboard' never hangs silently: re-greet, then say what's wrong, keep retrying
+    clearInterval(dock.timer);
+    dock.timer = setInterval(function () {
+      if (me) { clearInterval(dock.timer); return; }
+      var secs = (Date.now() - dock.t0) / 1000, online = net && net.status === 'online';
+      if (online && dock.hellos < 6) { dock.hellos++; send({ t: 'hello', clientId: cid, name: dock.name }); }
+      else if (online && net.reconnect) { dock.hellos = 0; net.reconnect(); }
+      if (secs > 45) { jstat('Can\u2019t reach the ship yet. Is ' + C.TITLE + ' open on the TV, and is this phone on the same Wi-Fi? Still trying\u2026'); $('joinBtn').textContent = 'TRY AGAIN'; }
+      else if (secs > 12) jstat(online ? 'Linked, waiting for the bridge to answer\u2026' : 'Still docking\u2026 (try ' + Math.max(1, dock.attempt) + ')');
+    }, 3000);
+  }
   function join() {
     var room = $('room').value.trim().toUpperCase(), name = $('name').value.trim() || 'Crew';
-    if (room.length !== 4) { $('joinStatus').textContent = 'Enter the 4-letter code from the bulkhead.'; return; }
-    localStorage.setItem('ds-name', name); $('joinStatus').textContent = 'Docking\u2026';
-    var opts = { code: room, onOpen: function () { send({ t: 'hello', clientId: cid, name: name }); }, onMessage: onMsg,
-      onStatus: function (s) { $('conn').className = 'conn' + (s === 'online' ? ' on' : ''); if (s === 'noroom') $('joinStatus').textContent = 'No ship with that code. Check the bulkhead.'; } };
+    if (room.length !== 4) { jstat('Enter the 4-letter code from the bulkhead.'); return; }
+    localStorage.setItem('ds-name', name); jstat('Docking\u2026'); $('joinBtn').textContent = 'COMING ABOARD\u2026';
+    dock.t0 = Date.now(); dock.hellos = 0; dock.name = name;
+    if (net) { if (net.code === room && net.reconnect) { net.reconnect(); dockWatch(); return; } try { net.destroy && net.destroy(); } catch (e) {} net = null; }
+    var opts = { code: room, onOpen: function () { dock.hellos = 0; jstat('Linked. Coming aboard\u2026'); send({ t: 'hello', clientId: cid, name: name }); }, onMessage: onMsg,
+      onAttempt: function (n) { dock.attempt = n; },
+      onStatus: function (s) { $('conn').className = 'conn' + (s === 'online' ? ' on' : ''); if (s === 'noroom' && !me) jstat('No ship with code ' + room + ' yet. Is ' + C.TITLE + ' open on the TV? Retrying\u2026'); } };
     net = LOCAL ? new window.LRNet.LocalClient(opts) : new window.LRNet.Client(opts);
+    dockWatch();
   }
   $('joinBtn').onclick = join;
   if (Q.has('auto') || (Q.get('room') && localStorage.getItem('ds-name') && Q.has('rejoin'))) setTimeout(join, 50);
 
   function onMsg(m) {
     if (!m || !m.t) return;
-    if (m.t === 'reject') { $('joinStatus').textContent = m.reason; return; }
-    if (m.t === 'welcome') { me = m.cid; sector = m.sector; byId = {}; sector.forEach(function (d) { byId[d.id] = d; }); topo = m.topo; sites = m.sites; $('join').hidden = true; $('main').hidden = false; buildCats(); buildSci(); buildSites(); buzz(30); return; }
+    if (m.t === 'reject') { clearInterval(dock.timer); jstat(m.reason); $('joinBtn').textContent = 'COME ABOARD'; return; }
+    if (m.t === 'welcome') { clearInterval(dock.timer); $('joinBtn').textContent = 'COME ABOARD'; me = m.cid; sector = m.sector; byId = {}; sector.forEach(function (d) { byId[d.id] = d; }); topo = m.topo; sites = m.sites; $('join').hidden = true; $('main').hidden = false; buildCats(); buildSci(); buildSites(); buzz(30); return; }
     if (m.t === 'prompt') { showPrompt(m); return; }
     if (m.t === 'st') { S = m; render(); }
   }
