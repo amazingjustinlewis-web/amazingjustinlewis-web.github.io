@@ -97,9 +97,9 @@
       vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader: 'uniform vec4 hits[8]; uniform float t; uniform vec3 col; uniform float base; varying vec3 vP;\n' +
         'float hexd(vec2 p){ p = abs(p); return max(p.x*0.866+p.y*0.5, p.y); }\n' +
-        'void main(){ vec2 q = vec2(atan(vP.z,vP.x)*6.0, asin(vP.y)*6.0); vec2 r = vec2(1.0,1.732); vec2 h = r*0.5; vec2 a = mod(q,r)-h; vec2 b = mod(q-h,r)-h; vec2 gv = dot(a,a)<dot(b,b)?a:b; float edge = smoothstep(0.42,0.5,hexd(gv));\n' +
+        'void main(){ vec2 q = vec2(atan(vP.z,vP.x)*6.0, asin(vP.y)*6.0); vec2 r = vec2(1.0,1.732); vec2 h = r*0.5; vec2 a = mod(q,r)-h; vec2 b = mod(q-h,r)-h; vec2 gv = dot(a,a)<dot(b,b)?a:b; float edge = smoothstep(0.46,0.5,hexd(gv));\n' +
         ' float s = 0.0; for(int i=0;i<8;i++){ float age = t-hits[i].w; if(age<0.0||age>1.4) continue; float d = acos(clamp(dot(vP,hits[i].xyz),-1.0,1.0)); float ring = exp(-pow((d-age*0.5)*9.0,2.0)); s += (ring*0.8 + exp(-d*7.0)*(1.0-age/1.4)*1.2)*(1.0-age/1.4); }\n' +
-        ' float v = s*(0.35+edge*1.4) + base*edge*0.12; gl_FragColor = vec4(col*v, v); }' }));
+        ' float v = min(s,1.5)*(0.18+edge*0.7) + base*edge*0.1; gl_FragColor = vec4(col*v, v); }' }));
     H.shield.renderOrder = 5; H.shield.frustumCulled = false;
     // --- sector objects ---
     H.objs = {};
@@ -189,11 +189,11 @@
   }
   // ===================================================== events: the colossus and the leviathan (big simple shapes, lots of glow)
   function makeColossus(T, glow) {
-    var g = new T.Group(), m = new T.MeshLambertMaterial({ color: 0x1a1d24, emissive: 0x05070c });
+    var g = new T.Group(), m = new T.MeshLambertMaterial({ color: 0x59606e, emissive: 0x10141c });
     var spine = new T.Mesh(new T.CylinderGeometry(120, 260, 4200, 6, 1), m); spine.rotation.z = Math.PI / 2; g.add(spine);
     for (var i = 0; i < 9; i++) { var f = new T.Mesh(new T.BoxGeometry(160, 900 - Math.abs(i - 4) * 140, 60), m); f.position.x = -1700 + i * 420; g.add(f);
-      for (var k = 0; k < 3; k++) { var L = lightDot(T, glow, 0x7ad8ff, 70); L.position.set(-1700 + i * 420, (k - 1) * 200, 40); g.add(L); } }
-    var rift = new T.Sprite(new T.SpriteMaterial({ map: glow, color: 0xb070ff, blending: T.AdditiveBlending, depthWrite: false, opacity: 0.9 })); rift.scale.set(5200, 2200, 1); g.add(rift); g.userData.rift = rift;
+      for (var k = 0; k < 3; k++) { var L = lightDot(T, glow, 0x7ad8ff, 220); L.position.set(-1700 + i * 420, (k - 1) * 200, 40); g.add(L); } }
+    var rift = new T.Sprite(new T.SpriteMaterial({ map: glow, color: 0xb070ff, blending: T.AdditiveBlending, depthWrite: false, opacity: 0.9 })); rift.scale.set(3000, 1100, 1); rift.material.opacity = 0.5; g.add(rift); g.userData.rift = rift;
     return g;
   }
   // ===================================================== the water-planet surface (Thalassa)

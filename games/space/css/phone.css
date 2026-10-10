@@ -1,3 +1,4 @@
+[hidden] { display: none !important; }
 @font-face { font-family: Fredoka; src: url(../assets/fredoka-latin-var.woff2) format('woff2'); font-weight: 300 700; font-display: swap; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; background: #05080e; color: #dbeefa; font-family: Fredoka, system-ui, sans-serif; overscroll-behavior: none; }

@@ -212,7 +212,7 @@
         if (p.st === 'captured') { p.st = 'silent'; preading(p, 'Probe silent.'); say('Probe ' + p.n + ' has gone silent in the gravity well of ' + d.name + '.', 'calm', true); return; }
         if (p.li < p.lines.length) {
           var line = p.lines[p.li++];
-          if (d.kind === 'blackhole') { var cp = clamp(1.25 - dist / (d.r * 6), 0, 0.92); p.noise = cp; line = corrupt(line, cp); SFX.play('static', { d: 0.6 + cp, v: 0.04 + cp * 0.12 }); }
+          if (d.kind === 'blackhole') { if (!p.d0) p.d0 = dist; var cp = clamp(Math.pow(clamp(1 - (dist - d.r) / Math.max(1, p.d0 - d.r), 0, 1), 1.6) * 0.95, 0, 0.92); p.noise = cp; line = corrupt(line, cp); SFX.play('static', { d: 0.6 + cp, v: 0.04 + cp * 0.12 }); }
           preading(p, line);
         } else if (d.kind === 'blackhole') preading(p, corrupt('...still...falling...', 0.9));
       }
@@ -251,7 +251,7 @@
   function descend() {
     if (land.step < 2) { say('Match orbit and align the corridor first.', 'calm'); return; }
     if (!land.site) pickSite('shelf');
-    land.phase = 'entry'; land.t = 0; ship.loc = 'descent'; ship.orbit = null; ship.view = false; SFX.play('burn');
+    land.phase = 'entry'; land.t = 0; ship.loc = 'descent'; ship.course = null; ship.speed = 0; ship.orbit = null; ship.view = false; SFX.play('burn');
     say('Beginning descent. Atmospheric entry in ten seconds.', 'alert'); dirty = true;
   }
   function liftoff() {
@@ -275,7 +275,7 @@
       var e = clamp(t / 16, 0, 1), ease = 1 - Math.pow(1 - e, 2.4);
       surfCam.y = lerp(420, 7, ease); surfCam.z = lerp(220, 0, ease); surfCam.pitch = lerp(-0.35, 0.02, ease); ship.shake = Math.max(ship.shake, 0.12 * (1 - e));
       if (surfCam.y < 130 && !land.gearCalled) { land.gearCalled = true; land.gearT = 0; SFX.play('gear'); say(ship.gearOk ? 'Landing gear down.' : 'Landing gear failure.', 'calm'); }
-      if (t >= 16) { land.phase = 'touch'; land.t = 0; SFX.play('thud'); ship.shake = 0.35; say('Contact. Soft landing.', 'calm', true); }
+      ship.speed = 0; if (t >= 16) { land.phase = 'touch'; land.t = 0; SFX.play('thud'); ship.shake = 0.35; say('Contact. Soft landing.', 'calm', true); }
       return;
     }
     if (land.phase === 'touch') {   // soft... then it settles, jarringly, half in the water and a bit crooked
@@ -313,7 +313,7 @@
     if (nu.state !== 'under') {
       nu.t += dt; var base = camera.position;
       var rise = nu.state === 'rise' ? clamp(nu.t / 3.5, 0, 1) : nu.state === 'sink' ? 1 - clamp(nu.t / 3, 0, 1) : 1;
-      n.position.set(base.x + 1.2, base.y - 14.6 + rise * 2.4 + Math.sin(simT * 0.8) * 0.08, base.z - 7.2); n.lookAt(base.x, n.position.y, base.z);
+      n.position.set(base.x + 1.2, base.y - 16.4 + rise * 2.6 + Math.sin(simT * 0.8) * 0.08, base.z - 7.2); n.lookAt(base.x, n.position.y, base.z);
       if (nu.state === 'rise' && nu.t > 3.5) { nu.state = 'stare'; nu.t = 0; say('Lifeform at the forward glass.', 'calm', true); }
       if (nu.state === 'stare' && nu.t > 9) { nu.state = 'sink'; nu.t = 0; }
       if (nu.state === 'sink' && nu.t > 3) { nu.state = 'under'; glassT = 45 + Math.random() * 30; }
@@ -338,7 +338,7 @@
     if (e.kind === 'raider') { H.raider.visible = true; A.a = 0; A.dur = 45; SFX.play('raider'); setTimeout(function () { startEncounter('raider'); }, 6000); }
     if (e.kind === 'envoy' || e.kind === 'alien') { A.ship = makeEnvoy(); A.ship.position.copy(ship.pos).addScaledVector(ahead, 900).add(new T.Vector3(200, 80, 0)); scene.add(A.ship); A.dur = 70; setTimeout(function () { startEncounter('envoy'); }, 3500); }
     if (e.kind === 'distress') { A.ship = H.objs.drifter.clone(); A.ship.scale.setScalar(0.7); A.ship.position.copy(ship.pos).addScaledVector(ahead, 520).add(new T.Vector3(-90, -30, 0)); scene.add(A.ship); A.dur = 75; A.tow = 0; log('COMMS \u203A Distress: "Our engines are dead and the current is pulling us apart!"', 'com'); }
-    if (e.kind === 'colossus') { A.ship = W.makeColossus(T, H.glow); A.ship.position.copy(ship.pos).addScaledVector(ahead, 5200).add(new T.Vector3(0, 400, 0)); A.ship.lookAt(ship.pos); A.ship.rotateY(Math.PI / 2); A.ship.scale.setScalar(0.01); scene.add(A.ship); A.dur = 50; SFX.play('raider'); allStop(); }
+    if (e.kind === 'colossus') { A.ship = W.makeColossus(T, H.glow); A.ship.position.copy(ship.pos).addScaledVector(ahead, 3900).add(new T.Vector3(0, 250, 0)); A.ship.lookAt(ship.pos); A.ship.scale.setScalar(0.01); scene.add(A.ship); A.dur = 50; SFX.play('raider'); allStop(); }
     dirty = true; return true;
   }
   function makeEnvoy() {
@@ -370,19 +370,19 @@
       if (A.t > A.dur) { if (!A.outcome) say('The distress signal has faded.', 'calm'); endEvent(); }
     } else if (A.def.kind === 'colossus') {   // a colossal ship slips out of another dimension in front of you
       var k = A.t, sc = k < 8 ? 0.01 : Math.min(1, (k - 8) / 6); A.ship.scale.setScalar(Math.max(0.01, sc));
-      A.ship.userData.rift.material.opacity = k < 8 ? k / 8 : Math.max(0, 1 - (k - 14) / 6);
+      A.ship.userData.rift.material.opacity = 0.55 * (k < 8 ? k / 8 : Math.max(0, 1 - (k - 14) / 6));
       A.ship.position.addScaledVector(tmpV2.set(1, 0, 0).applyQuaternion(A.ship.quaternion), dt * 70);
       ship.shake = Math.max(ship.shake, k > 6 && k < 16 ? 0.25 : 0); if (k > 9 && k < 30 && Math.random() < dt * 2) addImpact(0.5);
       if (k > 12 && !A.said) { A.said = true; say('Mass estimate... forty kilometres. It is not acknowledging us. I do not think it can see us.', 'alert'); }
       if (k > 34 && !A.leaving) { A.leaving = true; say('It is folding back out of our dimension.', 'calm'); }
-      if (A.leaving) { A.ship.userData.rift.material.opacity = Math.min(0.9, (k - 34) / 4); A.ship.scale.setScalar(Math.max(0.01, 1 - (k - 38) / 6)); }
+      if (A.leaving) { A.ship.userData.rift.material.opacity = Math.min(0.5, (k - 34) / 6); A.ship.scale.setScalar(Math.max(0.01, 1 - (k - 38) / 6)); }
       if (A.t > A.dur) endEvent();
     }
   }
   var beamLine = null;
   function beam(to) {
-    if (!beamLine) { beamLine = new T.Mesh(new T.CylinderGeometry(3, 8, 1, 8, 1, true), new T.MeshBasicMaterial({ color: 0x7dffd0, transparent: true, opacity: 0.4, blending: T.AdditiveBlending, depthWrite: false })); scene.add(beamLine); }
-    var from = tmpV2.copy(ship.pos).add(new T.Vector3(0, -12, 0).applyQuaternion(ship.quat)), mid = from.clone().add(to).multiplyScalar(0.5), len = from.distanceTo(to);
+    if (!beamLine) { beamLine = new T.Mesh(new T.CylinderGeometry(1.5, 5, 1, 8, 1, true), new T.MeshBasicMaterial({ color: 0x3fbf90, transparent: true, opacity: 0.22, blending: T.AdditiveBlending, depthWrite: false })); scene.add(beamLine); }
+    var from = tmpV2.copy(ship.pos).add(new T.Vector3(0, -10, -40).applyQuaternion(ship.quat)), mid = from.clone().add(to).multiplyScalar(0.5), len = from.distanceTo(to);
     beamLine.position.copy(mid); beamLine.scale.set(1, len, 1); beamLine.lookAt(to); beamLine.rotateX(Math.PI / 2); beamLine.visible = true; beamLine.userData.t = 0.2;
   }
   function tow(by) {

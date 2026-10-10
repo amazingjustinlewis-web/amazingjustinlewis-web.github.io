@@ -218,6 +218,37 @@ window.GAMES = [
     ]
   },
   {
+    id: 'space',
+    title: 'Drift Signal',
+    pitch: 'The chillest space sim: the TV is your ship\u2019s bridge window and every phone is a crew station. Warp between planets, probe a black hole, land on a creepy ocean world. 1 to 6 crew.',
+    cover: 'assets/img/space/cover-card.webp',
+    coverAlt: 'Drift Signal on the TV: the view from a starship bridge looking at a black hole with a glowing accretion disk, holographic readouts on the glass and a QR code etched into the bulkhead',
+    details: 'games/space.html',
+    status: 'First prototype',
+    tags: ['1\u20136 crew', 'TV + phones', 'Chill'],
+    accent: '#8fe6ff',
+    sections: ['family'],
+    intensity: 1,
+    goodToKnow: [
+      'Slow and calm by design: no shooting, no score. Strange things just happen out there (an alien that stares at you through the glass, a ship the size of a city).',
+      'The first phone aboard is the captain. Everyone after gets a station (Helm, Science, Tactical, Engineering, Comms); the captain can drag stations between people.',
+      'Default mode is the recommended pace. Change anything on the captain\u2019s phone (danger level, computer voice, cosmic drone) and it becomes Custom.',
+      'The ship computer talks using your browser\u2019s built-in voice (Off / Occasional / Detailed). Some TV browsers have no voice.',
+      'Philips Hue is a settings preview only for now (zones + a 2\u2013100% brightness range); the lights hookup comes later.',
+      'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi).',
+      'First prototype: simple shapes with layered glow. Tested with simulated phones so far.'
+    ],
+    versions: [
+      {
+        id: 'v0.1',
+        name: 'First voyage',
+        current: true,
+        play: 'games/space/index.html',
+        notes: 'The bridge: a bulkhead window with holographic heading, warp, shields, hull, power and contact markers, a view-screen zoom, and the room QR etched into the bulkhead. A sector with seeded planets, a nebula, an off-gassing comet (fly its tail and the shields light up), a black hole that pulls you in, three very different stations and a drifting freighter. Star map with drop-down scan categories, a warp slider with ship-time ETAs, an AI pilot, probes (planets swallow them, the black hole turns their readings to static), a water-planet landing with creepy watchers, node-based power routing, crew stations with drag-to-assign and captain requests, random events (meteor storms, a raider, a distress call you can tow clear, an alien envoy you can talk to from your phones) and a rare wild event in Default mode.'
+      }
+    ]
+  },
+  {
     id: 'mech',
     title: 'Iron Stride',
     pitch: 'Pilot a walking mech from its cockpit on the TV. Swing your phone to turn, tilt to aim, draw a path on the map and the legs do the walking. 1 pilot + an optional gunner.',
