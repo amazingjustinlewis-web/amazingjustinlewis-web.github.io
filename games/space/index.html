@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Drift Signal - bridge | Zero to Phi</title>
+<meta name="description" content="Drift Signal: a chill space sim. The TV is your ship's bridge; phones are the crew stations. Prototype v0.1 by Zero to Phi.">
+<meta name="theme-color" content="#02030a">
+<meta name="robots" content="noindex">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/tv.css">
+</head>
+<body>
+<canvas id="gl" aria-label="The view out of the ship's bridge window"></canvas>
+<div id="warpglow"></div>
+<div id="atmo"></div>
+<div id="breath"></div>
+<canvas id="frame" aria-hidden="true"></canvas>
+<canvas id="hud" aria-hidden="true"></canvas>
+<div id="bubbles" aria-live="polite"></div>
+<div id="title"><div class="presents"><img src="assets/logo.svg" alt="" width="40" height="33"> ZERO TO PHI <span id="ver"></span></div><h1 id="ttl"></h1><p>Scan the plate on the bulkhead to come aboard.</p><a class="back" href="../../family.html">&larr; games</a></div>
+<div id="fxInfo"></div>
+<script src="js/vendor/three.min.js"></script>
+<script src="js/vendor/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/config.js"></script>
+<script src="js/sfx.js"></script>
+<script src="js/net.js"></script>
+<script src="js/world.js"></script>
+<script src="js/tv.js"></script>
+</body>
+</html>

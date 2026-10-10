@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Drift Signal crew station | Zero to Phi</title>
+<meta name="theme-color" content="#05080e">
+<meta name="robots" content="noindex">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/phone.css">
+</head>
+<body>
+<section id="join" class="screen">
+  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt" id="jTitle">DRIFT SIGNAL</div><div class="jsub" id="jSub">crew station</div></div></header>
+  <label class="fld">Room code<input id="room" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD"></label>
+  <label class="fld">Your name<input id="name" maxlength="14" autocomplete="nickname" placeholder="Name"></label>
+  <button id="joinBtn" class="big-btn">COME ABOARD</button>
+  <div id="joinStatus" class="jstatus" role="status"></div>
+  <p class="jhelp">The first person aboard is the captain. Everyone after that gets a station: Helm, Science, Tactical, Engineering, Comms.</p>
+</section>
+
+<section id="main" class="screen" hidden>
+  <header class="mhead">
+    <span id="myName"></span><span id="myRole" class="chips"></span>
+    <span class="sp"></span>
+    <button id="bridgeBtn" class="pill on">ON THE BRIDGE</button>
+    <span id="conn" class="conn"></span>
+  </header>
+  <nav class="tabs" id="tabs"></nav>
+  <div id="remote" class="remote-banner" hidden></div>
+  <div id="panes">
+    <div class="pane" data-pane="cap">
+      <div class="status" id="capStatus"></div>
+      <div class="grid4">
+        <button class="act" data-act='{"a":"stop"}'>All stop</button>
+        <button class="act tog" id="capView">View screen</button>
+        <button class="act warn" data-act='{"a":"alert","level":"red"}'>Red alert</button>
+        <button class="act" data-act='{"a":"alert","level":"auto"}'>Stand down</button>
+      </div>
+      <h3>Crew <small>drag a station onto a name to hand it over (or tap a station, then a name)</small></h3>
+      <div id="stationChips" class="chips big"></div>
+      <ul id="crewList" class="crew"></ul>
+      <h3>Ship's log</h3><ul id="capLog" class="log"></ul>
+    </div>
+    <div class="pane" data-pane="helm">
+      <div class="mapwrap"><canvas id="map" width="720" height="720" aria-label="Star map: drag to pan, pinch to zoom, tap a destination"></canvas>
+        <div class="zoom"><button id="zin">+</button><button id="zout">&minus;</button><button id="zme">&#9673;</button></div>
+        <div id="pop" class="pop" hidden></div></div>
+      <div class="warp"><div class="wl"><span id="warpLbl">WARP 6.0</span><span id="etaLbl"></span></div><input id="warp" type="range" min="0" max="9.9" step="0.1" value="6"></div>
+      <div class="row"><button class="act" data-act='{"a":"stop"}'>All stop</button><button class="act tog" id="helmView">View screen</button></div>
+      <div id="landBox" class="landbox" hidden>
+        <h3>Landing &middot; <span id="landPlanet">Thalassa-4471</span></h3>
+        <div class="row"><button class="act" id="lMatch">1 &middot; Match orbit</button><button class="act" id="lAlign">2 &middot; Align corridor</button></div>
+        <div class="topowrap"><canvas id="topo" width="640" height="400" aria-label="Topographic map: tap a landing site"></canvas></div>
+        <div class="row" id="siteBtns"></div>
+        <div class="row"><button class="act go" id="lDescend">Begin descent</button><button class="act" id="lLift">Lift off</button></div>
+      </div>
+      <h3>Scan categories</h3><div id="cats"></div>
+    </div>
+    <div class="pane" data-pane="sci">
+      <h3>Targets</h3><div id="sciTargets" class="tlist"></div>
+      <h3>Probes</h3><ul id="probeList" class="log"></ul>
+      <h3>Readings</h3><ul id="sciLog" class="log"></ul>
+    </div>
+    <div class="pane" data-pane="tac">
+      <div class="bars" id="tacBars"></div>
+      <div class="row"><button class="act tog" id="shBtn">Shields</button><button class="act" data-act='{"a":"deflector"}'>Deflector pulse</button></div>
+      <h3>Alert level</h3>
+      <div class="seg"><button class="act" data-act='{"a":"alert","level":"auto"}'>Auto</button><button class="act" data-act='{"a":"alert","level":"yellow"}'>Yellow</button><button class="act warn" data-act='{"a":"alert","level":"red"}'>Red</button></div>
+      <p class="small">No weapons yet. Out here, the best move is usually to look harmless, keep your shields up and fly away slowly.</p>
+    </div>
+    <div class="pane" data-pane="eng">
+      <p class="small">Drag from one system to another to move one unit of power. Everything is a trade.</p>
+      <div class="nodewrap"><canvas id="nodes" width="720" height="720" aria-label="Power routing: drag between systems"></canvas></div>
+      <ul id="engFx" class="fx"></ul>
+    </div>
+    <div class="pane" data-pane="com">
+      <div class="row"><button class="act tog" id="beaconBtn">Distress beacon</button><button class="act" data-act='{"a":"hail"}'>Hail</button></div>
+      <div class="row"><button class="act" id="towBtn" data-act='{"a":"tow"}' disabled>Tractor tow</button><button class="act" disabled>Trade (soon)</button></div>
+      <h3>Messages</h3><ul id="comLog" class="log"></ul>
+    </div>
+    <div class="pane" data-pane="set">
+      <div class="setrow"><span>Keep my screen awake</span><button id="wakeBtn" class="pill">OFF</button></div>
+      <div id="capSet">
+        <h3>Game mode <span id="modeLbl" class="tag"></span></h3>
+        <button id="presetBtn" class="act">Reset to Default mode</button>
+        <p class="small">Default = the recommended chill pace. Change anything and it becomes Custom. Rare wild events only happen in Default mode.</p>
+        <div class="setrow"><span>Danger (random space events)</span></div>
+        <div class="seg" id="segDanger"><button data-v="off">Off</button><button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button></div>
+        <div class="setrow"><span>Ship computer voice</span></div>
+        <div class="seg" id="segVoice"><button data-v="off">Off</button><button data-v="occasional">Occasional</button><button data-v="detailed">Detailed</button></div>
+        <div class="setrow"><span>Cosmic frequency drone</span><button id="droneBtn" class="pill">OFF</button></div>
+        <div class="setrow"><span>Wild events (Default mode)</span><button id="wildBtn" class="pill">ON</button></div>
+        <h3>Philips Hue <span class="tag">coming soon</span></h3>
+        <p class="small">When a Hue bridge is linked, its rooms and zones show here and the ship's alerts drive those lights, only inside the brightness range you set.</p>
+        <label class="fld">Zone<select id="hueZone" disabled><option value="">No Hue bridge linked yet</option></select></label>
+        <div class="setrow"><span>Brightness range</span><b id="hueLbl">10% &ndash; 80%</b></div>
+        <label class="rng">Lowest <input id="hueMin" type="range" min="2" max="100" value="10"></label>
+        <label class="rng">Highest <input id="hueMax" type="range" min="2" max="100" value="80"></label>
+      </div>
+      <p class="small" id="notCap" hidden>Only the captain can change game settings.</p>
+    </div>
+  </div>
+</section>
+
+<div id="prompt" class="sheet" hidden><div class="sh-t" id="prT"></div><div class="row"><button id="prYes" class="act go">Do it</button><button id="prNo" class="act">Not now</button></div></div>
+<div id="encSheet" class="sheet enc" hidden><div class="sh-s" id="encSp"></div><div class="sh-t" id="encText"></div><div id="encOpts"></div><div class="small" id="encLeft"></div></div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="js/vendor/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/config.js"></script>
+<script src="js/net.js"></script>
+<script src="js/controller.js"></script>
+</body>
+</html>
