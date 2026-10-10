@@ -18,3 +18,10 @@ TV + phones mech prototype. `index.html` = TV (three.js cockpit view), `controll
 - Phone thumb pad (`move` {x,y} relative to the facing, `face` {a}, `tap`): floating stick; release slows to a stop. Outer ring = facing arrow (drag + release -> pod turns at 150 deg/s, the whole pad display rotates back in sync). Inner ring = travel direction + speed. Holo mini-map (heading-up, ~12 Hz state).
 - Mouse + keys: WASD walk relative to facing, Q/E swing torso, mouse aims.
 - Tests: /workspace/mech/tests/sim.py (v0.1 flow) and sim02.py (v0.2 controls).
+
+## v0.3 (v0.2 archived in v0.2/)
+- Thumb-pad momentum: on release the phone sends the swipe's speed (`move` with `rel:1`); the TV holds it `C.pad.holdSec` (0.8 s) then fades with time constant `C.pad.decaySec` (3.5 s).
+- Edge turning feathers in from 35% of the half-screen: 115 deg/s * u^2.8.
+- Rocket lock-on (`C.lock`): forgiving 0.3 cone around the intent reticle, 0.4 s to acquire, up to 3 locks, kept out to 0.5. Flashing red brackets, lock tones; firing sends a staggered salvo, one strongly homing rocket per lock.
+- Trackpad mode (phone ⚙ or the Combat tab quick switch, remembered): relative aim with pointer acceleration (`pad` messages), tap = one shot, hold = keep firing / charge. Lean to walk: forward/back walks, left/right strafes (dead zone 6°, full at 22°, levelled when the mode starts; "Level tilt" re-levels).
+- Tests: sim03.py (momentum, edge curve, rocket lock + salvo, trackpad aim/tap/hold, tilt walk).
