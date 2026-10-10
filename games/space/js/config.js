@@ -4,8 +4,8 @@
   var TITLE = 'DRIFT SIGNAL';              // <-- the one place to rename the game
   var C = root.SPACE_CONFIG = {
     TITLE: TITLE, workingTitle: false,
-    version: '0.2',
-    peerPrefix: 'ztp-driftsignal-v02-',
+    version: '0.3',
+    peerPrefix: 'ztp-driftsignal-v03-',
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }],
     liveControllerUrl: 'https://amazingjustinlewis-web.github.io/games/space/controller.html',
     maxCrew: 6,
@@ -29,10 +29,11 @@
     },
     // ---- the sector. Planets are generated from their seed (colours, land/water, clouds, rings). ----
     sector: [
-      { id: 'home', kind: 'station', cat: 'stations', name: 'Kessler Rest', x: 0, y: 0, z: -1400, r: 90, flavour: 'Held together with duct tape and whatever bolts the customers aren\u2019t using. Fuel is cheap. The coffee is not coffee.', reviews: '2.1 \u2605' },
-      { id: 'vael', kind: 'station', cat: 'stations', name: 'Vael Spindle', x: 7800, y: 900, z: -5200, r: 120, flavour: 'An alien depot grown, not built. Docking is by invitation; they trade in minerals and memories, not credits.', reviews: '?? \u2605' },
-      { id: 'aurel', kind: 'station', cat: 'stations', name: 'Aurelia Prime Exchange', x: -6400, y: -700, z: -9800, r: 140, flavour: 'Ultra-advanced, spotless, quietly judging your hull. Accepts credits, prefers rare isotopes.', reviews: '4.9 \u2605' },
+      { id: 'home', kind: 'station', cat: 'stations', name: 'Kessler Rest', x: 0, y: 0, z: -1400, r: 90, flavour: 'Held together with duct tape and whatever bolts the customers aren\u2019t using. Fuel is cheap. The coffee is not coffee.', reviews: '2.1 \u2605', trader: 'kessler' },
+      { id: 'vael', kind: 'station', cat: 'stations', name: 'Vael Spindle', x: 7800, y: 900, z: -5200, r: 120, flavour: 'An alien depot grown, not built. Docking is by invitation; they trade in minerals and memories, not credits.', reviews: '?? \u2605', trader: 'vael' },
+      { id: 'aurel', kind: 'station', cat: 'stations', name: 'Aurelia Prime Exchange', x: -6400, y: -700, z: -9800, r: 140, flavour: 'Ultra-advanced, spotless, quietly judging your hull. Accepts credits, prefers rare isotopes.', reviews: '4.9 \u2605', trader: 'aurel' },
       { id: 'thal', kind: 'planet', cat: 'planets', name: 'Thalassa-4471', seed: 4471, water: true, landable: true, x: 3600, y: -300, z: -7400, r: 420, flavour: 'Rocky, desolate, mostly ocean. Something on the surface moves when nothing should.' },
+      { id: 'dune', kind: 'planet', cat: 'planets', name: 'Sere Khamsin', seed: 5150, desert: true, landable: true, x: -1700, y: -450, z: -6300, r: 460, flavour: 'Endless dunes under a white sun. Long ripples cross the sand in calm air. Seismic readings: rhythmic.' },
       { id: 'ruby', kind: 'planet', cat: 'planets', name: 'Corvane', seed: 918, x: -3800, y: 600, z: -4200, r: 520, flavour: 'Iron-red dust world with ice caps. Old mining beacons still ping.' },
       { id: 'gas', kind: 'planet', cat: 'planets', name: 'Big Hollis', seed: 30307, gas: true, x: 9600, y: -1200, z: -12800, r: 1300, flavour: 'Banded gas giant with a faint ring. Probes go in, probes do not come out.' },
       { id: 'moss', kind: 'planet', cat: 'planets', name: 'Verdance', seed: 77, x: -9400, y: 200, z: -1800, r: 380, flavour: 'Green and wet. Atmosphere smells like cut grass on the sensors, somehow.' },
@@ -41,7 +42,7 @@
       { id: 'comet', kind: 'comet', cat: 'hazards', name: 'Comet Iris-9', x: -900, y: 300, z: -3600, r: 26, flavour: 'Off-gassing comet with a long debris tail. Flying through the tail lights up the shields.' },
       { id: 'pulse', kind: 'signal', cat: 'signals', name: 'Prime-number pulse', x: 5200, y: 2200, z: -14000, r: 30, flavour: 'Repeating pulse: 2, 3, 5, 7, 11... then a long silence.' },
       { id: 'echo', kind: 'signal', cat: 'signals', name: 'Distress echo', x: -7800, y: -900, z: -7000, r: 30, flavour: 'An automated distress call, three hundred years old, still politely asking for help.' },
-      { id: 'drifter', kind: 'ship', cat: 'ships', name: 'Freighter \u201cSlow Ollie\u201d', x: 2400, y: 120, z: -2300, r: 40, flavour: 'Bulk hauler drifting at one-quarter impulse. Crew of three, plus a goat (unconfirmed).' }
+      { id: 'drifter', kind: 'ship', cat: 'ships', name: 'Freighter \u201cSlow Ollie\u201d', x: 2400, y: 120, z: -2300, r: 40, flavour: 'Bulk hauler drifting at one-quarter impulse. Crew of three, plus a goat (unconfirmed).', trader: 'ollie' }
     ],
     cats: [
       { id: 'stations', label: 'Stations & depots', icon: '\u25A3' },
@@ -87,6 +88,28 @@
       { id: 'steal', weight: 1, text: 'It was a trap. They latch on, siphon 15% of your fuel and flee laughing.' },
       { id: 'royal', weight: 1, text: 'A royal message arrives: "Her Radiance did NOT require assistance and finds your tractor beam presumptuous."' }
     ],
+    // ---- v0.3: cargo + trading. value = what a fair trader thinks it is worth. ----
+    items: {
+      fuel: { name: 'Fuel cell', icon: '\u26FD', v: 20 }, ice: { name: 'Refined ice', icon: '\u2744', v: 14 }, parts: { name: 'Spare parts', icon: '\u2699', v: 24 },
+      rations: { name: 'Rations', icon: '\uD83E\uDD6B', v: 9 }, jar: { name: 'Humming jar', icon: '\uD83C\uDFFA', v: 42 }, iso: { name: 'Rare isotopes', icon: '\u2622', v: 60 },
+      map: { name: 'Star map', icon: '\uD83D\uDDFA', v: 34 }, med: { name: 'Medical kit', icon: '\u271A', v: 28 }, memory: { name: 'Memory shard', icon: '\uD83D\uDC8E', v: 45 },
+      torp: { name: 'Torpedo', icon: '\u2738', v: 50 }, credits: { name: 'Credit chip', icon: '\u00A4', v: 10 }, goat: { name: 'A goat', icon: '\uD83D\uDC10', v: 30 }, spice: { name: 'Dune spice', icon: '\u2728', v: 55 }
+    },
+    cargoStart: ['fuel', 'fuel', 'ice', 'ice', 'parts', 'rations', 'rations', 'med', 'credits', 'credits', 'credits'],
+    // greed > 1 = wants more than fair. likes/hates multiply the value they see. counter = how willing they are to haggle.
+    traders: {
+      ollie: { name: 'Freighter \u201cSlow Ollie\u201d', greed: 1.0, counter: 0.75, likes: { rations: 1.6, jar: 1.3 }, hates: {}, hold: ['parts', 'parts', 'fuel', 'goat', 'torp', 'map', 'rations'],
+        hi: 'Ollie here. Hold\u2019s open, kettle\u2019s on. Whatcha got?', yes: 'Pleasure doing business. Goat says hi.', no: 'Nah, can\u2019t do that one, friend.', ctr: 'Close! Throw in a little something and we\u2019re square.' },
+      kessler: { name: 'Kessler Rest quartermaster', greed: 1.15, counter: 0.7, likes: { parts: 1.3, fuel: 1.1 }, hates: { jar: 0.6 }, hold: ['fuel', 'fuel', 'fuel', 'torp', 'torp', 'med', 'rations'],
+        hi: 'Quartermaster. Cash, parts or fuel. No refunds. No questions.', yes: 'Fine. Don\u2019t scratch the airlock on the way out.', no: 'Ha. No.', ctr: 'Almost. Sweeten it.' },
+      vael: { name: 'Vael Spindle', greed: 1.05, counter: 0.6, likes: { memory: 2.0, map: 1.6, jar: 1.8 }, hates: { credits: 0.2, torp: 0.3 }, hold: ['memory', 'memory', 'iso', 'map', 'ice'],
+        hi: 'We trade in what is remembered. Show us your hold.', yes: 'The exchange is... pleasing. We will remember you.', no: 'This offer has no memory in it.', ctr: 'Add something that has been loved, and it is done.' },
+      aurel: { name: 'Aurelia Prime Exchange', greed: 1.35, counter: 0.8, likes: { iso: 1.6, spice: 1.5 }, hates: { rations: 0.4, goat: 0.2 }, hold: ['iso', 'torp', 'torp', 'torp', 'med', 'med', 'map'],
+        hi: 'Aurelia Prime Exchange. Please do not touch anything. What are you offering?', yes: 'Accepted. Your hull has been politely noted.', no: 'We regret to decline. Deeply. Not really.', ctr: 'An interesting start. Add value.' }
+    },
+    weapons: { torpedoes: 4, phaserDmg: [8, 13], torpDmg: [32, 44] },
+    // ---- v0.3: the sandworm desert ----
+    dunes: { firstWormSec: 40, attackEvery: [70, 120], escapeSec: 22, wormHp: 100, liftChance: 0.55 },
     shipStart: { x: 420, y: 80, z: 300 },
     // v0.2 tiered sensors: default range always gives full detail; sweeps reach further with less detail
     sensors: { base: 2600, small: 5200, medium: 11000, large: 26000, sweepHold: 75 },

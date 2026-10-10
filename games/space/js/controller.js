@@ -47,7 +47,7 @@
     if (m.t === 'reject') { clearInterval(dock.timer); jstat(m.reason); $('joinBtn').textContent = 'COME ABOARD'; return; }
     if (m.t === 'welcome') { clearInterval(dock.timer); $('joinBtn').textContent = 'COME ABOARD'; me = m.cid; sector = m.sector; byId = {}; sector.forEach(function (d) { byId[d.id] = d; }); topo = m.topo; sites = m.sites; pois = m.pois || []; $('join').hidden = true; $('main').hidden = false; buildCats(); buildSci(); buildSites(); buzz(30); return; }
     if (m.t === 'prompt') { showPrompt(m); return; }
-    if (m.t === 'st') { S = m; render(); }
+    if (m.t === 'st') { S = m; render(); if (window.DS_v03) window.DS_v03(S); }
   }
 
   // ================================================================== tabs + ownership

@@ -1,0 +1,18 @@
+@font-face { font-family: Fredoka; src: url(../assets/fredoka-latin-var.woff2) format('woff2'); font-weight: 300 700; font-display: swap; }
+html, body { margin: 0; height: 100%; background: #02030a; overflow: hidden; font-family: Fredoka, system-ui, sans-serif; color: #e8f6ff; cursor: default; }
+canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#frame, #hud { pointer-events: none; transform-origin: 50% 45%; }
+#warpglow, #atmo, #breath { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .6s; }
+#atmo { transition: none; }
+#breath { background: radial-gradient(ellipse 22% 14% at 54% 56%, rgba(220,240,240,.35), rgba(220,240,240,0) 70%); transition: opacity 1.5s; }
+#bubbles { position: fixed; left: 0; right: 0; bottom: 30%; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; }
+.bubble { background: rgba(10,20,32,.78); border: 1px solid rgba(143,230,255,.6); border-radius: 22px 22px 22px 6px; padding: 12px 20px; font-size: 2.6vh; max-width: 50vw; animation: floatUp 7s ease-out forwards; box-shadow: 0 0 24px rgba(90,200,255,.25); }
+.bubble b { color: #8fe6ff; font-weight: 600; }
+@keyframes floatUp { 0% { transform: translateY(30px); opacity: 0; } 8% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; } 100% { transform: translateY(-120px); opacity: 0; } }
+#title { position: fixed; left: 0; right: 0; top: 30%; text-align: center; transition: opacity 2.5s; pointer-events: none; text-shadow: 0 0 30px rgba(120,200,255,.6); }
+#title.gone { opacity: 0; }
+#title h1 { font-size: 10vh; letter-spacing: .35em; margin: .2em 0; font-weight: 600; }
+#title p { font-size: 2.4vh; color: #9fc3dc; }
+#title .presents { font-size: 1.8vh; letter-spacing: .3em; color: #9fc3dc; display: flex; gap: 10px; justify-content: center; align-items: center; }
+#title .back { pointer-events: auto; color: #6f8aa0; font-size: 1.6vh; }
+#fxInfo { position: fixed; left: 8px; top: 6px; font: 12px monospace; color: #7f9; pointer-events: none; }

@@ -18,6 +18,7 @@
     var R = C.rng(def.seed * 7919 + 13);
     var r = { hue: R() * 360, water: def.water ? 0.78 + R() * 0.1 : def.gas ? 0 : R() * 0.6, clouds: R() * 0.7 + 0.1, rings: def.gas ? true : R() < 0.3, atm: R() * 360, gas: !!def.gas, ice: R() < 0.5, desolate: !!def.water };
     if (def.water) { r.hue = 25 + R() * 20; r.atm = 175 + R() * 30; }
+    if (def.desert) { r.hue = 28 + R() * 8; r.water = 0; r.clouds = 0.08; r.rings = false; r.ice = false; r.atm = 35; }
     return r;
   }
   function planetTex(T, def, rec, W) {

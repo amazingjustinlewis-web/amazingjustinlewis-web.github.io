@@ -51,7 +51,7 @@
         <div id="pop" class="pop" hidden></div></div>
       <div class="warp"><div class="wl"><span id="warpLbl">WARP 6.0</span><span id="etaLbl"></span></div><input id="warp" type="range" min="0" max="9.9" step="0.1" value="6"></div>
       <div class="row"><button class="act" data-act='{"a":"stop"}'>All stop</button><button class="act tog" id="helmView">View screen</button></div>
-      <div class="row"><button class="act" data-act='{"a":"roll","kind":"roll"}'>Barrel roll</button><button class="act" data-act='{"a":"roll","kind":"corkscrew"}'>Corkscrew</button><button class="act tog" id="grabBtn">Grabber arms</button></div>
+      <div class="row"><button class="act" data-act='{"a":"roll","kind":"roll"}'>Barrel roll</button><button class="act" data-act='{"a":"roll","kind":"corkscrew"}'>Corkscrew</button><button class="act tog" id="grabBtn">Grabber arms</button><button class="act tog" id="caveBtn" data-act='{"a":"cave"}'>Asteroid cave</button></div>
       <div id="landBox" class="landbox" hidden>
         <h3>Landing &middot; <span id="landPlanet">Thalassa-4471</span></h3>
         <div class="row"><button class="act" id="lMatch">1 &middot; Match orbit</button><button class="act" id="lAlign">2 &middot; Align corridor</button></div>
@@ -70,6 +70,10 @@
     </div>
     <div class="pane" data-pane="tac">
       <div class="bars" id="tacBars"></div>
+      <div class="tgtbox"><h3>Targeting <small>Tap a contact to lock on. Phasers, torpedoes and the tractor beam all use the lock.</small></h3>
+        <div id="tgtList" class="tgtlist"></div>
+        <div class="row"><button class="act warn" data-act='{"a":"phaser"}'>Fire phaser</button><button class="act warn" id="torpBtn" data-act='{"a":"torpedo"}'>Fire torpedo</button></div>
+        <div class="row"><button class="act" data-act='{"a":"tractor"}'>Tractor beam</button></div></div>
       <div class="row"><button class="act tog" id="shBtn">Shields</button><button class="act" data-act='{"a":"deflector"}'>Deflector pulse</button></div>
       <h3>Alert level</h3>
       <div class="seg"><button class="act" data-act='{"a":"alert","level":"auto"}'>Auto</button><button class="act" data-act='{"a":"alert","level":"yellow"}'>Yellow</button><button class="act warn" data-act='{"a":"alert","level":"red"}'>Red</button></div>
@@ -87,7 +91,7 @@
     </div>
     <div class="pane" data-pane="com">
       <div class="row"><button class="act tog" id="beaconBtn">Distress beacon</button><button class="act" data-act='{"a":"hail"}'>Hail</button></div>
-      <div class="row"><button class="act" id="towBtn" data-act='{"a":"tow"}' disabled>Tractor tow</button><button class="act" disabled>Trade (soon)</button></div>
+      <div class="row"><button class="act" id="towBtn" data-act='{"a":"tow"}' disabled>Tractor tow</button><button class="act go" id="tradeBtn" data-act='{"a":"trade"}' disabled>Trade</button></div>
       <h3>Messages</h3><ul id="comLog" class="log"></ul>
     </div>
     <div class="pane" data-pane="set">
@@ -118,11 +122,23 @@
 <div id="encSheet" class="sheet enc big" hidden><div class="sh-h">&#128225; INCOMING MESSAGE</div><div class="sh-s" id="encSp"></div><div class="sh-t" id="encText"></div><div class="sh-r">RESPOND:</div><div id="encOpts"></div><div class="row"><button class="act" id="encLater">Later</button></div><div class="small" id="encLeft"></div></div>
 <button id="encPill" class="encpill" hidden>&#128172; Message waiting &middot; tap to respond</button>
 <div id="toast" class="toast" hidden></div>
+<div id="tradeSheet" class="tsheet" hidden><div class="ts-h"><b id="trName"></b><button class="act" id="trClose" data-act='{"a":"tradeClose"}'>Close</button></div>
+  <div class="ts-msg" id="trMsg"></div>
+  <div class="ts-l">THEIR HOLD <small>drag into &ldquo;You get&rdquo;</small></div><div class="tiles" id="trTheirs" data-zone="theirs"></div>
+  <div class="offer"><div class="oz" id="ozTake" data-zone="take"><div class="ts-l">YOU GET</div><div class="tiles" id="trTake"></div></div><div class="oz" id="ozGive" data-zone="give"><div class="ts-l">YOU GIVE</div><div class="tiles" id="trGive"></div></div></div>
+  <div class="ts-v" id="trVal"></div>
+  <div class="row"><button class="act go" id="trPropose">Propose trade</button><button class="act" id="trClear">Clear</button></div>
+  <div class="row" id="trCounterRow" hidden><button class="act go" data-act='{"a":"tradeAccept"}'>Accept their counter</button></div>
+  <div class="ts-l">YOUR HOLD <small>drag into &ldquo;You give&rdquo;</small></div><div class="tiles" id="trMine" data-zone="mine"></div></div>
+<div id="wormSheet" class="sheet big worm" hidden><div class="sh-h">&#9888; SWALLOWED BY A SANDWORM</div><div class="sh-t" id="wormText"></div>
+  <button class="act go esc" data-act='{"a":"escape","how":"lift"}'>&#128640; Emergency lift-off</button><button class="act warn esc" data-act='{"a":"escape","how":"phaser"}'>&#10148; Fire phasers down its throat</button><button class="act warn esc" id="wormTorp" data-act='{"a":"escape","how":"torp"}'>&#10040; Fire torpedo</button></div>
+<div id="overSheet" class="sheet big over" hidden><div class="sh-h">SHIP LOST</div><div class="sh-t" id="overText"></div><button class="act go esc" data-act='{"a":"restart"}'>&#8635; Restart: a fresh voyage</button></div>
 
 <script src="js/vendor/peerjs.min.js"></script>
 <script>if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
 <script src="js/config.js"></script>
 <script src="js/net.js"></script>
 <script src="js/controller.js"></script>
+<script src="js/v03-phone.js"></script>
 </body>
 </html>

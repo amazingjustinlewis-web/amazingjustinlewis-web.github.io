@@ -52,6 +52,17 @@
     phaser: function (A, t) { tone(A, 'sawtooth', 880, 520, t, 0.22, 0.035, 0.01); tone(A, 'sine', 1320, 700, t, 0.25, 0.04); },
     ping: function (A, t) { tone(A, 'sine', N(86), N(86), t, 0.5, 0.025, 0.01); },
     sweep: function (A, t) { tone(A, 'sine', 300, 1200, t, 1.2, 0.04, 0.3); hiss(A, t, 1.2, 0.04, 'bandpass', 600, 4, 3000, 0.4); },
+    torpedo: function (A, t) { tone(A, 'sine', 220, 60, t, 0.9, 0.25, 0.02); hiss(A, t, 1.0, 0.18, 'bandpass', 900, 2, 200); tone(A, 'triangle', N(81), N(69), t, 0.6, 0.05); },
+    boom: function (A, t) { hiss(A, t, 2.2, 0.5, 'lowpass', 1800, 0, 90, 0.01); tone(A, 'sine', 90, 30, t, 1.6, 0.6); },
+    rumble: function (A, t) { hiss(A, t, 3.2, 0.35, 'lowpass', 160, 0, 60, 1.0); tone(A, 'sine', 38, 30, t, 3.2, 0.3, 1.0); },
+    worm: function (A, t) { tone(A, 'sawtooth', 48, 36, t, 2.8, 0.14, 0.5); tone(A, 'sine', 72, 40, t + 0.2, 2.6, 0.3, 0.4); hiss(A, t, 2.6, 0.25, 'bandpass', 260, 3, 120, 0.6); },
+    strain: function (A, t) { tone(A, 'sawtooth', 130, 190, t, 1.4, 0.05, 0.2); tone(A, 'square', 260, 240, t, 1.4, 0.02, 0.2); hiss(A, t, 1.3, 0.08, 'bandpass', 3200, 6, 2000); },
+    shatter: function (A, t) { for (var i = 0; i < 8; i++) tone(A, 'sine', 2400 + Math.random() * 3000, 900, t + i * 0.03, 0.4, 0.04); hiss(A, t, 1.2, 0.35, 'highpass', 5000, 0, 1500); tone(A, 'sine', 120, 40, t, 0.6, 0.4); },
+    crack: function (A, t) { hiss(A, t, 0.25, 0.4, 'highpass', 2500, 0, 800); tone(A, 'square', 900, 200, t, 0.08, 0.06); },
+    gulp: function (A, t) { tone(A, 'sine', 90, 35, t, 1.2, 0.55, 0.05); hiss(A, t, 1.0, 0.3, 'lowpass', 500, 0, 60); tone(A, 'sine', 60, 25, t + 0.9, 1.4, 0.5); },
+    beam: function (A, t) { tone(A, 'sine', N(72), N(96), t, 1.6, 0.05, 0.3); tone(A, 'triangle', N(79), N(103), t + 0.2, 1.6, 0.04, 0.3); hiss(A, t, 1.8, 0.05, 'bandpass', 4000, 5, 8000, 0.3); },
+    trade: function (A, t) { tone(A, 'sine', N(76), 0, t, 0.2, 0.06); tone(A, 'sine', N(83), 0, t + 0.15, 0.3, 0.06); tone(A, 'sine', N(88), 0, t + 0.3, 0.5, 0.05); },
+    no: function (A, t) { tone(A, 'triangle', N(64), 0, t, 0.18, 0.06); tone(A, 'triangle', N(60), 0, t + 0.18, 0.3, 0.06); },
     raider: function (A, t) { tone(A, 'sawtooth', 58, 52, t, 2.5, 0.08, 0.6); tone(A, 'sawtooth', 87, 80, t, 2.5, 0.05, 0.6); }
   };
   var LIMIT = { impact: 70, shieldHit: 80, reading: 120, static: 300, blip: 50, phaser: 200, ping: 900 };

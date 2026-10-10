@@ -45,6 +45,7 @@
   }
   function saveSettings() { try { localStorage.setItem('ds-settings', JSON.stringify(settings)); } catch (e) {} SFX.VOICE.mode = settings.voice; SFX.bed('drone', settings.drone); }
   SFX.VOICE.mode = Q.has('voice') ? Q.get('voice') : settings.voice;
+  var X = window.SPACE_X = {};   // v0.3 extension hooks (js/v03.js)
   var defs = {}; C.sector.forEach(function (d) { defs[d.id] = d; });
   var logLines = [], logSeq = 0;
   function log(text, kind) { logLines.push({ n: ++logSeq, t: text, k: kind || '' }); if (logLines.length > 40) logLines.shift(); dirty = true; }
@@ -491,6 +492,7 @@
   }
   function act(me, m) {
     var st = ACT_STATION[m.a]; if (!st) return;
+    if (X.pre && X.pre(me, m)) { dirty = true; return; }
     var owner = member(asg[st]);
     if (asg[st] !== me.cid && m.a !== 'tow') {   // v0.2: anyone can answer a distress card with the tractor
       if (asg.cap !== me.cid) return;
@@ -499,6 +501,7 @@
         hudNote('Captain \u2192 ' + C.stations.find(function (s) { return s.id === st; }).label + ': ' + (LABEL[m.a] || m.a), 'calm'); log('Captain requests ' + (LABEL[m.a] || m.a) + ' from ' + owner.name, 'crew'); SFX.play('chirp'); dirty = true; return;
       }
     }
+    if (X.act && X.act(me, m)) { dirty = true; return; }
     switch (m.a) {
       case 'course': setCourse(m.id, m.w); break;
       case 'stop': allStop(); break;
@@ -550,6 +553,7 @@
       contacts: contacts().map(function (c) { return { id: c.id, k: c.kind, d: c.d, tier: c.tier, n: c.name, l: c.line, mag: c.mag, surf: c.surf }; }), sweeps: { small: Math.max(0, Math.round(sweeps.small)), medium: Math.max(0, Math.round(sweeps.medium)), large: Math.max(0, Math.round(sweeps.large)) },
       fight: fight ? { hp: Math.round(fight.hp), evade: fight.evade, firing: fight.shots > 0, d: Math.round(H.raider.position.distanceTo(ship.pos)) } : null, grab: grab ? grab.st : null, lite: lite,
       enc: enc ? { id: enc.id, phase: enc.phase, sp: enc.sp.name, text: enc.phase === 'ask' ? enc.d.open : enc.text, opts: enc.phase === 'ask' ? enc.d.options.map(function (o) { return { id: o.id, label: o.label }; }) : [], left: Math.max(0, Math.round(enc.wait - enc.t)) } : null };
+    if (X.state) X.state(base);
     crew.forEach(function (m) { if (m.connected && m.conn) net.send(m.conn, base); });
   }
   function startNet() {
@@ -614,12 +618,12 @@
     g.fillText('PITCH ' + Math.round(e.x * 57.3) + '\u00B0', tx, ty + f * 2.2);
     // left block: speed / warp / course
     var lx = r.x0 + w * 0.02, ly = r.y0 + h * 0.13; g.textAlign = 'left';
-    g.font = '700 ' + Math.round(f * 1.9) + 'px Fredoka, system-ui'; g.fillStyle = ship.warp > 0.5 ? '#c9b8ff' : HC; g.fillText(ship.loc !== 'space' ? (ship.loc === 'surface' ? 'LANDED' : 'DESCENT') : ship.warp > 0.5 ? 'WARP ' + ship.warp.toFixed(1) : ship.speed > 1 ? 'IMPULSE' : ship.orbit ? 'ORBIT' : 'HOLDING', lx, ly);
+    g.font = '700 ' + Math.round(f * 1.9) + 'px Fredoka, system-ui'; g.fillStyle = ship.warp > 0.5 ? '#c9b8ff' : HC; g.fillText(ship.loc === 'dunes' ? 'LANDED · DUNES' : ship.loc === 'cave' ? 'IN THE CAVE' : ship.loc !== 'space' ? (ship.loc === 'surface' ? 'LANDED' : 'DESCENT') : ship.warp > 0.5 ? 'WARP ' + ship.warp.toFixed(1) : ship.speed > 1 ? 'IMPULSE' : ship.orbit ? 'ORBIT' : 'HOLDING', lx, ly);
     g.font = '500 ' + f + 'px Fredoka, system-ui'; g.fillStyle = HC2 + '.8)';
     var lines = [Math.round(ship.speed) + ' km/s'];
     if (ship.course && defs[ship.course.id]) { lines.push('\u2192 ' + defs[ship.course.id].name.toUpperCase()); lines.push('ETA ' + C.fmtShipTime(ship.eta * C.nav.timeScale) + ' ship time'); lines.push('(' + Math.round(ship.eta) + ' s here)'); }
     if (ship.orbit) lines.push('ORBITING ' + defs[ship.orbit.id].name.toUpperCase());
-    if (ship.loc !== 'space') lines.push('ALT ' + Math.max(0, Math.round((surfCam.y - land.depth) * 12)) + ' m');
+    if (ship.loc !== 'space' && ship.loc !== 'dunes') lines.push('ALT ' + Math.max(0, Math.round((surfCam.y - land.depth) * 12)) + ' m');
     lines.forEach(function (l, i) { g.fillText(l, lx, ly + f * (1.6 + i * 1.35)); });
     // right block: shields / hull / fuel / power
     var rx = r.x1 - w * 0.17, bw = w * 0.15, ry = r.y0 + h * 0.11;
@@ -665,6 +669,7 @@
       if (asg.cap === m.cid && sts.length > 1) { g.fillStyle = 'rgba(190,225,255,.5)'; g.fillText('+' + (sts.length - 1) + ' stations', sx2, y); } });
     if (ship.beacon && (simT * 2 | 0) % 2) { g.fillStyle = '#ff6a6a'; g.textAlign = 'center'; g.fillText('\u25C9 DISTRESS BEACON ACTIVE', w / 2, r.y1 + h * 0.06); }
     drawV02Hud(g, w, h, r, f, dt);
+    if (X.hud) X.hud(g, w, h, r, f, dt);
   }
   function wrap(g, text, x, y, mw, lh) { var words = String(text).split(' '), line = ''; for (var i = 0; i < words.length; i++) { var t = line + words[i] + ' '; if (g.measureText(t).width > mw && line) { g.fillText(line, x, y); y += lh; line = words[i] + ' '; } else line = t; } g.fillText(line, x, y); }
   function viewTarget() {
@@ -719,7 +724,7 @@
   function postAllowed() { return !fxOff && rung <= 3 && !lite; }   // rung 3 (Chromecast) gets a 4-tap version at its lower resolution
   function sizePost() { if (!post) return; var v = renderer.getDrawingBufferSize(new T.Vector2()); post.rt.setSize(Math.max(4, v.x), Math.max(4, v.y)); post.U.asp.value = v.x / Math.max(1, v.y); }
   function renderMain(onSurf, wv) {
-    var target = onSurf && surf ? surf : scene, k = onSurf ? 0 : clamp((ship.warp - 0.6) / 7, 0, 1);
+    var target = (X.scene && X.scene()) || (onSurf && surf ? surf : scene), k = onSurf ? 0 : clamp((ship.warp - 0.6) / 7, 0, 1);
     if (k > 0.02 && postAllowed()) {
       var wantN = rung >= 3 ? 4 : 8; if (!post || post.N !== wantN) { if (post) post.rt.dispose(); post = makePost(wantN); sizePost(); }
       post.U.k.value = k; post.U.t.value = simT;
@@ -846,7 +851,12 @@
     for (var i = 0; i < pa.count; i++) { var v = new T.Vector3(pa.getX(i), pa.getY(i), pa.getZ(i)), k = 0.75 + Math.sin(v.x * 0.13) * 0.12 + Math.cos(v.y * 0.17 + v.z * 0.07) * 0.12; pa.setXYZ(i, v.x * k, v.y * k * 0.8, v.z * k); }
     geo.computeVertexNormals(); g.add(new T.Mesh(geo, m));
     var arm = new T.MeshLambertMaterial({ color: 0x9aa6b4, emissive: 0x111820 }); g.userData.arms = [];
-    [-1, 1].forEach(function (sx) { var a = new T.Mesh(new T.BoxGeometry(2.2, 2.2, 40), arm); a.visible = false; camera.add(a); g.userData.arms.push(a); a.userData.sx = sx; });
+    [-1, 1].forEach(function (sx) {   // v0.3: arms that actually reach into the window, with three-finger claws and a work light
+      var a = new T.Group(), boom = new T.Mesh(new T.BoxGeometry(1.6, 1.6, 30), arm); boom.position.z = -15; a.add(boom);
+      var joint = new T.Mesh(new T.SphereGeometry(1.6, 8, 6), new T.MeshLambertMaterial({ color: 0xffb347, emissive: 0x442200 })); joint.position.z = -30; a.add(joint);
+      for (var k = 0; k < 3; k++) { var cl = new T.Mesh(new T.BoxGeometry(0.6, 0.6, 7), arm); var an = k / 3 * 6.283; cl.position.set(Math.cos(an) * 1.6, Math.sin(an) * 1.6, -33); cl.rotation.set(Math.sin(an) * 0.5, -Math.cos(an) * 0.5, 0); a.add(cl); }
+      var lt = new T.PointLight(0xfff0d0, 1.2, 160); lt.position.z = -30; a.add(lt);
+      a.visible = false; camera.add(a); g.userData.arms.push(a); a.userData.sx = sx; });
     return g; }
   function grabber(on) {
     if (on === false || (grab && on == null)) { if (!grab) return; grab.st = 'release'; grab.t = 0; say('Releasing the asteroid. Arms retracting.', 'calm'); dirty = true; return; }
@@ -858,13 +868,13 @@
   var gq = new T.Quaternion();
   function grabPilot(dt) {
     if (!grab) return false; var G = grab; G.t += dt;
-    var hold = new T.Vector3(0, -48, -78).applyQuaternion(ship.quat).add(ship.pos);
+    var hold = new T.Vector3(0, -22, -112).applyQuaternion(ship.quat).add(ship.pos);
     if (G.st === 'approach') { var k = clamp(G.t / 7, 0, 1); G.rock.position.lerp(hold, dt * 0.5 * k + 0.002); ship.speed = 6 * (1 - k);
       if (G.t > 7) { G.st = 'tumble'; G.t = 0; SFX.play('thud'); ship.shake = 0.3; say('Latched. Tumbling with it. Engines idle.', 'calm'); dirty = true; } }
     else if (G.st === 'tumble') { gq.setFromAxisAngle(G.axis, dt * 0.05); ship.quat.premultiply(gq); G.rock.position.copy(hold); G.rock.quaternion.premultiply(gq); ship.pos.addScaledVector(G.drift, dt); ship.speed = 3; }
     else if (G.st === 'release') { G.rock.position.addScaledVector(G.drift, dt * 3).add(new T.Vector3(0, -dt * 4, 0)); if (G.t > 4) { scene.remove(G.rock); G.rock.userData.arms.forEach(function (a) { camera.remove(a); }); grab = null; ship.mode = 'idle'; dirty = true; return false; } }
     var ext = G.st === 'approach' ? clamp(G.t / 3, 0, 1) : G.st === 'release' ? 1 - clamp(G.t / 2.5, 0, 1) : 1;
-    G.rock.userData.arms.forEach(function (a) { a.visible = ext > 0.02; a.position.set(a.userData.sx * 14, -26 - ext * 6, -20 - ext * 28); a.scale.set(1, 1, 0.3 + ext * 0.9); a.rotation.set(-0.45, -a.userData.sx * 0.18, 0); });
+    G.rock.userData.arms.forEach(function (a) { a.visible = ext > 0.02; a.position.set(a.userData.sx * 24, -17, -14); a.scale.set(1, 1, 0.15 + ext * 1.25); a.rotation.set(0.1 + Math.sin(simT * 0.7 + a.userData.sx) * 0.015, a.userData.sx * 0.4, 0); });
     ship.mode = 'grab'; return true;
   }
 
@@ -907,7 +917,8 @@
     requestAnimationFrame(tick);
     var dt = Math.min(0.1, (now - last) / 1000); last = now; simT += dt; frameN++;
     fpsN++; fpsT += dt; if (fpsT >= 1) { fps = fpsN / fpsT; fpsN = 0; fpsT = 0; autoQuality(); }
-    if (ship.loc === 'space') { if (!grabPilot(dt) && !fightPilot(dt)) pilot(dt); hazards(dt); updateEvents(dt); }
+    if (ship.loc === 'space') { if (!grabPilot(dt) && !fightPilot(dt) && !(X.pilot && X.pilot(dt))) pilot(dt); hazards(dt); updateEvents(dt); }
+    else if (X.ownsLoc && X.ownsLoc()) hazards(dt);
     else { hazards(dt); updateLanding(dt); }
     for (var sk in sweeps) if (sweeps[sk] > 0) sweeps[sk] -= dt;
     if (dt > 0.055) longFrames++;
@@ -946,6 +957,7 @@
     updateTrails(dt, wv, wOn);
     $('warpglow').style.opacity = wOn ? (0.15 + wv * 0.6).toFixed(2) : 0; $('warpglow').style.background = 'radial-gradient(ellipse at 50% 42%, rgba(0,0,0,0) 25%, ' + (wv > 0.85 ? 'rgba(255,80,160,.35)' : 'rgba(90,120,255,.3)') + ' 75%)';
     SFX.setWarp(ship.warp); if (wOn && !wasWarp) SFX.play('warpIn'); if (!wOn && wasWarp) SFX.play('warpOut'); wasWarp = wOn;
+    if (X.tick) X.tick(dt);
     camera.updateMatrixWorld(true);
     renderMain(onSurf, wv);
     if (frameDirty) drawFrame();
@@ -980,5 +992,8 @@
     jump: function (id, k) { var d = defs[id], o = H.objs[id].position; ship.course = null; ship.orbit = null; ship.speed = 0; ship.pos.copy(o).add(new T.Vector3(0, d.r * 0.3, standoff(d) * (k || 1) + d.r * 0.2)); faceNow(o); },
     face: function (id) { faceNow(H.objs[id].position); }, log: function () { return logLines; }, alert: function () { return alertState; }, fps: function () { return fps; }, rung: function () { return rung; }, calls: function () { return renderer.info.render.calls; }, lastSpoken: function () { return SFX.lastText(); },
     mot: function () { return mot; }, roll: startRoll, fight: function () { return fight; }, evade: evade, fire: firePhasers, sweep: sweep, contacts: contacts, grab: function () { return grab; }, grabber: grabber, perfStep: perfStep, lite: function () { return lite; }, post: function () { return !!post && postAllowed(); } };
+  Object.assign(X, { T: T, C: C, sceneMain: scene, camera: camera, renderer: renderer, ship: ship, defs: defs, H: H, say: say, log: log, hudNote: hudNote, addImpact: addImpact, fwd: fwd, faceToward: faceToward, faceNow: faceNow,
+    standoff: function (d) { return standoff(d); }, ACT: ACT_STATION, LABEL: LABEL, tow: tow, firePhasers: firePhasers, fight: function () { return fight; }, ev: function () { return ev; }, land: function () { return land; }, resetLand: function () { land = { step: 0, site: null, phase: '', t: 0, depth: 2.2 }; },
+    contacts: contacts, dirty: function () { dirty = true; }, simT: function () { return simT; }, motionQ: motionQ, crew: function () { return crew; }, grab: function () { return grab; }, endEvent: endEvent, rung: function () { return rung; }, lite: function () { return lite; } });
   function faceNow(p) { tmpM.lookAt(ship.pos, p, UP); ship.quat.setFromRotationMatrix(tmpM); camera.quaternion.copy(ship.quat); }
 })();
