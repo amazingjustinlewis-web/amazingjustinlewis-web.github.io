@@ -4,7 +4,7 @@
     TITLE: 'WALKER', version: '0.2',
     peerPrefix: 'ztp-walker-v02a-',
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }],
-    liveControllerUrl: 'https://amazingjustinlewis-web.github.io/games/walker/controller.html',
+    liveControllerUrl: 'https://amazingjustinlewis-web.github.io/games/walker/v0.2/controller.html',
     // Each page = one area. border = page colour. Buttons: id, picture (emoji), colour.
     // v0.2: page 'home' = six categories; each category page = six activities. Same button id may sit on two pages.
     pages: [

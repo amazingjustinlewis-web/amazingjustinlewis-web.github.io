@@ -246,10 +246,28 @@ window.GAMES = [
     ],
     versions: [
       {
-        id: 'v0.1',
-        name: 'First stroll',
+        id: 'v0.4',
+        name: 'Sky and sound',
         current: true,
         play: 'games/walker/index.html',
+        notes: 'Every sound now comes from somewhere: the busker, birds, water, kids, the coaster and the zoo fade in and out with distance and pan left and right. Night skies with stars, shooting stars and a comet, more birds and passing flocks, rainbows. When something lovely is in the sky the top edge of the pad glows; tap it to look up. The sandbox builds one castle in front of you, a piece per tap.'
+      },
+      {
+        id: 'v0.3',
+        name: 'Playtest fixes',
+        play: 'games/walker/v0.3/index.html',
+        notes: 'Drawn swing, seesaw and water slide icons, swings and seesaw in sync, a seesaw buddy, a real dome climb, sandbox building, basketball that misses sometimes, a waving hand, bumper boat motors, the coaster lap bar.'
+      },
+      {
+        id: 'v0.2',
+        name: 'Big park',
+        play: 'games/walker/v0.2/index.html',
+        notes: 'Six categories, tap-to-run, a little car, a roller coaster, petting zoo, water park and bumper boats.'
+      },
+      {
+        id: 'v0.1',
+        name: 'First stroll',
+        play: 'games/walker/v0.1/index.html',
         notes: 'A bouncy castle (bounce, flips, basketball hoop, inflatable slide, lie back and watch the sky, bounce with other kids), a playground (slide, swings, climbing dome, merry-go-round, seesaw, sandbox), a quiet path with moments to stop for (a busker, a fish in a puddle, a deer, chipmunks, people laughing, ducks), a rocket ride stub, a pond and a bench, an optional buddy, soft weather with rain and a rainbow, idle people-watching, phone or Play here mode.'
       }
     ]

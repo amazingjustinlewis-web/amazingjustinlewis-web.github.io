@@ -182,7 +182,7 @@
     W.clouds = []; for (k = 0; k < 9; k++) { var cl = new T.Group(), cm = new T.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.92 }); for (var j = 0; j < 4; j++) mesh(new T.SphereGeometry(3 + rnd() * 3, 10, 8), cm, j * 4 - 6, rnd() * 2, rnd() * 3, { parent: cl }); cl.position.set((rnd() - 0.5) * 300, 40 + rnd() * 20, -60 - rnd() * 80); scene.add(cl); W.clouds.push(cl); W.cloudMat = cm; }
     // birds
     var bm = new T.MeshBasicMaterial({ color: '#4a4a5a', side: T.DoubleSide });
-    for (k = 0; k < 6; k++) { var bd = new T.Group(), wg = new T.PlaneGeometry(0.5, 0.18); var w1 = mesh(wg, bm, -0.25, 0, 0, { parent: bd }), w2 = mesh(wg, bm, 0.25, 0, 0, { parent: bd }); bd.userData = { w1: w1, w2: w2, cx: (rnd() - 0.5) * 80, cz: (rnd() - 0.5) * 50, r: 6 + rnd() * 10, h: 9 + rnd() * 8, sp: 0.15 + rnd() * 0.2, ph: rnd() * 6 }; scene.add(bd); W.birds.push(bd); }
+    for (k = 0; k < (q.birds || 14); k++) { var bd = new T.Group(), wg = new T.PlaneGeometry(0.5, 0.18); var w1 = mesh(wg, bm, -0.25, 0, 0, { parent: bd }), w2 = mesh(wg, bm, 0.25, 0, 0, { parent: bd }); bd.userData = { w1: w1, w2: w2, cx: (rnd() - 0.5) * 80, cz: (rnd() - 0.5) * 50, r: 6 + rnd() * 10, h: 9 + rnd() * 8, sp: 0.15 + rnd() * 0.2, ph: rnd() * 6 }; scene.add(bd); W.birds.push(bd); }
     W.things.push({ p: new T.Vector3(0, 10, 0), name: 'birds', w: 'Look, a bird!', sky: true });
     // far road + a car
     var road = mesh(new T.PlaneGeometry(400, 5), M('#b8b8bc'), 0, 0.05, -70); road.rotation.x = -Math.PI / 2; scene.add(road);

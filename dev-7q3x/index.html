@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Dev launcher</title>
+<style>
+@font-face{font-family:Fredoka;src:url(../games/walker/assets/fredoka-latin-var.woff2) format('woff2');font-weight:300 700}
+html,body{margin:0;height:100%;overflow:hidden;background:#0d1020;color:#eef;font-family:Fredoka,system-ui,sans-serif}
+#launcher{position:fixed;inset:0;display:flex;flex-direction:column;background:radial-gradient(ellipse at 50% 30%,#232a52,#0d1020 70%)}
+header{display:flex;align-items:center;justify-content:space-between;padding:3vh 4vw 0}
+header h1{margin:0;font-size:4vh;font-weight:600;letter-spacing:.08em;color:#ffd23f}
+header .st{font-size:2.2vh;color:#9aa3c8}
+#deck{position:relative;flex:1;perspective:1600px}
+.card{position:absolute;left:50%;top:50%;width:46vw;height:56vh;margin:-30vh 0 0 -23vw;border-radius:3vh;background:#1b2140;box-shadow:0 3vh 8vh #0008;overflow:hidden;transition:transform .45s cubic-bezier(.2,.8,.2,1),opacity .45s,filter .45s;display:flex;flex-direction:column}
+.card .img{flex:1;background:#2a3160 center/cover no-repeat}
+.card .cap{padding:2vh 2.4vw;display:flex;align-items:baseline;gap:1.2vw}
+.card .nm{font-size:4.6vh;font-weight:600}
+.card .vr{font-size:2.6vh;color:#ffd23f;background:#ffd23f22;border-radius:1vh;padding:.2vh .8vw}
+.card .tg{margin-left:auto;font-size:2.2vh;color:#9aa3c8}
+.card.sel{box-shadow:0 0 0 .5vh #ffd23f,0 3vh 8vh #000a}
+.card.meta .img{display:flex;align-items:center;justify-content:center;font-size:16vh;background:linear-gradient(135deg,#2a3160,#3d2a60)}
+.card .last{position:absolute;top:2vh;left:2vh;background:#7ed957;color:#08240a;font-size:2vh;padding:.4vh 1vw;border-radius:1vh;font-weight:600}
+footer{display:flex;align-items:flex-end;justify-content:space-between;padding:0 3vw 3vh}
+#help{font-size:2.2vh;color:#9aa3c8;line-height:1.6}
+#qrbox{display:flex;align-items:center;gap:1.5vw;background:#ffffff10;border-radius:2vh;padding:1.4vh}
+#qr{width:17vh;height:17vh;background:#fff;border-radius:1.2vh;padding:.6vh}#qr svg{width:100%;height:100%}
+#qrtxt{font-size:2.2vh;color:#c8cff0;max-width:14em}#qrtxt b{display:block;font-size:3.4vh;letter-spacing:.25em;color:#fff}
+#stage{position:fixed;inset:0;display:none;background:#000}
+#stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+body.playing #stage{display:block}body.playing #launcher{display:none}
+#corner{position:fixed;top:0;left:0;z-index:20;display:none;gap:6px;padding:6px;opacity:0;transition:opacity .4s}
+body.playing #corner{display:flex}#corner.show,#corner:hover{opacity:1}
+#corner button{font:inherit;font-size:14px;border:0;border-radius:8px;padding:6px 10px;background:#000a;color:#fff;cursor:pointer}
+#toast{position:fixed;left:50%;bottom:4vh;transform:translateX(-50%);background:#000c;color:#fff;padding:1vh 2vw;border-radius:1.5vh;font-size:2.4vh;opacity:0;transition:opacity .4s;z-index:30;pointer-events:none}
+#toast.on{opacity:1}
+</style></head><body>
+<div id="launcher">
+  <header><h1>ZERO TO PHI &middot; DEV</h1><div class="st" id="st">remote: waiting</div></header>
+  <div id="deck"></div>
+  <footer>
+    <div id="help">&larr; &rarr; pick &nbsp;&middot;&nbsp; Enter launch &nbsp;&middot;&nbsp; in a game: <b>Esc</b> back (Charge Hop: Esc twice)</div>
+    <div id="qrbox"><div id="qr"></div><div id="qrtxt">Phone remote<b id="code">....</b>scan once, it stays linked</div></div>
+  </footer>
+</div>
+<div id="stage"></div>
+<div id="corner"><button id="cBack">&#x2190; Launcher (Esc)</button><button id="cReload">&#x21bb; Reload</button></div>
+<div id="toast"></div>
+<script src="js/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="js/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/qrcode.js"></script>
+<script>window.LR_CONFIG = { peerPrefix: 'ztp-dev7q3x-v1-', iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };</script>
+<script src="js/net.js"></script>
+<script src="js/games.js"></script>
+<script src="js/launcher.js"></script>
+</body></html>

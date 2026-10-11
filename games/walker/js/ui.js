@@ -8,6 +8,10 @@
   function Pad(box, o) {
     var self = this; this.o = o; this.box = box; this.page = 'home'; this.manualAt = 0; this.s = loadSet(); this.moms = [];
     box.classList.add('wpad'); if (o.compact) box.classList.add('compact');
+    // v0.4: the sky edge. Quiet strip at the top; glows softly when something beautiful is up in the sky. Tap = look up.
+    this.sky = el('button', 'wsky', '<span class="wskypic"></span>'); this.sky.setAttribute('aria-label', 'Look up at the sky');
+    this.sky.addEventListener('pointerdown', function (ev) { ev.preventDefault(); if (!self.sky.classList.contains('glow')) return; self.pulse(self.sky); self.o.send({ t: 'sky' }); });
+    (o.compact ? document.body : box).appendChild(this.sky);
     this.tabs = el('div', 'wtabs'); box.appendChild(this.tabs);
     C.pages.forEach(function (p) {
       if (p.id === 'home') return;   // v0.3: no home tab, the category tabs are the way round
@@ -44,6 +48,8 @@
         self.momBar.appendChild(e);
       });
     }
+    var sk = st.sky || null, skKey = sk ? sk.kind : '';
+    if (skKey !== this.skyKey) { this.skyKey = skKey; this.sky.classList.toggle('glow', !!sk); this.sky.dataset.kind = skKey; this.sky.querySelector('.wskypic').innerHTML = sk ? sk.pic : ''; }
     if (st.s && !this.settingsOpen) { this.s = st.s; saveSet(this.s); this.buildSettings(); }
   };
   Pad.prototype.toggleSettings = function () { this.settingsOpen = !this.settingsOpen; this.setBox.classList.toggle('hidden', !this.settingsOpen); };

@@ -97,7 +97,7 @@
     if (a.id === 'b_flip' && a.flips.length < 4) a.flips.push(0);
     if (a.id === 'b_ball') a.q++;
     if ((a.id === 'b_slide' || a.id === 'p_slide') && !first) a.q = Math.min(3, a.q + 1);
-    if (a.id === 'p_sand') { a.sk = a.sk === undefined ? 0 : (a.sk + 1) % 3; a.skT = 0; a.skCount = (a.skCount || 0) + 1; a.mound = null; a.scooped = false; a.patN = -1; a.done = false; a.from2 = camPos.clone(); S.step('dirt', 2); window.WALKER.sandLog = (window.WALKER.sandLog || []).concat([['castle', 'bucket', 'pat'][a.sk]]); }
+    if (a.id === 'p_sand') { a.stage2 = (a.stage2 || 0) + 1; a.skT = 0; a.done = false; a.from2 = camPos.clone(); S.step('dirt', 2); window.WALKER.sandLog = (window.WALKER.sandLog || []).concat([SAND_STEPS[Math.min(a.stage2, SAND_STEPS.length) - 1]]); }
     if (a.id === 'b_kids') { st.energy += 3; waveT = 1.7; setTimeout(function () { S.giggle(1.2); }, 300); }
   }
   function tap(id) {
@@ -321,39 +321,34 @@
     if (n === 0) { var pole = new T.Mesh(new T.CylinderGeometry(0.006, 0.006, 0.22, 4), new T.MeshLambertMaterial({ color: '#8a6a4a' })); pole.position.set(0, 0.33, 0); g.add(pole); var fl = new T.Mesh(new T.PlaneGeometry(0.1, 0.06), new T.MeshLambertMaterial({ color: '#ff6b6b', side: T.DoubleSide })); fl.position.set(0.05, 0.41, 0); g.add(fl); }
     for (var i = 0; i < 5; i++) { var sh = new T.Mesh(new T.SphereGeometry(0.022, 6, 4), new T.MeshLambertMaterial({ color: cols[(i + n) % 4] })); var an = (i / 5 + n * 0.1) * TAU; sh.position.set(Math.cos(an) * 0.21, 0.04 + (n % 2) * 0.12, Math.sin(an) * 0.21); g.add(sh); }
   }
+  // v0.4: ONE sandcastle, built right in front of you. Each tap adds the next piece: mound, walls, towers, flag, shells (then more shells).
+  var SAND_STEPS = ['mound', 'walls', 'towers', 'flag', 'shells'], sandOne = null;
+  function sandPiece(stage) {
+    var g = sandOne, parts = [], m;
+    function add(mesh, x, y, z) { mesh.position.set(x, y, z); g.add(mesh); parts.push(mesh); return mesh; }
+    if (stage === 1) { m = add(new T.Mesh(new T.SphereGeometry(0.34, 16, 10, 0, TAU, 0, Math.PI / 2), sandM), 0, 0, 0); m.scale.y = 0.55; }
+    else if (stage === 2) { for (var i = 0; i < 4; i++) { var an = i * Math.PI / 2 + Math.PI / 4, w = add(new T.Mesh(new T.BoxGeometry(0.42, 0.14, 0.07), sandWet), Math.cos(an) * 0.3, 0.07, Math.sin(an) * 0.3); w.rotation.y = -an + Math.PI / 2; for (var c = -1; c <= 1; c += 2) add(new T.Mesh(new T.BoxGeometry(0.06, 0.05, 0.07), sandWet), Math.cos(an) * 0.3 + Math.cos(-an) * 0 + Math.sin(an) * c * 0.12 * -1, 0.165, Math.sin(an) * 0.3 + Math.cos(an) * c * 0.12); } add(new T.Mesh(new T.CylinderGeometry(0.15, 0.19, 0.24, 12), sandM), 0, 0.2, 0); }
+    else if (stage === 3) { [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]].forEach(function (o) { add(new T.Mesh(new T.CylinderGeometry(0.07, 0.08, 0.3, 10), sandWet), o[0] * 0.95, 0.15, o[1] * 0.95); add(new T.Mesh(new T.ConeGeometry(0.085, 0.12, 10), sandWet), o[0] * 0.95, 0.36, o[1] * 0.95); }); add(new T.Mesh(new T.CylinderGeometry(0.09, 0.1, 0.18, 10), sandM), 0, 0.41, 0); add(new T.Mesh(new T.ConeGeometry(0.11, 0.15, 10), sandWet), 0, 0.57, 0); }
+    else if (stage === 4) { add(new T.Mesh(new T.CylinderGeometry(0.007, 0.007, 0.28, 4), new T.MeshLambertMaterial({ color: '#8a6a4a' })), 0, 0.76, 0); var fl = add(new T.Mesh(new T.PlaneGeometry(0.14, 0.08), new T.MeshLambertMaterial({ color: '#ff6b6b', side: T.DoubleSide })), 0.07, 0.86, 0); g.userData.flag = fl; }
+    else { var cols = ['#ffffff', '#ffb3c8', '#7fd7ff', '#ffd23f', '#c79bff'], n = stage - 5; for (var k = 0; k < 8; k++) { var a2 = (k / 8 + n * 0.06) * TAU, r = 0.4 + (n % 3) * 0.07; add(new T.Mesh(k % 2 ? new T.SphereGeometry(0.045, 8, 6) : new T.ConeGeometry(0.05, 0.07, 7), new T.MeshLambertMaterial({ color: cols[(k + n) % 5] })), Math.cos(a2) * r, 0.02, Math.sin(a2) * r); } }
+    parts.forEach(function (pm) { pm.userData.s = pm.scale.clone(); pm.scale.multiplyScalar(0.01); });
+    g.userData.stage = stage; g.userData.parts = (g.userData.parts || 0) + parts.length; return parts;
+  }
   function poseSand(a, dt) {
-    var sd = W.sandC; a.skT = (a.skT || 0) + dt; var u = a.skT, sk = a.sk || 0;
-    if (a.workFor !== a.skCount) { a.workFor = a.skCount; var nC = castles.length; a.workP = sk === 1 ? V(sd.x + 0.75, 0, sd.z + 0.2) : sk === 2 && a.castle ? a.castle.position.clone().setY(0) : V(sd.x - 0.35 + (nC % 2) * 0.4, 0, sd.z - 0.45 - (nC % 3) * 0.22); }
-    var sp = { stand: sk === 1 ? V(sd.x + 0.95, 0, sd.z + 1.05) : V(a.workP.x + 0.2, 0, a.workP.z + 0.95), work: a.workP };
-    var mv = ease(clamp(u / 1.1, 0, 1)); tmp.lerpVectors(a.from2 || camPos, V(sp.stand.x, 0.85, sp.stand.z), mv); if (mv < 1 && (a.from2 && a.from2.distanceTo(sp.stand) > 0.6)) stepSounds(dt, 0.8);
-    var lookP = V(sp.work.x, 0.34, sp.work.z); set(tmp, lookP, 5); pos.set(tmp.x, 0, tmp.z);
-    hand.visible = true; handL.visible = sk !== 1; bucketG.visible = sk === 1; treat.visible = false; bucketG.userData.stream.visible = false; if (sk !== 1) bucketG.userData.stream.visible = false;
-    var w = u - 1.1;
-    if (sk === 0) {   // scribble a little castle
-      if (!a.castle || a.castleBuilt !== a.skCount) { a.castle = newCastle(sp.work.x, sp.work.z); a.castleBuilt = a.skCount; }
-      var g = clamp(w / 2.6, 0, 1); a.castle.scale.y = Math.max(0.01, ease(g));
-      var sc2 = w > 0 && g < 1 ? 1 : 0.2;
-      hand.position.set(0.14 + Math.sin(a.t * 11) * 0.05 * sc2, -0.42 + Math.cos(a.t * 13) * 0.03 * sc2, -0.6); handL.position.set(-0.14 + Math.sin(a.t * 12 + 1) * 0.05 * sc2, -0.42 + Math.cos(a.t * 10) * 0.03 * sc2, -0.6);
-      if (w > 0 && g < 1 && Math.random() < dt * 4) S.step('dirt', 1); if (g >= 1 && !a.done) { a.done = true; S.pop(); }
-    } else if (sk === 1) {   // scoop a bucket, then pour it out
-      var bpos = V(0.12, -0.36, -0.55), tilt = 0, fillA = 0;
-      if (w < 0) { fillA = 0; }
-      else if (w < 1.3) { var sw = Math.sin(clamp(w / 1.3, 0, 1) * Math.PI); bpos.y -= sw * 0.2; bpos.z += sw * 0.05; tilt = sw * 0.6; fillA = clamp(w / 0.9, 0, 1); if (!a.scooped && w > 0.5) { a.scooped = true; S.step('dirt', 2); } }
-      else if (w < 3.2) { var pw = clamp((w - 1.3) / 0.5, 0, 1); tilt = pw * 2.2; bpos.x -= pw * 0.08; bpos.y += pw * 0.06; fillA = 1 - clamp((w - 1.6) / 1.5, 0, 1); bucketG.userData.stream.visible = w > 1.6 && w < 3.1;
-        if (!a.mound) { a.mound = new T.Mesh(new T.SphereGeometry(0.22, 12, 8, 0, TAU, 0, Math.PI / 2), sandM); a.mound.position.set(sp.work.x + (mounds.length % 3) * 0.18 - 0.18, 0.32, sp.work.z - (mounds.length % 2) * 0.2); a.mound.scale.y = 0.01; scene.add(a.mound); mounds.push(a.mound); if (mounds.length > 4) scene.remove(mounds.shift()); }
-        a.mound.scale.set(1, Math.max(0.01, clamp((w - 1.6) / 1.5, 0, 1) * 1.3), 1); if (Math.random() < dt * 5) S.step('soft', 1); }
-      else { tilt = Math.max(0, 2.2 - (w - 3.2) * 3); fillA = 0; if (!a.done) { a.done = true; S.pop(); } }
-      bucketG.position.copy(bpos); bucketG.rotation.set(0, 0, tilt); bucketG.userData.fill.visible = fillA > 0.05; bucketG.userData.fill.position.y = -0.07 + fillA * 0.13;
-      bucketG.userData.stream.position.set(bpos.x - 0.1, bpos.y - 0.1, bpos.z - 0.2); bucketG.userData.stream.rotation.set(-1.0, 0, 0);
-      hand.position.set(bpos.x, bpos.y - 0.05, bpos.z + 0.05);
-    } else {   // pat it down and decorate
-      if (!a.castle) { a.castle = newCastle(sp.work.x, sp.work.z); a.castle.scale.y = 1; }
-      var pt = Math.max(0, Math.sin(w * 9)), pl = Math.max(0, Math.sin(w * 9 + Math.PI));
-      hand.position.set(0.1, -0.4 + (w > 0 && w < 2 ? pt * 0.07 : 0), -0.58); handL.position.set(-0.1, -0.4 + (w > 0 && w < 2 ? pl * 0.07 : 0), -0.58);
-      if (w > 0 && w < 2 && Math.floor(w * 9 / Math.PI) !== a.patN) { a.patN = Math.floor(w * 9 / Math.PI); S.step('soft', 1.5); }
-      if (w >= 2 && !a.done) { a.done = true; decorate(a.castle); S.pop(); S.giggle(0.6); }
-    }
-    a.skCount = a.skCount || 0; if (a.done && !a.counted) { a.counted = true; }
+    var sd = W.sandC; a.skT = (a.skT || 0) + dt; var u = a.skT;
+    var work = V(sd.x - 0.2, 0, sd.z - 0.35), stand = V(work.x + 0.15, 0, work.z + 1.0);
+    if (!sandOne) { sandOne = new T.Group(); sandOne.position.set(work.x, 0.32, work.z); scene.add(sandOne); }
+    var mv = ease(clamp(u / 1.1, 0, 1)); tmp.lerpVectors(a.from2 || camPos, V(stand.x, 0.85, stand.z), mv); if (mv < 1 && a.from2 && a.from2.distanceTo(stand) > 0.6) stepSounds(dt, 0.8);
+    set(tmp, V(work.x, 0.45, work.z), 5); pos.set(tmp.x, 0, tmp.z);
+    hand.visible = true; handL.visible = true; bucketG.visible = false; bucketG.userData.stream.visible = false; treat.visible = false;
+    if (a.builtFor !== a.stage2) { a.builtFor = a.stage2; a.parts = sandPiece(a.stage2); }
+    var w = u - 1.1, g = clamp(w / 2.2, 0, 1), busy = w > 0 && g < 1;
+    a.parts.forEach(function (pm, i) { var gi = clamp(g * 1.4 - i / a.parts.length * 0.4, 0, 1); pm.scale.copy(pm.userData.s).multiplyScalar(Math.max(0.01, ease(gi))); });
+    var sc2 = busy ? 1 : 0.2, low = a.stage2 >= 5 ? 0.04 : 0;
+    hand.position.set(0.14 + Math.sin(a.t * 11) * 0.05 * sc2, -0.42 - low + Math.cos(a.t * 13) * 0.03 * sc2, -0.6); handL.position.set(-0.14 + Math.sin(a.t * 12 + 1) * 0.05 * sc2, -0.42 - low + Math.cos(a.t * 10) * 0.03 * sc2, -0.6);
+    if (busy && Math.random() < dt * 4) S.step(a.stage2 === 1 ? 'soft' : 'dirt', 1);
+    if (sandOne.userData.flag) sandOne.userData.flag.rotation.y = Math.sin(st.t * 3) * 0.3;
+    if (g >= 1 && !a.done) { a.done = true; S.pop(); if (a.stage2 === 4 || a.stage2 === 5) S.giggle(0.6); }
   }
   // basketball: light on the backboard, fireworks, cheer text
   var bulbM = new T.MeshBasicMaterial({ color: '#c9c2b0' }), bulb = new T.Mesh(new T.SphereGeometry(0.13, 12, 8), bulbM); bulb.position.set(W.B.x - 5.9, 4.45, W.B.z - 5.9); scene.add(bulb);
@@ -593,7 +588,6 @@
     pos.set(p.x, 0, p.z); set(V(p.x, EYE + (mo.id === 'fish' || mo.id === 'chip' ? -0.35 : 0) + (settings.car && walk < 1 ? -0.3 : 0), p.z), mo.look, 3);
     if (walk < 1) stepSounds(dt, 1.2);
     var id = mo.id, t = mo.t;
-    if (id === 'busker' && t > 2 && Math.random() < dt * 2.6) { var scale = [262, 294, 330, 392, 440, 523, 587]; S.pluck(pick(scale), 1); W.mom.busker.obj.userData.head.rotation.z = Math.sin(t * 3) * 0.1; }
     if (id === 'fish') { var jt = (t - 3) % 3.2; if (t > 3 && jt < 1) { W.fish.position.y = Math.sin(jt * Math.PI) * 0.7; W.fish.rotation.x = -jt * 3; if (!mo.splash || mo.splash < Math.floor((t - 3) / 3.2)) { mo.splash = Math.floor((t - 3) / 3.2) + 1; S.step('puddle', 3); } } else W.fish.position.y = -1; }
     if (id === 'deer' && t > 3) { var n = W.deer.userData.neck; n.rotation.x = Math.max(0, Math.sin((t - 3) * 2)) * 0.5 * (t < 7 ? 1 : 0); W.deer.lookAt(pos.x, 0, pos.z); }
     if (id === 'laugh' && Math.random() < dt * 1.2) { S.giggle(1); }
@@ -721,12 +715,57 @@
     W.rain.visible = W.rain.material.opacity > 0.01;
     if (W.rain.visible) { var rp = W.rain.geometry.attributes.position; for (var i = 0; i < rp.count; i++) { var y = rp.getY(i) - dt * 14; if (y < 0) y += 25; rp.setY(i, y); } rp.needsUpdate = true; W.rain.position.set(camPos.x, 0, camPos.z); if (Math.random() < dt * 8) S.drip(0.6); }
     var bowA = weather.ph === 'bow' ? Math.min(1, weather.t / 10) * Math.min(1, (WEA.bow - weather.t) / 10) : 0;
+    if (skyEv && skyEv.forced) bowA = 1;
     W.rainbow.children.forEach(function (c) { c.material.opacity = bowA * 0.55; }); W.rainbow.visible = bowA > 0.01;
+    updateSky(dt, bowA);
     // Hue stub: what the lights *would* do (not sent anywhere yet)
     var lookUp = cam.getWorldDirection(tmp).y > 0.25;
     var col = bowA > 0.2 && lookUp ? '#ffb0e0' : wMix > 0.5 ? '#9fc0ff' : '#ffd9a0';
     hue = { on: !!settings.hue, color: col, bri: Math.round(settings.hueCap * (wMix > 0.5 ? 0.6 : 1)), weather: weather.ph };
   }
+
+  // ---------------------------------------------------------------- v0.4 sky: night, flocks, shooting stars, comet, rainbow
+  // Big things in the sky make the top edge of the pad glow; tapping it makes the view look up for a few seconds (nothing else changes).
+  var NIGHT = { sky: new T.Color('#25335c'), hemi: new T.Color('#9aa8d8') }, nightAmt = q.get('night') ? 1 : 0, dayT = 0, DAY = 540, NIGHT0 = 410, NIGHT1 = 520;
+  var skyEv = null, skyLog = [], nextFlock = rr(50, 90), nextStar = rr(15, 30), cometDone = false, forced = q.get('sky');
+  var SKYPIC = { rainbow: '\uD83C\uDF08', stars: '\u2728', star: '\uD83C\uDF20', comet: '\u2604\uFE0F', flock: '\uD83D\uDC26' };
+  var addMat = function (c, o) { return new T.MeshBasicMaterial({ color: c, transparent: true, opacity: o, fog: false, depthWrite: false, blending: T.AdditiveBlending }); };
+  var streak = new T.Group(); (function () { var tl = new T.Mesh(new T.CylinderGeometry(0.08, 0.7, 16, 6, 1, true), addMat('#cfe8ff', 0.8)); tl.rotation.x = Math.PI / 2; tl.position.z = 8; streak.add(tl); streak.add(new T.Mesh(new T.SphereGeometry(0.9, 8, 6), addMat('#ffffff', 1))); })(); streak.visible = false; scene.add(streak);
+  var comet = new T.Group(); (function () { comet.add(new T.Mesh(new T.SphereGeometry(1.4, 12, 8), addMat('#f2fbff', 1))); comet.add(new T.Mesh(new T.SphereGeometry(3.2, 12, 8), addMat('#8fd8ff', 0.25))); var tl = new T.Mesh(new T.ConeGeometry(3, 34, 14, 1, true), addMat('#a8f0e0', 0.28)); tl.rotation.x = -Math.PI / 2; tl.position.z = 17; comet.add(tl); var t2 = new T.Mesh(new T.ConeGeometry(1.4, 46, 10, 1, true), addMat('#cfe8ff', 0.22)); t2.rotation.x = -Math.PI / 2; t2.position.z = 23; t2.position.x = 2; comet.add(t2); })(); comet.visible = false; scene.add(comet);
+  var flock = []; (function () { var fm = new T.MeshBasicMaterial({ color: '#3f4656', side: T.DoubleSide }), wg = new T.PlaneGeometry(0.7, 0.24); for (var i = 0; i < 11; i++) { var g = new T.Group(), a = new T.Mesh(wg, fm), b = new T.Mesh(wg, fm); a.position.x = -0.35; b.position.x = 0.35; g.add(a); g.add(b); g.userData = { w1: a, w2: b, i: i }; g.visible = false; scene.add(g); flock.push(g); } })();
+  function camFwdFlat() { var f = cam.getWorldDirection(V(0, 0, 0)); f.y = 0; if (f.lengthSq() < 1e-4) f.set(0, 0, -1); return f.normalize(); }
+  function startSky(kind) {
+    var f = camFwdFlat(), r = V(-f.z, 0, f.x), c = V(camPos.x, 0, camPos.z), ev = { kind: kind, t: 0, pic: SKYPIC[kind] };
+    if (kind === 'flock') { ev.dur = 22; ev.a = c.clone().addScaledVector(f, 30).addScaledVector(r, -70).setY(16); ev.b = c.clone().addScaledVector(f, 18).addScaledVector(r, 70).setY(19); ev.at = function () { return flock[0].position; }; flock.forEach(function (g) { g.visible = true; }); }
+    else if (kind === 'comet') { ev.dur = 40; ev.a = c.clone().addScaledVector(f, 120).addScaledVector(r, -110).setY(70); ev.b = c.clone().addScaledVector(f, 110).addScaledVector(r, 110).setY(85); ev.at = function () { return comet.position; }; comet.visible = true; }
+    else if (kind === 'star') { ev.dur = 20; ev.ctr = c.clone().addScaledVector(f, 80).setY(60); ev.next = 0.6; ev.at = function () { return ev.ctr; }; }
+    else if (kind === 'stars') { ev.dur = 25; ev.at = function () { return V(camPos.x, 0, camPos.z).addScaledVector(camFwdFlat(), 25).setY(45); }; }
+    else if (kind === 'rainbow') { ev.dur = 1e9; ev.at = function () { return V(10, 52, -150); }; }
+    skyEv = ev; skyLog.push(kind); pushState();
+  }
+  function endSky() { if (!skyEv) return; if (skyEv.kind === 'flock') flock.forEach(function (g) { g.visible = false; }); if (skyEv.kind === 'comet') comet.visible = false; streak.visible = false; skyEv = null; pushState(); }
+  function updateSky(dt, bowA) {
+    // day / night clock (night only when it isn't raining)
+    dayT = (dayT + dt) % DAY; var nWant = q.get('night') ? 1 : (dayT > NIGHT0 && dayT < NIGHT1 && weather.ph !== 'rain' && weather.ph !== 'cloud') ? 1 : 0;
+    nightAmt += (nWant - nightAmt) * (1 - Math.exp(-dt / 6));
+    if (!st.rocket) { W.sky.lerp(NIGHT.sky, nightAmt * 0.92); scene.fog.color.copy(W.sky); W.hemi.color.lerp(NIGHT.hemi, nightAmt); W.hemi.intensity *= 1 - nightAmt * 0.45; W.sun.intensity *= 1 - nightAmt * 0.85; W.stars.visible = nightAmt > 0.15; W.stars.material.opacity = clamp((nightAmt - 0.15) * 1.4, 0, 1); W.stars.position.set(camPos.x, 0, camPos.z); }
+    // pick an event
+    if (!skyEv) {
+      if (forced && !st.skyForcedDone) { st.skyForcedDone = true; startSky(forced); }
+      else if (bowA > 0.35) startSky('rainbow');
+      else if (nightAmt > 0.8) { nextStar -= dt; if (!cometDone && Math.random() < dt / 40) { cometDone = true; startSky('comet'); } else if (nextStar < 0) { nextStar = rr(30, 60); startSky(Math.random() < 0.6 ? 'star' : 'stars'); } }
+      else if (nightAmt < 0.1 && weather.ph !== 'rain') { cometDone = false; nextFlock -= dt; if (nextFlock < 0) { nextFlock = rr(70, 130); startSky('flock'); } }
+    }
+    if (!skyEv) return;
+    var e = skyEv; e.t += dt; var u = clamp(e.t / e.dur, 0, 1);
+    if (e.kind === 'flock') { var hd = V(0, 0, 0).subVectors(e.b, e.a).normalize(), sd = V(-hd.z, 0, hd.x), p0 = V(0, 0, 0).lerpVectors(e.a, e.b, u); flock.forEach(function (g, i) { var row = Math.ceil(i / 2), side = i % 2 ? 1 : -1; g.position.copy(p0).addScaledVector(hd, -row * 1.6).addScaledVector(sd, side * row * 1.4); g.position.y += Math.sin(st.t * 1.3 + i) * 0.3; g.rotation.y = Math.atan2(hd.x, hd.z); var fl = Math.sin(st.t * 7 + i * 0.7) * 0.55; g.userData.w1.rotation.z = fl; g.userData.w2.rotation.z = -fl; }); if (Math.random() < dt * 0.8) { var s1 = spat(p0, 10, 60); S.place('e_flock', s1.pan, 0.3 + s1.vol); S.via('e_flock', function () { S.bird(0.8); }); } }
+    if (e.kind === 'comet') { comet.position.lerpVectors(e.a, e.b, u); comet.lookAt(V(0, 0, 0).subVectors(comet.position, V(0, 0, 0).subVectors(e.b, e.a))); var fade = Math.min(1, e.t / 4, (e.dur - e.t) / 4); comet.children.forEach(function (m, i) { m.material.opacity = [1, 0.25, 0.28, 0.22][i] * fade; }); }
+    if (e.kind === 'star') { e.next -= dt; if (e.next < 0 && e.t < e.dur - 2) { e.next = rr(1.6, 3.2); e.sa = e.ctr.clone().add(V(rr(-40, 10), rr(5, 20), rr(-20, 20))); e.sv = V(rr(25, 40), rr(-14, -6), rr(-8, 8)); e.st = 0; streak.visible = true; streak.position.copy(e.sa); streak.lookAt(V(0, 0, 0).subVectors(e.sa, e.sv)); } if (streak.visible) { e.st += dt; streak.position.addScaledVector(e.sv, dt); var o = Math.sin(clamp(e.st / 1.1, 0, 1) * Math.PI); streak.children[0].material.opacity = 0.8 * o; streak.children[1].material.opacity = o; if (e.st > 1.1) streak.visible = false; } }
+    if (e.kind === 'rainbow' && bowA < 0.3 && !e.forced) { endSky(); return; }
+    if (e.kind === 'stars' && nightAmt < 0.6) { endSky(); return; }
+    if (e.t > e.dur) endSky();
+  }
+  function skyTap() { S.init(); if (!skyEv) return; st.lookUp = { t: 0, dur: 5.5, at: skyEv.at }; window.WALKER.lookUps = (window.WALKER.lookUps || 0) + 1; }
 
   // ---------------------------------------------------------------- sounds
   var birdT = 3;
@@ -734,12 +773,45 @@
     var sp = st.running ? (st.running > 1 ? 1.4 : 1.1) : 0.7; stride += dt * (mult || 1) * (st.running ? 2.6 : 1.6);
     if (stride > sp) { stride = 0; var srf = inCastle() ? 'soft' : W.surface(pos.x, pos.z); if (Math.hypot(pos.x + 8, pos.z - W.pathZ(-8) - 2.6) < 1.2) srf = 'puddle'; if (!(settings.car && (st.mode === 'travel' || st.mode === 'moment'))) S.step(srf, st.running ? 1.4 : 1); }
   }
+  // v0.4 proximity audio: every source has a spot in the world; volume follows distance, pan follows where you're facing
+  var _f = V(0, 0, 0), _r = V(0, 0, 0), _up = V(0, 1, 0);
+  function spat(p, near, far) {
+    var dx = p.x - camPos.x, dz = p.z - camPos.z, d = Math.hypot(dx, dz);
+    cam.getWorldDirection(_f); _f.y = 0; if (_f.lengthSq() < 1e-6) _f.set(0, 0, -1); _f.normalize(); _r.crossVectors(_f, _up);
+    var pan = d < 0.5 ? 0 : (dx * _r.x + dz * _r.z) / d, vol = clamp(1 - (d - near) / (far - near), 0, 1);
+    vol = vol * vol; return { pan: pan * 0.85, vol: vol, d: d };
+  }
+  var EMIT = null;
+  function emitters() {
+    var bk = W.mom.busker, CO = W.co;
+    return [
+      { id: 'busker', p: function () { return bk.p; }, near: 3, far: 34, rate: 2.6, play: function (v) { S.pluck(pick([262, 294, 330, 392, 440, 523, 587]), 1); bk.obj.userData.head.rotation.z = Math.sin(st.t * 3) * 0.1; } },
+      { id: 'coaster', p: function () { return CO.station; }, near: 6, far: 40, rate: 4, play: function () { S.clank(); } },
+      { id: 'ducks', p: function () { return W.POND; }, near: 3, far: 22, rate: 0.35, play: function () { S.quack(); } },
+      { id: 'chips', p: function () { return W.mom.chip.p; }, near: 2, far: 14, rate: 0.5, play: function () { S.squeak(); } },
+      { id: 'laugh', p: function () { return W.mom.laugh.p; }, near: 3, far: 22, rate: 0.35, play: function () { S.giggle(0.8); } },
+      { id: 'zoo', p: function () { return W.ZOO_C; }, near: 5, far: 30, rate: 0.5, play: function () { zooSound(pick(['goat', 'alpaca', 'horse', 'bunny'])); } },
+      { id: 'splashpad', p: function () { return W.wp.pad; }, near: 3, far: 26, rate: 1.5, play: function () { S.drip(1.4); } },
+      { id: 'bkids', p: function () { return W.B; }, near: 6, far: 30, rate: 0.5, play: function () { if (Math.random() < 0.5) S.giggle(0.7); else S.boing(0.3); } },
+      { id: 'pkids', p: function () { return W.P; }, near: 6, far: 30, rate: 0.4, play: function () { if (Math.random() < 0.6) S.giggle(0.6); else S.whee(); } },
+      { id: 'boats', p: function () { return W.BL_C; }, near: 5, far: 28, rate: 0.3, play: function () { S.boing(0.2); } }
+    ];
+  }
+  var spatLog = {};
   function updateSound(dt) {
-    var dB = Math.hypot(pos.x - W.B.x, pos.z - W.B.z), dP = Math.hypot(pos.x - W.P.x, pos.z - W.P.z), dW = Math.min(Math.hypot(pos.x - W.POND.x, pos.z - W.POND.z), Math.hypot(pos.x + 8, pos.z - 2));
-    var crowd = 0.035 * clamp(1 - (Math.min(dB, dP) - 8) / 16, 0, 1) * (0.5 + Math.min(st.energy, 8) / 10);
-    var dWP = Math.min(Math.hypot(pos.x - W.WP_C.x, pos.z - W.WP_C.z), Math.hypot(pos.x - W.BL_C.x, pos.z - W.BL_C.z));
-    S.setBeds({ crowd: st.rocket ? 0 : crowd, water: 0.025 * clamp(1 - dW / 9, 0, 1) + 0.03 * clamp(1 - (dWP - 8) / 14, 0, 1) + (weather.ph === 'rain' ? 0.02 : 0), breeze: 0.03 + wMix * 0.02, wind: st.rocket ? 0.12 : 0.02 + st.windAmt });
-    birdT -= dt; if (birdT < 0) { birdT = rr(4, 13) * (crowd > 0.02 ? 2 : 1); if (weather.ph !== 'rain') S.bird(crowd > 0.02 ? 0.5 : 1); }
+    if (!EMIT) EMIT = emitters();
+    var away = st.rocket ? 0 : 1, crowdE = 0.5 + Math.min(st.energy, 8) / 10;
+    // beds (looping): pond, water park, lagoon, kids' chatter near the castle and the playground
+    var beds = [['pond', W.POND, 2, 16, 0.05], ['wpark', W.WP_C, 6, 34, 0.06], ['lagoon', W.BL_C, 5, 28, 0.04], ['kidsB', W.B, 6, 30, 0.035 * crowdE], ['kidsP', W.P, 6, 30, 0.03 * crowdE]];
+    beds.forEach(function (b) { var s = spat(b[1], b[2], b[3]); S.place(b[0], s.pan, s.vol * b[4] * away); spatLog[b[0]] = s; });
+    S.setBeds({ crowd: 0, water: weather.ph === 'rain' ? 0.02 : 0, breeze: 0.03 + wMix * 0.02, wind: st.rocket ? 0.12 : 0.02 + st.windAmt });
+    // one-shot emitters: fire at their own rate, louder when close, panned to where they are
+    EMIT.forEach(function (e) {
+      var s = spat(e.p(), e.near, e.far); spatLog[e.id] = s; S.place('e_' + e.id, s.pan, s.vol * away);
+      if (s.vol > 0.02 && away && Math.random() < dt * e.rate) S.via('e_' + e.id, function () { e.play(s.vol); });
+    });
+    // birds: each chirp comes from a real bird in the sky
+    birdT -= dt; if (birdT < 0) { birdT = rr(2, 7); if (weather.ph !== 'rain' && !st.rocket) { var bi = W.birds[(Math.random() * W.birds.length) | 0], s = spat(bi.position, 4, 45); S.place('e_bird', s.pan, 0.35 + s.vol * 0.8); spatLog.bird = s; S.via('e_bird', function () { S.bird(1); }); } }
   }
 
   // ---------------------------------------------------------------- the main pose
@@ -768,6 +840,8 @@
     else idlePose(dt);
     // glance at the buddy / pointed thing
     if (glanceAt && glanceAtT > 0) { glanceAtT -= dt; var w = Math.sin(clamp(1 - glanceAtT / 3, 0, 1) * Math.PI) * 0.7; tLook.lerp(glanceAt.position.clone().setY(glanceAt.position.y + 0.4), w); }
+    // v0.4: tapped the glowing sky edge: look up toward it for a few seconds; walking / activities carry on underneath
+    if (st.lookUp) { var L = st.lookUp; L.t += dt; var lw = Math.sin(clamp(L.t / L.dur, 0, 1) * Math.PI); lw = Math.min(1, lw * 1.6) * 0.92; var tg2 = L.at ? L.at() : null; if (tg2 && !st.camQ) tLook.lerp(tg2, lw); if (L.t >= L.dur) st.lookUp = null; }
     // castle rocks when other kids bounce
     if (st.place === 'bouncy' && !st.rocket) { tPos.y += rockAmt * 0.06; tRoll += Math.sin(st.t * 3.1) * rockAmt * 0.01; }
     var a = 1 - Math.exp(-k * dt); if (st.camHard) camPos.copy(tPos); else camPos.lerp(tPos, a); camLook.lerp(tLook, 1 - Math.exp(-Math.min(k, 8) * dt));
@@ -806,7 +880,7 @@
 
   // ---------------------------------------------------------------- networking
   var phones = {}, nPhones = 0;
-  function stateMsg() { return { t: 'st', area: st.mode === 'travel' ? (st.pendingAct && st.pendingAct !== 'rocket' ? pageFor(placeFor(st.pendingAct)) : pageFor(st.dest)) : pageFor(st.place), place: st.place, moments: st.moments.map(function (m) { return { id: m.id, pic: m.pic }; }), s: settings }; }
+  function stateMsg() { return { t: 'st', area: st.mode === 'travel' ? (st.pendingAct && st.pendingAct !== 'rocket' ? pageFor(placeFor(st.pendingAct)) : pageFor(st.dest)) : pageFor(st.place), place: st.place, moments: st.moments.map(function (m) { return { id: m.id, pic: m.pic }; }), sky: skyEv ? { kind: skyEv.kind, pic: skyEv.pic } : null, s: settings }; }
   var lastPush = 0;
   function pushState() { var m = stateMsg(); for (var id in phones) net.send(phones[id], m); if (localPad) localPad.setState(m); lastPush = st.t; }
   function onMsg(conn, m) {
@@ -818,6 +892,7 @@
     else if (m.t === 'back') back();
     else if (m.t === 'moment') momentTap(m.id);
     else if (m.t === 'set') applySettings(m.s);
+    else if (m.t === 'sky') skyTap();
   }
   function applySettings(s) { for (var k in s) if (k in C.defaults) settings[k] = s[k]; walkerSaveSettings(settings); setBuddy(); pushState(); }
   var useLocal = q.get('local') === '1';
@@ -844,7 +919,7 @@
   function playHere() {
     S.init(); hideStart(); if (localPad) return;
     document.body.classList.add('local');
-    localPad = new WalkerPad(document.getElementById('lpad'), { compact: true, noAwake: true, send: function (m) { if (m.t === 'tap') tap(m.id); else if (m.t === 'back') back(); else if (m.t === 'moment') momentTap(m.id); else if (m.t === 'set') applySettings(m.s); } });
+    localPad = new WalkerPad(document.getElementById('lpad'), { compact: true, noAwake: true, send: function (m) { if (m.t === 'tap') tap(m.id); else if (m.t === 'back') back(); else if (m.t === 'moment') momentTap(m.id); else if (m.t === 'set') applySettings(m.s); else if (m.t === 'sky') skyTap(); } });
     localPad.s = settings; localPad.buildSettings(); pushState();
     if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(function () {});
   }
@@ -870,6 +945,6 @@
     if (fpsT > 2 && !q.has('q')) { var fps = fpsN / fpsAcc; if (fps < C.quality.downBelowFps && rung < C.quality.rungs.length - 1) { slow++; if (slow > 1) { rung++; applyQ(); slow = 0; } } else slow = 0; if (fps > C.quality.upAboveFps && rung > 0) { fast++; if (fast > 6) { rung--; applyQ(); fast = 0; } } else fast = 0; fpsAcc = fpsN = fpsT = 0; }
     requestAnimationFrame(frame);
   }
-  window.WALKER = { cheer: function (k) { cheer(k); }, fx: function () { return { castles: castles.length, deco: castles.map(function (c) { return c.userData.deco; }), mounds: mounds.length, lap: lapA, lapVis: lapPiv.visible, wave: waveH.visible, bulb: '#' + bulbM.color.getHexString() }; }, st: st, tap: tap, back: back, moment: momentTap, set: applySettings, settings: settings, playHere: playHere, started: function () { return started; }, hue: function () { return hue; }, pos: pos, W: W, weather: weather, step: function (sec) { for (var i = 0; i < sec * 30; i++) { update(1 / 30); updateKids(1 / 30); updateBuddy(1 / 30); updateWorld(1 / 30); updateMoments(1 / 30); updateFx(1 / 30); } renderer.render(scene, cam); } };
+  window.WALKER = { sky: function () { return { ev: skyEv && { kind: skyEv.kind, t: skyEv.t }, log: skyLog, night: nightAmt, lookUp: !!st.lookUp }; }, startSky: function (k) { endSky(); startSky(k); if (k === 'rainbow') { skyEv.forced = true; skyEv.dur = 25; W.rainbow.visible = true; } }, skyTap: function () { skyTap(); }, camDirY: function () { return cam.getWorldDirection(V(0, 0, 0)).y; }, spat: function () { return spatLog; }, srcs: function () { return S.srcs(); }, cheer: function (k) { cheer(k); }, fx: function () { return { sand: sandOne ? { stage: sandOne.userData.stage, parts: sandOne.userData.parts, groups: 1 } : null, castles: castles.length, deco: castles.map(function (c) { return c.userData.deco; }), mounds: mounds.length, lap: lapA, lapVis: lapPiv.visible, wave: waveH.visible, bulb: '#' + bulbM.color.getHexString() }; }, st: st, tap: tap, back: back, moment: momentTap, set: applySettings, settings: settings, playHere: playHere, started: function () { return started; }, hue: function () { return hue; }, pos: pos, W: W, weather: weather, step: function (sec) { for (var i = 0; i < sec * 30; i++) { update(1 / 30); updateKids(1 / 30); updateBuddy(1 / 30); updateWorld(1 / 30); updateMoments(1 / 30); updateFx(1 / 30); updateSound(1 / 30); } renderer.render(scene, cam); } };
   requestAnimationFrame(frame);
 })();
