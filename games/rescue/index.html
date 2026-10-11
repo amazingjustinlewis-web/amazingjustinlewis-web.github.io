@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Red Deer Rescue v0.1 | Zero to Phi</title>
+<style>
+@font-face{font-family:Fredoka;src:url(../walker/assets/fredoka-latin-var.woff2) format('woff2');font-weight:300 700}
+html,body{margin:0;height:100%;overflow:hidden;background:#0b1026;font-family:Fredoka,system-ui,sans-serif;color:#fff}
+canvas{display:block}
+.hud{position:absolute;pointer-events:none;text-shadow:0 2px 6px #0008}
+#title{top:1.6vh;left:1.6vw}#title b{font-size:3.6vh;letter-spacing:.06em;color:#ffd23f}#title span{font-size:1.8vh;opacity:.8;margin-left:.6em}
+#stats{font-size:2.1vh;margin-top:.4vh}
+#qrbox{top:1.6vh;right:1.6vw;display:flex;gap:1vw;align-items:center;background:#0b1026b0;border-radius:1.6vh;padding:1.2vh;transition:transform .5s}
+#qrbox.small{transform:scale(.6);transform-origin:top right}
+#qr{width:15vh;height:15vh;background:#fff;border-radius:1vh;padding:.5vh}#qr svg{width:100%;height:100%}
+#qrtxt{font-size:1.9vh;max-width:11em;color:#c8d3f0}#qrtxt b{display:block;font-size:3.6vh;letter-spacing:.2em;color:#fff}
+#vote{right:1.6vw;top:24vh;width:25vw;background:#0b1026b8;border-radius:1.6vh;padding:1.4vh 1.2vw}
+#vote h3{margin:0 0 .8vh;font-size:2.3vh;font-weight:600}#vote h3 small{float:right;opacity:.7;font-weight:400}
+.vrow{position:relative;height:3.6vh;margin:.7vh 0;background:#ffffff14;border-radius:.8vh;overflow:hidden}
+.vbar{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#4fc3ff,#7ad9ff);transition:width .3s}
+.vrow.win .vbar{background:linear-gradient(90deg,#ffb23f,#ffd23f)}
+.vlab{position:absolute;left:.8vw;top:0;line-height:3.6vh;font-size:2vh;white-space:nowrap}
+.vnum{position:absolute;right:.6vw;top:0;line-height:3.6vh;font-size:1.8vh;opacity:.85}
+.vth{position:absolute;top:-.3vh;bottom:-.3vh;width:2px;background:#fff9}
+#vstat{font-size:1.8vh;opacity:.85;margin-top:.6vh}
+#huddleBar{margin-top:1vh;font-size:1.8vh}
+#roster{left:1.6vw;bottom:2vh;width:22vw;background:#0b1026b0;border-radius:1.6vh;padding:1vh 1vw;font-size:1.8vh}
+.rrow{display:flex;align-items:center;gap:.6vw;margin:.4vh 0}.chip{width:1.6vh;height:2.4vh;border-radius:.3vh}
+.rname{flex:1;white-space:nowrap;overflow:hidden}.hp{width:5vw;height:.8vh;background:#fff2;border-radius:.4vh;overflow:hidden}.hp i{display:block;height:100%;background:#5fe08a}
+.rsc{width:4.6em;text-align:right;opacity:.85}
+#chat{left:50%;transform:translateX(-50%);bottom:3vh;width:34vw;background:#101a3ce0;border:.3vh solid #ffd23f;border-radius:1.6vh;padding:1vh 1vw;display:none}
+#chat h4{margin:0 0 .6vh;color:#ffd23f;font-size:2.2vh}#chat div{font-size:2vh;margin:.3vh 0}
+#toast{left:50%;top:13vh;transform:translateX(-50%);font-size:3vh;font-weight:600;color:#ffd23f;opacity:0;transition:opacity .4s;white-space:nowrap}
+#perf{right:1vw;bottom:.6vh;font-size:1.4vh;opacity:.5}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lb{position:absolute;transform:translate(-50%,-100%);font-size:1.7vh;font-weight:600;white-space:nowrap;padding:.1vh .5vw;border-radius:.6vh;background:#0b1026a0}
+.lb.st{font-weight:400;font-size:1.5vh;color:#ffe9a8;background:#0b102670}.lb.bub{background:#fff;color:#123;max-width:16vw;white-space:normal}
+#loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:4vh;background:#0b1026}
+</style></head><body>
+<div id="labels"></div>
+<div id="title" class="hud"><b>RED DEER RESCUE</b><span>v0.1 blockout</span><div id="stats"></div></div>
+<div id="qrbox" class="hud"><div id="qr"></div><div id="qrtxt">Scan to join<b id="code">....</b>name or 3 initials &middot; get a hero</div></div>
+<div id="vote" class="hud"><h3>Where next? <small id="vmode"></small></h3><div id="vrows"></div><div id="vstat"></div><div id="huddleBar"></div></div>
+<div id="roster" class="hud"></div>
+<div id="chat" class="hud"><h4>&#x1F91D; Team huddle</h4><div id="chatlog"></div></div>
+<div id="toast" class="hud"></div>
+<div id="perf" class="hud"></div>
+<div id="loading">Loading Red Deer&hellip;</div>
+<script src="js/three.min.js"></script>
+<script src="js/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="js/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/qrcode.js"></script>
+<script src="js/config.js"></script>
+<script src="js/net.js"></script>
+<script src="js/tv.js"></script>
+</body></html>

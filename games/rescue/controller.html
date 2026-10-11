@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="robots" content="noindex"><meta name="theme-color" content="#0b1026">
+<title>Red Deer Rescue - phone</title>
+<style>
+@font-face{font-family:Fredoka;src:url(../walker/assets/fredoka-latin-var.woff2) format('woff2');font-weight:300 700}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0b1026;color:#fff;font-family:Fredoka,system-ui,sans-serif;-webkit-user-select:none;user-select:none}
+.hide{display:none!important}
+#join{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center}
+#join h1{margin:0;color:#ffd23f;font-size:30px;letter-spacing:.05em}
+#join input{font:inherit;font-size:34px;width:8.5ch;text-align:center;letter-spacing:.12em;text-transform:uppercase;border-radius:16px;border:4px solid #ffd23f;padding:8px;background:#101a3c;color:#fff}
+#join button{font:inherit;font-size:24px;padding:12px 34px;border-radius:18px;border:0;background:#ffd23f;color:#0b1026;font-weight:600}
+#join small{opacity:.7;font-size:15px}
+#app{padding:max(12px,env(safe-area-inset-top)) 12px 16px}
+#me{display:flex;align-items:center;gap:12px;background:#101a3c;border-radius:16px;padding:10px 12px}
+#chip{width:30px;height:44px;border-radius:5px}#me b{font-size:20px}#me .s{font-size:13px;opacity:.8}
+#hp{height:8px;background:#ffffff22;border-radius:4px;overflow:hidden;margin-top:4px;width:140px}#hp i{display:block;height:100%;background:#5fe08a}
+h2{font-size:17px;margin:16px 4px 8px;font-weight:600}h2 small{float:right;opacity:.65;font-weight:400}
+.opt{position:relative;display:block;width:100%;height:56px;margin:8px 0;border:0;border-radius:14px;background:#ffffff14;color:#fff;font:inherit;font-size:19px;text-align:left;padding:0 14px;overflow:hidden}
+.opt .bar{position:absolute;left:0;top:0;bottom:0;background:#4fc3ff55;transition:width .3s}
+.opt.mine{outline:3px solid #ffd23f}.opt span{position:relative}.opt em{position:absolute;right:14px;top:0;line-height:56px;font-style:normal;opacity:.85}
+.th{position:absolute;top:0;bottom:0;width:2px;background:#fff8}
+#hud{width:100%;height:64px;border:0;border-radius:16px;font:inherit;font-size:21px;background:#7a6bff;color:#fff;margin-top:6px}
+#hud.on{background:#ffd23f;color:#0b1026}
+#hmsg{font-size:14px;color:#ff9b6b;margin:6px 4px}
+#chat{margin-top:12px;background:#101a3c;border:2px solid #ffd23f;border-radius:16px;padding:10px}
+#log div{font-size:15px;margin:3px 0}
+#quick{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}#quick button{font:inherit;font-size:15px;border:0;border-radius:12px;padding:8px 10px;background:#ffffff1c;color:#fff}
+#say{display:flex;gap:6px}#say input{flex:1;font:inherit;font-size:17px;border-radius:12px;border:0;padding:10px;background:#0b1026;color:#fff}#say button{font:inherit;font-size:17px;border:0;border-radius:12px;padding:0 14px;background:#ffd23f}
+#status{position:fixed;top:6px;right:10px;width:12px;height:12px;border-radius:50%;background:#888}#status.on{background:#5fe08a}
+#team{font-size:14px;opacity:.75;margin:10px 4px}
+</style></head><body>
+<div id="status"></div>
+<div id="join"><h1>RED DEER RESCUE</h1><div>Your name or 3 initials</div><input id="nm" maxlength="10" placeholder="JAL" autocomplete="off"><input id="rc" class="hide" maxlength="4" placeholder="ROOM"><button id="go">Join &#x25B6;</button><small id="jmsg"></small></div>
+<div id="app" class="hide">
+  <div id="me"><div id="chip"></div><div><b id="hname">...</b> <span class="s" id="pname"></span><div class="s" id="role"></div><div id="hp"><i></i></div></div></div>
+  <h2>Where next? <small id="vinfo"></small></h2><div id="opts"></div>
+  <button id="hud">&#x1F91D; Call a huddle</button><div id="hmsg"></div>
+  <div id="chat" class="hide"><b>&#x1F91D; Team chat</b><div id="log"></div>
+    <div id="quick"><button>Bunnies incoming!</button><button>Go to the bridge</button><button>Heal up first</button><button>Nice work team</button></div>
+    <div id="say"><input id="txt" maxlength="80" placeholder="Say something"><button id="send">Send</button></div></div>
+  <div id="team"></div>
+</div>
+<script src="js/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="js/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/config.js"></script>
+<script src="js/net.js"></script>
+<script src="js/controller.js"></script>
+</body></html>

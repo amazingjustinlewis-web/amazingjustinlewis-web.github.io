@@ -1,5 +1,6 @@
 /* Dev launcher catalogue. url is relative to /dev-7q3x/. mode: 'frame' (runs inside the launcher) or 'tab' (fallback: opens on its own). */
 window.DEV_GAMES = [
+  { id: 'rescue', name: 'Red Deer Rescue', ver: 'v0.1', url: '../games/rescue/index.html', img: '../games/rescue/shots/cover-card.webp', tag: 'Hero crawler \u00b7 phones vote' },
   { id: 'rdr', name: 'Red Deer Rich', ver: 'v0.6', url: '../games/red-deer-rich/index.html', img: '../assets/img/red-deer-rich/cover-card.webp', tag: 'Board game \u00b7 phones' },
   { id: 'walker', name: 'Walker', ver: 'v0.4', url: '../games/walker/index.html', img: '../assets/img/walker/cover-card.webp', tag: 'Calm play world' },
   { id: 'space', name: 'Drift Signal', ver: 'v0.3', url: '../games/space/index.html', img: '../assets/img/space/cover-card.webp', tag: 'Space crew' },
