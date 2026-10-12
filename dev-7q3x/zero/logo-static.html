@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Zero to Phi</title>
+<link rel="icon" href="../../assets/img/favicon.svg">
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}svg{position:fixed;inset:0;width:100vw;height:100vh;display:block}</style>
+</head><body>
+<svg id="s" xmlns="http://www.w3.org/2000/svg" aria-label="Zero to Phi" shape-rendering="geometricPrecision">
+ <defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="-19.07" y1="-36.69" x2="78.98" y2="42.98"><stop offset="0" stop-color="#FBE7A1"/><stop offset=".5" stop-color="#E2B84A"/><stop offset="1" stop-color="#C08A22"/></linearGradient></defs>
+ <!-- real logo paths, thinned with a morphological erode (the union is eroded, so crossings stay intact) -->
+ <filter id="thin" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"><feMorphology id="er" operator="erode" radius="0.8"/></filter>
+ <g id="logo" fill="url(#g)" filter="url(#thin)"></g>
+ <g id="qr" shape-rendering="crispEdges"><rect id="ql"/><path id="qd" fill="#000"/></g>
+</svg>
+<script src="../js/qrcode.js"></script>
+<script>
+(function(){
+var qs=new URLSearchParams(location.search),still=matchMedia('(prefers-reduced-motion: reduce)').matches||qs.get('still')==='1',PULSE=qs.get('pulse')!=='0';
+var FIXT=qs.has('t')?+qs.get('t'):null,THIN=qs.has('thin')?+qs.get('thin'):0.8; // erode radius in logo units
+var svg=document.getElementById('s'),logo=document.getElementById('logo'),ql=document.getElementById('ql');
+var VB={x:-19.07,y:-36.69,w:98.05,h:79.67},CX=0.06,CY=0.1;
+var Q=qrcode(0,'H');Q.addData('https://amazingjustinlewis-web.github.io/');Q.make();var N=Q.getModuleCount(),QZ=4;
+function fit(){var W=innerWidth,H=innerHeight,k=Math.min(W*0.9/VB.w,H*0.78/VB.h),vw=W/k,vh=H/k,mx=VB.x+VB.w/2,my=VB.y+VB.h/2;
+ svg.setAttribute('viewBox',(mx-vw/2)+' '+(my-vh/2)+' '+vw+' '+vh);
+ var dpr=devicePixelRatio||1,n=N+2*QZ,mpx=Math.max(2,Math.floor(21*k*dpr/n))/dpr,u=mpx/k,S=u*n;
+ // snap the QR's corner to the device-pixel grid
+ var sx=(CX-S/2-(mx-vw/2))*k*dpr,sy=(CY-S/2-(my-vh/2))*k*dpr,ox=(mx-vw/2)+Math.round(sx)/(k*dpr),oy=(my-vh/2)+Math.round(sy)/(k*dpr);
+ ql.setAttribute('x',ox);ql.setAttribute('y',oy);ql.setAttribute('width',S);ql.setAttribute('height',S);
+ var d='';for(var r=0;r<N;r++)for(var c=0;c<N;c++)if(Q.isDark(r,c))d+='M'+(ox+(c+QZ)*u)+' '+(oy+(r+QZ)*u)+'h'+u+'v'+u+'h-'+u+'z';
+ document.getElementById('qd').setAttribute('d',d);QC=[ox+S/2,oy+S/2]}
+var QC=[0,0],qg=document.getElementById('qr');
+// envelope (8 s): the dome 1.02*sin(pi*t/8)^0.35, windowed by a smootherstep so ~25% of each cycle rests in black with soft edges
+function qrLevel(T){if(still||!PULSE)return 1;var u=T%8,dd=Math.min(u,8-u),t=Math.max(0,Math.min(1,(dd-0.9)/0.5)),w=t*t*t*(t*(6*t-15)+10);
+ return 1.02*Math.pow(Math.sin(Math.PI*u/8),0.35)*w}
+function col(k){return 'rgb('+[206,160,62].map(function(v){return Math.max(0,Math.min(255,Math.round(v*k)))}).join(',')+')'}
+// size follows the same envelope: 90% at the bottom of the dip, exactly 100% (pixel-snapped) at the peak
+function tick(ms){var T=FIXT!=null?FIXT:ms/1000,L=qrLevel(T),sc=0.9+0.1*Math.min(1,L);ql.setAttribute('fill',col(L));
+ qg.setAttribute('transform',sc>=0.9995?'':'translate('+QC[0]+' '+QC[1]+') scale('+sc.toFixed(4)+') translate('+(-QC[0])+' '+(-QC[1])+')');if(!still&&FIXT==null)requestAnimationFrame(tick)}
+fetch('../../assets/img/logo.svg').then(function(r){return r.text()}).then(function(t){
+ var doc=new DOMParser().parseFromString(t,'image/svg+xml');[].forEach.call(doc.querySelectorAll('path'),function(p){var q=document.createElementNS('http://www.w3.org/2000/svg','path');q.setAttribute('d',p.getAttribute('d'));logo.appendChild(q)});
+ document.getElementById('er').setAttribute('radius',THIN);fit();addEventListener('resize',fit);tick(0);document.documentElement.dataset.ready=1;requestAnimationFrame(tick)});
+})();
+</script>
+</body></html>
