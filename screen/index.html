@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Zero to Phi · Café screen</title>
+<link rel="icon" href="../assets/img/favicon.svg">
+<style>
+html,body{margin:0;height:100%;background:#000;color:#e9dcc0;font-family:Georgia,"Times New Roman",serif;overflow:hidden}
+#zero{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr auto;justify-items:center;padding:5vh 4vw 4vh;box-sizing:border-box}
+#bizLogo{max-height:24vh;max-width:50vw;object-fit:contain}
+#bizName{font-size:7vh;letter-spacing:.14em;color:#f3dc95;font-weight:400;margin:0;text-align:center}
+#ring{width:100%;height:100%}
+#games{font-size:2.4vh;letter-spacing:.3em;color:#9b8650;text-transform:uppercase;text-align:center}
+#scan{font-size:2vh;letter-spacing:.4em;color:#6f6040;margin-top:1vh;text-align:center}
+#grid{position:fixed;inset:0;display:none;grid-template-columns:1fr 34vw;gap:3vw;padding:5vh 4vw;box-sizing:border-box}
+body.grid #zero{display:none}body.grid #grid{display:grid}
+#gl header{display:flex;align-items:center;gap:2vw;margin-bottom:4vh}#gl header img{max-height:12vh;max-width:22vw}#gl h1{font-weight:400;letter-spacing:.12em;color:#f3dc95;font-size:5vh;margin:0}
+#tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(22vh,1fr));gap:2.4vh}
+.tile{border:1px solid rgba(226,184,74,.35);border-radius:2vh;padding:3vh 2vh;text-align:center;background:#070604}
+.tile .i{font-size:8vh;line-height:1.1}.tile .n{font-size:2.8vh;letter-spacing:.1em;color:#f0dca8;margin-top:1vh}.tile .b{font-size:1.8vh;color:#8a7c60;margin-top:.8vh}
+#gr{display:grid;grid-template-rows:1fr auto}#ring2{width:100%;height:100%}
+#mark{position:fixed;right:2vw;bottom:2vh;width:5vh;opacity:.55}
+</style></head><body>
+<div id="zero"><div id="top"></div><canvas id="ring"></canvas><div><div id="games"></div><div id="scan">SCAN TO PLAY</div></div></div>
+<div id="grid"><div id="gl"><header id="gh"></header><div id="tiles"></div></div><div id="gr"><canvas id="ring2"></canvas><div id="scan2" style="text-align:center;letter-spacing:.4em;color:#9b8650;font-size:2.2vh">SCAN TO PLAY</div></div></div>
+<img id="mark" src="../assets/img/logo.svg" alt="Zero to Phi">
+<script src="../assets/js/qrcode.js"></script>
+<script src="../assets/js/zero-qr.js"></script>
+<script src="../cafe/js/cafe.js"></script>
+<script>
+(function(){
+var qs=new URLSearchParams(location.search),id=qs.get('biz')||'demo',name=qs.get('n')||'Your Café',layout=qs.get('layout')==='grid'?'grid':'zero';
+var still=matchMedia('(prefers-reduced-motion: reduce)').matches||qs.get('still')==='1';
+var ids=(qs.get('g')||'battleship,connect4').split(',').filter(Boolean),all=(window.Cafe&&Cafe.GAMES)||[];
+var games=ids.map(function(i){return all.filter(function(g){return g.id===i})[0]}).filter(Boolean);
+var logo=localStorage.getItem('ztp-biz-logo-'+id),esc=function(s){return s.replace(/[<>&"]/g,'')};
+document.title=name+' · Zero to Phi';if(layout==='grid')document.body.classList.add('grid');
+var head=logo?'<img id="bizLogo" src="'+logo+'" alt="'+esc(name)+'">':'<h1 id="bizName">'+esc(name)+'</h1>';
+document.getElementById('top').innerHTML=head;
+document.getElementById('gh').innerHTML=(logo?'<img src="'+logo+'" alt="">':'')+'<h1>'+esc(name)+'</h1>';
+document.getElementById('games').textContent=games.map(function(g){return g.name}).join('  ·  ');
+document.getElementById('tiles').innerHTML=games.map(function(g){return '<div class="tile"><div class="i">'+g.icon+'</div><div class="n">'+g.name+'</div><div class="b">'+(g.blurb||'')+'</div></div>'}).join('');
+// the QR leads into this business's own hub
+var URL_='https://amazingjustinlewis-web.github.io/go/?biz='+encodeURIComponent(id)+'&n='+encodeURIComponent(name);
+var Q=qrcode(0,'H');Q.addData(URL_);Q.make();var N=Q.getModuleCount(),QZ=4;window.__qrURL=URL_;
+var ZQ=ZeroQR({key:'ztp-tv-session-'+id,still:still||qs.get('pulse')==='0'}),cv=document.getElementById(layout==='grid'?'ring2':'ring'),x=cv.getContext('2d'),D;
+function size(){D=devicePixelRatio||1;var r=cv.getBoundingClientRect();cv.width=Math.round(r.width*D);cv.height=Math.round(r.height*D)}
+function draw(ms){var T=+qs.get('t')||ms/1000,R=ZQ.frame(T),W=cv.width,H=cv.height,cx=W/2,cy=H/2;
+ x.clearRect(0,0,W,H);
+ // the zero: a thin gold oval
+ var ry=Math.min(H*0.47,W*0.47/0.72),rx=ry*0.72,g=x.createLinearGradient(cx-rx,cy-ry,cx+rx,cy+ry);g.addColorStop(0,'#fbe7a1');g.addColorStop(.5,'#e2b84a');g.addColorStop(1,'#c08a22');
+ x.strokeStyle=g;x.lineWidth=Math.max(1.5*D,ry*0.018);x.beginPath();x.ellipse(cx,cy,rx,ry,0,0,7);x.stroke();
+ // breathing QR in the hollow, modules on whole device pixels at the peak
+ var n=N+2*QZ,m=Math.max(2,Math.floor(rx*1.1/n)),S=m*n,k=R.scale,L=R.level;
+ x.save();x.translate(Math.round(cx),Math.round(cy));if(k<0.9995)x.scale(k,k);var o=-(S>>1);
+ x.fillStyle='rgb('+[206,160,62].map(function(v){return Math.round(Math.min(255,v*L))}).join(',')+')';x.fillRect(o,o,S,S);x.fillStyle='#000';
+ for(var r=0;r<N;r++)for(var c=0;c<N;c++)if(Q.isDark(r,c))x.fillRect(o+(c+QZ)*m,o+(r+QZ)*m,m,m);x.restore();
+ document.documentElement.dataset.ready=1;if(!still)requestAnimationFrame(draw)}
+addEventListener('resize',size);size();requestAnimationFrame(draw);
+})();
+</script>
+</body></html>

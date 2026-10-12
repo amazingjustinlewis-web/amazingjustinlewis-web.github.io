@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Zero to Phi · Play</title>
+<meta name="description" content="Quick play, your profile and café screens for Zero to Phi.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="../assets/img/favicon.svg">
+<style>
+:root{--gold:#e2b84a;--gold2:#f3dc95;--dim:#8f7a4a;--line:rgba(226,184,74,.35)}
+*{box-sizing:border-box}html,body{margin:0;background:#000;color:#e9dcc0;font:16px/1.45 Georgia,"Times New Roman",serif}
+body{min-height:100vh;padding:calc(18px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+header img{width:40px;opacity:.85}header .who{font-size:13px;color:var(--dim);letter-spacing:.08em}
+h1,h2{font-weight:400;letter-spacing:.12em;color:var(--gold2);margin:0 0 14px}h1{font-size:22px}h2{font-size:17px;margin-top:26px}
+.quick{display:block;text-align:center;text-decoration:none;color:#120d03;background:linear-gradient(180deg,#f6dc8e,#d4a63e);border-radius:22px;
+ padding:34px 10px;font-size:30px;letter-spacing:.32em;box-shadow:0 0 40px rgba(226,184,74,.18);margin-bottom:26px}
+.row{display:flex;gap:10px;align-items:stretch;margin-bottom:12px}
+.btn{flex:1;display:block;text-align:left;text-decoration:none;color:var(--gold2);background:#0a0805;border:1px solid var(--line);border-radius:14px;padding:16px 18px;font:inherit;font-size:18px;letter-spacing:.06em;cursor:pointer}
+.btn:active{background:#17110a}.btn[disabled]{opacity:.45;cursor:not-allowed}
+.q{width:52px;flex:none;border-radius:14px;border:1px solid var(--line);background:#050403;color:var(--dim);font:inherit;font-size:20px;cursor:pointer}
+.ex{display:none;margin:-4px 0 14px;padding:10px 14px;border-left:2px solid var(--gold);color:#c9b991;font-size:14px}.ex.on{display:block}
+.demo{display:inline-block;font:11px/1 monospace;letter-spacing:.14em;color:#000;background:#d9a441;border-radius:4px;padding:3px 6px;vertical-align:middle;margin-left:6px}
+label{display:block;font-size:13px;letter-spacing:.1em;color:var(--dim);margin:14px 0 6px}
+input[type=text]{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:#070604;color:#f3e6c8;font:inherit;font-size:17px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-size:14px;color:#d9c79a;cursor:pointer;user-select:none}
+.chip.on{background:#3a2c10;border-color:var(--gold);color:#fff3cc}.chip.off{opacity:.45}
+.list a{display:flex;justify-content:space-between;padding:13px 4px;border-bottom:1px solid #1d170c;color:#ecdcb5;text-decoration:none}.list a span{color:var(--dim);font-size:13px}
+.muted{color:#8a7c60;font-size:14px}.link{color:var(--gold);background:none;border:0;font:inherit;text-decoration:underline;cursor:pointer;padding:0}
+.card{border:1px solid #241c0e;border-radius:14px;padding:14px 16px;margin:10px 0;background:#060504}
+#logoPrev{max-width:160px;max-height:90px;display:block;margin-top:10px}
+.back{margin-bottom:16px}.view{display:none}.view.on{display:block}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:18px}.brand img{max-height:56px;max-width:120px}
+</style></head><body>
+<header><a href="../?tv=1" aria-label="Zero to Phi"><img src="../assets/img/logo.svg" alt="Zero to Phi"></a><div class="who" id="who"></div></header>
+
+<!-- HUB -->
+<section class="view" id="v-hub">
+ <div class="brand" id="brand" hidden></div>
+ <a class="quick" href="../family.html" id="quick">QUICK PLAY</a>
+ <div class="row"><button class="btn" data-go="login">Log in</button><button class="q" data-ex="ex-login" aria-label="What is this?">?</button></div>
+ <div class="ex" id="ex-login">Already have a profile? Sign in and your scores, Founder number and settings follow you to any screen.</div>
+ <div class="row"><button class="btn" data-go="create">Create account</button><button class="q" data-ex="ex-create" aria-label="What is this?">?</button></div>
+ <div class="ex" id="ex-create">Optional, secure and yours forever. Every profile gets a Founder number in signup order, honoured for the life of the studio. Show three arcade letters, a name, or more: you choose.</div>
+ <div class="row"><button class="btn" data-go="biz">I'm a business</button><button class="q" data-ex="ex-biz" aria-label="What is this?">?</button></div>
+ <div class="ex" id="ex-biz">Turn your café TV into an arcade: add your logo, pick the games, and launch a screen your customers can scan and play from their phones.</div>
+ <div class="row"><a class="btn" href="../classic.html">Explore 0-Phi</a><button class="q" data-ex="ex-explore" aria-label="What is this?">?</button></div>
+ <div class="ex" id="ex-explore">The studio, the founder, and every game we're building.</div>
+</section>
+
+<!-- MY HUB -->
+<section class="view" id="v-me">
+ <h1 id="hello">Welcome back</h1>
+ <p class="muted" id="meline"></p>
+ <a class="quick" href="../family.html">QUICK PLAY</a>
+ <h2>Games library</h2><div class="list" id="lib"></div>
+ <h2>My scores</h2><div class="card muted">Your high scores and achievements will appear here once accounts go live.</div>
+ <h2>Settings</h2>
+ <div class="card"><label>Show me on boards as</label><div class="chips" id="showAs"><span class="chip" data-v="initials">Initials</span><span class="chip" data-v="name">Name</span><span class="chip" data-v="hidden">Hidden</span></div>
+ <p style="margin:16px 0 0"><button class="link" id="signout">Sign out</button></p></div>
+ <p style="margin-top:22px">Not you? <button class="link" data-go="login">Log in</button></p>
+</section>
+
+<!-- LOG IN -->
+<section class="view" id="v-login">
+ <button class="link back" data-go="hub">&larr; Back</button>
+ <h1>Log in</h1>
+ <button class="btn" disabled>Sign in with Google · coming soon</button>
+ <div class="card" style="margin-top:18px"><b>Demo sign-in</b><span class="demo">DEMO</span>
+ <p class="muted">Stored only on this phone. Nothing is sent anywhere.</p>
+ <label for="ln">Name</label><input type="text" id="ln" autocomplete="nickname" maxlength="24">
+ <p style="margin-top:16px"><button class="btn" id="doLogin">Continue</button></p></div>
+</section>
+
+<!-- CREATE -->
+<section class="view" id="v-create">
+ <button class="link back" data-go="hub">&larr; Back</button>
+ <h1>Create account</h1>
+ <button class="btn" disabled>Continue with Google · coming soon</button>
+ <div class="card" style="margin-top:18px"><b>Demo profile</b><span class="demo">DEMO</span>
+ <p class="muted">Local-only preview of the profile flow. Your real Founder number starts when accounts launch.</p>
+ <label for="cn">Name</label><input type="text" id="cn" maxlength="24">
+ <label for="ci">Arcade initials (3 letters)</label><input type="text" id="ci" maxlength="3" style="text-transform:uppercase;letter-spacing:.4em">
+ <p style="margin-top:16px"><button class="btn" id="doCreate">Create my profile</button></p></div>
+</section>
+
+<!-- BUSINESS -->
+<section class="view" id="v-biz">
+ <button class="link back" data-go="hub">&larr; Back</button>
+ <h1>Your café screen <span class="demo">DEMO</span></h1>
+ <p class="muted">Set it up here, then open the screen on your TV. This demo keeps everything on this device.</p>
+ <label for="bn">Business name</label><input type="text" id="bn" maxlength="40" placeholder="The Daily Grind">
+ <label for="bl">Logo</label><input type="file" id="bl" accept="image/*"><img id="logoPrev" alt="" hidden>
+ <label>Games</label><div class="chips" id="bgames"></div>
+ <label>Screen layout</label><div class="chips" id="blayout"><span class="chip on" data-v="zero">Zero (logo + scan)</span><span class="chip" data-v="grid">Café games grid</span></div>
+ <p style="margin-top:22px"><button class="btn" id="launch">Launch screen &rarr;</button></p>
+ <p class="muted" id="bizurl"></p>
+</section>
+
+<script src="../cafe/js/cafe.js"></script>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)},qs=new URLSearchParams(location.search),PK='ztp-profile';
+var LIB=[['games/charge-hop.html','Charge Hop','Keyboard'],['games/red-deer-rich.html','Red Deer Rich','Board game · phones'],['games/zombie-tiles.html','Zombie Tiles','Tile game · phones'],
+ ['games/laser-range.html','Laser Range','Gyro aim'],['games/mech.html','Iron Stride','Mech'],['games/space.html','Drift Signal','Space crew'],['games/walker.html','Walker','Calm play world'],['cafe/play.html','Café games','Battleship, Connect Four']];
+function prof(){try{return JSON.parse(localStorage.getItem(PK))}catch(e){return null}}
+function save(p){localStorage.setItem(PK,JSON.stringify(p))}
+function show(v){[].forEach.call(document.querySelectorAll('.view'),function(s){s.classList.toggle('on',s.id==='v-'+v)});if(location.hash!=='#'+v)history.replaceState(null,'','#'+v);scrollTo(0,0);render()}
+function render(){var p=prof();$('who').textContent=p?(p.initials||p.name)+(p.demo?' · demo':''):'';
+ if(p){$('hello').textContent='Welcome back, '+p.name;$('meline').textContent='Founder #'+p.founder+' (demo number) · '+p.initials;
+  [].forEach.call(document.querySelectorAll('#showAs .chip'),function(c){c.classList.toggle('on',c.dataset.v===(p.showAs||'initials'))})}}
+$('lib').innerHTML=LIB.map(function(g){return '<a href="../'+g[0]+'">'+g[1]+'<span>'+g[2]+'</span></a>'}).join('');
+document.addEventListener('click',function(e){var t=e.target.closest('[data-go]');if(t){show(t.dataset.go);return}
+ var x=e.target.closest('[data-ex]');if(x)$(x.dataset.ex).classList.toggle('on');
+ var c=e.target.closest('#showAs .chip');if(c){var p=prof();p.showAs=c.dataset.v;save(p);render()}});
+function initials(n){return (n.replace(/[^A-Za-z ]/g,'').split(/\s+/).map(function(w){return w[0]||''}).join('')+'XXX').slice(0,3).toUpperCase()}
+$('doLogin').onclick=function(){var n=$('ln').value.trim();if(!n)return $('ln').focus();var p=prof();
+ if(!p||p.name.toLowerCase()!==n.toLowerCase())p={name:n,initials:initials(n),founder:100+Math.floor(Math.random()*900),demo:true};save(p);show('me')};
+$('doCreate').onclick=function(){var n=$('cn').value.trim();if(!n)return $('cn').focus();var i=($('ci').value.trim()||initials(n)).toUpperCase().slice(0,3);
+ var c=+(localStorage.getItem('ztp-demo-founder')||0)+1;localStorage.setItem('ztp-demo-founder',c);save({name:n,initials:i,founder:c,demo:true,showAs:'initials'});show('me')};
+$('signout').onclick=function(){localStorage.removeItem(PK);show('hub')};
+// ---- business setup (demo) ----
+var games=(window.Cafe&&Cafe.GAMES)||[],sel={},layout='zero',logo=null;
+games.forEach(function(g){if(g.ready)sel[g.id]=1});
+$('bgames').innerHTML=games.map(function(g){return '<span class="chip'+(sel[g.id]?' on':'')+(g.ready?'':' off')+'" data-g="'+g.id+'">'+g.icon+' '+g.name+(g.ready?'':' (soon)')+'</span>'}).join('');
+$('bgames').onclick=function(e){var c=e.target.closest('.chip');if(!c)return;sel[c.dataset.g]=sel[c.dataset.g]?0:1;c.classList.toggle('on',!!sel[c.dataset.g])};
+$('blayout').onclick=function(e){var c=e.target.closest('.chip');if(!c)return;layout=c.dataset.v;[].forEach.call(this.children,function(k){k.classList.toggle('on',k===c)})};
+$('bl').onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){ // shrink so it fits in localStorage
+  var k=Math.min(1,600/Math.max(im.width,im.height)),cv=document.createElement('canvas');cv.width=im.width*k;cv.height=im.height*k;cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);
+  logo=cv.toDataURL('image/png');$('logoPrev').src=logo;$('logoPrev').hidden=false};im.src=r.result};r.readAsDataURL(f)};
+$('launch').onclick=function(){var name=$('bn').value.trim()||'Your Café',id=(name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,20)||'cafe')+'-'+Math.random().toString(36).slice(2,6);
+ var g=Object.keys(sel).filter(function(k){return sel[k]});if(logo)try{localStorage.setItem('ztp-biz-logo-'+id,logo)}catch(e){}
+ var url='../screen/?biz='+encodeURIComponent(id)+'&n='+encodeURIComponent(name)+'&g='+g.join(',')+'&layout='+layout;$('bizurl').textContent='Screen: '+url.replace('..',location.origin);window.open(url,'_blank')};
+// ---- arriving from a business screen: branded hub ----
+if(qs.get('biz')){var bn=qs.get('n')||'this café',lg=localStorage.getItem('ztp-biz-logo-'+qs.get('biz'));
+ $('brand').hidden=false;$('brand').innerHTML=(lg?'<img src="'+lg+'" alt="">':'')+'<div><div class="muted">Welcome to</div><h1 style="margin:0">'+bn.replace(/[<>&"]/g,'')+'</h1></div>';
+ $('quick').href='../cafe/play.html';$('quick').textContent='PLAY HERE'}
+addEventListener('hashchange',function(){var k=location.hash.slice(1);if(document.getElementById('v-'+k))show(k)});
+var h=location.hash.slice(1);show(['login','create','biz','hub','me'].indexOf(h)>=0?h:(prof()&&!qs.get('biz')?'me':'hub'));
+})();
+</script>
+</body></html>
