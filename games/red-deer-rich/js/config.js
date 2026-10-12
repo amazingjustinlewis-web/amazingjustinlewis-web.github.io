@@ -31,7 +31,9 @@
 
     // ---- PAY UP race ----
     payup: {
-      graceMs: 3000,             // PASS DICE (and ROLL AGAIN) is locked this long after landing on someone's deed (v0.3: only when a PAY UP window opens)
+      catchChoices: [3, 5, 8],   // v0.7: the catch window (seconds) the host picks when the PAY UP race is on; Kid Mode adds 1 s
+      catchDefault: 5,
+      graceMs: 3000,             // (v0.6 fixed window; v0.7 uses catchSec) PASS DICE (and ROLL AGAIN) is locked this long after landing on someone's deed (v0.3: only when a PAY UP window opens)
       kidGraceMs: 4000,          // Kid Mode grace
       loudAmpMs: 1000,           // Mike's perk: his window stays open this much longer after PASS DICE
       aiReflexMs: { easy: [4000, 7000], normal: [2000, 4000], ruthless: [800, 1500] },
@@ -50,7 +52,11 @@
     eraFilter: null,
     cardHoldMs: 12000,           // v0.5: every drawn card stays up on the TV this long unless another card replaces it
     storyHoldMs: 12000,           // v0.3: a Secret Finds card stays up on the TV this long (stories need a little longer than 6 s)
-    ping: { ms: 1100, lift: 0.22, gapMs: 600 },   // v0.3: tapping a deed in My Stuff bounces that tile on the TV (lift = bounce height in tiles)
+    ping: { ms: 1500, lift: 0.34, gapMs: 120, bounces: 4 },   // v0.7: any property tap on a phone: a few jolly bounces, big then softening, restarting big on every new tap
+    autoPass: { afterMs: 1800 },   // v0.7: a human turn with nothing left to do but PASS DICE passes itself after this settle time (and never inside the catch window)
+    // v0.7 in-game settings votes: anyone proposes, every active (connected, not bust) human votes, the change applies at >= 85% yes
+    vote: { pass: 0.85, ms: 30000, addMin: 15 },
+    tvZoom: { holdMs: 5000 },      // v0.7: the TV zoom-in on the action glides back to the full board after this long   // v0.3: tapping a deed in My Stuff bounces that tile on the TV (lift = bounce height in tiles)
     // v0.4 Heckle (house rule): when the active player stalls, everyone else gets a tiny heckle button. It unlocks after
     // afterMs[0] of inactivity on the first stall of a turn, afterMs[1] on the second, afterMs[2] on the third, and after the
     // third it stays unlocked until the turn ends. Any action by the stalling player locks it again. gapMs = per-heckler spam limit.
@@ -131,8 +137,8 @@
         long: 'Passing The Halfway pays $250 as usual. Landing exactly on it is a Bullseye and pays $500.' },
       { k: 'kidMode', icon: '\uD83E\uDDF8', tag: 'Kid Mode', label: 'Kid Mode', short: 'Owners get 4 seconds to hit PAY UP (gentler for little hands)',
         long: 'After a token lands, the dice can\'t be passed for 4 seconds instead of 3, so slower hands still have time to hit PAY UP. Only matters with the PAY UP race on.' },
-      { k: 'camera', icon: '\uD83C\uDFA5', tag: 'TV camera', label: 'TV camera', short: 'The TV gently zooms in and follows whoever is moving',
-        long: 'The TV board softly zooms toward the active player and swoops in on big moments (purchases, big rent, bankruptcies). Turn it off for a fixed, full-board view. Also the C key on the TV.' },
+      { k: 'camera', icon: '\uD83C\uDFA5', tag: 'TV zoom', label: 'TV zoom', short: 'The TV zooms in on the action for about 5 s, then glides back to the full board',
+        long: 'The TV zooms in on the action (rolls, moves, purchases, big rent) and glides back to the full board after about 5 seconds. While zoomed, little coloured arrows at the edge point to players who are off screen. Turn it off (or vote it off mid-game) for a fixed, full-board view. Also the C key on the TV.' },
       { k: 'heckle', icon: '\uD83D\uDE02', tag: 'Heckle', label: 'Heckle', short: 'Stall on your turn and everyone gets a heckle button',
         long: 'If the player whose turn it is sits still for 15 seconds, a tiny laughing-face button pops up beside their name on everyone else\'s phone. Every tap floats laughing faces up their screen and buzzes their phone. It locks again the moment they do something. Stall a second time and it unlocks after 5 seconds, a third time after 3 seconds, and then it stays open until their turn is over.' },
       { k: 'disasters', icon: '\u26C8\uFE0F', tag: 'Disasters', label: 'Disasters', short: 'Hail, floods, raccoons: a business closes or earns half for a turn or three',

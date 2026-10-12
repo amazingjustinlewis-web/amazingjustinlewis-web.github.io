@@ -161,10 +161,17 @@ window.GAMES = [
     ],
     versions: [
       {
-        id: 'v0.6',
-        name: 'Family party',
+        id: 'v0.7',
+        name: 'Playtest polish',
         current: true,
         play: 'games/red-deer-rich/index.html',
+        notes: 'Fixes from a 10-person family playtest. Tap any property on your phone and it bounces on the TV. Clear VIEW SET and CLOSE SET buttons, a big PAID IN FULL that sweeps across the phone, and MY TURN always jumps straight to your turn. When passing the dice is the only move left, it passes by itself and says so. Pick a 3, 5 or 8 second PAY UP catch window. A new settings vote (gear button) lets anyone propose turning the timer off or on, adding 15 minutes, pausing, changing the catch window or switching the TV zoom, which applies at 85% yes. The TV zoom now zooms in on the action, glides back after about 5 seconds and shows arrows pointing to off-screen players. Deals get a List or Map toggle.'
+      },
+      {
+        id: 'v0.6',
+        name: 'Family party',
+        current: false,
+        play: 'games/red-deer-rich/v0.6/index.html',
         notes: 'New Teams option (off unless you pick it): with 4 or more players, teams share one bank balance and own their deeds together. No rent between teammates, either teammate can build or hit PAY UP, and if the team can\u2019t pay, the whole team goes bust. When the game ends, every phone gets PLAY AGAIN and BACK TO GAMES LIST. Everything from v0.5 is unchanged.'
       },
       {

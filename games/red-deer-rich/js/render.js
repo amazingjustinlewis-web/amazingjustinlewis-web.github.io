@@ -702,7 +702,7 @@
       if (q.t0 == null) q.t0 = now;
       var k = (now - q.t0) / ms; if (k >= 1) return false;
       var r = self.rect(q.sp), cx = self.bx + r.x + r.w / 2, cy = self.by + r.y + r.h / 2;
-      var hop = Math.abs(Math.sin(Math.PI * Math.min(1, k * 1.6) * 2)) * Math.pow(1 - Math.min(1, k * 1.6), 1.2);   // two hops, settling
+      var nb = K.bounces || 4, hop = Math.abs(Math.sin(Math.PI * nb * Math.pow(k, 0.8))) * Math.pow(1 - k, 1.7);   // v0.7: a few jolly bounces, big then softening
       var lift = hop * self.w * (K.lift || 0.22), sc = 1 + 0.14 * hop, w = r.w * sc, h = r.h * sc;
       c.fillStyle = 'rgba(0,0,0,' + (0.3 * hop).toFixed(3) + ')'; c.fillRect(self.bx + r.x + 2, self.by + r.y + 3, r.w, r.h);
       c.drawImage(self.staticCv, Math.round(r.x * d), Math.round(r.y * d), Math.round(r.w * d), Math.round(r.h * d), cx - w / 2, cy - h / 2 - lift, w, h);
@@ -973,7 +973,23 @@
     if (root.RDRFx) { root.RDRFx.setRung(this.rung); root.RDRFx.step(dt || 16); root.RDRFx.draw(c); }
     this.bubbles.forEach(function (b) { var v = self.vis[b.pid]; if (v) self.drawBubble(c, v.x, v.y - r * 1.8, b.text, b.color); });
     this.drawDisasterFx(c, now);     // v0.5: the disaster graphic flies in over everything
-    if (camOn) c.restore();
+    if (camOn) { c.restore(); this.drawEdgeArrows(c, cam, now); }
+  };
+  // v0.7: while the TV is zoomed in, small arrows at the board edge point toward players who are off screen
+  P.drawEdgeArrows = function (c, cam, now) {
+    var g = this.g, self = this, S0 = this.S, cx = this.bx + S0 / 2, cy = this.by + S0 / 2, pad = Math.max(14, this.w * 0.45), sz = Math.max(9, this.w * 0.28);
+    this.arrowsShown = [];
+    g.players.forEach(function (p) {
+      if (p.bankrupt) return; var v = self.vis[p.id]; if (!v) return;
+      var sx = cx + (v.x - cam.x) * cam.z, sy = cy + (v.y - cam.y) * cam.z;
+      if (sx > self.bx + 4 && sx < self.bx + S0 - 4 && sy > self.by + 4 && sy < self.by + S0 - 4) return;
+      var dx = sx - cx, dy = sy - cy, lim = S0 / 2 - pad, k = lim / Math.max(Math.abs(dx), Math.abs(dy), 1);
+      var ax = cx + dx * k, ay = cy + dy * k, ang = Math.atan2(dy, dx), pulse = 1 + 0.12 * Math.sin(now / 180 + p.id);
+      c.save(); c.translate(ax, ay); c.rotate(ang); c.scale(pulse, pulse);
+      c.beginPath(); c.moveTo(sz, 0); c.lineTo(-sz * 0.7, -sz * 0.75); c.lineTo(-sz * 0.35, 0); c.lineTo(-sz * 0.7, sz * 0.75); c.closePath();
+      c.fillStyle = p.color; c.fill(); c.lineWidth = 2; c.strokeStyle = 'rgba(255,255,255,.9)'; c.stroke(); c.restore();
+      self.arrowsShown.push(p.id);
+    });
   };
 
   // ------------------------------------------------------------------ owner colours (+ slow crossfade after private deals)
@@ -1020,11 +1036,15 @@
     var on = g.rules.camera && this.rung < C.living.maxRung && g.phase === 'play' && t;
     if (on) {
       var key = t.pid + ':' + g.turnCount;
-      if (key !== cam.turnKey) { cam.turnKey = key; cam.turnAt = now; cam.outDone = cam.z < 1.03; }
+      if (key !== cam.turnKey) { cam.turnKey = key; cam.turnAt = now; cam.outDone = cam.z < 1.03; cam.actAt = now + K.outHoldMs; }
       if (cam.z < 1.03) cam.outDone = true;
       v = this.vis[t.pid];
-      // ease out to the full board after PASS DICE (always all the way, even on a slow TV), hold a moment, then ease in on the next player
-      if (v && t.stage !== 'ended' && cam.outDone && now - cam.turnAt > K.outHoldMs) { want = K.zoom; fx = v.x; fy = v.y; }
+      // v0.7: a quick zoom in on the action (turn start, roll, move), held about 5 s after the last bit of action, then a soft glide back to the full board
+      var ak = t.rollSeq + ':' + (t.stage === 'rolling' || t.stage === 'moving' ? 1 : 0);
+      if (ak !== cam.actKey) { cam.actKey = ak; if (now > (cam.actAt || 0)) cam.actAt = now; }
+      if (t.stage === 'rolling' || t.stage === 'moving') cam.actAt = Math.max(cam.actAt || 0, now);
+      var hold = (C.tvZoom && C.tvZoom.holdMs) || 5000;
+      if (v && t.stage !== 'ended' && cam.outDone && now - cam.turnAt > K.outHoldMs && now >= (cam.actAt || 0) - 1 && now - cam.actAt < hold) { want = K.zoom; fx = v.x; fy = v.y; }
     }
     var mo = cam.moment;
     if (mo && now < mo.until && g.phase === 'play' && g.rules.camera && this.rung < C.living.maxRung) {

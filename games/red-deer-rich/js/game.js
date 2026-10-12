@@ -21,6 +21,8 @@
     this.players = [];
     this.rules = {}; for (var k in C.rules) this.rules[k] = C.rules[k];
     this.mode = 'regular';
+    this.catchSec = C.payup.catchDefault || 5;   // v0.7: PAY UP catch window in seconds (3 / 5 / 8)
+    this.paused = false;                   // v0.7: frozen by a pause vote (the TV stops the game clock too)
     this.timerMin = null;                  // v0.5: game timer in minutes, separate from the length (null = the length's default)
     this.phase = 'lobby';
     this.version = 0;                      // bumps on every change (host pushes phones when it moves)
@@ -85,6 +87,40 @@
     this.changed();
   };
   // v0.1.1: an AI (or a late phone) can take a seat in a running game: starting cash, at The Halfway, last in turn order
+  // v0.7: catch window, mid-game timer switches, auto-pass
+  G.setCatch = function (s) { s = +s; if ((C.payup.catchChoices || [3, 5, 8]).indexOf(s) < 0) return false; this.catchSec = s; this.changed(); return true; };
+  G.graceMs = function () { return (this.catchSec || 5) * 1000 + (this.rules.kidMode ? 1000 : 0); };
+  G.timerOff = function () { if (!this.endsAt) return false; this.timerLeft = Math.max(60000 / this.spd(), this.endsAt - this.now); this.endsAt = 0; this.addLog('The game timer is off: play it out!'); this.changed(); return true; };
+  G.timerOn = function () { if (this.endsAt) return false; var left = this.timerLeft || (this.timerFor() || 30) * 60000 / this.spd(); this.endsAt = this.now + left; this.timerLeft = 0; this.addLog('The game timer is back on.'); this.changed(); return true; };
+  G.addMinutes = function (m) { m = +m || 15; var add = m * 60000 / this.spd(); if (this.endsAt) this.endsAt = Math.max(this.endsAt, this.now) + add; else this.endsAt = this.now + add + (this.timerLeft || 0); this.timerLeft = 0; this.addLog('+' + m + ' minutes on the game timer.'); this.changed(); return true; };
+  G.spd = function () { return this.speed >= 20 ? this.speed : 1; };
+  G.setPaused = function (on) { on = !!on; if (this.paused === on) return false; this.paused = on; this.addLog(on ? 'Game paused.' : 'Game resumed.'); this.emit(on ? 'paused' : 'resumed', {}); return true; };
+  // the only thing left on this turn is PASS DICE: nothing to buy, build, unmortgage, repair, trade or roll, no card, no debt, no auction
+  G.onlyPass = function (p) {
+    var t = this.turn, self = this; if (!t || !p || t.pid !== p.id || t.stage !== 'act' || this.phase !== 'play' || this.paused) return false;
+    if (t.tab || t.canRollAgain || t.buy != null || t.auction || t.card || t.moving) return false;
+    if (this.auctionQ && this.auctionQ.length) return false;
+    if (this.now < (t.graceUntil || 0)) return false;
+    var me = this.oid(p);
+    for (var i = 0; i < this.props.length; i++) {
+      var pr = this.props[i]; if (!pr || pr.owner !== me) continue;
+      if (S[i].type === 'prop' && this.canBuild(p, i) === '') return false;
+      if (pr.hocked && p.cash >= this.unhockCost(i)) return false;
+      if (pr.dmg && p.cash >= this.rushCost(i)) return false;
+    }
+    if (this.trades.some(function (tr) { return tr.status === 'open' && (self.oid(self.byId(tr.a)) === me || self.oid(self.byId(tr.b)) === me); })) return false;
+    return true;
+  };
+  G.autoPassTick = function () {
+    var t = this.turn, p = this.cur(); if (!t || !p || this.isBot(p) || p.bankrupt) { if (t) t.apSince = 0; return; }
+    if (t.stage !== 'act') { t.apSince = 0; return; }
+    if (!t.apSince) t.apSince = this.now;
+    if (this.now - t.apSince < this.ms((C.autoPass || {}).afterMs || 1800)) return;
+    if (!this.onlyPass(p)) return;
+    var pid = p.id; this.addLog(p.name + ': auto-passed, no moves.');
+    this.emit('autoPass', { pid: pid });
+    this.intent(pid, { t: 'pass', auto: true });
+  };
   G.addLatePlayer = function (o) {
     if (this.phase !== 'play') return this.addPlayer(o);
     var p = this.addPlayer(o); if (!p) return null;
@@ -108,7 +144,7 @@
     this.chats = []; this.trades = []; this.log = []; this.tradeSeq = 1; this.cardsDrawn = []; this.heckleGap = {}; this.dis = { round: 0, n: 0, last: null, seq: 0 };
     this.order = this.shuffle(this.players.map(function (p) { return p.id; }));
     this.players.sort(function (a, b) { return self.order.indexOf(a.id) - self.order.indexOf(b.id); });
-    this.endsAt = 0;
+    this.endsAt = 0; this.timerLeft = 0; this.paused = false;   // v0.7
     this.tieTeams(MD.startCash);
     if (MD.deal === 'some') {
       var deeds = this.shuffle(S.filter(function (s) { return s.type === 'prop'; }).map(function (s) { return s.i; }));
@@ -763,7 +799,7 @@
           if (this.rules.payupRace) {
             t.payupSeq = (t.payupSeq || 0) + 1;
             t.payup = { owner: owner.id, sp: p.pos, mover: p.id, roll: t.roll ? t.roll.total : 7, dbl: !!t.dblRent, openedAt: this.now, caught: false, done: false, seq: t.payupSeq };
-            t.graceUntil = this.now + this.ms(this.rules.kidMode ? C.payup.kidGraceMs : C.payup.graceMs);   // v0.1.1: no quick-tap sniping past PAY UP
+            t.graceUntil = this.now + this.ms(this.graceMs());   // v0.7 catch window (v0.1.1: no quick-tap sniping past PAY UP
             this.emit('payupOpen', { pid: p.id, owner: owner.id, sp: p.pos, rent: this.rentFor(p.pos, t.payup.roll, t.payup.dbl) });
           } else {
             var amt = this.rentFor(p.pos, t.roll ? t.roll.total : 7, t.dblRent);
@@ -964,6 +1000,7 @@
       case 'chat': this.chat(pid, m.to, m.text); return '';
       case 'char': return this.setChar(pid, m.id) ? '' : 'taken';
     }
+    if (this.paused) return 'Game paused';                                // v0.7 pause vote
     if (m.t === 'heckle') return this.heckle(pid);                       // v0.4: bankrupt players can still heckle from the rail
     if (active) this.heckleAct();                                         // any move by the active player locks the heckle button again
     if (this.phase !== 'play' || p.bankrupt) return 'not playing';
@@ -1138,6 +1175,8 @@
       t = this.turn;
     }
     if (t.tab) { var p = this.cur(); if (p && p.cash >= t.tab.amount) this.settleTab(); }
+    this.autoPassTick();                                                         // v0.7
+    if (this.phase !== 'play') return; t = this.turn;
     this.heckleTick(now);
     if (this.timed() && now >= this.endsAt && t.stage === 'roll') this.finish('time');
   };

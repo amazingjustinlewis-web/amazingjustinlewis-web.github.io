@@ -126,6 +126,8 @@
       case 'slipped': SFX.play('tiptoe'); payupBar('slipped', d); pfxTeam(d.owner, 'missed', { sp: d.sp, name: p ? p.name : '' }); break;
       case 'loudAmp': banner(game.byId(d.owner), 'LOUD AMP! The window stays open 1 more second\u2026', ''); break;
       case 'passDice': hidePayupSoon(); hideDeed(); break;
+      case 'autoPass': if (p) { autoPassTv(p); pfx(d.pid, 'autoPass'); } break;          // v0.7
+      case 'paused': case 'resumed': renderPause(); break;
       case 'tax': SFX.play('cash'); break;
       case 'pay':
         if (d.reason && /rent/.test(d.reason)) SFX.play('cash');
@@ -355,7 +357,8 @@
     var cardsEl = $('cards'), pk = sideH + g.players.map(function (p) { return p.state + p.snow; }).join();
     if (cardsEl._pk !== pk) { cardsEl._pk = pk; cardsEl.innerHTML = sideH; paintPieces(cardsEl); }
     renderLog(g);
-    $('roundInfo').innerHTML = inGame() ? 'Round <b>' + g.round + '</b>' + (g.timed() ? ' \u00b7 <b>' + clock(Math.max(0, g.endsAt - g.now)) + '</b> left' : '') : '';
+    $('roundInfo').innerHTML = inGame() ? 'Round <b>' + g.round + '</b>' + (g.timed() ? ' \u00b7 <span class="tmr on">\u23F1 <b>' + clock(Math.max(0, g.endsAt - g.now)) + '</b> left</span>' : (g.timerLeft || g.timerFor()) ? ' \u00b7 <span class="tmr off">\u23F1 timer off</span>' : '') + (g.paused ? ' \u00b7 <b class="pz">PAUSED</b>' : '') : '';
+    renderSv();
     $('potInfo').innerHTML = g.rules.jackpot && g.phase !== 'lobby' ? 'Dirt Lot pot <b>' + money(g.pot) + '</b>' : '';
     var wq = $('watchQr'), showQ = inGame() && net && net.status === 'online';
     if (wq.hidden === !!showQ) { wq.hidden = !showQ; if (showQ && wq._code !== net.code) { wq._code = net.code; drawQr(controllerUrl(net.code) + '&watch=1', $('qrSmall'), 4, 'L'); } }
@@ -441,13 +444,13 @@
   function saveTvSetup() {
     if (game.phase !== 'lobby') return;
     var r = {}; C.options.forEach(function (o) { r[o.k] = !!game.rules[o.k]; });
-    var j = JSON.stringify({ rules: r, mode: game.mode, timer: game.timerMin }); if (j !== tvSaved) { tvSaved = j; tvStore(TVKEY, j); }
+    var j = JSON.stringify({ rules: r, mode: game.mode, timer: game.timerMin, catchSec: game.catchSec }); if (j !== tvSaved) { tvSaved = j; tvStore(TVKEY, j); }
   }
   function loadTvSetup() {
     if (['local', 'nonet', 'autostart', 'ai', 'rules', 'mode', 'fresh'].some(function (k) { return Q.has(k); })) return false;
     var sv = null; try { sv = JSON.parse(tvStore(TVKEY) || 'null'); } catch (e) {}
     if (!sv || !sv.rules) return false;
-    applyRules(sv.rules); if (sv.mode) game.setMode(sv.mode); if ('timer' in sv) game.setTimer(sv.timer); tvSaved = JSON.stringify(sv); return true;
+    applyRules(sv.rules); if (sv.mode) game.setMode(sv.mode); if ('timer' in sv) game.setTimer(sv.timer); if (sv.catchSec) game.setCatch(sv.catchSec); tvSaved = JSON.stringify(sv); return true;
   }
   function showOptInfo(k) {
     var o = O.opt(k), el = $('optInfo'); if (!o) return;
@@ -502,8 +505,8 @@
   // Purely visual: it never changes the game. Only your own deeds, a few per second at most.
   function pingTile(pl, sp) {
     if (!inGame() || !pl || pl.bankrupt || !(sp >= 0 && sp < 40)) return;
-    var pr = game.props[sp]; if (!pr || pr.owner !== game.oid(pl)) return;
-    var now = Date.now(); if (now - (pingAt[pl.id] || 0) < ((C.ping || {}).gapMs || 600)) return;
+    var pr = game.props[sp]; if (!pr) return;     // v0.7: any property tap bounces it (not only your own)
+    var now = Date.now(); if (now - (pingAt[pl.id] || 0) < ((C.ping || {}).gapMs || 120)) return;
     pingAt[pl.id] = now; rnd.pingTile(sp, pl.color); dirty = true;
   }
   function addAI(charId, level) {
@@ -671,8 +674,10 @@
     if (k === 'v' || k === 'V') { crush.auto = false; setRung((crush.rung + 1) % (LV.maxRung + 1), 'V key'); big('GRAPHICS ' + (crush.rung ? 'CRUSH ' + crush.rung : 'FULL'), 'V cycles the graphics level', '#fff'); }
     if ((k === 'a' || k === 'A') && !crush.auto) { crush.auto = true; big('AUTO-CRUSH ON', '', '#fff'); }
     if ((k === 'l' || k === 'L') && lightsAvailable()) setLights(!lights.enabled, lights.selected);
-    if (k === 'c' || k === 'C') { game.setRule('camera', !game.rules.camera); big(game.rules.camera ? 'CAMERA ON' : 'CAMERA OFF', 'C toggles the follow camera', '#fff'); dirty = phoneDirty = true; }
+    if (k === 'c' || k === 'C') { game.setRule('camera', !game.rules.camera); big(game.rules.camera ? 'TV ZOOM ON' : 'TV ZOOM OFF', 'C toggles the TV zoom', '#fff'); dirty = phoneDirty = true; }
     if ((k === 'i' || k === 'I') && inGame()) { if (game.players.length >= C.maxPlayers) big('TABLE FULL', C.maxPlayers + ' players max', '#fff'); else addAI(null, 'normal'); }   // mid-game: add an AI to an empty seat
+    if ((k === 'p' || k === 'P') && inGame()) setPause(!game.paused);                                  // v0.7: the TV can always pause / resume
+    if ((k === 't' || k === 'T') && inGame()) { if (game.endsAt) game.timerOff(); else game.timerOn(); big(game.endsAt ? 'TIMER ON' : 'TIMER OFF', 'T toggles the game timer', '#fff'); dirty = phoneDirty = true; }
     if (k === 'n' || k === 'N') rnd.cycleOffset = (rnd.cycleOffset || 0) + 120;   // jump the day/night clock ahead 2 minutes (handy for testing)
   });
 
@@ -757,6 +762,10 @@
     if (m.t === 'pingTile') { pingTile(pl, +m.sp); return; }
     if (m.t === 'heckle') { game.intent(pl.id, m); return; }       // v0.4: rate-limited in the engine; never toasts
     if (m.t === 'vote') { castVote(pl, m); return; }
+    if (m.t === 'propose') { svPropose(pl, conn, m); return; }        // v0.7 settings votes
+    if (m.t === 'svote') { svCast(pl, m); return; }
+    if (m.t === 'svCancel') { if (sv && sv.by === pl.id) svEnd(false, 'cancelled by ' + pl.name); return; }
+    if (m.t === 'catch') { if (isVip && lobbyish) { game.setCatch(m.v); setupEdited = true; dirty = phoneDirty = true; } return; }   // v0.7
     if (m.t === 'leaveGame') {      // v0.1.1: leave mid-game (hand the seat to an AI, split, give to one player, or into the pot)
       var lr = game.leaveGame(pl.id, String(m.how || ''), m.to);
       if (lr) { send(conn, { t: 'toast', text: lr }); return; }
@@ -771,7 +780,7 @@
       if (!isVip || game.phase !== 'lobby' || !m.rules) return;
       if (setupEdited) { dirty = phoneDirty = true; return; }     // v0.3: this room's live setup wins over a reloading phone's saved one
       setupEdited = true;
-      applyRules(m.rules); if (m.mode) game.setMode(String(m.mode)); if ('timer' in m) game.setTimer(m.timer);
+      applyRules(m.rules); if (m.mode) game.setMode(String(m.mode)); if ('timer' in m) game.setTimer(m.timer); if (m.catchSec) game.setCatch(m.catchSec);
       var lvl = C.ai.levels[m.level] ? m.level : 'normal';
       for (var ai = 0; ai < Math.min(+m.addAI || 0, C.maxPlayers); ai++) if (!addAI(null, lvl)) break;
       dirty = phoneDirty = true; return;
@@ -882,6 +891,8 @@
       hue: g.phase !== 'play' ? hueView(p) : null,
       setupEdited: setupEdited,
       lastFind: g.phase === 'play' && lastFind ? { idx: lastFind.idx, n: lastFind.n, fresh: Date.now() - lastFind.at < (C.cardHoldMs || 12000) } : null,
+      catchSec: g.catchSec, paused: !!g.paused, timerOn: !!g.endsAt, timerLeft: g.endsAt ? 0 : (g.timerLeft || 0),   // v0.7
+      svote: svView(p), svDone: svDone && Date.now() - svDone.at < 4000 ? svDone : null,
       timer: { min: g.timerMin, eff: g.timerFor() }   // fresh: phones keep the whole card up while the TV shows it
     };
     if (t && g.phase === 'play' && cur) {
@@ -1006,12 +1017,108 @@
     if (v === 'on' || v === 'off') hueIntent({ enabled: v === 'on' }); else if (v === 'test') hueIntent({ test: true }); else if (g) hueIntent({ toggle: g });
   });
 
+  // ------------------------------------------------------------------ v0.7 in-game settings votes (any phone proposes, 85% of active players says yes)
+  var sv = null, svSeq = 0, svDone = null, pauseOff = 0, pauseAt = 0;
+  var VK = C.vote || { pass: 0.85, ms: 30000, addMin: 15 };
+  function svLabel(k, v) {
+    return { timerOff: 'Turn the game timer OFF', timerOn: 'Turn the game timer back ON', add15: 'Add ' + VK.addMin + ' more minutes', pause: 'Pause the game', resume: 'Resume the game',
+      zoomOff: 'Turn the TV zoom OFF', zoomOn: 'Turn the TV zoom ON', 'catch': 'Catch window: ' + v + ' seconds' }[k] || k;
+  }
+  function svValid(k, v) {
+    var g = game;
+    switch (k) {
+      case 'timerOff': return g.endsAt ? '' : 'The timer is already off';
+      case 'timerOn': return !g.endsAt ? '' : 'The timer is already on';
+      case 'add15': return '';
+      case 'pause': return !g.paused ? '' : 'Already paused';
+      case 'resume': return g.paused ? '' : 'Not paused';
+      case 'zoomOff': return g.rules.camera ? '' : 'TV zoom is already off';
+      case 'zoomOn': return !g.rules.camera ? '' : 'TV zoom is already on';
+      case 'catch': return !g.rules.payupRace ? 'The PAY UP race is off' : (C.payup.catchChoices.indexOf(+v) < 0 ? 'Pick 3, 5 or 8 s' : +v === g.catchSec ? 'Already ' + v + ' s' : '');
+    }
+    return 'Unknown setting';
+  }
+  function svVoters() { var vs = voters().map(function (q) { return q.id; }); return vs; }
+  function svPropose(pl, conn, m) {
+    if (!inGame()) return;
+    if (sv) { send(conn, { t: 'toast', text: 'A vote is already running' }); return; }
+    var k = String(m.k || ''), why = svValid(k, m.v); if (why) { send(conn, { t: 'toast', text: why }); return; }
+    var need = svVoters(); if (need.indexOf(pl.id) < 0) need.push(pl.id);
+    sv = { id: ++svSeq, k: k, v: m.v, label: svLabel(k, m.v), by: pl.id, byName: pl.name, until: Date.now() + VK.ms, yes: {}, no: {}, need: need };
+    sv.yes[pl.id] = 1;
+    SFX.play('pop'); svCheck(); dirty = phoneDirty = true;
+  }
+  function svCast(pl, m) {
+    if (!sv || +m.id !== sv.id || sv.need.indexOf(pl.id) < 0) return;
+    delete sv.yes[pl.id]; delete sv.no[pl.id]; (m.yes ? sv.yes : sv.no)[pl.id] = 1; SFX.play('click');
+    svCheck(); dirty = phoneDirty = true;
+  }
+  function svCount() {
+    var live = svVoters(), need = sv.need.filter(function (id) { return live.indexOf(id) >= 0 || id === sv.by; });
+    var y = need.filter(function (id) { return sv.yes[id]; }).length, n = need.filter(function (id) { return sv.no[id]; }).length;
+    return { n: Math.max(1, need.length), y: y, no: n, need: need };
+  }
+  function svCheck() {
+    if (!sv) return; var c = svCount();
+    if (c.y / c.n >= VK.pass - 1e-9) svEnd(true);
+    else if ((c.n - c.no) / c.n < VK.pass - 1e-9) svEnd(false, 'voted down');
+  }
+  function svEnd(ok, why) {
+    var v = sv; sv = null; if (!v) return;
+    if (ok) svApply(v.k, v.v);
+    svDone = { label: v.label, ok: !!ok, why: ok ? 'passed' : (why || 'no'), at: Date.now() };
+    big(ok ? 'VOTE PASSED' : 'VOTE FAILED', v.label + (ok ? '' : ' (' + (why || 'no') + ')'), ok ? '#7dff7d' : '#ff8a8a');
+    if (ok) SFX.play('fanfare');
+    dirty = phoneDirty = true;
+  }
+  function svApply(k, v) {
+    var g = game;
+    if (k === 'timerOff') g.timerOff(); else if (k === 'timerOn') g.timerOn(); else if (k === 'add15') g.addMinutes(VK.addMin);
+    else if (k === 'pause') setPause(true); else if (k === 'resume') setPause(false);
+    else if (k === 'zoomOff') g.setRule('camera', false); else if (k === 'zoomOn') g.setRule('camera', true);
+    else if (k === 'catch') { g.setCatch(+v); g.addLog('Catch window is now ' + v + ' seconds.'); }
+    g.changed();
+  }
+  function setPause(on) {
+    if (on && !game.paused) { pauseAt = performance.now(); game.setPaused(true); }
+    else if (!on && game.paused) { pauseOff += performance.now() - pauseAt; game.setPaused(false); }
+    renderPause(); dirty = phoneDirty = true;
+  }
+  function renderPause() { var el = $('pauseTv'); if (el) el.hidden = !(game.paused && inGame()); }
+  setInterval(function () { if (sv && Date.now() >= sv.until) svEnd(false, 'time ran out'); if (sv) phoneDirty = true; if (svDone && Date.now() - svDone.at > 4200) { svDone = null; phoneDirty = dirty = true; } }, 250);
+  function svView(p) {
+    if (!sv) return null; var c = svCount();
+    return { id: sv.id, k: sv.k, v: sv.v, label: sv.label, by: sv.by, byName: sv.byName, left: Math.max(0, sv.until - Date.now()), y: c.y, no: c.no, n: c.n, pct: Math.round(VK.pass * 100),
+      mine: sv.yes[p.id] ? 'yes' : sv.no[p.id] ? 'no' : '', canVote: c.need.indexOf(p.id) >= 0,
+      votes: c.need.map(function (id) { var q = game.byId(id) || {}; return [id, q.name, q.color, q.charId, sv.yes[id] ? 1 : sv.no[id] ? -1 : 0]; }) };
+  }
+  function renderSv() {
+    var el = $('svTv'); if (!el) return;
+    if (!inGame() || (!sv && !svDone)) { if (!el.hidden) { el.hidden = true; el._h = ''; } return; }
+    var h;
+    if (sv) {
+      var c = svCount();
+      h = '<div class="sv-h">\uD83D\uDDF3 VOTE <small>' + Math.ceil(Math.max(0, sv.until - Date.now()) / 1000) + ' s</small></div><div class="sv-l">' + esc(sv.label) + '</div><div class="sv-by">asked by ' + esc(sv.byName) + ' \u00b7 needs ' + Math.round(VK.pass * 100) + '%</div><div class="sv-row">' +
+        c.need.map(function (id) { var q = game.byId(id) || {}, y = sv.yes[id], n = sv.no[id]; return '<span class="sv-v ' + (y ? 'y' : n ? 'n' : '') + '" style="border-color:' + q.color + ';color:' + q.color + '"><i style="background:' + q.color + '"></i>' + esc(q.name || '?') + ' <b>' + (y ? '\u2714' : n ? '\u2716' : '\u2026') + '</b></span>'; }).join('') + '</div>';
+    } else h = '<div class="sv-h ' + (svDone.ok ? 'ok' : 'no') + '">' + (svDone.ok ? '\u2714 PASSED' : '\u2716 ' + esc(String(svDone.why).toUpperCase())) + '</div><div class="sv-l">' + esc(svDone.label) + '</div>';
+    if (el._h !== h) { el._h = h; el.innerHTML = h; }
+    el.hidden = false;
+  }
+  // v0.7 auto-pass notice on the TV
+  function autoPassTv(p) {
+    var el = $('autoTv'); if (!el) return;
+    el.innerHTML = '<i style="background:' + p.color + '"></i><b>' + esc(p.name) + '</b> \u00b7 Auto-passed: no moves';
+    el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+    clearTimeout(autoPassTv._t); autoPassTv._t = setTimeout(function () { el.hidden = true; }, 2600);
+    sideStamp(p.id, 'AUTO-PASSED', '#9fd3ff');
+  }
+
   // ------------------------------------------------------------------ main loop
   var lastT = performance.now(), domT = 0, lastVer = -1;
   function loop() {
     var now = performance.now(), dt = Math.min(200, now - lastT); lastT = now;
     try {
-      game.tick(now); AI.tick(game);
+      if (!game.paused) { game.tick(now - pauseOff); AI.tick(game); }      // v0.7: a paused game's clock stands still
       var t = game.turn, paused = inGame() && t && (t.stage === 'card' || (t.payup && !t.payup.done) || t.stage === 'rolling');
       var band = rnd.bandLevel();
       if (inGame()) SFX.band(band.vol, band.near); else SFX.band(0, 0);
@@ -1032,7 +1139,7 @@
   setInterval(function () {
     if (!document.hidden) return;
     try {
-      game.tick(performance.now()); AI.tick(game);
+      if (!game.paused) { game.tick(performance.now() - pauseOff); AI.tick(game); }
       if (game.version !== lastVer) { lastVer = game.version; phoneDirty = true; }
       if (phoneDirty) { phoneDirty = false; pushPhones(); }
     } catch (e) { if (window.console) console.error(e); }
@@ -1056,6 +1163,7 @@
   }
   if (Q.has('autostart') && game.players.length >= 2) setTimeout(startGame, 300);
   window.RDR.note = function () { return NOTE; }; window.RDR.boldMoney = boldMoney; window.RDR.applyRules = applyRules; window.RDR.qrDodge = qrDodge; window.RDR.big = big; window.RDR.showCard = showCard; window.RDR.cashShown = cashShown; window.RDR.plaque = plaque;   // v0.2 test hooks
+  window.RDR.sv = function () { return sv; }; window.RDR.setPause = setPause; window.RDR.svDone = function () { return svDone; };   // v0.7 test hooks
   window.RDR.startGame = startGame; window.RDR.addAI = addAI; window.RDR.toLobby = toLobby; window.RDR.crush = crush; window.RDR.setRung = setRung;
   window.RDR.net = function () { return net; }; window.RDR.lights = function () { return lights; }; window.RDR.clients = clients; window.RDR.phoneState = phoneState; window.RDR.controllerUrl = controllerUrl;
   window.RDR.setupEdited = function () { return setupEdited; }; window.RDR.lastFind = function () { return lastFind; };   // v0.3 test hooks

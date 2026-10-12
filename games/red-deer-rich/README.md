@@ -1,4 +1,4 @@
-# Red Deer Rich - v0.6 (placeholder art)
+# Red Deer Rich - v0.7 (placeholder art)
 
 A Red Deer-themed property trading board game by Zero to Phi. The spec is the design doc
 (`red-deer-rich/design-doc.md`, outside this repo). Same architecture as Zombie Tiles: plain
@@ -17,7 +17,7 @@ Live: https://amazingjustinlewis-web.github.io/games/red-deer-rich/
 4. On your turn, swipe up on the dice (or tap ROLL), then BUY or PASS, then PASS DICE.
    When someone lands on your deed, a giant **PAY UP** button takes over your phone. Rent is only paid if you hit it
    before they pass the dice. When you land on someone else's deed (with PAY UP on), PASS DICE (and ROLL AGAIN)
-   stays locked for 3 s (+1 s with Mike's Loud Amp). On your own deed, an unowned one or any other space there is no wait.
+   stays locked for the catch window: 5 s by default, 3 or 8 s from the host's dropdown (+1 s in Kid Mode, +1 s with Mike's Loud Amp). On your own deed, an unowned one or any other space there is no wait.
 5. Pass on a deed (for any reason) and it goes to **auction** from $10: every phone gets +$20 / +$50 / +$100 buttons,
    and each bid resets an 8 s countdown. The top bidder pays when it runs out; with no bids the bank keeps it.
    You can never bid more than your cash.
@@ -31,6 +31,32 @@ Live: https://amazingjustinlewis-web.github.io/games/red-deer-rich/
 
 v0.5: the timer is its own setting. The ⏱ button beside the length picker (phone) or the Timer button in the TV lobby
 cycles Off / 20 / 30 / 45 / 60 / 90 min and works with any length. Until you touch it, each length keeps the default above.
+
+### What's new in v0.7 (Playtest polish)
+Straight from a 10-person family playtest. Everything from v0.6 is unchanged otherwise.
+- **Tap a property, it bounces on the TV.** Any tap on a property (Board map, deed cards, My Stuff list, open set),
+  yours or not, makes that tile hop on the TV a few times, big then softening. Every new tap restarts it big.
+  Deal screens never ping (deals stay private).
+- **VIEW SET / CLOSE SET buttons** in the My Stuff cards view. Tapping the front card now only bounces it; pinch still works.
+- **PAID IN FULL** fades in, slams and sweeps across and off the phone with the double cha-ching whenever a debt clears
+  (including the automatic pay-off the moment you raise enough).
+- **My Turn from anywhere.** The My Turn tab always lands on the turn view and closes any open card, set or sheet. When
+  it's your turn on another tab, a pulsing 🎲 MY TURN button floats bottom-right.
+- **Auto-pass (not timed).** When a human player's only possible move is PASS DICE (nothing to buy, build, unmortgage,
+  repair or roll, no open deal, no debt, no auction, and the catch window has closed), it passes by itself after a short
+  1.8 s settle and says so: a toast on that phone and an "Auto-passed: no moves" pill on the TV. AI turns are unchanged.
+- **Catch window dropdown** (host setup, shown when the PAY UP race is on): 3, 5 or 8 s, default 5. Remembered with the setup.
+- **Settings votes (⚙️ beside your cash).** Anyone can propose: timer off / on, +15 minutes, pause / resume, catch window
+  3 / 5 / 8 s, TV zoom off / on. Every connected, still-playing human votes with a ✔ or ✖ shown beside their token in their
+  colour on every phone and in a small TV panel (bottom-right). It applies at 85% yes or more, fails as soon as that's out
+  of reach, after 30 s, or when the proposer cancels. A paused game freezes the game clock (turn timers, auctions, timer)
+  and both the TV and phones show PAUSED with VOTE TO RESUME. TV keys: P pause / resume, T timer off / on.
+- **Timer next to the round on the TV** shows "⏱ m:ss left" or "⏱ timer off" (switch it with a vote or T).
+- **TV zoom (Game options, on by default; was "TV camera").** A quick zoom in on the action (turn start, roll, move, big
+  moments) that glides back to the full board about 5 s after the action stops. While zoomed, small arrows in each
+  player's colour sit at the board edge pointing to anyone off screen. Off = fixed full board (also the C key or a vote).
+- **Trade layouts.** The deal builder has a clear ☰ List / 🗺️ Map toggle at the top (List = the classic two-column
+  builder, Map = drag-and-drop on the board with cash sliders). Your last choice is remembered.
 
 ### What's new in v0.6 (Family party)
 Everything from v0.5 is unchanged (Disasters, the AUTO-RAISE plan, Mega-Plex construction, bold amounts, deed flip

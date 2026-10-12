@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Red Deer Rich - TV | Zero to Phi</title>
-<meta name="description" content="Red Deer Rich: a Red Deer property-trading board game for the TV with phones as controllers. v0.6 by Zero to Phi.">
+<meta name="description" content="Red Deer Rich: a Red Deer property-trading board game for the TV with phones as controllers. v0.7 by Zero to Phi.">
 <meta name="theme-color" content="#14121b">
 <meta name="robots" content="noindex">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
@@ -15,7 +15,7 @@
 
 <header id="top">
   <div class="brand"><img src="assets/logo.svg" alt="" width="49" height="40"><span>ZERO&nbsp;TO&nbsp;PHI</span></div>
-  <div class="title">RED DEER <span class="rich">RICH</span><span class="proto">v0.6 · PLACEHOLDER ART</span></div>
+  <div class="title">RED DEER <span class="rich">RICH</span><span class="proto">v0.7 · PLACEHOLDER ART</span></div>
   <div class="top-right"><span id="roundInfo"></span><span id="potInfo"></span><span id="joinInfo"></span><span id="lightInfo"></span><span id="fxInfo"></span></div>
 </header>
 
@@ -85,6 +85,9 @@
 </section>
 
 <div id="netBadge"></div>
+<div id="svTv" class="svtv" hidden></div>
+<div id="autoTv" class="autotv" hidden></div>
+<div id="pauseTv" class="pausetv" hidden><div class="pz-t">&#9208; PAUSED</div><div class="pz-s">Resume with a vote from any phone (Settings &rarr; Resume) &middot; or press P</div></div>
 
 <script src="js/vendor/peerjs.min.js"></script>
 <script>/* old TV browsers (e.g. Samsung Tizen, Chromium < 80) cannot run the modern PeerJS build: load the transpiled one */ if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>

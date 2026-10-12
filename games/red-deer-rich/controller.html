@@ -13,7 +13,7 @@
 </head>
 <body>
 <section id="join" class="screen">
-  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">RED DEER <b>RICH</b></div><div class="jsub">v0.6 &middot; phone controller</div></div></header>
+  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">RED DEER <b>RICH</b></div><div class="jsub">v0.7 &middot; phone controller</div></div></header>
   <label class="fld">Room code<input id="room" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD"></label>
   <label class="fld">Your name<input id="name" maxlength="12" autocomplete="nickname" placeholder="Name"></label>
   <button id="joinBtn" class="big-btn">JOIN GAME</button>
@@ -41,6 +41,7 @@
       <div class="muted small">Pick who the next AI is and how tough, then use + next to START. Mid-game, you can fill an empty seat from the Board tab.</div>
       <div id="hHue"></div>
     </div>
+    <label id="hCatchRow" class="catchrow" hidden>&#9995; Catch window <select id="hCatch" aria-label="PAY UP catch window"><option value="3">3 s</option><option value="5" selected>5 s</option><option value="8">8 s</option></select></label>
     <div class="startpick">
       <div class="seg" id="hMode"></div><button id="hTimer" class="ghost tmrbtn" aria-label="Game timer">&#9201; No timer</button>
       <div class="aistep"><button id="hAiMinus" aria-label="Remove an AI player">&minus;</button><span id="hAiCount">AI 0</span><button id="hAiAdd" aria-label="Add an AI player">+</button></div>
@@ -52,7 +53,7 @@
 </section>
 
 <section id="game" class="screen" hidden>
-  <header class="ghead"><canvas class="mypiece" id="myPiece" width="96" height="96" aria-hidden="true"></canvas><div class="gh-mid"><div id="myName"></div><span id="myBadge" class="badge"></span></div><div class="gh-cash" id="myCash"></div><span id="gConn" class="conn"></span></header>
+  <header class="ghead"><canvas class="mypiece" id="myPiece" width="96" height="96" aria-hidden="true"></canvas><div class="gh-mid"><div id="myName"></div><span id="myBadge" class="badge"></span></div><div class="gh-cash" id="myCash"></div><button id="svBtn" class="svbtn" aria-label="Game settings and votes">&#9881;&#65039;</button><span id="gConn" class="conn"></span></header>
   <nav class="tabs" id="tabs">
     <button data-tab="turn" class="on"><span class="ti">&#127922;</span><span class="tl">My Turn</span><i class="dot" id="bTurn"></i></button>
     <button data-tab="stuff"><span class="ti">&#128176;</span><span class="tl">My Stuff</span></button>
@@ -66,7 +67,7 @@
       <div class="pane-side" id="turnSide"></div>
     </section>
     <section class="tab" id="tab-stuff" hidden>
-      <div class="pane-main"><div id="stuffMain"></div><div id="flowBox" class="flowbox" hidden></div></div>
+      <div class="pane-main"><div id="stuffMain"></div><div id="flowBox" class="flowbox" hidden></div><div id="flowBtns" class="flowbtns"></div></div>
       <div class="pane-side" id="stuffSide"></div>
     </section>
     <section class="tab" id="tab-board" hidden>
@@ -87,6 +88,10 @@
 <div id="boom" class="takeover boom" hidden><div class="boom-art">&#128165;</div><div class="boom-t">YOU GOT<br>CAUGHT!</div><div class="boom-s" id="boomSub"></div></div>
 <div id="leaveBox" class="leavebox" hidden></div>
 <div id="voteBar" class="votebar" hidden></div>
+<div id="svBar" class="svbar" hidden></div>
+<div id="setSheet" class="optsheet" hidden></div>
+<div id="pausePh" class="pauseph" hidden><div class="pz-t">&#9208; PAUSED</div><div class="pz-s">Everything is frozen. Ready?</div><button class="big-btn" data-act="svProp" data-k="resume">VOTE TO RESUME</button></div>
+<button id="myTurnFab" class="myturnfab" hidden>&#127922; MY TURN</button>
 <div id="toast" class="toast" hidden></div>
 <div id="paid" class="paidbox" hidden><div class="paid-stamp">PAID<br>IN FULL</div><div class="paid-sub" id="paidSub"></div></div>
 <div id="faces" class="faces" aria-hidden="true"></div>

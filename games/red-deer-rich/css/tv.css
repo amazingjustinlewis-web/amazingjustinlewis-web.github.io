@@ -312,3 +312,23 @@ b.amt { font-weight: 900; color: #ffe27a; }
 .cfloat { font-weight: 900; }
 #timerRow button small { display: block; }
 .pteam { display: inline-block; margin-left: .5vh; padding: 0 .6vh; border-radius: .6vh; background: rgba(255,255,255,.18); font-size: 1.6vh; font-weight: 800; vertical-align: middle; }
+
+/* v0.7 settings vote panel, auto-pass notice, pause cover, timer chip */
+.svtv { position: fixed; right: 1.6vh; bottom: 1.6vh; z-index: 60; max-width: 46vh; background: rgba(20,18,27,.92); border: 2px solid #ffd23f; border-radius: 1.4vh; padding: 1.1vh 1.4vh; color: #fff; font-size: 1.8vh; box-shadow: 0 1vh 3vh rgba(0,0,0,.5); }
+.svtv .sv-h { font-weight: 800; color: #ffd23f; letter-spacing: .1em; }
+.svtv .sv-h small { color: #bbb; font-weight: 600; margin-left: .6vh; }
+.svtv .sv-h.ok { color: #7dff7d; } .svtv .sv-h.no { color: #ff8a8a; }
+.svtv .sv-l { font-size: 2.2vh; font-weight: 700; margin: .4vh 0; }
+.svtv .sv-by { color: #aaa; font-size: 1.5vh; margin-bottom: .6vh; }
+.svtv .sv-row { display: flex; flex-wrap: wrap; gap: .6vh; }
+.svtv .sv-v { display: inline-flex; align-items: center; gap: .5vh; border: 2px solid; border-radius: 99px; padding: .2vh .9vh; font-weight: 700; background: rgba(255,255,255,.06); }
+.svtv .sv-v i { width: 1.4vh; height: 1.4vh; border-radius: 50%; display: inline-block; }
+.svtv .sv-v b { color: #ccc; } .svtv .sv-v.y b { color: #39e75f; } .svtv .sv-v.n b { color: #ff4d4d; }
+.autotv { position: fixed; left: 50%; top: 9vh; transform: translateX(-50%); z-index: 58; background: rgba(20,30,48,.93); border: 2px solid #9fd3ff; color: #e6f3ff; border-radius: 99px; padding: .9vh 2.4vh; font-size: 2.3vh; display: flex; align-items: center; gap: 1vh; white-space: nowrap; }
+.autotv i { width: 2vh; height: 2vh; border-radius: 50%; display: inline-block; }
+.autotv.go { animation: autoIn 2.6s ease both; }
+@keyframes autoIn { 0% { opacity: 0; transform: translate(-50%, -2vh) scale(.9); } 10% { opacity: 1; transform: translate(-50%, 0) scale(1.04); } 16% { transform: translate(-50%, 0) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; } }
+.pausetv { position: fixed; inset: 0; z-index: 55; background: rgba(8,8,14,.55); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.pausetv .pz-t { font-size: 11vh; font-weight: 900; color: #fff; letter-spacing: .12em; text-shadow: 0 0 4vh rgba(0,0,0,.8); }
+.pausetv .pz-s { font-size: 2.4vh; color: #ddd; margin-top: 1vh; }
+.top-right .tmr.off { color: #ff9f6a; } .top-right .pz { color: #ffd23f; }

@@ -71,7 +71,7 @@
     show('game');
     var obs = !!s.me.observer; document.body.classList.toggle('observer', obs);
     if (obs && tab !== 'board') setTab('board');
-    renderHead(); renderAuction(); renderTab(); renderBadges(); payupOverlay(); renderVote();
+    renderHead(); renderAuction(); renderTab(); renderBadges(); payupOverlay(); renderVote(); renderSv(); renderMyTurnFab();
   }
   function handleFx(prev) {
     var f = st.fx || {};
@@ -86,6 +86,7 @@
     if (inc('msg')) { vib(15); }
     if (inc('auction') && !st.me.bankrupt) { SFX.play('click'); vib([50, 40, 50]); toast('\uD83D\uDD28 AUCTION! Bid with the buttons at the top', 2600); }
     if (inc('tab')) { vib([100, 50, 100]); }
+    if (inc('autoPass')) { SFX.play('click'); vib([20, 40, 20]); ui.autoAt = Date.now(); toast('\u23ED Auto-passed: no moves', 2600); }       // v0.7
     if (inc('paid')) paidInFull(f.paidData || {});                                                  // v0.4 PAID IN FULL
     if (inc('disaster')) disasterAlert(f.disasterData || {}, true);                                   // v0.5 Disasters: the owner's phone
     if (inc('repaired')) { var rd = f.repairedData || {}; if (rd.sp != null) { SFX.play('repair'); vib(30); toast('\uD83D\uDD27 ' + S[rd.sp].name + ' is open again' + (rd.how === 'rush' ? ' (rush repair)' : ''), 2200); if (!$('disSheet').hidden && ui.disSp === rd.sp) $('disSheet').hidden = true; } }
@@ -151,6 +152,7 @@
       setH($('hMode'), ['regular', 'medium', 'quick'].map(function (k) { return '<button data-mode="' + k + '" class="' + (st.mode === k ? 'on' : '') + '">' + C.modes[k].label + '</button>'; }).join(''));
       var tm = st.timer || { min: null, eff: 0 };
       $('hTimer').innerHTML = '\u23F1 ' + (tm.eff ? tm.eff + ' min' : 'No timer');
+      var cw = $('hCatchRow'); cw.hidden = !st.rules.payupRace; if ($('hCatch').value !== String(st.catchSec || 5) && document.activeElement !== $('hCatch')) $('hCatch').value = String(st.catchSec || 5);   // v0.7
       $('hTimer').classList.toggle('on', !!tm.eff);
       $('hModeInfo').textContent = C.modes[st.mode] ? C.modes[st.mode].label + ': ' + C.modes[st.mode].blurb + ' \u00b7 start with ' + money(C.modes[st.mode].startCash) + ' \u00b7 ' + (tm.eff ? 'ends after ' + tm.eff + ' min' : 'no timer') + (tm.min == null ? ' (mode default)' : '') : '';
       $('startBtn').disabled = st.players.length < 2;
@@ -182,7 +184,7 @@
   function showOptInfo(k) { var o = O.opt(k); if (!o) return; $('osH').textContent = o.icon + ' ' + o.label + (st.rules[k] ? ' (on)' : ' (off)'); $('osShort').textContent = o.short; $('osT').textContent = o.long; $('optSheet').hidden = false; }
   $('optSheet').onclick = function (e) { if (e.target === $('optSheet') || e.target === $('osOk')) $('optSheet').hidden = true; };
   // v0.2.1 remember last game: the host phone keeps the last-used setup and puts it back when it hosts again
-  function setupNow() { var r = {}; C.options.forEach(function (o) { r[o.k] = !!st.rules[o.k]; }); return { rules: r, mode: st.mode, timer: st.timer ? st.timer.min : null, ai: st.players.filter(function (p) { return p.ai; }).length, level: ui.aiLevel }; }
+  function setupNow() { var r = {}; C.options.forEach(function (o) { r[o.k] = !!st.rules[o.k]; }); return { rules: r, mode: st.mode, timer: st.timer ? st.timer.min : null, catchSec: st.catchSec || 5, ai: st.players.filter(function (p) { return p.ai; }).length, level: ui.aiLevel }; }
   var saveT = 0;
   function saveSetupSoon() { clearTimeout(saveT); saveT = setTimeout(function () { if (st && st.me && st.me.vip && st.phase !== 'play') store.set('rdr_setup', JSON.stringify(setupNow())); }, 700); }
   function restoreSetup() {
@@ -192,7 +194,7 @@
     if (!saved || !saved.rules) return;
     if (saved.level && C.ai.levels[saved.level]) ui.aiLevel = saved.level;
     var nAi = st.players.filter(function (p) { return p.ai; }).length, add = Math.max(0, Math.min((saved.ai | 0) - nAi, C.maxPlayers - st.players.length));
-    var msg = { t: 'settings', rules: saved.rules, mode: saved.mode, addAI: add, level: ui.aiLevel }; if ('timer' in saved) msg.timer = saved.timer; send(msg);
+    var msg = { t: 'settings', rules: saved.rules, mode: saved.mode, addAI: add, level: ui.aiLevel }; if ('timer' in saved) msg.timer = saved.timer; if (saved.catchSec) msg.catchSec = saved.catchSec; send(msg);
     toast('Set up like last time. Change anything below.', 2400);
   }
   $('hostBox').addEventListener('click', function (e) {
@@ -203,6 +205,7 @@
     if (b.getAttribute('data-hueg')) send({ t: 'hue', toggle: b.getAttribute('data-hueg') });
   });
   $('hTimer').onclick = function () { var ch = C.timerChoices || [0, 20, 30, 45, 60, 90], cur = st.timer ? st.timer.eff || 0 : 0, i = ch.indexOf(cur); send({ t: 'timer', v: ch[(i + 1) % ch.length] }); vib(15); SFX.play('click'); saveSetupSoon(); };   // v0.5
+  $('hCatch').onchange = function () { send({ t: 'catch', v: +this.value }); vib(15); SFX.play('click'); saveSetupSoon(); };   // v0.7 catch window
   $('startBtn').onclick = function () { if (st) store.set('rdr_setup', JSON.stringify(setupNow())); send({ t: 'start' }); };
   function renderOver() {
     var r = st.results || [];
@@ -226,8 +229,20 @@
     var b = $('myBadge'); b.className = 'badge ' + me.state; b.textContent = me.bankrupt ? 'BANKRUPT' : me.state === 'gold' ? 'GOLD' : me.state === 'good' ? 'DOING GOOD' : 'RAGS';
     $('myCash').textContent = me.bankrupt ? 'OUT' : money(me.cash);
   }
-  $('tabs').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; setTab(b.getAttribute('data-tab')); });
-  function setTab(t) { tab = t; Array.prototype.forEach.call($('tabs').children, function (b) { b.className = b.getAttribute('data-tab') === t ? 'on' : ''; }); ['turn', 'stuff', 'board', 'msgs'].forEach(function (k) { $('tab-' + k).hidden = k !== t; }); renderTab(); renderBadges(); }
+  $('tabs').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; if (b.getAttribute('data-tab') === 'turn') { goTurn(); return; } setTab(b.getAttribute('data-tab')); });
+  // v0.7: My Turn always lands on the turn view, from any tab, sheet or open card set
+  function goTurn() {
+    closeSet(true); ['deedSheet', 'optSheet', 'cardList', 'findSheet', 'disSheet', 'setSheet'].forEach(function (k) { var el = $(k); if (el) el.hidden = true; });
+    if (document.activeElement && document.activeElement.blur) try { document.activeElement.blur(); } catch (e) {}
+    setTab('turn'); try { window.scrollTo(0, 0); var tm = $('tab-turn'); if (tm) tm.scrollTop = 0; } catch (e) {}
+    vib(10);
+  }
+  function renderMyTurnFab() {
+    var el = $('myTurnFab'), on = !!(st && st.phase === 'play' && st.turn && st.turn.pid === st.me.id && !st.me.observer && tab !== 'turn');
+    if (el.hidden === on) el.hidden = !on;
+  }
+  $('myTurnFab').addEventListener('click', function () { goTurn(); });
+  function setTab(t) { tab = t; Array.prototype.forEach.call($('tabs').children, function (b) { b.className = b.getAttribute('data-tab') === t ? 'on' : ''; }); ['turn', 'stuff', 'board', 'msgs'].forEach(function (k) { $('tab-' + k).hidden = k !== t; }); if (t !== 'stuff') closeSet(true); renderTab(); renderBadges(); if (st) renderMyTurnFab(); }
   function renderTab() { if (!st || st.phase !== 'play') return; if (tab === 'turn') renderTurn(); else if (tab === 'stuff') renderStuff(); else if (tab === 'board') renderBoard(); else renderMsgs(); }
   function unreadFor(key) { var last = ui.seen[key] || 0; return st.chats.filter(function (c) { var k = c[2] === 'all' ? 'all' : String(c[1] === st.me.id ? c[2] : c[1]); return k === String(key) && c[0] > last && c[1] !== st.me.id; }).length; }
   function waitingDeals(pid) { return st.trades.filter(function (t) { return t.status === 'open' && t.waiting === st.me.id && (pid == null || t.a === pid || t.b === pid); }).length; }
@@ -358,9 +373,47 @@
     $('paidSub').textContent = money(d.amount) + (d.to ? ' to ' + d.to : '') + ' \u2714';
     el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
     SFX.play('paid'); vib([40, 60, 40, 60, 180]);
-    clearTimeout(paidInFull._t); paidInFull._t = setTimeout(function () { el.hidden = true; }, 2700);
+    clearTimeout(paidInFull._t); paidInFull._t = setTimeout(function () { el.hidden = true; }, 2900);   // v0.7: fades in, sweeps across and off the screen
   }
   $('paid').onclick = function () { $('paid').hidden = true; };
+
+  // ---- v0.7 in-game settings votes: propose from the Settings sheet; every active player votes with a check or an X
+  function svOptions() {
+    var o = [];
+    if (st.timerOn) o.push(['timerOff', '\u23F1 Timer OFF', 'play it out']); else o.push(['timerOn', '\u23F1 Timer ON', st.timerLeft ? 'pick up where it stopped' : 'start the clock']);
+    o.push(['add15', '\u2795 15 more minutes', 'on the game timer']);
+    if (st.paused) o.push(['resume', '\u25B6 Resume', 'unfreeze the game']); else o.push(['pause', '\u23F8 Pause', 'freeze everything']);
+    o.push(st.rules.camera ? ['zoomOff', '\uD83C\uDFA5 TV zoom OFF', 'keep the whole board'] : ['zoomOn', '\uD83C\uDFA5 TV zoom ON', 'zoom in on the action']);
+    return o;
+  }
+  function openSettings() {
+    if (!st || st.phase !== 'play') return;
+    var h = '<div class="os-card sv-card"><div class="os-h">\u2699\uFE0F Game settings</div><div class="muted small">Propose a change: it happens when ' + (C.vote ? Math.round(C.vote.pass * 100) : 85) + '% of players vote yes.</div><div class="svopts">' +
+      svOptions().map(function (x) { return '<button class="svopt" data-act="svProp" data-k="' + x[0] + '"><b>' + x[1] + '</b><small>' + esc(x[2]) + '</small></button>'; }).join('') + '</div>';
+    if (st.rules.payupRace) h += '<div class="hb-sub">PAY UP catch window (now ' + (st.catchSec || 5) + ' s)</div><div class="row svcatch">' + (C.payup.catchChoices || [3, 5, 8]).map(function (s) { return '<button class="ghost' + (s === st.catchSec ? ' on' : '') + '" data-act="svProp" data-k="catch" data-v="' + s + '"' + (s === st.catchSec ? ' disabled' : '') + '>' + s + ' s</button>'; }).join('') + '</div>';
+    h += '<button class="big-btn" data-act="svClose">CLOSE</button></div>';
+    $('setSheet').innerHTML = h; $('setSheet').hidden = false; SFX.play('card'); vib(10);
+  }
+  setInterval(function () { var sl = $('svLeft'); if (sl && ui.svEnd) sl.textContent = Math.max(0, Math.ceil((ui.svEnd - Date.now()) / 1000)); }, 250);
+  $('setSheet').addEventListener('click', function (e) { if (e.target === $('setSheet')) $('setSheet').hidden = true; });
+  $('svBtn').addEventListener('click', function (e) { e.stopPropagation(); openSettings(); });
+  function renderSv() {
+    var el = $('svBar'), v = st.svote, d = st.svDone;
+    $('pausePh').hidden = !st.paused;
+    if (!v && !d) { if (!el.hidden) el.hidden = true; return; }
+    var h;
+    if (v) {
+      h = '<div class="svb-h">\uD83D\uDDF3 VOTE \u00b7 <span id="svLeft"></span> s <small>' + esc(v.byName) + ' asks</small></div><div class="svb-l">' + esc(v.label) + '</div>' +
+        '<div class="svb-row">' + v.votes.map(function (x) { var q = pById(x[0]); return '<span class="svb-v ' + (x[4] > 0 ? 'y' : x[4] < 0 ? 'n' : '') + '" style="border-color:' + x[2] + '">' + (q ? pieceCv(q, 22) : '') + '<span style="color:' + x[2] + '">' + esc(x[1]) + '</span><b>' + (x[4] > 0 ? '\u2714' : x[4] < 0 ? '\u2716' : '\u2026') + '</b></span>'; }).join('') + '</div>' +
+        '<div class="svb-meter"><i style="width:' + Math.round(100 * v.y / v.n) + '%"></i><em style="left:' + v.pct + '%"></em></div>' +
+        (v.canVote ? '<div class="svb-btns"><button class="svy' + (v.mine === 'yes' ? ' on' : '') + '" data-act="svYes">\u2714 YES</button><button class="svn' + (v.mine === 'no' ? ' on' : '') + '" data-act="svNo">\u2716 NO</button>' + (v.by === st.me.id ? '<button class="ghost" data-act="svCancel">CANCEL</button>' : '') + '</div>' : '');
+    } else h = '<div class="svb-h ' + (d.ok ? 'ok' : 'no') + '">' + (d.ok ? '\u2714 VOTE PASSED' : '\u2716 VOTE FAILED: ' + esc(d.why)) + '</div><div class="svb-l">' + esc(d.label) + '</div>';
+    if (setH(el, h)) paintPieces(el);       // only rebuilt when a vote changes, so a tap never lands on a button being replaced
+    if (v) { ui.svEnd = Date.now() + v.left; var sl = $('svLeft'); if (sl) sl.textContent = Math.ceil(v.left / 1000); }
+    el.hidden = false;
+    if (v && !renderSv.seen) renderSv.seen = {};
+    if (v && !renderSv.seen[v.id]) { renderSv.seen[v.id] = 1; if (v.by !== st.me.id) { SFX.play('pop'); vib([30, 40, 30]); } }
+  }
 
   // ---- v0.4 Heckle: laughing faces float up the stalling player's phone; the heckler sees a little one leave the button
   function spawnFace(x, y, size, rise) {
@@ -463,8 +516,8 @@
     if (me.passes || me.lockedCash) h += '<div class="sh-extra">' + (me.passes ? '\uD83D\uDE9A ' + me.passes + ' Tow Pass' + (me.passes > 1 ? 'es' : '') : '') + (me.lockedCash ? ' \uD83D\uDD12 ' + money(me.lockedCash) + ' locked for your Tab' : '') + '</div>';
     if (owe) h += '<div class="info warn slim">You owe <b>' + money(t.tab.amount) + '</b>. Sell or mortgage below: it pays itself the moment you have enough.</div>';
     setH($('stuffMain'), h);
-    if (cards) { $('flowBox').hidden = false; renderFlow(deeds); setH($('stuffSide'), moreHtml()); }
-    else { $('flowBox').hidden = true; closeSet(true); setH($('stuffSide'), listHtml(deeds) + moreHtml()); }
+    if (cards) { $('flowBox').hidden = false; renderFlow(deeds); setH($('flowBtns'), deeds.length ? '<button class="act setbtn" data-act="viewSet">\uD83C\uDCCF VIEW SET</button>' : ''); setH($('stuffSide'), moreHtml()); }
+    else { $('flowBox').hidden = true; setH($('flowBtns'), ''); closeSet(true); setH($('stuffSide'), listHtml(deeds) + moreHtml()); }
   }
   function listHtml(deeds) {
     var me = st.me, groups = {}, order = [], out = '';
@@ -545,7 +598,7 @@
   }
   function initFlow(box) {
     box._init = true;
-    box.innerHTML = '<div class="flow" id="flowStage"></div><div class="flow-empty" hidden>No deeds yet. Land on one and hit BUY!</div><div class="flow-hint">Swipe \u00b7 tap the front card to open its set</div>';
+    box.innerHTML = '<div class="flow" id="flowStage"></div><div class="flow-empty" hidden>No deeds yet. Land on one and hit BUY!</div><div class="flow-hint">Swipe \u00b7 tap a card to bounce it on the TV \u00b7 VIEW SET opens its set</div>';
     var stg = $('flowStage');
     stg.addEventListener('pointerdown', function (e) {
       if (flow.open || flow.drag || flow.touches >= 2 || e.button > 0 || e.target.closest('button')) return;
@@ -583,17 +636,17 @@
     $('flowSet').addEventListener('click', function (e) {
       if (e.target.closest('button')) return;
       var c = e.target.closest('.fcard'); if (!c) { closeSet(); return; }
-      if (!c.classList.contains('ghost')) ping(+c.getAttribute('data-sp'));
+      ping(+c.getAttribute('data-sp'));
     });
     window.addEventListener('resize', function () { if (tab === 'stuff' && ui.stuffView === 'cards' && st) { sizeFlow(); layoutFlow(); if (flow.open) renderSet(true); } });
   }
   function clampI(i) { return Math.max(0, Math.min(flow.order.length - 1, i)); }
-  function ping(sp) { if (!(sp >= 0)) return; send({ t: 'pingTile', sp: sp }); vib(12); }
+  function ping(sp) { if (!(sp >= 0) || !st || st.phase !== 'play') return; send({ t: 'pingTile', sp: sp }); vib(12); }
   function flowTap(target) {
     var el = target && target.closest && target.closest('.fcard'); if (!el) return;
     var sp = +el.getAttribute('data-sp'), i = flow.order.indexOf(sp); if (i < 0) return;
     ping(sp);
-    if (Math.abs(i - flow.pos) < 0.5) openSet(S[sp].group); else { flow.target = i; flow.vel = 0; kick(); SFX.play('click'); }
+    if (Math.abs(i - flow.pos) < 0.5) { SFX.play('click'); } else { flow.target = i; flow.vel = 0; kick(); SFX.play('click'); }
   }
   function renderFlow(deeds) {
     var box = $('flowBox'); if (!box._init) initFlow(box);
@@ -645,11 +698,11 @@
     var o = $('flowSet'), gr = flow.open; if (!gr) return;
     var members = B.GROUP_MEMBERS[gr].slice().sort(function (a, b) { return boardRank(a) - boardRank(b); }), n = members.length, land = landscape();
     o.hidden = false;
-    var W = o.clientWidth - 24, H = o.clientHeight - 44, cols = land ? n : (n === 1 ? 1 : 2), rows = Math.ceil(n / cols), gap = 10;
+    var W = o.clientWidth - 24, H = o.clientHeight - 104, cols = land ? n : (n === 1 ? 1 : 2), rows = Math.ceil(n / cols), gap = 10;
     var cw = Math.min((W - (cols - 1) * gap) / cols, (H - (rows - 1) * gap) / rows / 1.42, 260), key = gr + ':' + members.map(function (sp) { return st.props[sp][0] === myOid() ? 1 : 0; }).join('') + ':' + Math.round(cw) + ':' + cols;
     if (fresh || o._key !== key) {
       o._key = key;
-      o.innerHTML = '<div class="fs-title"><span class="sw" style="background:' + B.GROUPS[gr].color + '"></span>' + esc(B.GROUPS[gr].name) + '<small>tap outside or pinch to close</small></div><div class="fs-grid" style="--cw:' + cw.toFixed(1) + 'px;--ch:' + (cw * 1.42).toFixed(1) + 'px;grid-template-columns:repeat(' + cols + ',var(--cw))"></div>';
+      o.innerHTML = '<div class="fs-title"><span class="sw" style="background:' + B.GROUPS[gr].color + '"></span>' + esc(B.GROUPS[gr].name) + '</div><button class="act setbtn closeset" data-act="closeSet">\u2715 CLOSE SET</button><div class="fs-grid" style="--cw:' + cw.toFixed(1) + 'px;--ch:' + (cw * 1.42).toFixed(1) + 'px;grid-template-columns:repeat(' + cols + ',var(--cw))"></div>';
       var grid = o.querySelector('.fs-grid');
       members.forEach(function (sp, i) {
         var el;
@@ -933,7 +986,7 @@
     var b = ui.builder, side = $('msgSide'), me = st.me;
     if (b.map) { renderTradeMap(b, side); return; }
     if (!ui.builderBuilt) {
-      side.innerHTML = '<div class="builder"><div class="row" style="align-items:center"><button class="ghost" data-act="closeBuilder">\u2190</button><h3 style="flex:1;margin:0">' + (b.editId ? 'Edit deal (counter v' + b.v + ')' : 'New deal') + '</h3><button class="ghost mapsw" data-act="bMap">\uD83D\uDDFA\uFE0F Map</button></div>' +
+      side.innerHTML = '<div class="builder"><div class="row" style="align-items:center"><button class="ghost" data-act="closeBuilder">\u2190</button><h3 style="flex:1;margin:0">' + (b.editId ? 'Edit deal (counter v' + b.v + ')' : 'New deal') + '</h3><div class="laysw"><button class="on" data-act="bList">\u2630 List</button><button data-act="bMapOn">\uD83D\uDDFA\uFE0F Map</button></div></div>' +
         '<div class="hb-title">Deal with:</div><div class="partners" id="bPartners"></div>' +
         '<div class="bcols"><div class="bcol"><h4>YOU GIVE</h4><div class="cashrow">\uD83D\uDCB5 <input type="number" min="0" step="10" inputmode="numeric" id="bGiveCash" value="' + (b.give.cash || 0) + '"></div><div class="cashrow" data-cash="give"><button data-add="10">+10</button><button data-add="50">+50</button><button data-add="100">+100</button><button data-add="0">0</button></div><div class="tray" id="bGiveTray"></div></div>' +
         '<div class="bcol"><h4>YOU GET</h4><div class="cashrow">\uD83D\uDCB5 <input type="number" min="0" step="10" inputmode="numeric" id="bGetCash" value="' + (b.get.cash || 0) + '"></div><div class="cashrow" data-cash="get"><button data-add="10">+10</button><button data-add="50">+50</button><button data-add="100">+100</button><button data-add="0">0</button></div><div class="tray" id="bGetTray"></div></div></div>' +
@@ -1001,7 +1054,7 @@
     var me = st.me, P = b.partner != null ? pById(b.partner) : null;
     if (!ui.builderBuilt) {
       side.innerHTML = '<div class="builder map"><div class="tm-layout">' +
-        '<div class="tm-hdr"><div class="row" style="align-items:center"><button class="ghost" data-act="closeBuilder">\u2190</button><h3 style="flex:1;margin:0">' + (b.editId ? 'Counter (v' + b.v + ')' : 'New deal') + '</h3><button class="ghost mapsw" data-act="bMap">\u2630 List</button></div><div class="partners" id="bPartners"></div></div>' +
+        '<div class="tm-hdr"><div class="row" style="align-items:center"><button class="ghost" data-act="closeBuilder">\u2190</button><h3 style="flex:1;margin:0">' + (b.editId ? 'Counter (v' + b.v + ')' : 'New deal') + '</h3><div class="laysw"><button data-act="bList">\u2630 List</button><button class="on" data-act="bMapOn">\uD83D\uDDFA\uFE0F Map</button></div></div><div class="partners" id="bPartners"></div></div>' +
         '<div class="tm-wrap" id="tmWrap"><div class="tboard map" id="tmBoard">' + tradeBoardHtml() + '</div><div class="tm-mid" id="tmMid">' +
           ['me', 'them'].map(function (k) { var sl = k === 'me' ? 'give' : 'get'; return '<div class="tm-side" data-side="' + k + '"><div class="tm-name" id="tmName_' + k + '"></div><div class="tm-bank" id="tmBank_' + k + '"></div>' +
             '<div class="tm-row"><div class="tm-slider" data-sl="' + sl + '" id="tmSl_' + sl + '"><i class="tm-fill"></i><b class="tm-knob"></b></div><div class="tm-tokcol"><div class="tm-amt" id="tmAmt_' + sl + '"></div><div class="tm-tok" id="tmTok_' + k + '"></div></div></div>' +
@@ -1133,6 +1186,14 @@
       case 'newDeal': openBuilder(typeof ui.thread === 'number' ? ui.thread : null); break;
       case 'dealWith': openBuilder(+el.getAttribute('data-pid')); break;
       case 'closeBuilder': ui.builder = null; renderMsgs(); break;
+      case 'viewSet': openFrontSet(); break;                                                       // v0.7
+      case 'closeSet': closeSet(); SFX.play('click'); vib(10); break;
+      case 'bList': case 'bMapOn': if (ui.builder) { var wantMap = act === 'bMapOn'; if (!!ui.builder.map !== wantMap) { ui.builder.map = wantMap; store.set('rdr_tradeView', wantMap ? 'map' : 'list'); ui.builderBuilt = false; SFX.play('click'); renderMsgs(); } } break;
+      case 'svOpen': openSettings(); break;
+      case 'svProp': send({ t: 'propose', k: el.getAttribute('data-k'), v: el.getAttribute('data-v') ? +el.getAttribute('data-v') : undefined }); vib(20); SFX.play('click'); $('setSheet').hidden = true; break;
+      case 'svYes': case 'svNo': if (st.svote) { send({ t: 'svote', id: st.svote.id, yes: act === 'svYes' }); vib(20); SFX.play('click'); } break;
+      case 'svCancel': send({ t: 'svCancel' }); break;
+      case 'svClose': $('setSheet').hidden = true; break;
       case 'back': ui.thread = null; renderMsgs(); break;
       case 'decline': send({ t: 'decline', id: +el.getAttribute('data-id') }); vib(20); break;
       case 'edit': var tr = st.trades.filter(function (t) { return t.id === +el.getAttribute('data-id'); })[0]; if (tr) openBuilder(null, tr); break;
@@ -1229,6 +1290,7 @@
   // ---- Deed card from any map: front = value and rent, back = every Shop / Mega-Plex step. Tap to flip.
   function openDeed(sp) {
     var s = S[sp]; if (!s || !s.price) return;
+    if (tab !== 'msgs') ping(sp);     // v0.7: any property tap bounces it on the TV (never from the private deal screens)
     ui.deedSp = sp; ui.deedFlip = false; renderDeed(); $('deedSheet').hidden = false; SFX.play('card'); vib(10);
   }
   function renderDeed() {
