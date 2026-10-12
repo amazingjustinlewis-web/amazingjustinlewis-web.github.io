@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Zero to Phi</title>
+<link rel="icon" href="../../assets/img/favicon.svg">
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{position:fixed;inset:0;width:100vw;height:100vh;display:block}</style>
+</head><body>
+<canvas id="c" aria-label="Zero to Phi"></canvas>
+<script src="../js/qrcode.js"></script>
+<script>
+(function(){
+var PHI=(1+Math.sqrt(5))/2,qs=new URLSearchParams(location.search);
+var still=matchMedia('(prefers-reduced-motion: reduce)').matches||qs.get('still')==='1',PULSE=qs.get('pulse')!=='0',OVER=qs.get('overlay')==='1';
+var FIXT=qs.has('t')?+qs.get('t'):null;
+var c=document.getElementById('c'),x=c.getContext('2d'),W,H,D,sc,ox,oy;
+// ---- logo geometry, in the 800x650 frame of logo.svg's viewBox ----
+// main thread: a short invisible lead-in from bottom-left, the 0 loop, then up and over the phi bowl to the terminus
+var LEAD=[[-90,640],[-20,520]];
+var MAIN=[[45,420],[95,492],[165,510],[238,462],[278,360],[284,250],[262,150],[214,90],[156,74],[98,96],[52,168],[28,272],[34,372],[70,452],[132,502],[198,500],
+ [262,462],[310,400],[334,320],[352,232],[384,162],[452,102],[568,76],[684,108],[758,206],[766,326],[722,428],[636,500],[552,516],[472,496],[418,458],[388,418]];
+var VERT=[[563,6],[566,200],[566,440],[568,644]];
+var CTRL=LEAD.concat(MAIN),NL=LEAD.length;
+var HOL={x:156,y:292}; // hollow of the 0
+function catmull(P,n){var out=[];for(var i=0;i<P.length-1;i++){var p0=P[Math.max(i-1,0)],p1=P[i],p2=P[i+1],p3=P[Math.min(i+2,P.length-1)];
+ for(var k=0;k<n;k++){var t=k/n,t2=t*t,t3=t2*t;out.push([0.5*(2*p1[0]+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3),
+  0.5*(2*p1[1]+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3)])}}out.push(P[P.length-1]);return out}
+// breathing: summed octaves at golden-ratio frequency ratios
+function noise(i,T,j){var v=0,a=1,f=1;for(var o=0;o<4;o++){v+=a*Math.sin(f*(T*0.6+i*0.9)+j*2.1+o*1.7);a/=PHI;f*=PHI}return v}
+function perturb(P,T,amp,j){return P.map(function(p,i){return[p[0]+amp*noise(i,T,j),p[1]+amp*noise(i+11,T,j+5)]})}
+function arc(pts){var L=[0];for(var i=1;i<pts.length;i++)L.push(L[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));return L}
+// width along arc length: thin start, swelling, sharp thinning at the terminus
+function wMain(s){if(s<0)return 0;return 2+30*(1-Math.exp(-s/0.07))*Math.pow(1-s,0.32)*(0.85+0.15*Math.sin(Math.PI*s))}
+function wVert(s){return 2+20*Math.pow(Math.sin(Math.PI*s),0.6)}
+// ---- QR ----
+var Q=qrcode(0,'H');Q.addData('https://amazingjustinlewis-web.github.io/');Q.make();var N=Q.getModuleCount(),QZ=4,qbox;
+function qrLevel(T){if(still||!PULSE)return 1;var u=T%8;
+ if(u<1.5){var t=u/1.5;return 1+2.9*Math.pow(t-1,3)+1.9*Math.pow(t-1,2)}
+ if(u<6.6)return 1+0.03*Math.sin((u-1.5)/5.1*Math.PI);if(u<7.6)return 0.5+0.5*Math.cos(Math.PI*(u-6.6));return 0}
+function mix(k){var b=[92,69,25];return 'rgb('+b.map(function(v){return Math.max(0,Math.round(v*k))}).join(',')+')'}
+function size(){D=devicePixelRatio||1;W=innerWidth;H=innerHeight;c.width=Math.round(W*D);c.height=Math.round(H*D);
+ sc=Math.min(W*0.9/800,H*0.78/650);ox=W/2-400*sc;oy=H/2-325*sc;
+ var n=N+2*QZ,mp=Math.max(2,Math.floor(21/98.05*800*sc*D/n)),S=mp*n,cx=Math.round((ox+HOL.x*sc)*D),cy=Math.round((oy+HOL.y*sc)*D);
+ qbox={x:cx-(S>>1),y:cy-(S>>1),m:mp,S:S}}
+// ---- timeline (phi-based) ----
+var CYC=Math.pow(PHI,4);            // 6.854 s loop
+var FLOW=PHI*PHI;                   // energy front travel 2.618 s
+var STRIKE0=FLOW+1/PHI, STRIKE=1/(PHI*PHI); // meteor at 3.236 s, lasting 0.382 s
+var TAU=0.06;                       // tail length (arc fraction), phi-decay
+function gold(t){var a=Math.pow(t,PHI),b=Math.pow(1-t,PHI);return a/(a+b)}
+function strokePath(pts,L,wf,from,alphaF,color,widthMul){var tot=L[L.length-1];
+ for(var i=1;i<pts.length;i++){var s=L[i]/tot-from;var a=alphaF(i,s);if(a<0.004)continue;x.globalAlpha=Math.min(1,a);x.strokeStyle=color;
+  x.lineWidth=Math.max(0.6,wf(s)*widthMul)*sc;x.beginPath();x.moveTo(pts[i-1][0],pts[i-1][1]);x.lineTo(pts[i][0],pts[i][1]);x.stroke()}x.globalAlpha=1}
+var img=null;if(OVER){img=new Image();img.src='../../assets/img/logo.svg'}
+function draw(ms){
+ var T=FIXT!=null?FIXT:(still?0:ms/1000),u=FIXT!=null?FIXT%CYC:T%CYC,amp=still?0:3.2;
+ x.setTransform(D,0,0,D,0,0);x.globalCompositeOperation='source-over';x.fillStyle='#000';x.fillRect(0,0,W,H);
+ // QR (device pixels)
+ var k=qrLevel(T);x.setTransform(1,0,0,1,0,0);x.fillStyle=mix(k);x.fillRect(qbox.x,qbox.y,qbox.S,qbox.S);x.fillStyle='#000';
+ for(var r=0;r<N;r++)for(var q=0;q<N;q++)if(Q.isDark(r,q))x.fillRect(qbox.x+(q+QZ)*qbox.m,qbox.y+(r+QZ)*qbox.m,qbox.m,qbox.m);
+ // everything else is clipped away from the QR
+ x.save();x.beginPath();x.rect(0,0,c.width,c.height);var pd=qbox.m*1.5;x.rect(qbox.x-pd,qbox.y-pd,qbox.S+2*pd,qbox.S+2*pd);x.clip('evenodd');
+ x.setTransform(D*sc,0,0,D*sc,D*ox,D*oy);x.lineCap='round';x.lineJoin='round';sc=1; // draw in logo units
+ var mp=catmull(perturb(CTRL,T,amp,0),14),ML=arc(mp),mtot=ML[ML.length-1],s0=ML[NL*14]/mtot; // s0: where the visible thread starts
+ var vp=catmull(perturb(VERT,T,amp*0.5,3),30),VL=arc(vp);
+ var wm=function(s){return wMain((s)/(1-s0))},alpha=function(s){return 1};
+ // the formed thread (base gold, breathing)
+ var g=x.createLinearGradient(0,0,800,650);g.addColorStop(0,'#f6dc8e');g.addColorStop(.5,'#d9ad45');g.addColorStop(1,'#b7801f');
+ strokePath(mp,ML,wm,s0,function(i,s){return s<0?0:0.78},g,1);
+ strokePath(vp,VL,wVert,0,function(){return 0.78},g,1);
+ if(!still){
+  x.globalCompositeOperation='lighter';x.lineCap='butt';
+  // energy front along the main thread, entering from bottom-left
+  var ft=u/FLOW,front=ft<=1?gold(ft)*(1+TAU*0.6):null;
+  if(front!=null){var sp=Math.max(0.15,1-Math.abs(ft-0.5)*1.4); // density follows speed
+   strokePath(mp,ML,function(s){return Math.max(3,wm(s))},0,function(i,s){var sa=ML[i]/mtot,d=front-sa;if(d<0||sa>1)return 0;return Math.pow(PHI,-d/TAU*2.2)*0.9*sp+(d<0.01?0.6:0)},'#fff1c4',1.25);
+   var hi=Math.min(mp.length-1,Math.max(0,Math.round(front*(mp.length-1))));if(front<=1.001){var h=mp[hi],gr=x.createRadialGradient(h[0],h[1],0,h[0],h[1],34);
+    gr.addColorStop(0,'rgba(255,248,220,.95)');gr.addColorStop(.3,'rgba(245,205,100,.45)');gr.addColorStop(1,'rgba(226,184,74,0)');x.fillStyle=gr;x.beginPath();x.arc(h[0],h[1],34,0,7);x.fill()}}
+  // afterglow on the formed thread, decaying after the front passes
+  var since=u-FLOW;if(since>0){var ag=0.16*Math.exp(-since/0.9);strokePath(mp,ML,wm,s0,function(i,s){return s<0?0:ag},'#f5d27a',1.05)}
+  // the strike: meteor straight down the phi's vertical stroke
+  var st=(u-STRIKE0)/STRIKE;if(st>=0&&st<=1.6){var head=Math.min(1,st*st*(3-2*st)*1.05);
+   strokePath(vp,VL,function(s){return wVert(s)*0.9},0,function(i,s){var d=head-s;if(d<0)return 0;return Math.exp(-d/0.06)*(st>1?Math.max(0,1-(st-1)/0.6):1)},'#fffbe8',1);
+   if(st<=1){var hp=vp[Math.round(head*(vp.length-1))],gr2=x.createRadialGradient(hp[0],hp[1],0,hp[0],hp[1],26);gr2.addColorStop(0,'rgba(255,255,245,1)');gr2.addColorStop(.25,'rgba(255,225,140,.6)');gr2.addColorStop(1,'rgba(255,200,90,0)');
+    x.fillStyle=gr2;x.beginPath();x.arc(hp[0],hp[1],26,0,7);x.fill()}
+   var vg=0.4*Math.exp(-Math.max(0,st-1)/0.5)*(st>0.2?1:0);strokePath(vp,VL,wVert,0,function(){return vg},'#f5d27a',1.05)}
+  x.globalCompositeOperation='source-over';x.lineCap='round'}
+ if(img&&img.complete){x.globalAlpha=0.45;x.globalCompositeOperation='source-over';x.filter='hue-rotate(160deg) saturate(3)';x.drawImage(img,0,0,800,650);x.filter='none';x.globalAlpha=1}
+ x.restore();sc=Math.min(W*0.9/800,H*0.78/650);
+ document.documentElement.dataset.ready=1;
+ if(!still&&FIXT==null)requestAnimationFrame(draw)}
+addEventListener('resize',function(){size();if(still||FIXT!=null)draw(0)});
+size();if(img)img.onload=function(){draw(0)};requestAnimationFrame(draw);
+})();
+</script>
+</body></html>

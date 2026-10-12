@@ -1,5 +1,6 @@
 /* Dev launcher catalogue. url is relative to /dev-7q3x/. mode: 'frame' (runs inside the launcher) or 'tab' (fallback: opens on its own). */
 window.DEV_GAMES = [
+  { id: 'zerolive', name: 'Zero logo LIVE', ver: 'v0.1', url: 'zero/logo-live.html', img: 'zero/live-shot.png', tag: 'Procedural logo \u00b7 energy + strike \u00b7 QR', mode: 'tab' },
   { id: 'zerologo', name: 'Zero logo + QR', ver: 'v0.1', url: 'zero/logo.html', img: 'zero/logo-shot.png', tag: 'Logo pulse \u00b7 3 light modes', mode: 'tab' },
   { id: 'zeroqr', name: 'Zero QR test', ver: 'v0.1', url: 'zero-qr/index.html', img: 'zero-qr/shot.png', tag: 'Hidden QR \u00b7 5 contrast presets', mode: 'tab' },
   { id: 'zero', name: 'Zero front page (draft)', ver: 'v0.1', url: 'zero/index.html', img: 'zero/shot.png', tag: 'New 0\u2011Phi home \u00b7 draft', mode: 'tab' },
