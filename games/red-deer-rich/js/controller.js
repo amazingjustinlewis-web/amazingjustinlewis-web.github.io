@@ -623,16 +623,10 @@
     }
     stg.addEventListener('pointerup', up); stg.addEventListener('pointercancel', function (e) { if (flow.drag && flow.drag.id === e.pointerId) { flow.drag = null; flow.target = clampI(Math.round(flow.pos)); kick(); } });
     stg.addEventListener('wheel', function (e) { if (flow.open) return; var dd = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if (Math.abs(dd) < 4) return; e.preventDefault(); var now = Date.now(); if (now - (flow.wheelAt || 0) < 140) return; flow.wheelAt = now; flow.target = clampI(Math.round(flow.target == null ? flow.pos : flow.target) + (dd > 0 ? 1 : -1)); flow.vel = 0; kick(); }, { passive: false });
-    // pinch open on the wheel unfolds the front card's set; pinch closed on the unfolded set folds it back
+    // v0.7: sets open/close only via the explicit VIEW SET / CLOSE SET buttons (pinch removed); still ignore 2-finger swipes
     var host = $('tab-stuff').parentNode;
-    function dist(e) { var a = e.touches[0], b = e.touches[1]; return Math.max(10, Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)); }
-    host.addEventListener('touchstart', function (e) { if (tab !== 'stuff' || ui.stuffView !== 'cards') return; flow.touches = e.touches.length; if (e.touches.length === 2) { flow.pinch = { d0: dist(e), done: false }; flow.drag = null; } }, { passive: true });
-    host.addEventListener('touchmove', function (e) {
-      if (!flow.pinch || e.touches.length !== 2) return; e.preventDefault();
-      var r = dist(e) / flow.pinch.d0; if (flow.pinch.done) return;
-      if (!flow.open && r > 1.25) { flow.pinch.done = true; openFrontSet(); } else if (flow.open && r < 0.8) { flow.pinch.done = true; closeSet(); }
-    }, { passive: false });
-    host.addEventListener('touchend', function (e) { flow.touches = e.touches.length; if (e.touches.length < 2) flow.pinch = null; });
+    host.addEventListener('touchstart', function (e) { if (tab !== 'stuff' || ui.stuffView !== 'cards') return; flow.touches = e.touches.length; if (e.touches.length >= 2) flow.drag = null; }, { passive: true });
+    host.addEventListener('touchend', function (e) { flow.touches = e.touches.length; });
     $('flowSet').addEventListener('click', function (e) {
       if (e.target.closest('button')) return;
       var c = e.target.closest('.fcard'); if (!c) { closeSet(); return; }
