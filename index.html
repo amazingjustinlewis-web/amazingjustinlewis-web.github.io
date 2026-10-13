@@ -67,12 +67,15 @@ fetch('assets/img/logo.svg').then(function(r){return r.text()}).then(function(t)
  document.getElementById('er').setAttribute('radius',THIN);ready=true;fit();addEventListener('resize',fit);tick(0);document.documentElement.dataset.ready=1;requestAnimationFrame(tick)});
 // a click, tap or Enter anywhere opens the hub (TV remotes and laptops)
 // front door: a per-screen pairing room; phone remote or a local click opens the options menu
-// [id, name, typical minutes, late join?]
-var GAMES=[['red-deer-rich','Red Deer Rich',60,0],['zombie-tiles','Zombie Tiles',20,0],['space','Drift Signal',30,1],['mech','Iron Stride',15,1],['laser-range','Laser Range',10,1],['walker','Walker',20,1],['charge-hop','Charge Hop',5,0]];
+// [id, name, typical minutes, late join?]  big-screen games fly onto the TV; phone-only games release the screen
+var GAMES=[['red-deer-rich','Red Deer Rich',60,0],['zombie-tiles','Zombie Tiles',20,0],['space','Drift Signal',30,1],['mech','Iron Stride',15,1],['laser-range','Laser Range',10,1],['walker','Walker',20,1]];
+var PHONE_GAMES=[['Battleship','cafe/play.html']];
+function gameItem(g){return{id:g[0],label:g[1]+'  · TV',play:'games/'+g[0]+'/index.html',name:g[1],mins:g[2],late:g[3],ctrl:g[3]?'../games/'+g[0]+'/controller.html':''}}
 var door=window.ZTP_PHONE?null:Door({name:'Zero to Phi',title:'ZERO TO PHI',
- items:function(){return[{label:'Games',sub:function(){return GAMES.map(function(g){return{label:g[1],play:'games/'+g[0]+'/index.html',name:g[1],mins:g[2],late:g[3],ctrl:g[3]?'../games/'+g[0]+'/controller.html':''}}).concat([{label:'Back',back:1}])}},
-  {label:'Café games',play:'cafe/screen.html',name:'Café games',mins:15,late:1,ctrl:'../cafe/play.html'},{label:'Show a QR page',qr:1},
-  {label:'Set up a café screen',phone:'go/#biz',note:'SETUP IS OPEN ON YOUR PHONE'},{label:'Explore 0-Phi',href:'classic.html'},{label:'Close',close:1}]},
+ find:function(id){var g=GAMES.filter(function(x){return x[0]===id})[0];return g&&gameItem(g)},
+ items:function(){return[{label:'Games',sub:function(){return GAMES.map(gameItem).concat(PHONE_GAMES.map(function(p){return{label:p[0]+'  · phone',phoneGo:'../'+p[1],href:p[1]}}),[{label:'Back',back:1}])}},
+  {label:'Explore 0-Phi',phoneGo:'../classic.html',href:'classic.html'},
+  {label:'Set up a café screen',phone:'#biz'},{label:'Close',close:1}]},
  onCode:function(u){setQR(u)},flyEl:function(){return svg},flyOrigin:function(){return window.__zc||'50% 50%'},onPaired:function(p){ZQ.setForced(p?true:null,3.5)}});
 addEventListener('click',function(e){if(window.ZTP_PHONE){location.href='go/';return}if(door&&!door.isOpen()&&!e.target.closest('#door,#doorframe'))door.menu()});
 })();

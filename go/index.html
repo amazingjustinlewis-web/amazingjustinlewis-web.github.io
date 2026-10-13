@@ -97,9 +97,12 @@ input[type=text]{width:100%;padding:13px 14px;border-radius:12px;border:1px soli
  <label for="bl">Logo</label><input type="file" id="bl" accept="image/*"><img id="logoPrev" alt="" hidden>
  <label>Games</label><div class="chips" id="bgames"></div>
  <label>Logos</label><div class="chips" id="blogos"><span class="chip on" data-v="cl">&#10003; Show my café logo</span><span class="chip on" data-v="pl">&#10003; Show 0-Phi logo</span></div>
- <label>Screen mode</label><div class="chips" id="blayout"><span class="chip on" data-v="zero">Zero (logo + scan)</span><span class="chip" data-v="grid">Café games grid</span><span class="chip" data-v="always">Always-on QR</span></div>
+ <label>Screen mode</label><div class="chips" id="blayout"><span class="chip on" data-v="zero">Main page (breathing QR)</span><span class="chip" data-v="grid">Café games grid</span><span class="chip" data-v="always">Always-on QR</span></div>
  <p class="muted" style="font-size:13px">Always-on QR: the screen is just your logo and the code, which never sinks. Customers get your games menu on their own phones.</p>
- <p style="margin-top:22px"><button class="btn" id="launch">Launch screen &rarr;</button></p>
+ <div class="row" style="margin-top:14px"><button class="btn" id="bqr">Show a QR page on the TV</button></div>
+ <div class="row"><a class="btn" href="../cafe/screen.html?demo=1" target="_blank">Preview café games</a></div>
+ <div class="row"><a class="btn" href="../cafe/setup.html">Full café setup (menu, specials, promos)</a></div>
+ <p style="margin-top:22px"><button class="btn" id="launch" style="background:linear-gradient(180deg,#f6dc8e,#d4a63e);color:#120d03">Launch screen &rarr;</button></p>
  <p class="muted" id="bizurl"></p>
 </section>
 
@@ -124,7 +127,7 @@ var LIB=[['games/charge-hop.html','Charge Hop','Keyboard'],['games/red-deer-rich
  ['games/laser-range.html','Laser Range','Gyro aim'],['games/mech.html','Iron Stride','Mech'],['games/space.html','Drift Signal','Space crew'],['games/walker.html','Walker','Calm play world'],['cafe/play.html','Café games','Battleship, Connect Four']];
 function prof(){try{return JSON.parse(localStorage.getItem(PK))}catch(e){return null}}
 function save(p){localStorage.setItem(PK,JSON.stringify(p))}
-function show(v){[].forEach.call(document.querySelectorAll('.view'),function(s){s.classList.toggle('on',s.id==='v-'+v)});if(location.hash!=='#'+v)history.replaceState(null,'','#'+v);scrollTo(0,0);render()}
+function show(v){if(v==='hub'&&typeof R!=='undefined'&&R)v='remote';[].forEach.call(document.querySelectorAll('.view'),function(s){s.classList.toggle('on',s.id==='v-'+v)});if(location.hash!=='#'+v)history.replaceState(null,'','#'+v);scrollTo(0,0);render()}
 function render(){var p=prof();$('who').textContent=p?(p.initials||p.name)+(p.demo?' · demo':''):'';
  if(p){$('hello').textContent='Welcome back, '+p.name;$('meline').textContent='Founder #'+p.founder+' (demo number) · '+p.initials;
   [].forEach.call(document.querySelectorAll('#showAs .chip'),function(c){c.classList.toggle('on',c.dataset.v===(p.showAs||'initials'))})}}
@@ -150,7 +153,12 @@ $('bl').onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReade
   logo=cv.toDataURL('image/png');$('logoPrev').src=logo;$('logoPrev').hidden=false};im.src=r.result};r.readAsDataURL(f)};
 $('launch').onclick=function(){var name=$('bn').value.trim()||'Your Café',id=(name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,20)||'cafe')+'-'+Math.random().toString(36).slice(2,6);
  var g=Object.keys(sel).filter(function(k){return sel[k]});if(logo)try{localStorage.setItem('ztp-biz-logo-'+id,logo)}catch(e){}
- var url='../screen/?biz='+encodeURIComponent(id)+'&n='+encodeURIComponent(name)+'&g='+g.join(',')+'&layout='+layout+'&cl='+logos.cl+'&pl='+logos.pl;$('bizurl').textContent='Screen: '+url.replace('..',location.origin);window.open(url,'_blank')};
+ var rel='screen/?biz='+encodeURIComponent(id)+'&n='+encodeURIComponent(name)+'&g='+g.join(',')+'&layout='+layout+'&cl='+logos.cl+'&pl='+logos.pl;
+ // paired to a TV: fly that TV into the branded screen (the logo travels with the message); otherwise open it here
+ if(R&&R.send({t:'screen',url:rel,id:id,name:name,logo:logo||''})){$('bizurl').textContent='Launched on the paired screen.';return}
+ $('bizurl').textContent='Screen: '+location.origin+location.pathname.replace(/go\/.*$/,'')+rel;window.open('../'+rel,'_blank')};
+$('bqr').onclick=function(){if(!(R&&R.send({t:'qrpage'})))$('bizurl').textContent='Pair with a screen first (scan its code) to show a QR page on it.'};
+var paired0=function(){$('launch').innerHTML=R?'Launch on this screen &rarr;':'Launch screen &rarr;'};setInterval(paired0,1000);
 // ---- arriving from a business screen: branded hub ----
 if(qs.get('biz')){var bn=qs.get('n')||'this café',lg=localStorage.getItem('ztp-biz-logo-'+qs.get('biz'));
  $('brand').hidden=false;$('brand').innerHTML=(lg?'<img src="'+lg+'" alt="">':'')+'<div><div class="muted">Welcome to</div><h1 style="margin:0">'+bn.replace(/[<>&"]/g,'')+'</h1></div>';
@@ -164,20 +172,23 @@ $('cast').onclick=function(){var u=location.origin+location.pathname.replace(/go
  if(window.PresentationRequest){try{new PresentationRequest([u]).start().catch(function(){howCast()});return}catch(e){}}howCast()};
 function howCast(){$('ex-cast').classList.add('on');$('castHow').innerHTML='<br><br><b>How to cast:</b> in Chrome open the menu (⋮) → <i>Cast…</i> and pick your TV, or open <b>amazingjustinlewis-web.github.io</b> in the TV\'s browser. A laptop plugged into a TV works too.'}
 // ---- remote for a paired screen ----
-var R=null,me=localStorage.getItem('ztp-remote-id')||('r'+Math.random().toString(36).slice(2,10));localStorage.setItem('ztp-remote-id',me);
+var launched=0,R=null,me=localStorage.getItem('ztp-remote-id')||('r'+Math.random().toString(36).slice(2,10));localStorage.setItem('ztp-remote-id',me);
 function rsend(m){if(R)R.send(m)}
-function startRemote(code){show('remote');var o={prefix:'ztp-door-v1-',code:code,
-  onStatus:function(s){$('rstat').textContent=s==='online'?'Connected · you are the remote':s==='noroom'?'Screen not found yet, retrying…':'Connecting to the screen…';if(s==='online')rsend({t:'hi',id:me})},
+var code='';function startRemote(c){code=c;show('remote');var o={prefix:'ztp-door-v1-',code:c,
+  onStatus:function(s){$('rstat').textContent=s==='online'?'Connected · you are the remote':s==='noroom'?'Screen not found yet, retrying…':'Connecting to the screen…';if(s==='online'){rsend({t:'hi',id:me});if(qs.get('launch')&&!launched){launched=1;rsend({t:'launch',game:qs.get('launch')})}}},
   onMessage:function(d){if(!d)return;if(d.t==='hello')$('rtitle').textContent=d.screen;
    var playing=d.t==='playing';if(playing||d.t==='menu'||d.t==='idle'){$('rplay').hidden=!playing;$('rpad').hidden=!!(playing&&d.owner&&d.owner!==me)}
    if(d.t==='menu'){$('rtitle').textContent=d.title;$('rstat').textContent='Connected · you are the remote';$('rlist').innerHTML=d.items.map(function(l,i){return '<a href="#" data-i="'+i+'"'+(i===d.sel?' class="sel"':'')+'>'+l+'<span>'+(i===d.sel?'&#9664;':'')+'</span></a>'}).join('')}
    if(d.t==='idle')$('rlist').innerHTML='<p class="muted">Menu closed. Press OK to open it.</p>';
    if(playing){$('rlist').innerHTML='';$('rpname').textContent=d.name;var mine=d.owner&&d.owner===me;
-    $('rtitle').textContent=mine?'Now playing':'This screen is busy';$('rstat').textContent=mine?'Connected · press back to return to the menu':'Connected';
+    $('rtitle').textContent=mine?'Now playing':'This screen is busy';$('rstat').textContent=mine?'You\u2019re the host · press back to end the game and return to the menu':'Connected';
     var left=Math.max(1,Math.round(d.mins-(Date.now()-d.since)/60000));
     $('rpmsg').textContent=d.late?'is on the big screen now. You can still jump in.':'is on the big screen now. About '+left+' min until this screen is free.';
     $('rpjoin').hidden=!d.late;if(d.late)$('rpjoina').href=d.ctrl||'#'}
-   if(d.t==='open'){location.href=d.url.charAt(0)==='#'?location.pathname+d.url:d.url}}};
+   if(d.t==='open'){if(d.url.charAt(0)==='#')show(d.url.slice(1));else location.href=d.url}
+   if(d.t==='go'){try{localStorage.setItem('ztp-last-room',JSON.stringify({code:code,t:Date.now(),local:qs.get('local')==='1'}))}catch(e){}if(d.release&&R){var r=R;R=null;setTimeout(function(){try{r.destroy()}catch(e){}},300)}setTimeout(function(){location.href=d.url},350)}
+   if(d.t==='ended'){if(R){var r2=R;R=null;try{r2.destroy()}catch(e){}}$('rtitle').textContent='Thanks for playing';$('rstat').textContent=(d.name||'The game')+' has ended and the screen is free again.';$('rlist').innerHTML='';$('rplay').hidden=true;$('rpad').hidden=true}
+   if(d.t==='busy'){$('rtitle').textContent='This screen is busy';$('rstat').textContent='Someone else is using it right now. Scan another screen, or try again in a bit.';$('rlist').innerHTML=''}}};
  R=qs.get('local')==='1'?new LRNet.LocalClient(o):new LRNet.Client(o)}
 document.addEventListener('click',function(e){var b=e.target.closest('.pb');if(b){rsend({t:'nav',d:b.dataset.n});return}
  var a=e.target.closest('#rlist a');if(a){e.preventDefault();rsend({t:'pick',i:+a.dataset.i})}});

@@ -58,8 +58,11 @@
     function leave() { if (!flown) return; flown = false; flyTo('out'); outUntil = Date.now() + 1150; }
     function close() { if (paired()) { menu(false); return; } stack = []; shown = false; paint(); }
     function back() { if (playing) return stop(); if (stack.length > 1) { var wasBig = !!cur().big; stack.pop(); sel = 0; paint(); if (wasBig) leave(); } else if (shown) close(); }
+    var actor = null; // the remote connection that triggered the current action (null = local)
     function act(it) {
       if (!it) return;
+      if (it.phoneGo && actor) { net.send(actor, { t: 'go', url: it.phoneGo, release: true }); release(actor); return; }
+      if (it.phoneGo && !it.href) return;
       if (it.sub) { stack.push({ title: it.label.toUpperCase(), items: it.sub() }); sel = 0; paint(); }
       else if (it.qr) { stack.push({ title: 'SCAN TO PAIR A PHONE', items: [{ label: 'Back', back: 1 }], big: pairURL(code) }); sel = 0; enter(); setTimeout(paint, 700); }
       else if (it.play) play(it);
@@ -68,6 +71,16 @@
       else if (it.href) location.href = it.href;
       else if (it.back) back();
       else if (it.close) close();
+    }
+    // a phone leaving for phone-only content gives the screen back at once: no grace, QR breathes for the next person
+    // game over (a game posts {ztp:'end'} to its parent): free the screen for the next people
+    function endGame() { if (!playing) return; for (var k in remotes) { var c = remotes[k]; try { net.send(c, { t: 'ended', name: playing.name }); } catch (e) {} c.ztpReleased = true; delete remotes[k]; delete seen[k]; } clearGrace(); stop(); stack = []; paint(); update(); }
+    window.addEventListener('message', function (e) { if (e.source === fr.contentWindow && e.data && (e.data.ztp === 'end' || e.data.t === 'ztp-end')) endGame(); });
+    function release(conn) {
+      delete remotes[conn.connectionId]; delete seen[conn.connectionId]; conn.ztpReleased = true;
+      setTimeout(function () { try { conn.close(); } catch (e) {} }, 400);
+      if (!Object.keys(remotes).length) { clearGrace(); if (playing) stop(); leave(); stack = []; shown = false; paint(); }
+      update();
     }
     function nav(d, from) {
       if (playing) { if (d === 'back' && (!from || !playing.owner || from === playing.owner)) stop(); return; }
@@ -110,9 +123,13 @@
       onJoin: function (conn) { remotes[conn.connectionId] = conn; seen[conn.connectionId] = Date.now(); clearGrace(); net.send(conn, { t: 'hello', screen: o.name || 'Zero to Phi' }); update(); if (!stack.length && !playing) menu(false); else sync(); },
       onMessage: function (conn, d) { if (!remotes[conn.connectionId]) opts.onJoin(conn); seen[conn.connectionId] = Date.now(); if (!d || d.t === 'ping') return net.send(conn, { t: 'pong' });
         if (d.t === 'hi') { if (d.id) conn.ztpId = d.id; sync(); }
-        else if (d.t === 'nav') nav(d.d, who(conn));
-        else if (d.t === 'pick') { if (playing) return; if (!stack.length) menu(false); sel = d.i; var it = items()[d.i]; if (it && it.play) it.owner = who(conn); act(it); } },
-      onClose: function (conn) { if (!remotes[conn.connectionId]) return; delete remotes[conn.connectionId]; delete seen[conn.connectionId]; if (!Object.keys(remotes).length) startGrace(); update(); } };
+        else if (d.t === 'nav') { actor = conn; nav(d.d, who(conn)); actor = null; }
+        else if (d.t === 'release') release(conn);
+        else if (d.t === 'launch') { var g = o.find && o.find(d.game); if (!g) return; if (Object.keys(remotes).some(function (k) { return remotes[k] !== conn; }) || playing) return net.send(conn, { t: 'busy' }); g.owner = who(conn); play(g); }
+        else if (d.t === 'screen') { if (d.logo && d.id) try { localStorage.setItem('ztp-biz-logo-' + d.id, d.logo); } catch (e) {} play({ name: d.name || 'Caf\u00e9 screen', play: d.url, mins: 60, owner: who(conn) }); }
+        else if (d.t === 'qrpage') { if (playing) return; if (!stack.length) menu(false); act({ qr: 1 }); }
+        else if (d.t === 'pick') { if (playing) return; if (!stack.length) menu(false); sel = d.i; var it = items()[d.i]; if (it && it.play) it.owner = who(conn); actor = conn; act(it); actor = null; } },
+      onClose: function (conn) { if (conn.ztpReleased || !remotes[conn.connectionId]) return; delete remotes[conn.connectionId]; delete seen[conn.connectionId]; if (playing && playing.owner && playing.owner === who(conn)) { var ks = Object.keys(remotes); playing.owner = ks.length ? who(remotes[ks[0]]) : ''; sync(); } if (!Object.keys(remotes).length) startGrace(); update(); } };
     if (!o.noPair) { net = local ? new LRNet.LocalHost(opts) : new LRNet.Host(opts); code = net.code; if (o.onCode) o.onCode(pairURL(code), code); }
     var api = { menu: function () { menu(true); }, close: close, isOpen: function () { return ov.classList.contains('on') || !!playing; }, code: function () { return code; }, pairURL: function () { return pairURL(code); },
       state: function () { return { menu: stack.length, shown: ov.classList.contains('on'), playing: playing && playing.name, paired: paired(), grace: lost != null }; } };
