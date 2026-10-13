@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Bloat Flier – polish v02</title>
+<title>Bloat Flier – polish v02bb</title>
 <style>html,body{margin:0;height:100%;background:#12141a;color:#cde;font:14px sans-serif;overflow:hidden}#ui{position:fixed;top:10px;left:10px;background:#0008;padding:8px 12px;border-radius:6px}</style>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.170.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.170.0/examples/jsm/"}}</script>
 </head><body><div id="ui"><b>Bloat Flier</b> polish v02 · <span id="info">loading…</span><br>
@@ -15,7 +15,7 @@ const oc=new OrbitControls(cam,r.domElement);oc.enableDamping=true;
 s.add(new THREE.HemisphereLight(0xbfd8ff,0x302020,1.6));const d=new THREE.DirectionalLight(0xffffff,2.5);d.position.set(3,5,4);s.add(d);
 const g=new THREE.GridHelper(6,12,0x335,0x223);g.position.y=-1.2;s.add(g);
 let mix,mats=[];const clock=new THREE.Clock();
-new GLTFLoader().load((new URLSearchParams(location.search).get('v')==='1'?'BloatFlier_polish_v01.glb':'BloatFlier_polish_v02.glb'),gl=>{s.add(gl.scene);let tris=0;
+new GLTFLoader().load((new URLSearchParams(location.search).get('v')==='1'?'BloatFlier_polish_v01.glb':'BloatFlier_polish_v02b.glb'),gl=>{s.add(gl.scene);let tris=0;
  gl.scene.traverse(o=>{if(o.isMesh){mats.push(o.material);tris+=o.geometry.index?o.geometry.index.count/3:0;}});
  mix=new THREE.AnimationMixer(gl.scene);const sel=document.getElementById('clip');gl.animations.forEach((a,i)=>{const o=document.createElement('option');o.value=i;o.textContent=a.name;sel.appendChild(o);});let cur=mix.clipAction(gl.animations[0]);cur.play();sel.onchange=()=>{cur.stop();cur=mix.clipAction(gl.animations[sel.value]);cur.play();};
  document.getElementById('info').textContent=`${tris} tris · ${gl.animations.map(a=>a.name+' '+a.duration.toFixed(2)+'s').join(', ')}`;});
