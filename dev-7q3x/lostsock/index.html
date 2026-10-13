@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<title>Lost Sock (dev)</title>
+<style>
+@font-face{font-family:Fredoka;src:url(../../games/walker/assets/fredoka-latin-var.woff2) format('woff2');font-weight:300 700}
+html,body{margin:0;height:100%;overflow:hidden;background:#1b2440;color:#fff;font-family:Fredoka,system-ui,sans-serif}
+canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block}
+#top{position:fixed;left:0;right:0;top:1.5vh;display:flex;justify-content:center;gap:1.2vw;pointer-events:none;font-size:2.2vh}
+#top>div{background:#0009;border-radius:1.4vh;padding:.6vh 1.2vw}
+#teams{position:fixed;left:1.2vw;top:1.5vh;display:flex;flex-direction:column;gap:.6vh;font-size:2vh}
+#teams div{background:#0009;border-radius:1.2vh;padding:.4vh .9vw;border-left:.6vh solid}
+#teams .on{outline:.3vh solid #fff8}
+#banner{position:fixed;left:0;right:0;top:36vh;text-align:center;font-size:10vh;font-weight:700;color:#ffe7a0;text-shadow:0 .6vh 0 #6a3a8a,0 0 4vh #000;pointer-events:none;transition:opacity .4s}
+#feed{position:fixed;right:1.2vw;top:1.5vh;text-align:right;font-size:1.9vh}
+#feed div{background:#0009;border-radius:1vh;padding:.2vh .8vw;margin-bottom:.4vh;float:right;clear:both}
+#lobby,#over{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 40%,#3b2d5ccc,#141a30f2 70%)}
+.lb{display:flex;gap:5vw;align-items:center}
+h1{font-size:10vh;margin:0;color:#ffe7a0;letter-spacing:.04em;text-shadow:0 .6vh 0 #6a3a8a}
+.sub{font-size:2.6vh;color:#d9cdf0;margin:.5vh 0 3vh;max-width:46vw}
+#qr{width:30vh;height:30vh;background:#fff;border-radius:2vh;padding:1.5vh}#qr svg{width:100%;height:100%}
+#code{font-size:7vh;letter-spacing:.3em;font-weight:700;text-align:center}#joinUrl{font-size:1.7vh;color:#bbd;text-align:center}
+#plist{display:flex;flex-wrap:wrap;gap:1vh;max-width:44vw}#plist span{padding:.6vh 1.2vw;border-radius:1vh;font-size:2.3vh;font-weight:600;color:#111}
+#hint{font-size:2.2vh;color:#d9cdf0;margin-top:2vh}#netStatus{font-size:2vh;color:#f99;margin-top:1vh}
+#cornerqr{position:fixed;right:1.2vw;bottom:2vh;background:#0009;border-radius:1.5vh;padding:1vh;display:none;text-align:center;font-size:1.6vh}
+#cornerqr div{width:10vh;height:10vh;background:#fff;border-radius:1vh;padding:.5vh}#cornerqr svg{width:100%;height:100%}
+table{border-collapse:collapse;font-size:2.3vh;margin:2vh auto}td,th{padding:.6vh 1.6vw;text-align:center}th{color:#d9cdf0;font-weight:500}
+#pbar{width:40vw;height:.8vh;background:#fff2;border-radius:1vh;margin:3vh auto 0;overflow:hidden}#pbar i{display:block;height:100%;background:#ffe7a0}
+</style></head><body>
+<canvas id="cv"></canvas>
+<div id="teams"></div><div id="top"></div><div id="feed"></div><div id="banner"></div>
+<div id="cornerqr"><div id="cq"></div>Join: <b id="cqcode"></b></div>
+<div id="lobby"><div class="lb">
+  <div><h1>LOST SOCK</h1><div class="sub">Every lost sock went somewhere. Here. To fight. Each phone is a team of three sock puppets. Take turns, aim, lob, and don't fall in the rinse water.</div>
+    <div id="plist"></div><div id="hint"></div><div id="netStatus">Connecting to the room server&hellip;</div></div>
+  <div><div id="qr"></div><div id="code">&mdash;</div><div id="joinUrl"></div></div>
+</div></div>
+<div id="over"><div style="text-align:center;width:80vw"><h1 id="otitle">WINNERS</h1><div class="sub" id="osub" style="margin:1vh auto;max-width:none"></div><table id="otab"></table><div id="pbar"><i></i></div><div class="sub" id="onext" style="max-width:none"></div></div></div>
+<script src="js/vendor/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/config.js"></script>
+<script src="js/net.js"></script>
+<script src="js/tv.js"></script>
+<script src="../../assets/js/ztp-end.js"></script>
+<script>ZTPEnd.watch(function () { return LS.game.phase === 'over'; }, LS_CONFIG.winHoldSec * 1000);</script>
+</body></html>

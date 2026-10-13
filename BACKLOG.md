@@ -35,3 +35,8 @@ Done in menu2 for reference: the launching phone is the game's host (it can end 
 - [ ] Firebase setup (tonight): Google Analytics with quiet usage counts (visits, one-sheet scans via business.html, games played, active cafés; no personal info), arcade-initials leaderboards without an account, optional Google sign-in profiles with a Founder #, and the character builder.
 - [ ] Café-account version choice: each café picks which frozen version (games/<game>/vX.Y/) its screen runs, default latest stable; reads games/<game>/versions.json.
 - [ ] Screen-type dropdown (Phone / Tablet / Big screen): auto-detects, remembers the choice, tight layouts for each.
+
+## Lost Sock (Oct 13, 2026) - v0.1 on the dev page
+- [ ] Laundry arsenal, next (dryer bomb is in v0.1 as a proxy): bleach bomb (fades the team colour), clothespin sniper, static cling grenade (sticks socks together), lint roller steamroller, iron airstrike, fabric softener mortar (cluster), laundry hamper landmine.
+- [ ] Mismatched Pair polish (in v0.1 as a basic version): fabric + paint build animation, smarter pathing toward the enemy.
+- [ ] Private table mode, sock customisation, camera zoom/follow on bigger maps, sound.

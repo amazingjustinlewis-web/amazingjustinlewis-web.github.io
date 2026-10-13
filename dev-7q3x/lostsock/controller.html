@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#1b2440"><title>Lost Sock controller</title>
+<style>
+@font-face{font-family:Fredoka;src:url(../../games/walker/assets/fredoka-latin-var.woff2) format('woff2');font-weight:300 700}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;background:#1b2440;color:#fff;font-family:Fredoka,system-ui,sans-serif;overscroll-behavior:none}
+.scr{display:none;position:fixed;inset:0;padding:14px;overflow-y:auto}.scr.on{display:block}
+h2{margin:4px 0 10px;color:#ffe7a0}
+input{font:inherit;font-size:20px;padding:10px;border-radius:10px;border:0;width:100%}
+button{font:inherit;font-size:17px;border:0;border-radius:12px;padding:10px 12px;background:#33406a;color:#fff}
+button.go{background:#ffe7a0;color:#3a2a00;font-weight:700;width:100%;font-size:22px;margin-top:10px}
+.note{font-size:14px;color:#bbd;margin:6px 0}
+#st{position:fixed;left:0;right:0;bottom:0;font-size:12px;color:#889;text-align:center;padding:4px;pointer-events:none}
+#play{padding:8px;touch-action:none;overflow:hidden}
+#info{display:flex;justify-content:space-between;align-items:center;font-size:14px;gap:6px}
+#socks{display:flex;gap:6px;margin:4px 0;font-size:13px}#socks span{background:#0005;border-radius:8px;padding:2px 7px}
+#turn{font-size:17px;font-weight:600;text-align:center;padding:4px;border-radius:10px;margin:2px 0}
+#joy{position:absolute;left:8px;bottom:12px;width:52%;top:150px;background:#ffffff0a;border-radius:16px}
+#knob{position:absolute;width:64px;height:64px;margin:-32px;border-radius:50%;background:#fff3;border:3px solid #fff8;display:none}
+#base{position:absolute;width:140px;height:140px;margin:-70px;border-radius:50%;border:3px dashed #fff3;display:none}
+#right{position:absolute;right:8px;top:150px;bottom:12px;width:44%;display:flex;flex-direction:column;gap:6px}
+#wpns{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}#wpns button{padding:6px 0;font-size:22px;position:relative}#wpns button.sel{background:#ffe7a0}#wpns button.no{opacity:.3}
+#wname{font-size:13px;color:#ffe7a0;min-height:34px}
+#pow{display:flex;align-items:center;gap:6px;font-size:13px}#pow input{padding:0;height:34px}
+#fire{flex:1;background:#ff5a6e;font-size:26px;font-weight:700;box-shadow:0 5px 0 #8a1a2a}#jump{background:#3a8a5a}
+.dim #fire,.dim #jump{opacity:.35}
+table{width:100%;font-size:17px}td{padding:4px}td:last-child{text-align:right;font-weight:600}
+</style></head><body>
+<div class="scr on" id="join"><h2>LOST SOCK</h2>
+  <p class="note">Room</p><input id="room" maxlength="4" autocapitalize="characters" placeholder="ABCD">
+  <p class="note">Your name</p><input id="name" maxlength="12" placeholder="Sock boss">
+  <button class="go" id="joinBtn">JOIN</button></div>
+<div class="scr" id="lobby"><h2>YOU'RE IN!</h2><p class="note">Your phone is one team of three sock puppets. On your turn: drag the left pad sideways to walk, up/down to aim. Pick a weapon, set power, FIRE. You get 3 seconds to run after firing.</p>
+  <p class="note">No health bars: watch your socks on the TV. Tattered, then shredded and leaking stuffing\u2026</p>
+  <div id="leadBox" style="display:none"><button class="go" id="startBtn" style="background:#5fdc7a">START GAME</button><button id="botsBtn" style="width:100%;margin-top:8px">AI fill: ON</button></div>
+  <p class="note" id="lNote"></p></div>
+<div class="scr" id="play">
+  <div id="info"><b id="team"></b><span id="wind"></span></div>
+  <div id="socks"></div><div id="turn"></div>
+  <div id="joy"><div style="position:absolute;left:0;right:0;top:40%;text-align:center;color:#fff4;font-size:15px">&larr; walk &rarr;<br>&uarr; aim &darr;</div><div id="base"></div><div id="knob"></div></div>
+  <div id="right"><div id="wpns"></div><div id="wname"></div>
+    <div id="pow">Power<input type="range" id="powr" min="10" max="100" value="60"><b id="powv">60</b></div>
+    <button id="jump">JUMP</button><button id="fire">FIRE</button></div></div>
+<div class="scr" id="over"><h2 id="oTitle">GAME OVER</h2><table id="oTab"></table><button class="go" id="againBtn">BACK TO LOBBY</button><p class="note">Made by Zero to Phi.</p></div>
+<div id="st"></div>
+<script src="js/vendor/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/config.js"></script><script src="js/net.js"></script><script src="js/phone.js"></script>
+</body></html>
