@@ -84,6 +84,7 @@
     this.drawCentre(c, cs, inner, flat);
     for (var i = 0; i < 40; i++) this.drawTile(c, i, flat);
     c.strokeStyle = '#1b1b1b'; c.lineWidth = 2; c.strokeRect(1, 1, S0 - 2, S0 - 2); c.strokeRect(cs, cs, inner, inner);
+    for (i = 0; i < 40; i++) this.drawTab(c, i);
   };
   // v0.1.1 mini city (first pass, placeholder art): a cartoony Red Deer crowds the inner perimeter right against the
   // property ring, thins toward the middle (logo + card piles), with roads, sidewalks, the river and parks.
@@ -249,6 +250,31 @@
       c.fillStyle = '#ffd84a'; c.font = '800 ' + Math.round(k * 0.03) + 'px Fredoka, sans-serif'; c.textAlign = 'left'; c.textBaseline = 'middle';
       c.fillText('DIRT LOT POT ' + this.money(this.g.pot), cs + 14, cs + 6 + k * 0.035);
     }
+  };
+  // v0.8: colour-group properties get a pointed tab off the colour strip, biting into the board centre.
+  // Silhouette (tile + tab) is shared with the ownership highlight in drawOwners.
+  P.hasTab = function (i) { var s = S[i]; return !!(s && s.type === 'prop' && s.group && this.rect(i).side !== 'corner'); };
+  P.tabDepth = function () { return this.w * 0.38; };
+  P.silPts = function (i, ox, oy) {      // polygon points of tile i (with tab if it has one), offset by ox/oy
+    var r = this.rect(i), x = ox + r.x, y = oy + r.y, w = r.w, h = r.h, d = this.tabDepth();
+    if (!this.hasTab(i)) return [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+    if (r.side === 'b') return [[x, y], [x + w / 2, y - d], [x + w, y], [x + w, y + h], [x, y + h]];
+    if (r.side === 't') return [[x, y], [x + w, y], [x + w, y + h], [x + w / 2, y + h + d], [x, y + h]];
+    if (r.side === 'l') return [[x, y], [x + w, y], [x + w + d, y + h / 2], [x + w, y + h], [x, y + h]];
+    return [[x, y], [x + w, y], [x + w, y + h], [x, y + h], [x - d, y + h / 2]];
+  };
+  function polyPath(c, pts) { c.beginPath(); pts.forEach(function (p, k) { if (k) c.lineTo(p[0], p[1]); else c.moveTo(p[0], p[1]); }); c.closePath(); }
+  P.drawTab = function (c, i) {
+    if (!this.hasTab(i)) return;
+    var r = this.rect(i), d = this.tabDepth(), x = r.x, y = r.y, w = r.w, h = r.h, t;
+    if (r.side === 'b') t = [[x, y], [x + w / 2, y - d], [x + w, y]];
+    else if (r.side === 't') t = [[x, y + h], [x + w / 2, y + h + d], [x + w, y + h]];
+    else if (r.side === 'l') t = [[x + w, y], [x + w + d, y + h / 2], [x + w, y + h]];
+    else t = [[x, y], [x - d, y + h / 2], [x, y + h]];
+    c.save(); c.fillStyle = B.GROUPS[S[i].group].color; c.strokeStyle = '#2a2a2a'; c.lineWidth = 1; c.lineJoin = 'round';
+    polyPath(c, t); c.fill(); c.beginPath(); c.moveTo(t[0][0], t[0][1]); c.lineTo(t[1][0], t[1][1]); c.lineTo(t[2][0], t[2][1]); c.stroke();
+    var pr = this.g.props[i]; if (pr && pr.hocked) { c.fillStyle = 'rgba(40,40,50,0.55)'; polyPath(c, t); c.fill(); }
+    c.restore();
   };
   P.drawTile = function (c, i, flat) {
     var r = this.rect(i), s = S[i], g = this.g, pr = g.props[i];
@@ -1018,6 +1044,17 @@
       var pr = g.props[i]; if (!pr || pr.owner < 0) continue;
       var col = this.ownerRgb(i, now); if (!col) continue;
       var r = this.rect(i), x = this.bx + r.x, y = this.by + r.y, a = pr.hocked ? (L.mortgagedAlpha || 0.45) : 1;
+      if (this.hasTab(i)) {      // v0.8: highlight follows the tile + tab silhouette (clipped, so strokes only fall inward)
+        var pts = this.silPts(i, this.bx, this.by);
+        c.save(); polyPath(c, pts); c.clip(); c.lineJoin = 'miter'; c.miterLimit = 10;
+        for (var k2 = steps - 1; k2 >= 0; k2--) {
+          var fa2 = a * 0.6 * Math.pow(1 - (k2 + 0.5) / steps, 1.5) + (steps === 1 ? 0.12 : 0);
+          c.strokeStyle = rgba(col, (fa2 * 0.6).toFixed(3)); c.lineWidth = 2 * (lw + sw * (k2 + 1)); polyPath(c, pts); c.stroke();
+        }
+        c.strokeStyle = rgba(col, a); c.lineWidth = 2 * lw; polyPath(c, pts); c.stroke();
+        c.restore();
+        continue;
+      }
       c.strokeStyle = rgba(col, a); c.lineWidth = lw; c.strokeRect(x + lw / 2, y + lw / 2, r.w - lw, r.h - lw);
       c.lineWidth = sw;
       for (var k = 0; k < steps; k++) {
