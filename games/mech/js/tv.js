@@ -228,15 +228,24 @@
       }
     });
     for (var i = bolts.length - 1; i >= 0; i--) {
-      var b = bolts[i]; b.m.position.addScaledVector(b.v, dt); b.life -= dt;
-      var p = b.m.position, hitMe = p.distanceTo(eye) < 4.2;
-      if (hitMe || b.life <= 0 || p.y < Wd.height(p.x, p.z) || hitsBuilding(p)) {
-        if (hitMe) { hurtMech(b.dmg); emit(10, p.x, p.y, p.z, 8, '#ffb040', '#ff3b2e', 0.4); }
+      var b = bolts[i], p0 = b.m.position.clone(); b.m.position.addScaledVector(b.v, dt); b.life -= dt;
+      var p = b.m.position, wall = boltWall(p0, p);   // swept test: a building between last frame and this one stops the shot (no tunnelling, no hits through walls)
+      if (wall) p.copy(wall);
+      var hitMe = !wall && p.distanceTo(eye) < 4.2 && !segBlocked(p, eye);
+      if (wall || hitMe || b.life <= 0 || p.y < Wd.height(p.x, p.z) || hitsBuilding(p)) {
+        if (hitMe) { hurtMech(b.dmg); gpRumble(0.6); emit(10, p.x, p.y, p.z, 8, '#ffb040', '#ff3b2e', 0.4); }
         else if (b.life > 0) emit(6, p.x, p.y, p.z, 6, '#ffb040', '#777', 0.4);
         b.m.visible = false; bolts.splice(i, 1);
       }
     }
   }
+  var segRay = new T.Ray();
+  function boltWall(a, b) {       // first building face crossed on the segment a->b, or null
+    var d = b.clone().sub(a), len = d.length(); if (len < 1e-6) return null; segRay.origin.copy(a); segRay.direction.copy(d.divideScalar(len));
+    var best = len + 1; Wd.buildings.forEach(function (q) { var t = boxT(segRay, q); if (t >= 0 && t <= len && t < best) best = t; });
+    return best <= len ? segRay.at(Math.max(0, best - 0.2), new T.Vector3()) : null;
+  }
+  function segBlocked(a, b) { return !!boltWall(a, b); }
   function hitsBuilding(p) { var b = Wd.insideBuilding(p.x, p.z, 0); return b && p.y < b.top ? b : null; }
   function killEnemy(e, by) {
     var i = enemies.indexOf(e); if (i < 0) return; enemies.splice(i, 1); scene.remove(e.mesh);
@@ -634,6 +643,46 @@
   window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; kbMove(); });
   function kbMove() { if (!kbMode) return; var x = (keys.d ? 1 : 0) - (keys.a ? 1 : 0), y = (keys.w ? 1 : 0) - (keys.s ? 1 : 0), m = Math.hypot(x, y) || 1; setMove(x / m, y / m); }
 
+  // ================================================================== Xbox / standard gamepad (Gamepad API, hot-plug; keyboard + mouse keep working)
+  // LS walk (relative to facing) . RS aim (push to the edge to turn) . RT fire . LT brace . A fire-tap / start . X reload . Y next weapon
+  // LB / RB previous / next weapon . D-pad left/up/right = weapons 1-3 . B autopilot on/off . View mute . Menu start . hold L3+R3 eject
+  var GP = { idx: -1, prev: [], aim: [0, 0], used: false, ejT: 0 };
+  window.addEventListener('gamepadconnected', function (e) { if (e.gamepad) GP.idx = e.gamepad.index; flashMsg('CONTROLLER CONNECTED', '#7af0ff'); });
+  window.addEventListener('gamepaddisconnected', function (e) { if (!e.gamepad || e.gamepad.index === GP.idx) { GP.idx = -1; if (seats[0] && seats[0].kb) { seats[0].fire = false; setMove(0, 0); } flashMsg('CONTROLLER DISCONNECTED', '#ff8a5a'); } });
+  function gpGet() {
+    var list = navigator.getGamepads ? navigator.getGamepads() : []; if (!list) return null;
+    if (GP.idx >= 0 && list[GP.idx] && list[GP.idx].connected) return list[GP.idx];
+    for (var i = 0; i < list.length; i++) if (list[i] && list[i].connected) { GP.idx = i; return list[i]; }
+    return null;
+  }
+  function dz(x, y, d) { var m = Math.hypot(x, y); if (m < d) return [0, 0]; var k = Math.min(1, (m - d) / (1 - d)) / m; return [x * k, y * k]; }
+  function gpPoll(dt) {
+    var g = gpGet(); if (!g) return;
+    var B = g.buttons.map(function (b) { return b ? (typeof b === 'object' ? b.value : b) : 0; }), pr = GP.prev, down = function (i) { return (B[i] || 0) > 0.5 && !((pr[i] || 0) > 0.5); };
+    GP.prev = B;
+    var any = B.some(function (v) { return v > 0.5; });
+    if (phase === 'lobby') { if (any && !GP.armed) { GP.armed = true; SFX.unlock(); if (!kbMode) kbStart(); else if (down(0) || down(9)) startGame(); } if (!any) GP.armed = false; return; }
+    if (!kbMode || !seats[0] || phase !== 'play') return;
+    var s = seats[0], ax = g.axes || [], L = dz(ax[0] || 0, ax[1] || 0, 0.18), R = dz(ax[2] || 0, ax[3] || 0, 0.14);
+    var moving = L[0] || L[1];
+    if (moving) { GP.used = true; setMove(L[0], -L[1]); } else if (GP.used) { GP.used = false; kbMove(); }
+    if (R[0] || R[1]) {           // right stick drives the crosshair; curved for fine aim, fast at full tilt
+      var rm = Math.hypot(R[0], R[1]), sp = 1.9 * Math.pow(rm, 1.8) / rm;
+      setAim(s, clamp(s.ax + R[0] * sp * dt, -1, 1), clamp(s.ay - R[1] * sp * dt * (window.innerWidth / window.innerHeight) * 0.75, -1, 1));
+    }
+    var rt = (B[7] || 0) > 0.35; if (rt !== GP.rt) { GP.rt = rt; s.fire = rt; }
+    if (down(6)) brace();
+    if (down(0)) fireOnce(s);
+    if (down(2)) startReload(WEAP[wsel], s);
+    if (down(3) || down(5)) selectWeapon((wsel + 1) % WEAP.length);
+    if (down(4)) selectWeapon((wsel + WEAP.length - 1) % WEAP.length);
+    if (down(14)) selectWeapon(0); if (down(12)) selectWeapon(1); if (down(15)) selectWeapon(2);
+    if (down(1)) { M.autopilot = !M.autopilot; cockpit.cmd('auto'); }
+    if (down(8)) SFX.setMuted(!SFX.muted());
+    if ((B[10] || 0) > 0.5 && (B[11] || 0) > 0.5) { GP.ejT += dt; if (GP.ejT > 0.8) { GP.ejT = -99; eject(); } } else GP.ejT = 0;
+  }
+  function gpRumble(strength) { var g = gpGet(); var a = g && g.vibrationActuator; if (a && a.playEffect) try { a.playEffect('dual-rumble', { duration: 160, strongMagnitude: strength, weakMagnitude: strength * 0.6 }); } catch (e) {} }
+
   // ================================================================== HUD state + messages
   var msg = { text: '', color: '', t: 0 };
   function flashMsg(t, c) { msg.text = t; msg.color = c; msg.t = 2.4; }
@@ -669,6 +718,7 @@
     requestAnimationFrame(frame);
     var dt = Math.min(0.05, (now - last) / 1000); last = now; if (dt <= 0) return;
     qualTick(dt);
+    gpPoll(dt);
     if (phase === 'play') {
       playT += dt; spawnT -= dt; if (spawnT <= 0) { spawnT = rand(C.enemies.spawnEvery[0], C.enemies.spawnEvery[1]) * (playT < 20 ? 1.4 : 1); spawnEnemy(); }
       tickEnemies(dt);
@@ -685,5 +735,5 @@
   }
   layout(); startNet(); requestAnimationFrame(frame);
   if (Q.has('kb')) setTimeout(kbStart, 200);
-  window.MECH = { _cam: camera, M: M, seats: seats, enemies: enemies, barrels: barrels, WEAP: WEAP, qual: qual, renderer: renderer, setPath: setPath, startGame: startGame, spawn: spawnEnemy, selectWeapon: selectWeapon, phase: function () { return phase; }, cockpit: cockpit, info: function () { return renderer.info.render; } };
+  window.MECH = { _cam: camera, M: M, seats: seats, enemies: enemies, barrels: barrels, WEAP: WEAP, qual: qual, renderer: renderer, setPath: setPath, startGame: startGame, spawn: spawnEnemy, selectWeapon: selectWeapon, phase: function () { return phase; }, cockpit: cockpit, gp: GP, bolts: bolts, boltWall: boltWall, info: function () { return renderer.info.render; } };
 })();

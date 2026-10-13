@@ -25,3 +25,7 @@ TV + phones mech prototype. `index.html` = TV (three.js cockpit view), `controll
 - Rocket lock-on (`C.lock`): forgiving 0.3 cone around the intent reticle, 0.4 s to acquire, up to 3 locks, kept out to 0.5. Flashing red brackets, lock tones; firing sends a staggered salvo, one strongly homing rocket per lock.
 - Trackpad mode (phone ⚙ or the Combat tab quick switch, remembered): relative aim with pointer acceleration (`pad` messages), tap = one shot, hold = keep firing / charge. Lean to walk: forward/back walks, left/right strafes (dead zone 6°, full at 22°, levelled when the mode starts; "Level tilt" re-levels).
 - Tests: sim03.py (momentum, edge curve, rocket lock + salvo, trackpad aim/tap/hold, tilt walk).
+
+## v0.3.1
+- Enemy bolts/shells use a swept segment test against every building box each frame (no tunnelling at low fps), and a shot that's near the cockpit only counts if no building sits between it and you. Fixes shots coming through buildings.
+- Xbox / standard gamepad (Gamepad API, hot-plug, keyboard + mouse still work): LS walk, RS aim (edge-turn as with the mouse), RT fire, LT brace, A tap-fire / start, X reload, Y/RB next weapon, LB previous, D-pad left/up/right weapons 1-3, B autopilot, View mute, hold L3+R3 eject. Any button on the lobby starts a local game. Rumble on hits where supported. `MECH.gp` for debug.
