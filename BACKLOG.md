@@ -20,3 +20,9 @@ Done in menu2 for reference: the launching phone is the game's host (it can end 
 ## Game-to-queue handoff (Oct 12, 2026)
 - After the end-of-game breakdown (fireworks, stats), show "Next up: <game>" with a loading bar near the bottom for about a minute.
 - Near the end, fade out through one part of the logo (e.g. the 0) and straight back in through the other (the Phi), landing in the queued game.
+
+## Phone wrap-up screen (Oct 12, 2026)
+- When the TV moves on, phones keep: stats/scores, share buttons, arcade initials on generic ladders, make/add-to account, explore studio/other games, jump to phone-only games, rejoin TV queue.
+
+## Iron Stride asymmetric direction (Oct 12, 2026)
+- Controller players pilot small agile mechs (twitch aim); phone players command huge slow monolithic mechs (tactical: mountain cover, target locks, planned shots). Both clash in the same world, PC and phone. First step: one phone-controlled heavy mech joining a local controller game.
