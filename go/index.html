@@ -118,7 +118,8 @@ input[type=text]{width:100%;padding:13px 14px;border-radius:12px;border:1px soli
 </section>
 <div id="dbg" style="position:fixed;left:0;right:0;bottom:max(6px,env(safe-area-inset-bottom));z-index:70;text-align:center;font:11px/1.3 system-ui,sans-serif;color:rgba(233,220,192,.8);pointer-events:none;opacity:0;padding:0 10px"></div>
 <div id="p1" hidden style="position:fixed;inset:0;z-index:60;background:#000;display:flex;flex-direction:column">
- <div style="display:flex;gap:8px;padding:8px;background:#0a0805;border-bottom:1px solid rgba(226,184,74,.35)">
+ <button id="p1more" hidden style="position:absolute;top:6px;right:6px;z-index:3;width:34px;height:34px;border-radius:50%;border:1px solid rgba(226,184,74,.5);background:rgba(10,8,5,.8);color:#e2b84a;font:18px/1 Georgia,serif">&#8943;</button>
+ <div id="p1bar" style="display:flex;gap:8px;padding:8px;background:#0a0805;border-bottom:1px solid rgba(226,184,74,.35)">
   <button id="p1start" class="btn" style="flex:1;background:linear-gradient(180deg,#f6dc8e,#d4a63e);color:#120d03">Start game</button>
   <button id="p1back" class="btn" style="flex:1">Back out</button></div>
  <div id="p1msg" style="color:#e9dcc0;font:13px Georgia,serif;text-align:center;padding:2px 8px" hidden></div>
@@ -179,7 +180,17 @@ $('cast').onclick=function(){var u=location.origin+location.pathname.replace(/go
  if(window.PresentationRequest){try{new PresentationRequest([u]).start().catch(function(){howCast()});return}catch(e){}}howCast()};
 function howCast(){$('ex-cast').classList.add('on');$('castHow').innerHTML='<br><br><b>How to cast:</b> in Chrome open the menu (⋮) → <i>Cast…</i> and pick your TV, or open <b>amazingjustinlewis-web.github.io</b> in the TV\'s browser. A laptop plugged into a TV works too.'}
 // ---- remote for a paired screen ----
-$('p1back').onclick=function(){rsend({t:'nav',d:'back'});p1close()};
+var p1started=false,p1barOpen=false;
+$('p1more').onclick=function(){p1barOpen=!p1barOpen;$('p1bar').style.display=p1barOpen?'flex':'none'};
+$('p1back').onclick=function(){rsend({t:'nav',d:'back'});if(!p1started)p1close();else dbg('Stepping out \u00b7 your seat is kept\u2026',1)};
+// someone else's game is on: join it if it takes late players, or queue your own game with an estimated wait
+function busyView(d){var h='';
+ if(d.joinable)h+='<a href="#" class="btn" data-act="join">Join '+esc(d.name)+'</a>';
+ if(d.q)h+='<p class="muted" style="margin:14px 0 6px">'+(d.q.pos===1?'You\u2019re next':'You\u2019re number '+d.q.pos+' in line')+' with <b>'+esc(d.q.name)+'</b> \u00b7 about '+d.q.wait+' min</p><a href="#" class="btn" data-act="unqueue">Leave the queue</a>';
+ else if(d.games&&d.games.length)h+='<p class="muted" style="margin:14px 0 6px">Queue your own game for this screen:</p>'+d.games.map(function(g){return '<a href="#" data-act="queue" data-g="'+g[0]+'">'+esc(g[1])+'<span>~'+g[2]+' min</span></a>'}).join('');
+ $('rlist').innerHTML=h}
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+document.addEventListener('click',function(e){var a=e.target.closest('#rlist [data-act]');if(!a)return;e.preventDefault();e.stopPropagation();var t=a.dataset.act;rsend(t==='queue'?{t:'queue',game:a.dataset.g}:{t:t})},true);
 // small fading status line for join problems (player-1 frame and remote)
 var dbgT=null;function dbg(t,keep){var e=$('dbg');e.textContent=t;e.style.transition='none';e.style.opacity='1';clearTimeout(dbgT);dbgT=setTimeout(function(){e.style.transition='opacity 1.5s';e.style.opacity='0'},keep?9000:4000)}
 // player-1 controller frame: join watchdog with backoff (reload the controller if it hasn't joined the game's room)
@@ -191,7 +202,7 @@ addEventListener('message',function(e){var f=$('p1f');if(!f||e.source!==f.conten
  if(st==='online'){dbg('Joined the game \u2713');$('p1msg').hidden=true}else if(st==='noroom')dbg('Room '+(e.data.code||'')+' is not answering yet \u00b7 retrying\u2026',1);else if(st&&st!=='idle')dbg('Game link: '+st+(e.data.detail?' ('+e.data.detail+')':''),1)});
 $('p1start').onclick=function(){var b=null;try{b=$('p1f').contentDocument.getElementById('startBtn')}catch(e){}
  if(b&&!b.disabled&&b.offsetParent){b.click();$('p1msg').hidden=true}else{$('p1msg').textContent=b&&b.offsetParent?'Waiting for more players: they can scan the code on the TV.':'Use the game\u2019s own start button below.';$('p1msg').hidden=false}};
-var launched=0,R=null,me=localStorage.getItem('ztp-remote-id')||('r'+Math.random().toString(36).slice(2,10));localStorage.setItem('ztp-remote-id',me);
+var launched=0,R=null,me=(qs.get('local')==='1'&&qs.get('rid'))||localStorage.getItem('ztp-remote-id')||('r'+Math.random().toString(36).slice(2,10));if(!qs.get('rid'))localStorage.setItem('ztp-remote-id',me);   // rid: test-only (local mode) second phone
 function rsend(m){if(R)R.send(m)}
 var code='';function startRemote(c){code=c;show('remote');var o={prefix:'ztp-door-v1-',code:c,
   onStatus:function(s){$('rstat').textContent=s==='online'?'Connected · you are the remote':s==='noroom'?'Screen not found yet, retrying…':'Connecting to the screen…';if(s==='online'){rsend({t:'hi',id:me});if(qs.get('launch')&&!launched){launched=1;rsend({t:'launch',game:qs.get('launch')})}}},
@@ -203,13 +214,18 @@ var code='';function startRemote(c){code=c;show('remote');var o={prefix:'ztp-doo
     $('rtitle').textContent=mine?'Now playing':'This screen is busy';$('rstat').textContent=mine?'You\u2019re the host · press back to end the game and return to the menu':'Connected';
     var left=Math.max(1,Math.round(d.mins-(Date.now()-d.since)/60000));
     $('rpmsg').textContent=d.late?'is on the big screen now. You can still jump in.':'is on the big screen now. About '+left+' min until this screen is free.';
-    $('rpjoin').hidden=!d.late;if(d.late)$('rpjoina').href=d.ctrl||'#'}
+    $('rpjoin').hidden=true;if(d.late)$('rpjoina').href=d.ctrl||'#'}
    if(d.t==='open'){if(d.url.charAt(0)==='#')show(d.url.slice(1));else location.href=d.url}
    if(d.t==='go'){try{localStorage.setItem('ztp-last-room',JSON.stringify({code:code,t:Date.now(),local:qs.get('local')==='1'}))}catch(e){}if(d.release&&R){var r=R;R=null;setTimeout(function(){try{r.destroy()}catch(e){}},300)}setTimeout(function(){location.href=d.url},350)}
-   if(d.t==='playing'&&d.owner===me&&(d.p1||d.p1wait)){$('p1').hidden=false;
+   if(d.t==='playing'&&d.member&&(d.p1||d.p1wait)){$('p1').hidden=false;
+     // once the game is under way the Start / Back out bar gets out of the way (the corner button brings it back)
+     p1started=!!d.started;$('p1bar').style.display=p1started&&!p1barOpen?'none':'flex';$('p1more').hidden=!p1started;$('p1start').hidden=p1started;
      if(d.p1&&$('p1f').dataset.u!==d.p1)p1load(d.p1,0);else if(!d.p1&&!$('p1f').dataset.u)dbg('Opening the game room on the TV\u2026',1)}
    else if(d.t==='menu'||d.t==='idle'||d.t==='ended'||d.t==='playing'){if(!$('p1').hidden){p1close();if(d.t==='menu')dbg('Back at the menu \u00b7 still connected to the screen')}}
    if(d.t==='dbg')dbg(d.text,1);
+   if(d.t==='steppedout'){try{localStorage.setItem('ztp-last-room',JSON.stringify({code:code,t:Date.now(),local:qs.get('local')==='1'}))}catch(e){}if(R){var r3=R;R=null;setTimeout(function(){try{r3.destroy()}catch(e){}},300)}p1close();
+     $('rtitle').textContent='You stepped out';$('rstat').textContent='Your seat in '+(d.name||'the game')+' is kept. Scan the code on the TV to get back in.';$('rlist').innerHTML='';$('rplay').hidden=true;$('rpad').hidden=true}
+   if(d.t==='playing'&&!d.member)busyView(d);
    if(d.t==='ended'){if(R){var r2=R;R=null;try{r2.destroy()}catch(e){}}$('rtitle').textContent='Thanks for playing';$('rstat').textContent=(d.name||'The game')+' has ended and the screen is free again.';$('rlist').innerHTML='';$('rplay').hidden=true;$('rpad').hidden=true}
    if(d.t==='busy'){$('rtitle').textContent='This screen is busy';$('rstat').textContent='Someone else is using it right now. Scan another screen, or try again in a bit.';$('rlist').innerHTML=''}}};
  R=qs.get('local')==='1'?new LRNet.LocalClient(o):new LRNet.Client(o)}

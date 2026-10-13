@@ -72,7 +72,7 @@ var GAMES=[['red-deer-rich','Red Deer Rich',60,0],['zombie-tiles','Zombie Tiles'
 var PHONE_GAMES=[['Battleship','cafe/play.html']];
 function gameItem(g){return{id:g[0],label:g[1]+'  · TV',play:'games/'+g[0]+'/index.html',name:g[1],mins:g[2],late:g[3],ctrl:g[3]?'../games/'+g[0]+'/controller.html':'',p1ctrl:'../games/'+g[0]+'/controller.html',spin:g[0]==='space'||g[0]==='mech'}}
 var door=window.ZTP_PHONE?null:Door({name:'Zero to Phi',title:'ZERO TO PHI',
- find:function(id){var g=GAMES.filter(function(x){return x[0]===id})[0];return g&&gameItem(g)},
+ games:function(){return GAMES.map(function(g){return[g[0],g[1],g[2]]})},find:function(id){var g=GAMES.filter(function(x){return x[0]===id})[0];return g&&gameItem(g)},
  items:function(){return[{label:'Games',sub:function(){return GAMES.map(gameItem).concat(PHONE_GAMES.map(function(p){return{label:p[0]+'  · phone',phoneGo:'../'+p[1],href:p[1]}}),[{label:'Back',back:1}])}},
   {label:'Explore 0-Phi',phoneGo:'../classic.html',href:'classic.html'},
   {label:'Set up a café screen',phone:'#biz'},{label:'Close',close:1}]},

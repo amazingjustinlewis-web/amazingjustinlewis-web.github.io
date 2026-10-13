@@ -585,7 +585,7 @@
     sentPathV = M.pathV;
   }
   function startGame() {
-    if (phase === 'play') return; phase = 'play'; playT = 0; spawnT = 2.5; $('lobby').hidden = true; $('strip').hidden = !net || !!seats[1];
+    if (phase === 'play') return; phase = 'play'; window.ZTP_PHASE = 'play'; playT = 0; spawnT = 2.5; $('lobby').hidden = true; $('strip').hidden = !net || !!seats[1];
     big('SYSTEMS ONLINE', 'drones inbound', 1800); SFX.play('go'); phoneDirty = true; sendState(true);
   }
   function startNet() {
