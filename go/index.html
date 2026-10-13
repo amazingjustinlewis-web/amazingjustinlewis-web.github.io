@@ -164,11 +164,11 @@ $('cast').onclick=function(){var u=location.origin+location.pathname.replace(/go
  if(window.PresentationRequest){try{new PresentationRequest([u]).start().catch(function(){howCast()});return}catch(e){}}howCast()};
 function howCast(){$('ex-cast').classList.add('on');$('castHow').innerHTML='<br><br><b>How to cast:</b> in Chrome open the menu (⋮) → <i>Cast…</i> and pick your TV, or open <b>amazingjustinlewis-web.github.io</b> in the TV\'s browser. A laptop plugged into a TV works too.'}
 // ---- remote for a paired screen ----
-var R=null,me='';
+var R=null,me=localStorage.getItem('ztp-remote-id')||('r'+Math.random().toString(36).slice(2,10));localStorage.setItem('ztp-remote-id',me);
 function rsend(m){if(R)R.send(m)}
 function startRemote(code){show('remote');var o={prefix:'ztp-door-v1-',code:code,
-  onStatus:function(s){$('rstat').textContent=s==='online'?'Connected · you are the remote':s==='noroom'?'Screen not found yet, retrying…':'Connecting to the screen…';if(s==='online')rsend({t:'hi'})},
-  onMessage:function(d){if(!d)return;if(d.t==='hello'){$('rtitle').textContent=d.screen;me=d.you||''}
+  onStatus:function(s){$('rstat').textContent=s==='online'?'Connected · you are the remote':s==='noroom'?'Screen not found yet, retrying…':'Connecting to the screen…';if(s==='online')rsend({t:'hi',id:me})},
+  onMessage:function(d){if(!d)return;if(d.t==='hello')$('rtitle').textContent=d.screen;
    var playing=d.t==='playing';if(playing||d.t==='menu'||d.t==='idle'){$('rplay').hidden=!playing;$('rpad').hidden=!!(playing&&d.owner&&d.owner!==me)}
    if(d.t==='menu'){$('rtitle').textContent=d.title;$('rstat').textContent='Connected · you are the remote';$('rlist').innerHTML=d.items.map(function(l,i){return '<a href="#" data-i="'+i+'"'+(i===d.sel?' class="sel"':'')+'>'+l+'<span>'+(i===d.sel?'&#9664;':'')+'</span></a>'}).join('')}
    if(d.t==='idle')$('rlist').innerHTML='<p class="muted">Menu closed. Press OK to open it.</p>';
@@ -181,6 +181,7 @@ function startRemote(code){show('remote');var o={prefix:'ztp-door-v1-',code:code
  R=qs.get('local')==='1'?new LRNet.LocalClient(o):new LRNet.Client(o)}
 document.addEventListener('click',function(e){var b=e.target.closest('.pb');if(b){rsend({t:'nav',d:b.dataset.n});return}
  var a=e.target.closest('#rlist a');if(a){e.preventDefault();rsend({t:'pick',i:+a.dataset.i})}});
+addEventListener('pagehide',function(){if(R)try{R.destroy()}catch(e){}});
 $('rleave').onclick=function(){if(R)R.destroy();R=null;history.replaceState(null,'',location.pathname);show('hub')};
 var h=location.hash.slice(1);if(qs.get('pair'))startRemote(qs.get('pair').toUpperCase());else show(['login','create','biz','hub','me'].indexOf(h)>=0?h:(prof()&&!qs.get('biz')?'me':'hub'));
 })();
