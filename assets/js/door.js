@@ -54,7 +54,7 @@
     // camera moves: paired -> the logo eases ~10% closer; launching -> fly through the 0's hollow; returning -> the reverse
     var flown = false, spun = false, LOCALQ = /[?&]local=1/.test(location.search);
     // heartbeat: once paired and eased in, the logo beats gently (the CSS 'scale' property composes with the fly transform)
-    (function () { var st = document.createElement('style'); st.textContent = '@keyframes ztpBeat{0%{scale:1}7%{scale:1.024}14%{scale:1}22%{scale:1.016}32%,100%{scale:1}}.ztp-beat{animation:ztpBeat 1.8s ease-in-out infinite}' +
+    (function () { var st = document.createElement('style'); st.textContent = '@keyframes ztpBeat{0%{scale:1}7%{scale:1.024}14%{scale:1}22%{scale:1.016}32%,100%{scale:1}}.ztp-beat{animation:ztpBeat 7.2s ease-in-out infinite}' +
       '#ztpHole{position:fixed;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:radial-gradient(circle,#000 55%,rgba(0,0,0,.85) 70%,rgba(0,0,0,0) 100%);pointer-events:none;z-index:4;transform:scale(0);opacity:0}'; document.head.appendChild(st); })();
     var beatT = null;
     function beat(on) { var el = o.flyEl && o.flyEl(); if (!el) return; clearTimeout(beatT); if (!on) { el.classList.remove('ztp-beat'); return; } if (!el.classList.contains('ztp-beat')) beatT = setTimeout(function () { el.classList.add('ztp-beat'); }, 3600); }
