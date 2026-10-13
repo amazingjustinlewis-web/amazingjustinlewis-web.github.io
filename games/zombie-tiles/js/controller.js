@@ -10,7 +10,7 @@
   var room = (Q.get('room') || store.get('zt_room') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
   var dice = store.get('zt_dice') || C.dice[Math.floor(Math.random() * C.dice.length)].id;
   $('room').value = room;
-  $('name').value = store.get('zt_name') || '';
+  $('name').value = Q.get('name') || store.get('zt_name') || '';
   var net = null, state = null, lastRollSeq = 0, lastFightKey = '', lastMode = '', stopAnim = null;
 
   // ------------------------------------------------------------ join screen
@@ -331,5 +331,6 @@
 
   // came back after a reload / phone sleep: rejoin the same seat automatically
   if (room && store.get('zt_joined_' + room) && store.get('zt_name')) { joinStatus('Rejoining room ' + room + '...'); $('joinBtn').disabled = true; connect(); }
+  else if (Q.has('auto') && room && $('name').value) join();   // launched from the 0-Phi front door: already joined as player 1
   window.ZTC = { send: send, state: function () { return state; }, net: function () { return net; } };
 })();

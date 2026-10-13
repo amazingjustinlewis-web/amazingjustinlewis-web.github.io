@@ -76,7 +76,7 @@ var door=window.ZTP_PHONE?null:Door({name:'Zero to Phi',title:'ZERO TO PHI',
  items:function(){return[{label:'Games',sub:function(){return GAMES.map(gameItem).concat(PHONE_GAMES.map(function(p){return{label:p[0]+'  · phone',phoneGo:'../'+p[1],href:p[1]}}),[{label:'Back',back:1}])}},
   {label:'Explore 0-Phi',phoneGo:'../classic.html',href:'classic.html'},
   {label:'Set up a café screen',phone:'#biz'},{label:'Close',close:1}]},
- onCode:function(u){setQR(u)},flyEl:function(){return svg},flyOrigin:function(){return window.__zc||'50% 50%'},spinOrigin:function(){return window.__pc||null},onPaired:function(p){ZQ.setForced(p?true:null,3.5)}});
+ onCode:function(u){setQR(u)},flyEl:function(){return svg},flyOrigin:function(){return window.__zc||'50% 50%'},spinOrigin:function(){return window.__pc||null},homes:true,onPaired:function(p){ZQ.setForced(p?true:null,3.5)}});
 addEventListener('click',function(e){if(window.ZTP_PHONE){location.href='go/';return}if(door&&!door.isOpen()&&!e.target.closest('#door,#doorframe'))door.menu()});
 })();
 </script>

@@ -30,7 +30,7 @@
     function cur() { return stack[stack.length - 1]; }
     function items() { var m = cur(); return m ? m.items : []; }
     function broadcast(m) { for (var k in remotes) try { net.send(remotes[k], m); } catch (e) {} }
-    function sync() { broadcast(playing ? { t: 'playing', name: playing.name, since: playing.since, mins: playing.mins || 20, late: !!playing.late, ctrl: playing.ctrl || '', owner: playing.owner || '', p1: playing.p1url || '' } : stack.length ? { t: 'menu', title: cur().title, items: items().map(function (i) { return i.label; }), sel: sel, depth: stack.length } : { t: 'idle' }); }
+    function sync() { broadcast(busy() ? { t: 'playing', p1wait: !!(playing.p1ctrl && !playing.p1url), room: playing.room || '', name: playing.name, since: playing.since, mins: playing.mins || 20, late: !!playing.late, ctrl: playing.ctrl || '', owner: playing.owner || '', p1: playing.p1url || '' } : stack.length ? { t: 'menu', title: cur().title, items: items().map(function (i) { return i.label; }), sel: sel, depth: stack.length } : { t: 'idle' }); }
     function paint() {
       var m = cur(), vis = !!m && (shown || !!m.big); ov.classList.toggle('on', vis);
       if (vis) {
@@ -41,7 +41,7 @@
     }
     function drawBig(url) { var c = document.getElementById('doorqr'), Q = qrcode(0, 'M'); Q.addData(url); Q.make(); var n = Q.getModuleCount() + 8, m = Math.max(3, Math.floor(innerHeight * 0.42 / n)), x = c.getContext('2d');
       c.width = c.height = n * m; x.fillStyle = '#cea03e'; x.fillRect(0, 0, n * m, n * m); x.fillStyle = '#000'; for (var r = 0; r < n - 8; r++) for (var k = 0; k < n - 8; k++) if (Q.isDark(r, k)) x.fillRect((k + 4) * m, (r + 4) * m, m, m); }
-    function menu(onTV) { stack = [{ title: o.title || 'ZERO TO PHI', items: o.items() }]; sel = 0; shown = !!onTV; paint(); }
+    function menu(onTV) { var its = o.items(); if (home) its = its.slice(0, -1).concat([{ label: 'Stop caf\u00e9 screen', unhome: 1 }], its.slice(-1)); stack = [{ title: o.title || 'ZERO TO PHI', items: its }]; sel = 0; shown = !!onTV; paint(); }
     // camera moves: paired -> the logo eases ~10% closer; launching -> fly through the 0's hollow; returning -> the reverse
     var flown = false, spun = false, LOCALQ = /[?&]local=1/.test(location.search);
     // heartbeat: once paired and eased in, the logo beats gently (the CSS 'scale' property composes with the fly transform)
@@ -73,10 +73,10 @@
       if (mode === 'base') beat(base > 1); else if (mode === 'out' && base > 1) setTimeout(function () { if (!flown && paired()) beat(true); }, 1200);
     }
     function enter(spin) { flown = true; spun = !!(spin && o.spinOrigin); flyTo('in'); }
-    var outUntil = 0;
+    var outUntil = 0, p1Watch = null, home = null;
     function leave() { if (!flown) return; flown = false; flyTo('out'); outUntil = Date.now() + (spun ? 1600 : 1150); }
     function close() { if (paired()) { menu(false); return; } stack = []; shown = false; paint(); }
-    function back() { if (playing) return stop(); if (stack.length > 1) { var wasBig = !!cur().big; stack.pop(); sel = 0; paint(); if (wasBig) leave(); } else if (shown) close(); }
+    function back() { if (busy()) return stop(); if (stack.length > 1) { var wasBig = !!cur().big; stack.pop(); sel = 0; paint(); if (wasBig) leave(); } else if (shown) close(); }
     var actor = null; // the remote connection that triggered the current action (null = local)
     function act(it) {
       if (!it) return;
@@ -90,19 +90,30 @@
       else if (it.href) location.href = it.href;
       else if (it.back) back();
       else if (it.close) close();
+      else if (it.unhome) { unHome(); menu(false); }
     }
     // a phone leaving for phone-only content gives the screen back at once: no grace, QR breathes for the next person
     // game over (a game posts {ztp:'end'} to its parent): free the screen for the next people
-    function endGame() { if (!playing) return; for (var k in remotes) { var c = remotes[k]; try { net.send(c, { t: 'ended', name: playing.name }); } catch (e) {} c.ztpReleased = true; delete remotes[k]; delete seen[k]; } clearGrace(); stop(); stack = []; paint(); update(); }
-    window.addEventListener('message', function (e) { if (e.source === fr.contentWindow && e.data && (e.data.ztp === 'end' || e.data.t === 'ztp-end')) endGame(); });
+    function endGame() { if (!busy()) return; for (var k in remotes) { var c = remotes[k]; try { net.send(c, { t: 'ended', name: playing.name }); } catch (e) {} c.ztpReleased = true; delete remotes[k]; delete seen[k]; } clearGrace(); stop(); stack = []; paint(); update(); }
+    window.addEventListener('message', function (e) {
+      if (e.source !== fr.contentWindow || !e.data) return; var d = e.data;
+      if (d.ztp === 'end' || d.t === 'ztp-end') return endGame();
+      if (d.ztp === 'room' && playing && !playing.home) { var it = playing, was = it.p1url; it.roomStatus = d.status; it.n = d.n || 0; if (it.n > 0) it.hadN = true;
+        if (d.status === 'online' && d.code && it.p1ctrl && (!it.p1url || it.room !== d.code)) { it.room = d.code; it.p1url = it.p1ctrl + '?room=' + d.code + '&name=Player%201&auto=1' + (LOCALQ ? '&local=1' : ''); }
+        if (it.p1url !== was) sync();
+        // nobody left anywhere (no remote, no players in the game): the screen frees itself
+        if (it.hadN && it.n === 0 && !Object.keys(remotes).length && lost == null) endGame();
+      } });
+    function toOwner(m) { for (var k in remotes) if (playing && who(remotes[k]) === playing.owner) try { net.send(remotes[k], m); } catch (e) {} }
+    function busy() { return !!playing && !playing.home; }
     function release(conn) {
       delete remotes[conn.connectionId]; delete seen[conn.connectionId]; conn.ztpReleased = true;
       setTimeout(function () { try { conn.close(); } catch (e) {} }, 400);
-      if (!Object.keys(remotes).length) { clearGrace(); if (playing) stop(); leave(); stack = []; shown = false; paint(); }
+      if (!Object.keys(remotes).length) { clearGrace(); if (busy()) stop(); leave(); stack = []; shown = false; paint(); }
       update();
     }
     function nav(d, from) {
-      if (playing) { if (d === 'back' && (!from || !playing.owner || from === playing.owner)) stop(); return; }
+      if (busy()) { if (d === 'back' && (!from || !playing.owner || from === playing.owner)) stop(); return; }
       if (!stack.length) { menu(!from); return; }
       var n = cur().big ? 1 : items().length;
       if (d === 'up') sel = (sel + n - 1) % n; else if (d === 'down') sel = (sel + 1) % n;
@@ -112,12 +123,20 @@
     // fade the TV into a game in-page; the game shows its own join QR for everyone else
     function play(it) {
       it.since = Date.now(); it.owner = it.owner || ''; playing = it; shown = false; stack = []; ov.classList.remove('on'); enter(it.spin);
-      var src = it.play; it.p1url = '';
-      if (it.p1ctrl) { var room = ''; for (var q = 0; q < 4; q++) room += 'ABCDEFGHJKLMNPQRSTUVWXYZ'.charAt(Math.floor(Math.random() * 24)); src += (src.indexOf('?') < 0 ? '?' : '&') + 'room=' + room + (LOCALQ ? '&local=1' : ''); it.p1url = it.p1ctrl + '?room=' + room + '&name=Player%201&auto=1' + (LOCALQ ? '&local=1' : ''); }   // the launching phone becomes player 1, already joined setTimeout(function () { if (playing === it) fade.classList.add('on'); }, 450);
+      setTimeout(function () { if (playing === it) fade.classList.add('on'); }, 450);
+      var src = it.play; it.p1url = ''; it.n = 0; it.hadN = false; it.room = null; it.roomStatus = '';
+      // the launching phone becomes player 1: the game opens a room with this code, and the phone gets the controller URL
+      // only once the game reports that its room is actually registered (the code it ended up with, which can differ)
+      if (it.p1ctrl) { var room = ''; for (var q = 0; q < 4; q++) room += 'ABCDEFGHJKLMNPQRSTUVWXYZ'.charAt(Math.floor(Math.random() * 24)); src += (src.indexOf('?') < 0 ? '?' : '&') + 'room=' + room + (LOCALQ ? '&local=1' : ''); it.room = room;
+        clearTimeout(p1Watch); p1Watch = setTimeout(function () { if (playing === it && !it.p1url) toOwner({ t: 'dbg', text: 'The TV game has not opened its room yet (' + (it.roomStatus || 'loading') + '). Still trying\u2026' }); }, 12000); }
       setTimeout(function () { if (playing !== it) return; fr.onload = function () { if (playing !== it) return; fr.classList.add('on'); fade.classList.remove('on'); }; fr.src = src; }, 750);
       if (o.onPlay) o.onPlay(true); update(); sync();
     }
-    function stop() { fr.onload = null; fade.classList.remove('on'); fr.classList.remove('on'); setTimeout(function () { if (!playing) fr.removeAttribute('src'); }, 900); playing = null; if (o.onPlay) o.onPlay(false); leave(); update(); menu(false); }
+    function stop() { var wasHome = playing && playing.home; clearTimeout(p1Watch); fr.onload = null; fade.classList.remove('on'); fr.classList.remove('on'); setTimeout(function () { if (!playing) fr.removeAttribute('src'); }, 900); playing = null; if (o.onPlay) o.onPlay(false); leave(); update(); if (paired()) menu(false); else { stack = []; shown = false; paint(); }
+      if (home && !wasHome) setTimeout(function () { if (!playing && home) { play(home); if (paired()) menu(false); } }, 1300); }   // a café's TV goes back to its configured screen
+    // café screen launched from a phone becomes this TV's home (kept across reloads) until someone stops it from the menu
+    function setHome(h) { home = h; try { localStorage.setItem('ztp-home', JSON.stringify(h)); } catch (e) {} play(h); if (paired()) menu(false); }
+    function unHome() { home = null; try { localStorage.removeItem('ztp-home'); } catch (e) {} if (playing) stop(); }
     ov.addEventListener('click', function (e) { var li = e.target.closest('li'); if (!li) return; if (cur().big) return back(); sel = +li.dataset.i; act(items()[sel]); e.stopPropagation(); });
     addEventListener('keydown', function (e) {
       var k = e.key, vis = ov.classList.contains('on');
@@ -130,8 +149,8 @@
     function startGrace() {
       clearGrace();
       lost = setTimeout(function () {
-        if (playing) stop(); else if (stack.length > 1) { var wb = !!cur().big; stack.pop(); sel = 0; paint(); if (wb) leave(); } else if (shown) { shown = false; paint(); }
-        lost = setTimeout(function () { lost = null; if (playing) stop(); leave(); stack = []; shown = false; paint(); update(); }, 5000);
+        if (busy()) { if (!(playing.n > 0)) stop(); } else if (stack.length > 1) { var wb = !!cur().big; stack.pop(); sel = 0; paint(); if (wb) leave(); } else if (shown) { shown = false; paint(); }
+        lost = setTimeout(function () { lost = null; if (busy() && !(playing.n > 0)) stop(); if (!busy()) leave(); stack = []; shown = false; paint(); update(); }, 5000);
       }, 10000);
     }
     var inFrame = false; try { inFrame = window.parent !== window; } catch (e) { inFrame = true; }   // shown inside the TV door (e.g. a branded caf\u00e9 screen): the outer page owns the pairing badge
@@ -147,14 +166,15 @@
         if (d.t === 'hi') { if (d.id) conn.ztpId = d.id; sync(); }
         else if (d.t === 'nav') { actor = conn; nav(d.d, who(conn)); actor = null; }
         else if (d.t === 'release') release(conn);
-        else if (d.t === 'launch') { var g = o.find && o.find(d.game); if (!g) return; if (Object.keys(remotes).some(function (k) { return remotes[k] !== conn; }) || playing) return net.send(conn, { t: 'busy' }); g.owner = who(conn); play(g); }
-        else if (d.t === 'screen') { if (d.logo && d.id) try { localStorage.setItem('ztp-biz-logo-' + d.id, d.logo); } catch (e) {} play({ name: d.name || 'Caf\u00e9 screen', play: d.url, mins: 60, owner: who(conn) }); }
-        else if (d.t === 'qrpage') { if (playing) return; if (!stack.length) menu(false); act({ qr: 1 }); }
-        else if (d.t === 'pick') { if (playing) return; if (!stack.length) menu(false); sel = d.i; var it = items()[d.i]; if (it && it.play) it.owner = who(conn); actor = conn; act(it); actor = null; } },
+        else if (d.t === 'launch') { var g = o.find && o.find(d.game); if (!g) return; if (Object.keys(remotes).some(function (k) { return remotes[k] !== conn; }) || busy()) return net.send(conn, { t: 'busy' }); g.owner = who(conn); play(g); }
+        else if (d.t === 'screen') { if (d.logo && d.id) try { localStorage.setItem('ztp-biz-logo-' + d.id, d.logo); } catch (e) {} setHome({ name: d.name || 'Caf\u00e9 screen', play: d.url, mins: 60, home: true }); }
+        else if (d.t === 'qrpage') { if (busy()) return; if (!stack.length) menu(false); act({ qr: 1 }); }
+        else if (d.t === 'pick') { if (busy()) return; if (!stack.length) menu(false); sel = d.i; var it = items()[d.i]; if (it && it.play) it.owner = who(conn); actor = conn; act(it); actor = null; } },
       onClose: function (conn) { if (conn.ztpReleased || !remotes[conn.connectionId]) return; delete remotes[conn.connectionId]; delete seen[conn.connectionId]; if (playing && playing.owner && playing.owner === who(conn)) { var ks = Object.keys(remotes); playing.owner = ks.length ? who(remotes[ks[0]]) : ''; sync(); } if (!Object.keys(remotes).length) startGrace(); update(); } };
     if (!o.noPair) { net = local ? new LRNet.LocalHost(opts) : new LRNet.Host(opts); code = net.code; if (o.onCode) o.onCode(pairURL(code), code); }
     var api = { menu: function () { menu(true); }, close: close, isOpen: function () { return ov.classList.contains('on') || !!playing; }, code: function () { return code; }, pairURL: function () { return pairURL(code); },
-      state: function () { return { menu: stack.length, shown: ov.classList.contains('on'), playing: playing && playing.name, paired: paired(), grace: lost != null }; } };
+      state: function () { return { menu: stack.length, shown: ov.classList.contains('on'), playing: playing && playing.name, paired: paired(), grace: lost != null, home: home && home.name, room: playing && playing.room, p1: playing && playing.p1url || '' }; } };
+    if (o.homes && !inFrame) try { var hh = JSON.parse(localStorage.getItem('ztp-home') || 'null'); if (hh && hh.play) { home = hh; setTimeout(function () { if (!playing) play(hh); }, 900); } } catch (e) {}
     root.__door = api; return api;
   };
 })(window);

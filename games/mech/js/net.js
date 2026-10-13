@@ -12,7 +12,18 @@
   }
 
   // ---------------------------------------------------------------- TV / host
+  // 0-Phi front door: when this game runs inside the TV door (or the phone's player-1 frame), report the room / join status to the
+  // parent page so it can hand the real room code to the launching phone and show join problems. Does nothing standalone.
+  function ztpWatch(h, kind) {
+    var framed = false; try { framed = root.parent && root.parent !== root; } catch (e) { framed = true; }
+    if (!framed || typeof setInterval !== 'function') return;
+    var last = '';
+    function post() { var n = h.conns ? Object.keys(h.conns).length : 0, m = { ztp: kind, status: h.status, code: h.code, n: n, detail: h.detail || '' }, k = JSON.stringify(m);
+      if (k !== last || kind === 'room') { last = k; try { root.parent.postMessage(m, '*'); } catch (e) {} } }
+    setTimeout(post, 0); setInterval(post, kind === 'room' ? 1500 : 700);
+  }
   function Host(o) {
+    ztpWatch(this, "room");
     this.o = o; this.conns = {}; this.code = o.code || makeCode(); this.status = 'connecting'; this.tries = 0;
     if (typeof root.Peer !== 'function') { this.setStatus('offline', 'PeerJS did not load'); return; }
     this.open();
@@ -49,6 +60,7 @@
 
   // ---------------------------------------------------------------- phone / client
   function Client(o) {
+    ztpWatch(this, "client");
     this.o = o; this.code = o.code; this.status = 'idle'; this.lastHeard = 0; this.tries = 0;
     var self = this;
     this.ping = setInterval(function () {
@@ -65,7 +77,7 @@
     root.addEventListener && root.addEventListener('online', function () { if (!self.destroyed) self.reconnect(); });
     this.start();
   }
-  Client.prototype.setStatus = function (s, d) { this.status = s; if (this.o.onStatus) this.o.onStatus(s, d); };
+  Client.prototype.setStatus = function (s, d) { this.status = s; this.detail = d || ''; if (this.o.onStatus) this.o.onStatus(s, d); };
   Client.prototype.start = function () {
     var self = this;
     if (this.destroyed) return;
@@ -115,6 +127,7 @@
   // ---------------------------------------------------------------- local transport (tests / same-browser demo): BroadcastChannel
   // ?local=1 on the TV and the phones: no broker, no WebRTC. Only works for tabs of the same browser.
   function LocalHost(o) {
+    ztpWatch(this, "room");
     var self = this; this.o = o; this.code = o.code || makeCode(); this.conns = {}; this.status = 'connecting';
     this.bc = new BroadcastChannel('mech-local-' + this.code);
     this.bc.onmessage = function (e) {
@@ -131,6 +144,7 @@
   LocalHost.prototype.send = function (conn, msg) { try { if (conn && conn.open) conn.send(msg); } catch (e) {} };
   LocalHost.prototype.open = function () {};
   function LocalClient(o) {
+    ztpWatch(this, "client");
     var self = this; this.o = o; this.code = o.code; this.cid = 'L' + Math.random().toString(36).slice(2, 10); this.status = 'connecting';
     this.bc = new BroadcastChannel('mech-local-' + this.code);
     this.bc.onmessage = function (e) {

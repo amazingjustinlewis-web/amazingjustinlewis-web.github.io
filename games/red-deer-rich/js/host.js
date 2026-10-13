@@ -16,6 +16,9 @@
   var vipCid = null, overAt = 0;   // v0.6 overAt: when the results came up (PLAY AGAIN from any phone waits 4 s)
   var vip = function () {
     var i, p;
+    if (vipCid) for (i = 0; i < game.players.length; i++) { p = game.players[i]; if (!p.ai && p.clientId === vipCid && p.connected !== false) return p; }
+    // the leader left (phone closed / dropped): the next connected player leads; if nobody is connected keep the old one
+    for (i = 0; i < game.players.length; i++) { p = game.players[i]; if (!p.ai && p.clientId && p.connected !== false) { vipCid = p.clientId; return p; } }
     if (vipCid) for (i = 0; i < game.players.length; i++) { p = game.players[i]; if (!p.ai && p.clientId === vipCid) return p; }
     for (i = 0; i < game.players.length; i++) { p = game.players[i]; if (!p.ai && p.clientId) { vipCid = p.clientId; return p; } }
     return null;
