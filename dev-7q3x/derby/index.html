@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<title>Demolition Derby (dev)</title>
+<style>
+@font-face{font-family:Fredoka;src:url(../../games/walker/assets/fredoka-latin-var.woff2) format('woff2');font-weight:300 700}
+html,body{margin:0;height:100%;overflow:hidden;background:#120c08;color:#fff;font-family:Fredoka,system-ui,sans-serif}
+canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block}
+.ov{position:fixed;inset:0;pointer-events:none}
+#tags .tag{position:absolute;transform:translate(-50%,-100%);text-align:center;font-size:1.6vh;font-weight:600;text-shadow:0 1px 3px #000}
+#tags .hb{width:6vh;height:.7vh;background:#0008;border-radius:.4vh;margin:.3vh auto 0;overflow:hidden}#tags .hb i{display:block;height:100%;background:#7ed957}
+#cards{position:fixed;left:1.5vw;top:2vh;display:flex;flex-direction:column;gap:.8vh}
+.pc{display:flex;align-items:center;gap:.8vw;background:#000a;border-radius:1.2vh;padding:.6vh 1vw;min-width:16vw;font-size:2vh;border-left:.6vh solid}
+.pc .nm{flex:1;font-weight:600}.pc .lv{color:#ffd23f}.pc .hp{width:7vw;height:1vh;background:#333;border-radius:1vh;overflow:hidden}.pc .hp i{display:block;height:100%}
+.pc.out{opacity:.4}.pc .w{color:#ffd23f;font-size:1.7vh}
+#banner{position:fixed;left:0;right:0;top:40vh;text-align:center;font-size:11vh;font-weight:700;color:#ffd23f;text-shadow:0 .6vh 0 #7a2a00,0 0 4vh #000;transition:opacity .3s}
+#feed{position:fixed;right:1.5vw;top:2vh;text-align:right;font-size:1.9vh;line-height:1.6}
+#feed div{background:#000a;border-radius:1vh;padding:.2vh .8vw;margin-bottom:.4vh;display:inline-block;clear:both;float:right}
+#lobby,#podium{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 40%,#3a1e0ecc,#120c08f0 70%)}
+.lb{display:flex;gap:5vw;align-items:center}
+h1{font-size:9vh;margin:0;color:#ffd23f;letter-spacing:.04em;text-shadow:0 .6vh 0 #7a2a00}
+.sub{font-size:2.6vh;color:#e8c9a8;margin:.5vh 0 3vh}
+#qr{width:30vh;height:30vh;background:#fff;border-radius:2vh;padding:1.5vh}#qr svg{width:100%;height:100%}
+#code{font-size:7vh;letter-spacing:.3em;font-weight:700}#joinUrl{font-size:1.8vh;color:#c9a}
+#plist{display:flex;flex-wrap:wrap;gap:1vh;max-width:40vw;margin-top:2vh}#plist span{padding:.6vh 1.2vw;border-radius:1vh;font-size:2.2vh;font-weight:600;color:#111}
+#hint{font-size:2.3vh;color:#e8c9a8;margin-top:2vh}
+#netStatus{font-size:2vh;color:#f99;margin-top:1vh}
+#cornerqr{position:fixed;right:1.5vw;bottom:2vh;background:#000a;border-radius:1.5vh;padding:1vh;display:none;text-align:center;font-size:1.6vh}
+#cornerqr div{width:11vh;height:11vh;background:#fff;border-radius:1vh;padding:.5vh}#cornerqr svg{width:100%;height:100%}
+.pod{display:flex;align-items:flex-end;gap:2vw;justify-content:center;margin:3vh 0}
+.step{width:16vw;text-align:center;font-size:2.6vh;font-weight:600}.step .blk{border-radius:1.5vh 1.5vh 0 0;display:flex;align-items:flex-start;justify-content:center;font-size:7vh;padding-top:1vh;color:#0008}
+table{border-collapse:collapse;font-size:2.1vh;margin:0 auto}td,th{padding:.5vh 1.4vw;text-align:center}th{color:#e8c9a8;font-weight:500}
+#pbar{width:40vw;height:.8vh;background:#fff2;border-radius:1vh;margin:3vh auto 0;overflow:hidden}#pbar i{display:block;height:100%;background:#ffd23f}
+</style></head><body>
+<canvas id="gl"></canvas>
+<div class="ov" id="tags"></div>
+<div id="cards"></div><div id="feed"></div><div id="banner"></div>
+<div id="cornerqr"><div id="cq"></div>Join: <b id="cqcode"></b></div>
+<div id="lobby"><div class="lb">
+  <div><h1>DEMOLITION DERBY</h1><div class="sub">Pick a car on your phone. Last car rolling wins the round.</div>
+    <div id="plist"></div><div id="hint"></div><div id="netStatus">Connecting to the room server&hellip;</div></div>
+  <div style="text-align:center"><div id="qr"></div><div id="code">&mdash;</div><div id="joinUrl"></div></div>
+</div></div>
+<div id="podium"><div style="text-align:center;width:80vw"><h1 id="ptitle">CHAMPION</h1><div class="pod" id="pod"></div><table id="ptab"></table><div id="pbar"><i></i></div><div class="sub" id="pnext"></div></div></div>
+<script src="js/vendor/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/vendor/three.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/net.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/tv.js"></script>
+<script src="../../assets/js/ztp-end.js"></script>
+<script>ZTPEnd.watch(function () { return DD.game.phase === 'over'; }, 58000);</script>
+</body></html>

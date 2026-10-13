@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#120c08"><title>Derby controller</title>
+<style>
+@font-face{font-family:Fredoka;src:url(../../games/walker/assets/fredoka-latin-var.woff2) format('woff2');font-weight:300 700}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;background:#120c08;color:#fff;font-family:Fredoka,system-ui,sans-serif;overscroll-behavior:none}
+.scr{display:none;position:fixed;inset:0;padding:14px;overflow-y:auto}.scr.on{display:block}
+h2{margin:4px 0 10px;color:#ffd23f}
+input{font:inherit;font-size:20px;padding:10px;border-radius:10px;border:0;width:100%}
+button{font:inherit;font-size:18px;border:0;border-radius:12px;padding:12px 14px;background:#3a2a1e;color:#fff}
+button.go{background:#ffd23f;color:#3a2000;font-weight:700;width:100%;font-size:22px;margin-top:10px}
+.cars{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.car{background:#2a1e16;border-radius:12px;padding:8px;border:3px solid transparent}.car.sel{border-color:#ffd23f}
+.car b{display:block;font-size:17px}.bar{display:flex;align-items:center;gap:6px;font-size:11px;color:#c9a}.bar i{flex:1;height:5px;background:#0006;border-radius:3px;overflow:hidden}.bar i s{display:block;height:100%;background:#ffd23f}
+.row{display:flex;align-items:center;gap:6px;margin:8px 0}.row>span{width:52px;color:#e8c9a8}.row button{flex:1;padding:10px 4px;font-size:15px}.row button.sel{background:#ffd23f;color:#3a2000;font-weight:700}
+.note{font-size:13px;color:#c9a;margin:4px 0}
+#st{position:fixed;left:0;right:0;bottom:0;font-size:12px;color:#998;text-align:center;padding:4px;pointer-events:none}
+#drive{padding:0;touch-action:none}
+#hud{position:absolute;left:0;right:0;top:0;padding:10px 14px;display:flex;gap:10px;align-items:center}
+#hp{flex:1;height:18px;background:#0008;border-radius:9px;overflow:hidden;border:2px solid #fff3}#hp i{display:block;height:100%;background:#7ed957;transition:width .15s}
+#lives{color:#ffd23f;font-size:20px}
+#joy{position:absolute;left:0;top:60px;bottom:0;width:62%}
+#knob{position:absolute;width:70px;height:70px;margin:-35px;border-radius:50%;background:#fff3;border:3px solid #fff8;display:none}
+#base{position:absolute;width:150px;height:150px;margin:-75px;border-radius:50%;border:3px dashed #fff3;display:none}
+#boost{position:absolute;right:16px;bottom:30px;width:34vw;height:34vw;max-width:170px;max-height:170px;border-radius:50%;background:#ff6a2a;font-size:22px;font-weight:700;box-shadow:0 6px 0 #8a2a00}
+#boost.cd{background:#5a3a2a;box-shadow:none}#boost .m{position:absolute;left:15%;right:15%;bottom:18%;height:6px;background:#0006;border-radius:3px;overflow:hidden}#boost .m s{display:block;height:100%;background:#ffd23f}
+#tiltBtn{position:absolute;right:16px;top:60px;font-size:14px;padding:8px 10px}
+#msg{position:absolute;left:0;right:0;top:40%;text-align:center;font-size:26px;font-weight:700;color:#ffd23f;pointer-events:none;text-shadow:0 2px 6px #000}
+#drive.hit{animation:hit .25s}@keyframes hit{0%{background:#7a1a10}100%{background:#120c08}}
+table{width:100%;font-size:16px}td{padding:4px}td:last-child{text-align:right;font-weight:600}
+</style></head><body>
+<div class="scr on" id="join"><h2>DEMOLITION DERBY</h2>
+  <p class="note">Room</p><input id="room" maxlength="4" autocapitalize="characters" placeholder="ABCD">
+  <p class="note">Your name</p><input id="name" maxlength="12" placeholder="Driver">
+  <button class="go" id="joinBtn">JOIN</button></div>
+<div class="scr" id="garage"><h2 id="gTitle">PICK YOUR CAR</h2>
+  <div class="cars" id="cars"></div>
+  <h2 style="margin-top:14px">ARMOUR</h2><p class="note">Plates: take half damage there, heavier. Spikes: hurt whoever touches that side, but you take a bit more.</p>
+  <div id="arm"></div>
+  <h2 style="margin-top:14px">BOOST</h2><div id="bst"></div>
+  <button class="go" id="readyBtn">READY</button>
+  <div id="leadBox" style="display:none"><button class="go" id="startBtn" style="background:#7ed957">START DERBY</button><button id="botsBtn" style="width:100%;margin-top:8px">AI fill: ON</button></div>
+  <p class="note" id="gNote"></p></div>
+<div class="scr" id="drive">
+  <div id="hud"><div id="hp"><i></i></div><span id="lives"></span></div>
+  <div id="joy"><div style="position:absolute;left:0;right:0;top:45%;text-align:center;color:#fff3;font-size:18px">drag anywhere here to drive<br>(push where you want to go on the TV)</div><div id="base"></div><div id="knob"></div></div>
+  <button id="tiltBtn">Steer: joystick</button>
+  <button id="boost">BOOST<div class="m"><s></s></div></button>
+  <div id="msg"></div></div>
+<div class="scr" id="over"><h2 id="oTitle">DERBY OVER</h2><table id="oTab"></table><button class="go" id="againBtn">BACK TO LOBBY</button><p class="note">Wait for the leader, or scan the TV again later.</p></div>
+<div id="st"></div>
+<script src="js/vendor/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/config.js"></script><script src="js/net.js"></script><script src="js/phone.js"></script>
+</body></html>

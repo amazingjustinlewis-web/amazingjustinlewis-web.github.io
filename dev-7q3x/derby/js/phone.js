@@ -1,0 +1,88 @@
+/* DEMOLITION DERBY - phone controller */
+(function () {
+  'use strict';
+  var C = window.DD_CONFIG, Q = new URLSearchParams(location.search), $ = function (id) { return document.getElementById(id); };
+  var token = localStorage.getItem('dd-token') || Math.random().toString(36).slice(2); localStorage.setItem('dd-token', token);
+  var setup = JSON.parse(localStorage.getItem('dd-setup') || 'null') || { type: 'muscle', armour: { front: 'plate', side: 'none', back: 'none' }, boost: 'ram' };
+  var net = null, S = {}, ready = false, tilt = false, joy = null, cur = 'join';
+  function show(id) { if (cur === id) return; cur = id; ['join', 'garage', 'drive', 'over'].forEach(function (s) { $(s).classList.toggle('on', s === id); }); }
+  $('room').value = (Q.get('room') || '').toUpperCase(); $('name').value = Q.get('name') || localStorage.getItem('dd-name') || '';
+  function join() {
+    var room = $('room').value.toUpperCase().replace(/[^A-Z]/g, ''); if (room.length !== 4) { $('st').textContent = 'Enter the 4-letter code on the TV'; return; }
+    var name = $('name').value.trim() || 'Driver'; localStorage.setItem('dd-name', name);
+    var o = { code: room, onStatus: function (s) { $('st').textContent = s === 'online' ? 'Connected \u00b7 ' + room : s === 'noroom' ? 'No TV with code ' + room + ' yet\u2026' : s + '\u2026'; },
+      onOpen: function () { net.send({ t: 'hello', token: token, name: name }); }, onMessage: onMsg };
+    net = Q.get('local') === '1' ? new window.DDNet.LocalClient(o) : new window.DDNet.Client(o);
+    $('joinBtn').disabled = true; $('joinBtn').textContent = 'Joining\u2026';
+  }
+  $('joinBtn').onclick = join; if (Q.get('room') && (Q.get('auto') === '1' || Q.get('name') || localStorage.getItem('dd-name'))) join();
+  // ---------------------------------------------------------------- garage
+  function stat(label, v) { return '<div class="bar">' + label + '<i><s style="width:' + Math.round(v * 100) + '%"></s></i></div>'; }
+  function drawGarage() {
+    $('cars').innerHTML = C.cars.map(function (T) { return '<div class="car' + (setup.type === T.id ? ' sel' : '') + '" data-c="' + T.id + '"><b>' + T.name + '</b>' + stat('Speed', T.speed / 30) + stat('Weight', T.mass / 2.2) + stat('Tough', T.hp / 180) + stat('Handling', T.turn / 3.8) + '</div>'; }).join('');
+    $('arm').innerHTML = ['front', 'side', 'back'].map(function (s) { return '<div class="row"><span>' + (s === 'side' ? 'Sides' : s[0].toUpperCase() + s.slice(1)) + '</span>' + ['none', 'plate', 'spike'].map(function (a) { return '<button data-a="' + s + ':' + a + '" class="' + (setup.armour[s] === a ? 'sel' : '') + '">' + C.armour[a].name + '</button>'; }).join('') + '</div>'; }).join('');
+    $('bst').innerHTML = Object.keys(C.boosts).map(function (k) { var B = C.boosts[k]; return '<div class="row"><button data-b="' + k + '" class="' + (setup.boost === k ? 'sel' : '') + '" style="text-align:left"><b>' + B.name + '</b><br><small>' + B.desc + '</small></button></div>'; }).join('');
+    $('readyBtn').textContent = ready ? 'READY \u2714 (tap to change)' : 'READY';
+  }
+  $('garage').addEventListener('click', function (e) { var t = e.target.closest('[data-c],[data-a],[data-b]'); if (!t) return;
+    if (t.dataset.c) setup.type = t.dataset.c; if (t.dataset.a) { var p = t.dataset.a.split(':'); setup.armour[p[0]] = p[1]; } if (t.dataset.b) setup.boost = t.dataset.b;
+    localStorage.setItem('dd-setup', JSON.stringify(setup)); sendSetup(); drawGarage(); });
+  function sendSetup() { if (net) net.send({ t: 'setup', type: setup.type, armour: setup.armour, boost: setup.boost, ready: ready }); }
+  $('readyBtn').onclick = function () { ready = !ready; sendSetup(); drawGarage(); };
+  $('startBtn').onclick = function () { ready = true; sendSetup(); net.send({ t: 'start' }); };
+  $('botsBtn').onclick = function () { net.send({ t: 'bots' }); };
+  $('againBtn').onclick = function () { net.send({ t: 'start' }); };
+  // ---------------------------------------------------------------- driving
+  var jz = $('joy'), jid = null, jx0 = 0, jy0 = 0, jv = [0, 0];
+  function kpos(x, y) { $('knob').style.left = x + 'px'; $('knob').style.top = y + 'px'; }
+  jz.addEventListener('touchstart', function (e) { var t = e.changedTouches[0]; jid = t.identifier; var r = jz.getBoundingClientRect(); jx0 = t.clientX - r.left; jy0 = t.clientY - r.top;
+    $('base').style.left = jx0 + 'px'; $('base').style.top = jy0 + 'px'; $('base').style.display = $('knob').style.display = 'block'; kpos(jx0, jy0); e.preventDefault(); }, { passive: false });
+  jz.addEventListener('touchmove', function (e) { for (var i = 0; i < e.changedTouches.length; i++) { var t = e.changedTouches[i]; if (t.identifier !== jid) continue; var r = jz.getBoundingClientRect(), dx = t.clientX - r.left - jx0, dy = t.clientY - r.top - jy0, m = Math.hypot(dx, dy), k = m > 65 ? 65 / m : 1; kpos(jx0 + dx * k, jy0 + dy * k); jv = [dx * k / 65, dy * k / 65]; } e.preventDefault(); }, { passive: false });
+  function jend(e) { for (var i = 0; i < e.changedTouches.length; i++) if (e.changedTouches[i].identifier === jid) { jid = null; jv = [0, 0]; $('base').style.display = $('knob').style.display = 'none'; } }
+  jz.addEventListener('touchend', jend); jz.addEventListener('touchcancel', jend);
+  var boostDown = false, boostTap = false;
+  $('boost').addEventListener('touchstart', function (e) { boostDown = true; boostTap = true; e.preventDefault(); }, { passive: false });
+  $('boost').addEventListener('touchend', function (e) { boostDown = false; e.preventDefault(); }, { passive: false });
+  $('boost').addEventListener('mousedown', function () { boostDown = true; boostTap = true; }); $('boost').addEventListener('mouseup', function () { boostDown = false; });
+  var ori = { b: 0, g: 0 }, ori0 = null;
+  function onOri(e) { ori.b = e.beta || 0; ori.g = e.gamma || 0; if (!ori0) ori0 = { b: ori.b, g: ori.g }; }
+  $('tiltBtn').onclick = function () {
+    if (tilt) { tilt = false; $('tiltBtn').textContent = 'Steer: joystick'; return; }
+    function on() { tilt = true; ori0 = null; window.addEventListener('deviceorientation', onOri); $('tiltBtn').textContent = 'Steer: tilt (tap = joystick)'; flashMsg('Hold the phone flat like a wheel. Tilt forward = gas'); }
+    if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') DeviceOrientationEvent.requestPermission().then(function (r) { if (r === 'granted') on(); else flashMsg('Motion not allowed'); }).catch(function () { flashMsg('Motion not allowed'); });
+    else on();
+  };
+  var msgT = 0; function flashMsg(t) { $('msg').textContent = t; clearTimeout(msgT); msgT = setTimeout(function () { $('msg').textContent = ''; }, 2500); }
+  setInterval(function () {
+    if (!net || cur !== 'drive' || S.phase !== 'play') return;
+    var m = { t: 'in' };
+    if (tilt) { var o0 = ori0 || { b: 0, g: 0 };
+      // landscape phones: gamma is forward/back, beta is the wheel. portrait: beta forward/back, gamma left/right
+      var land = Math.abs(window.orientation || 0) === 90 || innerWidth > innerHeight, sgn = (window.orientation === -90) ? -1 : 1;
+      var steer = land ? (ori.b - o0.b) * sgn : ori.g - o0.g, gas = land ? -(ori.g - o0.g) * sgn : -(ori.b - o0.b);
+      m.s = Math.max(-1, Math.min(1, steer / 25)); m.g = Math.max(-1, Math.min(1, gas / 18 + 0.35)); }
+    else m.abs = [Math.round(jv[0] * 100) / 100, Math.round(jv[1] * 100) / 100];
+    if (setup.boost === 'sustain') m.b = boostDown; else if (boostTap) m.b = true;
+    boostTap = false; net.send(m);
+  }, 50);
+  // ---------------------------------------------------------------- messages
+  function onMsg(m) {
+    if (m.t === 'welcome') { if (m.setup) { setup.type = setup.type || m.setup.type; } document.body.style.borderTop = '6px solid ' + m.color; sendSetup(); drawGarage(); }
+    if (m.t === 'reject') { $('st').textContent = m.reason; }
+    if (m.t === 'buzz') { if (navigator.vibrate) navigator.vibrate(m.long ? [120, 60, 220] : Math.round(25 + m.s * 90)); if (cur === 'drive') { $('drive').classList.remove('hit'); void $('drive').offsetWidth; $('drive').classList.add('hit'); } }
+    if (m.t === 'st') { S = m; paint(); }
+  }
+  function paint() {
+    var ph = S.phase;
+    if (ph === 'lobby') { show('garage'); $('leadBox').style.display = S.leader ? '' : 'none'; $('botsBtn').textContent = 'AI fill: ' + (S.bots ? 'ON' : 'OFF'); $('gNote').textContent = S.leader ? 'You are the leader: start when everyone is ready.' : 'Waiting for the leader to start.'; }
+    else if (ph === 'over') { show('over'); $('oTitle').textContent = S.place === 1 ? 'YOU WON THE DERBY!' : 'You placed #' + S.place + ' of ' + S.of;
+      var t = S.tot || {}; $('oTab').innerHTML = [['Points', S.score], ['Round wins', t.wins], ['Wrecks dealt', t.kos], ['Ring-outs', t.ringouts], ['Crushes', t.crushes], ['Damage dealt', Math.round(t.dmg || 0)], ['Air time', (t.air || 0).toFixed(1) + 's']].map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>'; }).join('');
+      $('againBtn').style.display = S.leader ? '' : 'none'; }
+    else { show('drive');
+      var f = S.maxhp ? S.hp / S.maxhp : 0; $('hp').firstChild.style.width = (f * 100) + '%'; $('hp').firstChild.style.background = f > 0.5 ? '#7ed957' : f > 0.25 ? '#ffd23f' : '#ff4b55';
+      $('lives').textContent = S.cs === 'out' ? 'OUT' : '\u2665'.repeat(Math.max(0, S.lives || 0));
+      $('boost').classList.toggle('cd', (S.boost || 0) < 0.99 && setup.boost !== 'sustain'); $('boost').querySelector('s').style.width = ((S.boost || 0) * 100) + '%';
+      var info = ph === 'countdown' ? 'Get ready\u2026' : ph === 'roundover' ? 'Round over' : S.cs === 'wait' ? 'Wrecked! Wait at the gate\u2026' : S.cs === 'enter' ? 'Rolling in!' : S.cs === 'out' ? 'Out this round. Watch the TV!' : S.cs === undefined ? 'You join next round' : '';
+      if (!msgT || info) $('msg').textContent = info; }
+  }
+})();
