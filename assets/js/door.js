@@ -113,8 +113,9 @@
         lost = setTimeout(function () { lost = null; if (playing) stop(); leave(); stack = []; shown = false; paint(); update(); }, 5000);
       }, 10000);
     }
+    var inFrame = false; try { inFrame = window.parent !== window; } catch (e) { inFrame = true; }   // shown inside the TV door (e.g. a branded caf\u00e9 screen): the outer page owns the pairing badge
     function paired() { return Object.keys(remotes).length > 0 || lost != null; }
-    function update() { if (o.onPaired) o.onPaired(paired()); if (!flown && Date.now() > outUntil) flyTo('base'); badge.textContent = Object.keys(remotes).length ? 'PAIRED' : ''; }
+    function update() { if (o.onPaired) o.onPaired(paired()); if (!flown && Date.now() > outUntil) flyTo('base'); badge.textContent = Object.keys(remotes).length && !inFrame && !playing ? 'PAIRED' : ''; }
     // phones ping every 4 s; a phone that went quiet (screen off, wifi gone) without closing counts as lost after 9 s
     var seen = {};
     setInterval(function () { var now = Date.now(); for (var k in remotes) if (now - (seen[k] || now) > 9000) { var c = remotes[k]; try { c.close(); } catch (e) {} opts.onClose(c); } }, 1500);
