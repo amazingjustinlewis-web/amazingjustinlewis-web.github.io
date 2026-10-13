@@ -644,3 +644,4 @@ b.amt { color: #ffe27a; font-weight: 900; }
 @keyframes paidBg { 0% { opacity: 0; } 10% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes paidSweep { 0% { opacity: 0; transform: translateX(-60vw) scale(1.8) rotate(-20deg); } 16% { opacity: 1; transform: translateX(0) scale(.92) rotate(-6deg); } 22% { transform: translateX(0) scale(1.05) rotate(-8deg); } 66% { opacity: 1; transform: translateX(2vw) scale(1) rotate(-8deg); } 100% { opacity: 0; transform: translateX(120vw) scale(1.1) rotate(4deg); } }
 @keyframes paidSub { 0%, 15% { opacity: 0; transform: translateY(20px); } 25% { opacity: 1; transform: none; } 70% { opacity: 1; } 100% { opacity: 0; } }
+.swipe .shakeon { color: inherit; opacity: .75; text-decoration: underline; cursor: pointer; }

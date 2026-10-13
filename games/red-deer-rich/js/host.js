@@ -111,7 +111,7 @@
     switch (type) {
       case 'start': SFX.play('fanfare'); noteClearAll(); syncCash(); break;
       case 'turn': SFX.play('turn'); if (p) banner(p, 'It\'s ' + p.name + '\'s turn', p.snow ? 'Stuck in the Snowbank: roll doubles, pay ' + money(C.towFee) + ' or use a Tow Pass' : 'Roll the dice!'); pfx(d.pid, 'turn'); break;
-      case 'roll': SFX.play('dice'); diceAnim(d.d, Date.now()); rnd.rollDice(d.d, d.pid, C.timing.roll / game.speed); if (p) banner(p, p.name + ' rolled ' + d.total + (d.dbl ? ' (DOUBLES!)' : ''), ''); break;
+      case 'roll': SFX.play('dice'); diceAnim(d.d, Date.now()); rnd.rollDice(d.d, d.pid, C.timing.roll / game.speed, d.f); if (p) banner(p, p.name + ' rolled ' + d.total + (d.dbl ? ' (DOUBLES!)' : ''), ''); break;
       case 'move': break;
       case 'land': if (p) { var lpr = game.props[d.sp], lown = lpr && lpr.owner >= 0 && lpr.owner !== game.oid(p) && !lpr.hocked ? game.byId(lpr.owner) : null; rnd.landBurst(p, d.sp, lown ? lown.color : null); } break;
       case 'halfway': SFX.play('cash'); if (d.exact) big(d.amount >= C.bullseyePay ? 'BULLSEYE!' : 'THE HALFWAY', '+' + money(d.amount) + ' for ' + p.name, '#7dff7d'); break;
@@ -386,8 +386,14 @@
   function renderLog(g) {
     var el = $('log'), last = g.log.length ? g.log[g.log.length - 1] : null, key = g.log.length + ':' + (last ? last.s : '') + ':' + g.players.length + ':' + innerHeight;
     if (key === logKey) return; logKey = key;
-    el.innerHTML = g.log.slice(-(C.logLines || 9)).map(function (l) { return '<div>' + boldMoney(esc(l.s)) + '</div>'; }).join('');   // v0.5 bold amounts
-    var guard = 0; while (el.children.length > 1 && el.scrollHeight > el.clientHeight + 1 && guard++ < 20) el.removeChild(el.firstChild);
+    // v0.7: newest on top; new lines slide in at the top, older ones fade as they move down
+    var rows = g.log.slice(-(C.logLines || 9)).reverse(), prevTop = el._top, fresh = 0;
+    if (prevTop != null) { for (var i = 0; i < rows.length; i++) { if (rows[i] === prevTop) break; fresh++; } if (fresh === rows.length) fresh = Math.min(rows.length, 3); }
+    el._top = rows[0] || null;
+    el.innerHTML = rows.map(function (l, k) { return '<div' + (k < fresh ? ' class="lnew"' : '') + '>' + boldMoney(esc(l.s)) + '</div>'; }).join('');   // v0.5 bold amounts
+    var guard = 0; while (el.children.length > 1 && el.scrollHeight > el.clientHeight + 1 && guard++ < 20) el.removeChild(el.lastChild);
+    var n = el.children.length; for (var j = 0; j < n; j++) el.children[j].style.opacity = n > 1 ? (1 - 0.75 * Math.pow(j / (n - 1), 1.3)).toFixed(2) : 1;
+    if (fresh && el.children.length > fresh) { el.classList.remove('lpush'); void el.offsetWidth; el.classList.add('lpush'); }
   }
   // v0.2 disconnects: seconds left before the AI covers a dropped phone (-1 = no countdown)
   function countdown(p) {

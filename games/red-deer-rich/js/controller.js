@@ -261,7 +261,7 @@
     var hk = !mine && t.heckle && st.rules.heckle;      // v0.4 Heckle: a tiny button beside a stalling player's name
     h += '<div class="whose">' + (mine ? '<b style="color:#ffd23f">YOUR TURN</b>' : pieceCv(cur, 40, 'wpc') + '<span><b>' + esc(t.name) + '</b>\'s turn</span>' +
       (hk ? '<button class="heckle' + (t.heckle.forever ? ' hot' : '') + '" data-act="heckle" aria-label="Heckle ' + esc(t.name) + '">\uD83D\uDE02</button>' : '')) + '</div>';
-    h += '<div class="dicebox" id="diceBox">' + wakeBtn() + '<canvas id="pdice" width="360" height="180"></canvas>' + (mine && (t.stage === 'roll' || t.canRollAgain) ? '<div class="swipe">Swipe up' + (shk.on ? ', shake' : '') + ' or tap ROLL</div>' : '') + '</div>';
+    h += '<div class="dicebox" id="diceBox">' + wakeBtn() + '<canvas id="pdice" width="360" height="180"></canvas>' + (mine && (t.stage === 'roll' || t.canRollAgain) ? '<div class="swipe">Swipe up' + (shk.on ? ', shake' : '') + ' or tap ROLL' + (!shk.on && !shk.asked && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function' ? ' \u00b7 <a class="shakeon" data-act="shakeOn">enable shake</a>' : '') + '</div>' : '') + '</div>';
     if (me.bankrupt) h += '<div class="info">You\'re bankrupt. Stick around: you can still chat and watch.</div>';
     else if (mine) {
       if (t.tab) {
@@ -465,7 +465,7 @@
     el.addEventListener('pointerdown', function (e) { if (e.pointerType === 'mouse') y0 = e.clientY; });
     el.addEventListener('pointerup', function (e) { if (e.pointerType === 'mouse' && y0 != null && e.clientY - y0 < -40) doRoll(); });
   }
-  function doRoll(viaShake) { if (!viaShake) askMotion(); var t = st.turn; if (t && t.pid === st.me.id && (t.stage === 'roll' || t.canRollAgain)) { send({ t: 'roll' }); vib(40); SFX.play('dice'); ui.diceT = Date.now(); drawDice(); } }
+  function doRoll(viaShake, force) { if (!viaShake) askMotion(); var t = st.turn; if (t && t.pid === st.me.id && (t.stage === 'roll' || t.canRollAgain)) { send(typeof force === 'number' ? { t: 'roll', f: force } : { t: 'roll' }); vib(40); SFX.play('dice'); ui.diceT = Date.now(); drawDice(); } }
 
   // ------------------------------------------------------------------ My Stuff
   function tmOf(pid) { var q = pById(pid); return (q && q.tm) || pid; }
@@ -1156,6 +1156,7 @@
     var act = el.getAttribute('data-act'), sp = el.getAttribute('data-sp');
     switch (act) {
       case 'roll': doRoll(); break;
+      case 'shakeOn': askMotion(); renderTurn(); break;
       case 'buy': case 'skipBuy': case 'payTow': case 'usePass': case 'raise': case 'giveUp': send({ t: act }); vib(30); if (act === 'buy') SFX.play('buy'); break;
       case 'pass': send({ t: 'pass' }); vib(40); SFX.play('click'); break;
       case 'build': case 'sell': case 'hock': case 'unhock': send({ t: act, sp: +sp }); vib(25); if (act === 'hock' || act === 'unhock') delete flow.flip[+sp]; if (act === 'build') SFX.play('build'); if (act === 'hock' || act === 'unhock') SFX.play('card'); break;   // v0.4: no confirmation for BUY / SELL
@@ -1324,11 +1325,21 @@
     var a = e.accelerationIncludingGravity || e.acceleration; if (!a || a.x == null) return;
     var p = shk.prev; shk.prev = [a.x, a.y, a.z]; if (!p) return;
     var jerk = Math.abs(a.x - p[0]) + Math.abs(a.y - p[1]) + Math.abs((a.z || 0) - (p[2] || 0)), now = Date.now();
+    // v0.7 strength: peak acceleration magnitude (gravity removed) over a ~300 ms window after the trigger
+    var la = e.acceleration && e.acceleration.x != null ? e.acceleration : null, mag = la ? Math.hypot(la.x, la.y, la.z || 0) : Math.abs(Math.hypot(a.x, a.y, a.z || 0) - 9.81);
+    if (shk.win) { shk.win.peak = Math.max(shk.win.peak, mag, jerk * 0.5); return; }
     if (jerk < ((C.shake && C.shake.jerk) || 28)) return;
     if (now - shk.last < ((C.shake && C.shake.debounceMs) || 1500)) return;
     if (!canRollNow()) return;
-    shk.last = now; doRoll(true);
+    shk.last = now; shk.win = { peak: Math.max(mag, jerk * 0.5) };
+    setTimeout(function () {
+      var S2 = C.shake || {}, lo = S2.magLo || 12, hi = S2.magHi || 45, w = shk.win; shk.win = null;
+      var f = Math.max(0, Math.min(1, (w.peak - lo) / (hi - lo)));
+      if (canRollNow()) doRoll(true, Math.round(f * 100) / 100);
+    }, S2w());
   }
+  function S2w() { return (C.shake && C.shake.windowMs) || 300; }
+  window.RDRShake = { test: onMotion, state: shk };   // headless test hook
   function startMotion() { if (shk.on) return; shk.on = true; window.addEventListener('devicemotion', onMotion); if (st && st.phase === 'play' && tab === 'turn') renderTurn(); }
   function askMotion() {
     if (shk.on || shk.asked || typeof DeviceMotionEvent === 'undefined') return; shk.asked = true;

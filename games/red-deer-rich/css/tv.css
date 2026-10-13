@@ -332,3 +332,12 @@ b.amt { font-weight: 900; color: #ffe27a; }
 .pausetv .pz-t { font-size: 11vh; font-weight: 900; color: #fff; letter-spacing: .12em; text-shadow: 0 0 4vh rgba(0,0,0,.8); }
 .pausetv .pz-s { font-size: 2.4vh; color: #ddd; margin-top: 1vh; }
 .top-right .tmr.off { color: #ff9f6a; } .top-right .pz { color: #ffd23f; }
+/* v0.7 log: newest on top, slides in, older lines fade downward */
+#log { margin-top: 1.2vh; justify-content: flex-start !important; }
+#log div:last-child { color: inherit; }
+#log div:first-child { color: var(--ink); }
+#log div { transition: opacity .6s ease; }
+#log div.lnew { animation: logIn .45s cubic-bezier(.2,.8,.3,1); }
+#log.lpush div:not(.lnew) { animation: logPush .45s cubic-bezier(.2,.8,.3,1); }
+@keyframes logIn { from { transform: translateY(-100%); opacity: 0; } }
+@keyframes logPush { from { transform: translateY(-2.6vh); } }

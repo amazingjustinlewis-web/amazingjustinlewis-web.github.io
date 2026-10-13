@@ -731,7 +731,8 @@
     t.roll = { d: d, total: d[0] + d[1], dbl: d[0] === d[1] }; t.rollSeq++;
     t.stage = 'rolling'; t.rollEnd = this.now + this.ms(C.timing.roll);
     t.buy = null; t.card = null; t.dblRent = false;
-    this.emit('roll', { pid: p.id, d: d, total: t.roll.total, dbl: t.roll.dbl, snow: p.snow });
+    var f = this.rollForce; this.rollForce = null;
+    this.emit('roll', { pid: p.id, d: d, total: t.roll.total, dbl: t.roll.dbl, snow: p.snow, f: f });
   };
   // after the dice stop
   G.afterRoll = function () {
@@ -1007,6 +1008,7 @@
     switch (m.t) {
       case 'roll':
         if (!active) return 'not your turn';
+        this.rollForce = (typeof m.f === 'number' && m.f >= 0 && m.f <= 1) ? m.f : null;   // v0.7 shake strength (visual only)
         if (t.stage === 'roll') {
           if (t.tab) return 'Settle your Tab first';
           this.doRoll(p); return '';

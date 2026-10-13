@@ -1105,14 +1105,17 @@
   };
 
   // ------------------------------------------------------------------ dice that tumble across the board
-  P.rollDice = function (d, pid, dur) { this.bd = { d: d.slice(), pid: pid, dur: Math.max(250, dur || 900), t0: null, seed: Math.random() * 1000 }; };
+  // v0.7 shake force f (0..1, visual only): gentle = a soft spill near the edge, hard = an energetic bounce across the middle; null = the classic throw
+  P.rollDice = function (d, pid, dur, f) { var hasF = typeof f === 'number'; f = hasF ? Math.max(0, Math.min(1, f)) : null; this.bd = { d: d.slice(), pid: pid, dur: Math.max(250, (dur || 900) * (hasF ? 0.85 + 0.4 * f : 1)), t0: null, seed: Math.random() * 1000, f: f }; };
   P.drawBoardDice = function (c, now) {
     var bd = this.bd; if (!bd) return;
     if (bd.t0 == null) {
       bd.t0 = now;
       var v = this.vis[bd.pid], cx = this.bx + this.S / 2, cy = this.by + this.S / 2;
       var sx = v ? v.x : cx, sy = v ? v.y : cy, dx = cx - sx, dy = cy - sy, L = Math.max(1, Math.sqrt(dx * dx + dy * dy)); dx /= L; dy /= L;
-      bd.sx = sx + dx * this.w * 0.9; bd.sy = sy + dy * this.w * 0.9; bd.ex = sx + dx * this.w * 2.7; bd.ey = sy + dy * this.w * 2.7; bd.px = -dy; bd.py = dx;
+      var s0 = 0.9, e0 = 2.7; bd.hopK = 1; bd.nb = 3.2;
+      if (bd.f != null) { var fk = bd.f; s0 = 0.7 + 0.3 * fk; e0 = Math.max(s0 + 0.4, 1.3 + (Math.max(2.7, (L / this.w) * 0.85) - 1.3) * fk); bd.hopK = 0.25 + 0.95 * fk; bd.nb = 1.6 + 2.9 * fk; }
+      bd.sx = sx + dx * this.w * s0; bd.sy = sy + dy * this.w * s0; bd.ex = sx + dx * this.w * e0; bd.ey = sy + dy * this.w * e0; bd.px = -dy; bd.py = dx;
     }
     var D = C.boardDice, el = now - bd.t0, k = Math.min(1, el / bd.dur), end = bd.dur + D.holdMs + D.fadeMs;
     if (el > end) { this.bd = null; return; }
@@ -1122,7 +1125,7 @@
     c.save(); c.globalAlpha = Math.max(0, alpha);
     for (var n = 0; n < 2; n++) {
       var off = (n ? 0.45 : -0.45) * this.w, x = bd.sx + (bd.ex - bd.sx) * ease + bd.px * off, y = bd.sy + (bd.ey - bd.sy) * ease + bd.py * off;
-      var hop = Math.abs(Math.sin(Math.PI * (k * 3.2 + n * 0.3))) * (1 - k) * this.w * 0.55;
+      var hop = Math.abs(Math.sin(Math.PI * (k * bd.nb + n * 0.3))) * (1 - k) * this.w * 0.55 * bd.hopK;
       var rot = (1 - k) * (1 - k) * (n ? -11 : 13) + (n ? 0.12 : -0.08);
       var val = k < 1 ? 1 + (Math.floor(el / 75 + n * 3 + bd.seed) % 6) : bd.d[n];
       c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(x + 3, y + sz * 0.42, sz * 0.5 * (1 - hop / (this.w * 1.6)), sz * 0.16, 0, 0, Math.PI * 2); c.fill();
