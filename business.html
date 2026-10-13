@@ -80,6 +80,15 @@
   .cred-tile::after { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(125deg, rgba(255,255,255,.25), rgba(255,255,255,0) 40%); }
   .cred-tile--game { border-color: #107C10; border-top-width: 6px; }
   @media (max-width: 900px) { .biz-hero .wrap, .reward, .founder { grid-template-columns: 1fr; } .coupon { justify-self: start; } }
+  .qs { padding: 1.4rem 1rem 1rem; text-align:center; border-bottom:1px solid rgba(212,175,55,.25); }
+  .qs__btns { display:flex; flex-direction:column; gap:.8rem; max-width:26rem; margin:0 auto; }
+  .qs__btn { display:block; padding:1.1rem 1rem; border-radius:14px; font-size:1.15rem; font-weight:700; text-decoration:none; border:2px solid var(--gold); }
+  .qs__btn--main { background:var(--gold); color:#000; }
+  .qs__btn--alt { background:transparent; color:var(--gold-hi, var(--gold)); }
+  .qs__logo { display:block; margin:1.1rem auto .2rem; width:56px; opacity:.9; }
+  .qs__visit { font-size:.85rem; color:rgba(255,255,255,.55); text-decoration:none; letter-spacing:.04em; }
+  .qs__visit:hover { color:var(--gold); }
+  @media (min-width:700px){ .qs__btns{flex-direction:row;max-width:40rem} .qs__btn{flex:1} }
 </style>
 </head>
 <body data-root="">
@@ -99,6 +108,14 @@
 </header>
 
 <main id="main">
+  <section class="qs" aria-label="Quick start">
+    <div class="qs__btns">
+      <a class="qs__btn qs__btn--main" href="go/">&#9654; Try it now</a>
+      <a class="qs__btn qs__btn--alt" href="go/#biz">&#9749; Set up your caf&eacute; screen</a>
+    </div>
+    <a href="./"><img class="qs__logo" src="assets/img/logo.svg" alt="Zero to Phi" width="49" height="40"></a>
+    <a class="qs__visit" href="./">Visit 0-Phi &rarr;</a>
+  </section>
   <section class="biz-hero" aria-labelledby="biz-title">
     <div class="wrap">
       <div>
