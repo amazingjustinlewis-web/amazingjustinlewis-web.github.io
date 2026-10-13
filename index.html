@@ -39,12 +39,12 @@
 var qs=new URLSearchParams(location.search),still=matchMedia('(prefers-reduced-motion: reduce)').matches||qs.get('still')==='1',PULSE=qs.get('pulse')!=='0';
 var FIXT=qs.has('t')?+qs.get('t'):null,THIN=qs.has('thin')?+qs.get('thin'):0.8; // erode radius in logo units
 var svg=document.getElementById('s'),logo=document.getElementById('logo'),ql=document.getElementById('ql');
-var VB={x:-19.07,y:-36.69,w:98.05,h:79.67},CX=0.06,CY=0.1;
+var VB={x:-19.07,y:-36.69,w:98.05,h:79.67},CX=0.06,CY=0.1,PX=49.7,PY=0.1;
 var Q,N,QZ=4,ready=false;function setQR(u){Q=qrcode(0,'H');Q.addData(u);Q.make();N=Q.getModuleCount();window.__qrURL=u;if(ready)fit()}
 setQR('https://amazingjustinlewis-web.github.io/go/');
 function fit(){var W=innerWidth,H=innerHeight,k=Math.min(W*0.9/VB.w,H*0.78/VB.h),vw=W/k,vh=H/k,mx=VB.x+VB.w/2,my=VB.y+VB.h/2;
  svg.setAttribute('viewBox',(mx-vw/2)+' '+(my-vh/2)+' '+vw+' '+vh);
- window.__zc=((CX-(mx-vw/2))*k).toFixed(1)+'px '+((CY-(my-vh/2))*k).toFixed(1)+'px';
+ window.__zc=((CX-(mx-vw/2))*k).toFixed(1)+'px '+((CY-(my-vh/2))*k).toFixed(1)+'px';window.__pc=((PX-(mx-vw/2))*k).toFixed(1)+'px '+((PY-(my-vh/2))*k).toFixed(1)+'px';
  var dpr=devicePixelRatio||1,n=N+2*QZ,mpx=Math.max(2,Math.floor(21*k*dpr/n))/dpr,u=mpx/k,S=u*n;
  // snap the QR's corner to the device-pixel grid
  var sx=(CX-S/2-(mx-vw/2))*k*dpr,sy=(CY-S/2-(my-vh/2))*k*dpr,ox=(mx-vw/2)+Math.round(sx)/(k*dpr),oy=(my-vh/2)+Math.round(sy)/(k*dpr);
@@ -70,13 +70,13 @@ fetch('assets/img/logo.svg').then(function(r){return r.text()}).then(function(t)
 // [id, name, typical minutes, late join?]  big-screen games fly onto the TV; phone-only games release the screen
 var GAMES=[['red-deer-rich','Red Deer Rich',60,0],['zombie-tiles','Zombie Tiles',20,0],['space','Drift Signal',30,1],['mech','Iron Stride',15,1],['laser-range','Laser Range',10,1],['walker','Walker',20,1]];
 var PHONE_GAMES=[['Battleship','cafe/play.html']];
-function gameItem(g){return{id:g[0],label:g[1]+'  · TV',play:'games/'+g[0]+'/index.html',name:g[1],mins:g[2],late:g[3],ctrl:g[3]?'../games/'+g[0]+'/controller.html':''}}
+function gameItem(g){return{id:g[0],label:g[1]+'  · TV',play:'games/'+g[0]+'/index.html',name:g[1],mins:g[2],late:g[3],ctrl:g[3]?'../games/'+g[0]+'/controller.html':'',p1ctrl:'../games/'+g[0]+'/controller.html',spin:g[0]==='space'||g[0]==='mech'}}
 var door=window.ZTP_PHONE?null:Door({name:'Zero to Phi',title:'ZERO TO PHI',
  find:function(id){var g=GAMES.filter(function(x){return x[0]===id})[0];return g&&gameItem(g)},
  items:function(){return[{label:'Games',sub:function(){return GAMES.map(gameItem).concat(PHONE_GAMES.map(function(p){return{label:p[0]+'  · phone',phoneGo:'../'+p[1],href:p[1]}}),[{label:'Back',back:1}])}},
   {label:'Explore 0-Phi',phoneGo:'../classic.html',href:'classic.html'},
   {label:'Set up a café screen',phone:'#biz'},{label:'Close',close:1}]},
- onCode:function(u){setQR(u)},flyEl:function(){return svg},flyOrigin:function(){return window.__zc||'50% 50%'},onPaired:function(p){ZQ.setForced(p?true:null,3.5)}});
+ onCode:function(u){setQR(u)},flyEl:function(){return svg},flyOrigin:function(){return window.__zc||'50% 50%'},spinOrigin:function(){return window.__pc||null},onPaired:function(p){ZQ.setForced(p?true:null,3.5)}});
 addEventListener('click',function(e){if(window.ZTP_PHONE){location.href='go/';return}if(door&&!door.isOpen()&&!e.target.closest('#door,#doorframe'))door.menu()});
 })();
 </script>

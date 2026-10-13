@@ -30,7 +30,7 @@
     function cur() { return stack[stack.length - 1]; }
     function items() { var m = cur(); return m ? m.items : []; }
     function broadcast(m) { for (var k in remotes) try { net.send(remotes[k], m); } catch (e) {} }
-    function sync() { broadcast(playing ? { t: 'playing', name: playing.name, since: playing.since, mins: playing.mins || 20, late: !!playing.late, ctrl: playing.ctrl || '', owner: playing.owner || '' } : stack.length ? { t: 'menu', title: cur().title, items: items().map(function (i) { return i.label; }), sel: sel, depth: stack.length } : { t: 'idle' }); }
+    function sync() { broadcast(playing ? { t: 'playing', name: playing.name, since: playing.since, mins: playing.mins || 20, late: !!playing.late, ctrl: playing.ctrl || '', owner: playing.owner || '', p1: playing.p1url || '' } : stack.length ? { t: 'menu', title: cur().title, items: items().map(function (i) { return i.label; }), sel: sel, depth: stack.length } : { t: 'idle' }); }
     function paint() {
       var m = cur(), vis = !!m && (shown || !!m.big); ov.classList.toggle('on', vis);
       if (vis) {
@@ -43,19 +43,38 @@
       c.width = c.height = n * m; x.fillStyle = '#cea03e'; x.fillRect(0, 0, n * m, n * m); x.fillStyle = '#000'; for (var r = 0; r < n - 8; r++) for (var k = 0; k < n - 8; k++) if (Q.isDark(r, k)) x.fillRect((k + 4) * m, (r + 4) * m, m, m); }
     function menu(onTV) { stack = [{ title: o.title || 'ZERO TO PHI', items: o.items() }]; sel = 0; shown = !!onTV; paint(); }
     // camera moves: paired -> the logo eases ~10% closer; launching -> fly through the 0's hollow; returning -> the reverse
-    var flown = false;
+    var flown = false, spun = false, LOCALQ = /[?&]local=1/.test(location.search);
+    // heartbeat: once paired and eased in, the logo beats gently (the CSS 'scale' property composes with the fly transform)
+    (function () { var st = document.createElement('style'); st.textContent = '@keyframes ztpBeat{0%{scale:1}7%{scale:1.024}14%{scale:1}22%{scale:1.016}32%,100%{scale:1}}.ztp-beat{animation:ztpBeat 1.8s ease-in-out infinite}' +
+      '#ztpHole{position:fixed;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:radial-gradient(circle,#000 55%,rgba(0,0,0,.85) 70%,rgba(0,0,0,0) 100%);pointer-events:none;z-index:4;transform:scale(0);opacity:0}'; document.head.appendChild(st); })();
+    var beatT = null;
+    function beat(on) { var el = o.flyEl && o.flyEl(); if (!el) return; clearTimeout(beatT); if (!on) { el.classList.remove('ztp-beat'); return; } if (!el.classList.contains('ztp-beat')) beatT = setTimeout(function () { el.classList.add('ztp-beat'); }, 3600); }
+    // the corkscrew: a full turn while diving into the Phi, whose vertical split opens into a black hole
+    function hole(mode, el) { var h = document.getElementById('ztpHole'); if (!h) { h = document.createElement('div'); h.id = 'ztpHole'; document.body.appendChild(h); }
+      var r = el.getBoundingClientRect(), org = (o.spinOrigin && o.spinOrigin()) || '50% 50%', p = org.split(' ');
+      if (mode === 'in') { h.style.left = (r.left + parseFloat(p[0]) * (p[0].indexOf('%') > 0 ? r.width / 100 : 1)) + 'px'; h.style.top = (r.top + parseFloat(p[1]) * (p[1].indexOf('%') > 0 ? r.height / 100 : 1)) + 'px'; }
+      h.style.transition = mode === 'in' ? 'transform 1.5s cubic-bezier(.7,0,.9,.6) .2s, opacity .4s ease .2s' : 'transform 1.2s cubic-bezier(.1,.4,.3,1), opacity .5s ease .8s';
+      h.style.transform = mode === 'in' ? 'scale(120)' : 'scale(0)'; h.style.opacity = mode === 'in' ? '1' : '0'; }
     function flyTo(mode) {
       var el = o.flyEl && o.flyEl(); if (!el) return;
-      if (o.flyOrigin) el.style.transformOrigin = o.flyOrigin();
+      if (mode !== 'base') beat(false);
+      if (spun && o.spinOrigin) el.style.transformOrigin = o.spinOrigin(); else if (o.flyOrigin) el.style.transformOrigin = o.flyOrigin();
+      if (spun && mode !== 'base') {
+        el.style.willChange = 'transform, opacity';
+        el.style.transition = mode === 'in' ? 'transform 1.7s cubic-bezier(.55,0,.95,.5), opacity .6s ease-in 1.1s' : 'transform 1.5s cubic-bezier(.05,.5,.45,1), opacity .5s ease-out';
+        el.style.transform = mode === 'in' ? 'rotate(360deg) scale(30)' : 'rotate(0deg) scale(' + ((Object.keys(remotes).length || lost != null) ? 1.1 : 1) + ')'; el.style.opacity = mode === 'in' ? '0' : '1';
+        hole(mode, el); if (mode === 'out') setTimeout(function () { if (!flown) { spun = false; if (paired()) beat(true); } }, 1600); return;
+      }
       var base = (Object.keys(remotes).length || lost != null) ? 1.1 : 1;
       el.style.willChange = 'transform, opacity';
       el.style.transition = mode === 'in' ? 'transform 1.1s cubic-bezier(.65,0,1,.55), opacity .75s ease-in .35s'
         : mode === 'out' ? 'transform 1.1s cubic-bezier(0,.55,.35,1), opacity .6s ease-out' : 'transform 3.5s cubic-bezier(.45,0,.25,1)';
-      el.style.transform = 'scale(' + (mode === 'in' ? 18 : base) + ')'; el.style.opacity = mode === 'in' ? '0' : '1';
+      el.style.transform = 'rotate(0deg) scale(' + (mode === 'in' ? 18 : base) + ')'; el.style.opacity = mode === 'in' ? '0' : '1';
+      if (mode === 'base') beat(base > 1); else if (mode === 'out' && base > 1) setTimeout(function () { if (!flown && paired()) beat(true); }, 1200);
     }
-    function enter() { flown = true; flyTo('in'); }
+    function enter(spin) { flown = true; spun = !!(spin && o.spinOrigin); flyTo('in'); }
     var outUntil = 0;
-    function leave() { if (!flown) return; flown = false; flyTo('out'); outUntil = Date.now() + 1150; }
+    function leave() { if (!flown) return; flown = false; flyTo('out'); outUntil = Date.now() + (spun ? 1600 : 1150); }
     function close() { if (paired()) { menu(false); return; } stack = []; shown = false; paint(); }
     function back() { if (playing) return stop(); if (stack.length > 1) { var wasBig = !!cur().big; stack.pop(); sel = 0; paint(); if (wasBig) leave(); } else if (shown) close(); }
     var actor = null; // the remote connection that triggered the current action (null = local)
@@ -92,8 +111,10 @@
     }
     // fade the TV into a game in-page; the game shows its own join QR for everyone else
     function play(it) {
-      it.since = Date.now(); it.owner = it.owner || ''; playing = it; shown = false; stack = []; ov.classList.remove('on'); enter(); setTimeout(function () { if (playing === it) fade.classList.add('on'); }, 450);
-      setTimeout(function () { if (playing !== it) return; fr.onload = function () { if (playing !== it) return; fr.classList.add('on'); fade.classList.remove('on'); }; fr.src = it.play; }, 750);
+      it.since = Date.now(); it.owner = it.owner || ''; playing = it; shown = false; stack = []; ov.classList.remove('on'); enter(it.spin);
+      var src = it.play; it.p1url = '';
+      if (it.p1ctrl) { var room = ''; for (var q = 0; q < 4; q++) room += 'ABCDEFGHJKLMNPQRSTUVWXYZ'.charAt(Math.floor(Math.random() * 24)); src += (src.indexOf('?') < 0 ? '?' : '&') + 'room=' + room + (LOCALQ ? '&local=1' : ''); it.p1url = it.p1ctrl + '?room=' + room + '&name=Player%201&auto=1' + (LOCALQ ? '&local=1' : ''); }   // the launching phone becomes player 1, already joined setTimeout(function () { if (playing === it) fade.classList.add('on'); }, 450);
+      setTimeout(function () { if (playing !== it) return; fr.onload = function () { if (playing !== it) return; fr.classList.add('on'); fade.classList.remove('on'); }; fr.src = src; }, 750);
       if (o.onPlay) o.onPlay(true); update(); sync();
     }
     function stop() { fr.onload = null; fade.classList.remove('on'); fr.classList.remove('on'); setTimeout(function () { if (!playing) fr.removeAttribute('src'); }, 900); playing = null; if (o.onPlay) o.onPlay(false); leave(); update(); menu(false); }
