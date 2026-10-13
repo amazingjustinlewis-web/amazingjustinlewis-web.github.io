@@ -33,6 +33,12 @@ input[type=text]{width:100%;padding:13px 14px;border-radius:12px;border:1px soli
 .pad{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:22px}.pad div{display:flex;gap:10px}.pb{width:96px;height:72px;border-radius:18px;border:1px solid var(--line);background:#0a0805;color:var(--gold2);font:inherit;font-size:24px;cursor:pointer}.pb.ok{background:linear-gradient(180deg,#f6dc8e,#d4a63e);color:#120d03;letter-spacing:.2em}.pb:active{filter:brightness(1.3)}
 #rlist a.sel{color:#fff3cc;background:#2a200c}
 .brand{display:flex;align-items:center;gap:14px;margin-bottom:18px}.brand img{max-height:56px;max-width:120px}
+.gbadge{display:inline-block;margin-top:4px;font-size:11px;letter-spacing:.08em;padding:2px 8px;border-radius:999px;border:1px solid var(--line)}.gbadge.ph{color:#120d03;background:var(--gold);border-color:var(--gold)}.gbadge.tv{color:var(--gold)}
+.gdesc{display:block;color:#a8997a;font-size:13px;margin-top:3px;letter-spacing:0}
+.glist a{display:block;padding:14px 4px;border-bottom:1px solid #1d170c;color:#ecdcb5;text-decoration:none}.glist b{font-weight:400;font-size:17px}
+.gnote{margin:4px 0 16px;color:#c9b991;font-size:14px;line-height:1.5}
+.tvhelp{margin:6px 0 10px;padding:14px;border:1px solid var(--line);border-left:2px solid var(--gold);border-radius:10px;color:#e9dcc0;font-size:14px;line-height:1.55}
+.tvhelp h3{margin:0 0 6px;font-weight:400;color:var(--gold);font-size:16px}
 </style></head><body>
 <header><a href="../?tv=1" aria-label="Zero to Phi"><img src="../assets/img/logo.svg" alt="Zero to Phi"></a><div class="who" id="who"></div></header>
 
@@ -40,7 +46,9 @@ input[type=text]{width:100%;padding:13px 14px;border-radius:12px;border:1px soli
 <section class="view" id="v-hub">
  <div class="brand" id="brand" hidden></div>
  <a class="quick" href="../family.html" id="quick">QUICK PLAY</a>
- <div class="row"><button class="btn" data-go="login">Log in</button><button class="q" data-ex="ex-login" aria-label="What is this?">?</button></div>
+ <div class="row"><button class="btn" data-go="games">Games</button><button class="q" data-ex="ex-games" aria-label="What is this?">?</button></div>
+<div class="ex" id="ex-games">See every game, and which ones play right on your phone versus on a TV.</div>
+<div class="row"><button class="btn" data-go="login">Log in</button><button class="q" data-ex="ex-login" aria-label="What is this?">?</button></div>
  <div class="ex" id="ex-login">Already have a profile? Sign in and your scores, Founder number and settings follow you to any screen.</div>
  <div class="row"><button class="btn" data-go="create">Create account</button><button class="q" data-ex="ex-create" aria-label="What is this?">?</button></div>
  <div class="ex" id="ex-create">Optional, secure and yours forever. Every profile gets a Founder number in signup order, honoured for the life of the studio. Show three arcade letters, a name, or more: you choose.</div>
@@ -108,6 +116,12 @@ input[type=text]{width:100%;padding:13px 14px;border-radius:12px;border:1px soli
 
 
 <!-- REMOTE (paired to a TV) -->
+<section class="view" id="v-games">
+ <h1>Games</h1>
+ <p class="gnote">Some games play right on your phone. Others need a TV or big screen, and your phone becomes the controller.</p>
+ <div class="glist" id="glist"></div>
+ <p style="margin-top:18px"><a class="link" href="#hub">&larr; Back</a></p>
+</section>
 <section class="view" id="v-remote">
  <p class="muted" id="rstat">Connecting to the screen…</p>
  <h1 id="rtitle">Remote</h1>
@@ -137,6 +151,13 @@ var LIB=[['games/charge-hop.html','Charge Hop','Keyboard'],['games/red-deer-rich
 function prof(){try{return JSON.parse(localStorage.getItem(PK))}catch(e){return null}}
 function save(p){localStorage.setItem(PK,JSON.stringify(p))}
 function show(v){if(v==='hub'&&typeof R!=='undefined'&&R)v='remote';[].forEach.call(document.querySelectorAll('.view'),function(s){s.classList.toggle('on',s.id==='v-'+v)});if(location.hash!=='#'+v)history.replaceState(null,'','#'+v);scrollTo(0,0);render()}
+
+var HUBG=[['Battleship','phone','Hide your fleet and hunt theirs, all on your phone','../cafe/play.html'],['Red Deer Rich','tv','Buy Red Deer streets, build shops, make deals'],['Zombie Tiles','tv','Explore the city tile by tile and race for the helipad'],['Drift Signal','tv','A chill space trip: every phone is a crew station'],['Iron Stride','tv','Pilot a walking mech, your phone is the cockpit'],['Laser Range','tv','Point your phone at the TV to pop targets'],['Walker','tv','A calm, gentle play world']];
+function gbadge(k){return k==='phone'?'<span class="gbadge ph">Plays on your phone</span>':k==='tv'?'<span class="gbadge tv">Needs a TV / big screen</span>':''}
+var TVHELP='<div class="tvhelp"><h3>This one needs a big screen</h3>Your phone is the controller, and the game shows on a TV. To play:<br>&bull; Find a screen showing the 0-Phi QR code and scan it, or<br>&bull; Open <b>amazingjustinlewis-web.github.io</b> on a TV or computer, then scan its code with this phone.<br>Want to play right now? Try a game marked <i>Plays on your phone</i>.</div>';
+function renderGames(){var g=$('glist');if(!g)return;g.innerHTML=HUBG.map(function(x,i){return '<a href="'+(x[3]||'#')+'" data-g="'+i+'"><b>'+x[0]+'</b><span class="gdesc">'+x[2]+'</span>'+gbadge(x[1])+'</a><div class="tvslot" id="tvs'+i+'"></div>'}).join('');
+ g.onclick=function(e){var a=e.target.closest('a[data-g]');if(!a)return;var x=HUBG[+a.dataset.g];if(x[1]!=='tv')return;e.preventDefault();var t=$('tvs'+a.dataset.g),open=!!t.innerHTML;[].forEach.call(g.querySelectorAll('.tvslot'),function(n){n.innerHTML=''});if(!open)t.innerHTML=TVHELP}}
+renderGames();
 function render(){var p=prof();$('who').textContent=p?(p.initials||p.name)+(p.demo?' · demo':''):'';
  if(p){$('hello').textContent='Welcome back, '+p.name;$('meline').textContent='Founder #'+p.founder+' (demo number) · '+p.initials;
   [].forEach.call(document.querySelectorAll('#showAs .chip'),function(c){c.classList.toggle('on',c.dataset.v===(p.showAs||'initials'))})}}
@@ -210,7 +231,7 @@ var code='';function startRemote(c){code=c;show('remote');var o={prefix:'ztp-doo
   onStatus:function(s){$('rstat').textContent=s==='online'?'Connected · you are the remote':s==='noroom'?'Screen not found yet, retrying…':'Connecting to the screen…';if(s==='online'){rsend({t:'hi',id:me});if(qs.get('launch')&&!launched){launched=1;rsend({t:'launch',game:qs.get('launch')})}}},
   onMessage:function(d){if(!d)return;if(d.t==='hello')$('rtitle').textContent=d.screen;
    var playing=d.t==='playing';if(playing||d.t==='menu'||d.t==='idle'){$('rplay').hidden=!playing;$('rpad').hidden=!!(playing&&d.owner&&d.owner!==me)}
-   if(d.t==='menu'){$('rtitle').textContent=d.title;$('rstat').textContent='Connected · you are the remote';$('rlist').innerHTML=d.items.map(function(l,i){return '<a href="#" data-i="'+i+'"'+(i===d.sel?' class="sel"':'')+'>'+l+'<span>'+(i===d.sel?'&#9664;':'')+'</span></a>'}).join('')}
+   if(d.t==='menu'){$('rtitle').textContent=d.title;$('rstat').textContent='Connected · you are the remote';$('rlist').innerHTML=d.items.map(function(l,i){return '<a href="#" data-i="'+i+'"'+(i===d.sel?' class="sel"':'')+'><span style="color:inherit;font-size:inherit">'+l.replace(/\s+·\s+(TV|phone)$/,'')+(d.meta&&d.meta[i]&&d.meta[i].d?'<span class="gdesc">'+d.meta[i].d+'</span>':'')+(d.meta&&d.meta[i]?gbadge(d.meta[i].k):'')+'</span><span>'+(i===d.sel?'&#9664;':'')+'</span></a>'}).join('')}
    if(d.t==='idle')$('rlist').innerHTML='<p class="muted">Menu closed. Press OK to open it.</p>';
    if(playing){$('rlist').innerHTML='';$('rpname').textContent=d.name;var mine=d.owner&&d.owner===me;
     $('rtitle').textContent=mine?'Now playing':'This screen is busy';$('rstat').textContent=mine?'You\u2019re the host · press back to end the game and return to the menu':'Connected';
@@ -235,7 +256,7 @@ document.addEventListener('click',function(e){var b=e.target.closest('.pb');if(b
  var a=e.target.closest('#rlist a');if(a){e.preventDefault();rsend({t:'pick',i:+a.dataset.i})}});
 addEventListener('pagehide',function(){if(R)try{R.destroy()}catch(e){}});
 $('rleave').onclick=function(){if(R)R.destroy();R=null;history.replaceState(null,'',location.pathname);show('hub')};
-var h=location.hash.slice(1);if(qs.get('pair'))startRemote(qs.get('pair').toUpperCase());else show(['login','create','biz','hub','me'].indexOf(h)>=0?h:(prof()&&!qs.get('biz')?'me':'hub'));
+var h=location.hash.slice(1);if(qs.get('pair'))startRemote(qs.get('pair').toUpperCase());else show(['login','create','biz','hub','me','games'].indexOf(h)>=0?h:(prof()&&!qs.get('biz')?'me':'hub'));
 })();
 </script>
 </body></html>

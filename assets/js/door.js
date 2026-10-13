@@ -39,7 +39,7 @@
       if (!v.member) v.p1 = ''; v.started = !!playing.started; v.games = o.games ? o.games() : [];
       for (var q = 0; q < queue.length; q++) if (queue[q].owner === id) { v.q = { pos: q + 1, wait: waitFor(q), name: queue[q].name }; break; }
       return v; }
-    function view0() { return (busy() ? { t: 'playing', p1wait: !!(playing.p1ctrl && !playing.p1url), room: playing.room || '', name: playing.name, since: playing.since, mins: playing.mins || 20, late: !!playing.late, ctrl: playing.ctrl || '', owner: playing.owner || '', p1: playing.p1url || '' } : stack.length ? { t: 'menu', title: cur().title, items: items().map(function (i) { return i.label; }), sel: sel, depth: stack.length } : { t: 'idle' }); }
+    function view0() { return (busy() ? { t: 'playing', p1wait: !!(playing.p1ctrl && !playing.p1url), room: playing.room || '', name: playing.name, since: playing.since, mins: playing.mins || 20, late: !!playing.late, ctrl: playing.ctrl || '', owner: playing.owner || '', p1: playing.p1url || '' } : stack.length ? { t: 'menu', title: cur().title, items: items().map(function (i) { return i.label; }), meta: items().map(function (i) { return { k: i.kind || '', d: i.desc || '' }; }), sel: sel, depth: stack.length } : { t: 'idle' }); }
     function paint() {
       var m = cur(), vis = !!m && (shown || !!m.big); ov.classList.toggle('on', vis);
       if (vis) {

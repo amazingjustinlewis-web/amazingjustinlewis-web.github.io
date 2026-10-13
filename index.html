@@ -69,11 +69,12 @@ fetch('assets/img/logo.svg').then(function(r){return r.text()}).then(function(t)
 // front door: a per-screen pairing room; phone remote or a local click opens the options menu
 // [id, name, typical minutes, late join?]  big-screen games fly onto the TV; phone-only games release the screen
 var GAMES=[['red-deer-rich','Red Deer Rich',60,0],['zombie-tiles','Zombie Tiles',20,0],['space','Drift Signal',30,1],['mech','Iron Stride',15,1],['laser-range','Laser Range',10,1],['walker','Walker',20,1]];
+var GDESC={'red-deer-rich':'Buy Red Deer streets, build shops, make deals','zombie-tiles':'Explore the city tile by tile and race for the helipad','space':'A chill space trip: every phone is a crew station','mech':'Pilot a walking mech, your phone is the cockpit','laser-range':'Point your phone at the TV to pop targets','walker':'A calm, gentle play world','Battleship':'Hide your fleet and hunt theirs, all on your phone'};
 var PHONE_GAMES=[['Battleship','cafe/play.html']];
-function gameItem(g){return{id:g[0],label:g[1]+'  · TV',play:'games/'+g[0]+'/index.html',name:g[1],mins:g[2],late:g[3],ctrl:g[3]?'../games/'+g[0]+'/controller.html':'',p1ctrl:'../games/'+g[0]+'/controller.html',spin:g[0]==='space'||g[0]==='mech'}}
+function gameItem(g){return{id:g[0],label:g[1]+'  · TV',play:'games/'+g[0]+'/index.html',name:g[1],mins:g[2],late:g[3],kind:'tv',desc:GDESC[g[0]]||'',ctrl:g[3]?'../games/'+g[0]+'/controller.html':'',p1ctrl:'../games/'+g[0]+'/controller.html',spin:g[0]==='space'||g[0]==='mech'}}
 var door=window.ZTP_PHONE?null:Door({name:'Zero to Phi',title:'ZERO TO PHI',
  games:function(){return GAMES.map(function(g){return[g[0],g[1],g[2]]})},find:function(id){var g=GAMES.filter(function(x){return x[0]===id})[0];return g&&gameItem(g)},
- items:function(){return[{label:'Games',sub:function(){return GAMES.map(gameItem).concat(PHONE_GAMES.map(function(p){return{label:p[0]+'  · phone',phoneGo:'../'+p[1],href:p[1]}}),[{label:'Back',back:1}])}},
+ items:function(){return[{label:'Games',sub:function(){return GAMES.map(gameItem).concat(PHONE_GAMES.map(function(p){return{label:p[0]+'  · phone',kind:'phone',desc:GDESC[p[0]]||'',phoneGo:'../'+p[1],href:p[1]}}),[{label:'Back',back:1}])}},
   {label:'Explore 0-Phi',phoneGo:'../classic.html',href:'classic.html'},
   {label:'Set up a café screen',phone:'#biz'},{label:'Close',close:1}]},
  onCode:function(u){setQR(u)},flyEl:function(){return svg},flyOrigin:function(){return window.__zc||'50% 50%'},spinOrigin:function(){return window.__pc||null},homes:true,onPaired:function(p){ZQ.setForced(p?true:null,3.5)}});
