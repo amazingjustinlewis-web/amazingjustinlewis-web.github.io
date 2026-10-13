@@ -16,3 +16,7 @@ Done in menu2 for reference: the launching phone is the game's host (it can end 
 
 ## Home edition (Oct 12, 2026)
 - Private house version of the front door: pairing also shows house controls (lights, movies from hard drive via Chromecast). Coordinate with Grok's home hub.
+
+## Game-to-queue handoff (Oct 12, 2026)
+- After the end-of-game breakdown (fireworks, stats), show "Next up: <game>" with a loading bar near the bottom for about a minute.
+- Near the end, fade out through one part of the logo (e.g. the 0) and straight back in through the other (the Phi), landing in the queued game.

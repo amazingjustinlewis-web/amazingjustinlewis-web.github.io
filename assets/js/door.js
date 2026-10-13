@@ -34,7 +34,7 @@
     function sync() { for (var k in remotes) try { net.send(remotes[k], view(remotes[k])); } catch (e) {} paintCQ(); }
     function waitFor(i) { var w = playing && !playing.home ? Math.max(1, Math.round((playing.mins || 20) - (Date.now() - playing.since) / 60000)) : 0; for (var j = 0; j < i; j++) w += queue[j].mins || 20; return w; }
     function view(conn) { var v = view0(), id = who(conn); if (v.t !== 'playing') return v;
-      var mi = playing.members.indexOf(id); v.member = mi >= 0; v.joinable = !!(playing.p1ctrl && (playing.late || !playing.started)) && mi < 0;
+      var mi = playing.members.indexOf(id); v.member = mi >= 0; v.joinable = !!playing.p1ctrl && mi < 0; v.host = playing.owner === id || !connOf(playing.owner);
       if (v.member && v.p1) v.p1 = v.p1.replace('name=Player%201', 'name=Player%20' + (mi + 1));
       if (!v.member) v.p1 = ''; v.started = !!playing.started; v.games = o.games ? o.games() : [];
       for (var q = 0; q < queue.length; q++) if (queue[q].owner === id) { v.q = { pos: q + 1, wait: waitFor(q), name: queue[q].name }; break; }
@@ -112,7 +112,8 @@
         if (d.status === 'online' && d.code && it.p1ctrl && (!it.p1url || it.room !== d.code)) { it.room = d.code; it.p1url = it.p1ctrl + '?room=' + d.code + '&name=Player%201&auto=1' + (LOCALQ ? '&local=1' : ''); }
         if (it.p1url !== was || it.started !== ws) sync();
         // nobody left anywhere (no remote, no players in the game): the screen frees itself
-        if (it.hadN && it.n === 0 && !Object.keys(remotes).length && lost == null) endGame();
+        // (never end a game because connections dropped: a wifi blip drops everyone at once. Only {ztp:'end'} or the host's End game do.)
+        if ((d.off || 0) !== (it.off || 0)) { it.off = d.off || 0; paintCQ(); }
       } });
     function toOwner(m) { for (var k in remotes) if (playing && who(remotes[k]) === playing.owner) try { net.send(remotes[k], m); } catch (e) {} }
     function busy() { return !!playing && !playing.home; }
@@ -126,7 +127,7 @@
     function nav(d, from) {
       if (busy()) { if (d !== 'back') return;
         if (playing.started && from && actor) return stepOut(actor);
-        if (!from || !playing.owner || from === playing.owner) stop(); return; }
+        if (!from || !playing.owner || from === playing.owner || !connOf(playing.owner)) stop(); return; }
       if (!stack.length) { menu(!from); return; }
       var n = cur().big ? 1 : items().length;
       if (d === 'up') sel = (sel + n - 1) % n; else if (d === 'down') sel = (sel + 1) % n;
@@ -160,7 +161,7 @@
       passHost(id); delete remotes[conn.connectionId]; delete seen[conn.connectionId]; conn.ztpReleased = true; setTimeout(function () { try { conn.close(); } catch (e) {} }, 400);
       update(); sync(); }
     var cq = null;
-    function paintCQ() { var want = busy() && playing.started && playing.members.some(function (m) { return !connOf(m); }) && code && !inFrame;
+    function paintCQ() { var want = busy() && !playing.home && (playing.off > 0 || playing.members.some(function (m) { return !connOf(m); }) || !!playing.p1ctrl) && code && !inFrame;
       if (!cq) { cq = document.createElement('div'); cq.id = 'doorcq'; cq.style.cssText = 'position:fixed;right:1.6vw;bottom:2vh;z-index:32;display:none;flex-direction:column;align-items:center;gap:.6vh;padding:1vh;border-radius:1.2vh;background:rgba(0,0,0,.72);border:1px solid rgba(226,184,74,.4);font:clamp(10px,1.5vh,16px) Georgia,serif;letter-spacing:.12em;color:#e2b84a;pointer-events:none'; document.body.appendChild(cq); }
       if (!want) { cq.style.display = 'none'; return; }
       if (cq.dataset.c !== code) { cq.dataset.c = code; var Q = qrcode(0, 'M'); Q.addData(pairURL(code)); Q.make(); var n = Q.getModuleCount() + 4, m = Math.max(2, Math.floor(innerHeight * 0.17 / n)), c = document.createElement('canvas'), x = c.getContext('2d');
@@ -182,22 +183,23 @@
     function startGrace() {
       clearGrace();
       lost = setTimeout(function () {
-        if (busy()) { if (!(playing.n > 0)) stop(); } else if (stack.length > 1) { var wb = !!cur().big; stack.pop(); sel = 0; paint(); if (wb) leave(); } else if (shown) { shown = false; paint(); }
-        lost = setTimeout(function () { lost = null; if (busy() && !(playing.n > 0)) stop(); if (!busy()) leave(); stack = []; shown = false; paint(); update(); }, 5000);
-      }, 10000);
+        if (busy()) { if (!playing.started) stop(); } else if (stack.length > 1) { var wb = !!cur().big; stack.pop(); sel = 0; paint(); if (wb) leave(); } else if (shown) { shown = false; paint(); }
+        lost = setTimeout(function () { lost = null; if (busy() && !playing.started) stop(); if (!busy()) leave(); stack = []; shown = false; paint(); update(); }, 10000);
+      }, 25000);
     }
     var inFrame = false; try { inFrame = window.parent !== window; } catch (e) { inFrame = true; }   // shown inside the TV door (e.g. a branded caf\u00e9 screen): the outer page owns the pairing badge
     function paired() { return Object.keys(remotes).length > 0 || lost != null; }
     function update() { if (o.onPaired) o.onPaired(paired()); if (!flown && Date.now() > outUntil) flyTo('base'); badge.textContent = Object.keys(remotes).length && !inFrame && !playing ? 'PAIRED' : ''; }
     // phones ping every 4 s; a phone that went quiet (screen off, wifi gone) without closing counts as lost after 9 s
     var seen = {};
-    setInterval(function () { var now = Date.now(); for (var k in remotes) if (now - (seen[k] || now) > 9000) { var c = remotes[k]; try { c.close(); } catch (e) {} opts.onClose(c); } }, 1500);
+    setInterval(function () { var now = Date.now(); for (var k in remotes) if (now - (seen[k] || now) > 20000) { var c = remotes[k]; try { c.close(); } catch (e) {} opts.onClose(c); } }, 1500);
     function who(conn) { return conn.ztpId || conn.connectionId; }
     var opts = { prefix: 'ztp-door-v1-', onStatus: function (s, c) { if (c && c !== code) { code = c; if (o.onCode) o.onCode(pairURL(c), c); } },
-      onJoin: function (conn) { remotes[conn.connectionId] = conn; seen[conn.connectionId] = Date.now(); clearGrace(); net.send(conn, { t: 'hello', screen: o.name || 'Zero to Phi' }); update(); if (!stack.length && !playing) menu(false); else sync(); },
+      onJoin: function (conn) { remotes[conn.connectionId] = conn; seen[conn.connectionId] = Date.now(); clearGrace(); net.send(conn, { t: 'hello', screen: o.name || 'Zero to Phi' }); update(); if (!stack.length && !playing) menu(false); else if (!busy()) sync(); },
       onMessage: function (conn, d) { if (!remotes[conn.connectionId]) opts.onJoin(conn); seen[conn.connectionId] = Date.now(); if (!d || d.t === 'ping') return net.send(conn, { t: 'pong' });
         if (d.t === 'hi') { if (d.id) conn.ztpId = d.id; sync(); }
-        else if (d.t === 'join') { if (busy() && playing.p1ctrl && (playing.late || !playing.started) && playing.members.indexOf(who(conn)) < 0) playing.members.push(who(conn)); sync(); }
+        else if (d.t === 'join') { if (busy() && playing.p1ctrl && playing.members.indexOf(who(conn)) < 0) playing.members.push(who(conn)); sync(); }
+        else if (d.t === 'endgame') { if (busy() && (who(conn) === playing.owner || !connOf(playing.owner))) endGame(); }
         else if (d.t === 'queue') { var qg = o.find && o.find(d.game); if (!qg) return; queue = queue.filter(function (q) { return q.owner !== who(conn); }); queue.push({ owner: who(conn), game: d.game, name: qg.name, mins: qg.mins || 20 }); if (!busy()) launchNext(); else sync(); }
         else if (d.t === 'unqueue') { queue = queue.filter(function (q) { return q.owner !== who(conn); }); sync(); }
         else if (d.t === 'nav') { actor = conn; nav(d.d, who(conn)); actor = null; }
@@ -206,7 +208,7 @@
         else if (d.t === 'screen') { if (d.logo && d.id) try { localStorage.setItem('ztp-biz-logo-' + d.id, d.logo); } catch (e) {} setHome({ name: d.name || 'Caf\u00e9 screen', play: d.url, mins: 60, home: true }); }
         else if (d.t === 'qrpage') { if (busy()) return; if (!stack.length) menu(false); act({ qr: 1 }); }
         else if (d.t === 'pick') { if (busy()) return; if (!stack.length) menu(false); sel = d.i; var it = items()[d.i]; if (it && it.play) it.owner = who(conn); actor = conn; act(it); actor = null; } },
-      onClose: function (conn) { if (conn.ztpReleased || !remotes[conn.connectionId]) return; delete remotes[conn.connectionId]; delete seen[conn.connectionId]; if (playing && playing.owner && playing.owner === who(conn)) { var ks = Object.keys(remotes); playing.owner = ks.length ? who(remotes[ks[0]]) : ''; sync(); } if (!Object.keys(remotes).length) startGrace(); update(); } };
+      onClose: function (conn) { if (conn.ztpReleased || !remotes[conn.connectionId]) return; delete remotes[conn.connectionId]; delete seen[conn.connectionId]; if (playing && playing.owner && playing.owner === who(conn)) { var pw = playing, oid = who(conn); setTimeout(function () { if (playing === pw && pw.owner === oid && !connOf(oid)) { passHost(oid); sync(); } }, 25000); } if (!Object.keys(remotes).length) startGrace(); update(); } };
     if (!o.noPair) { net = local ? new LRNet.LocalHost(opts) : new LRNet.Host(opts); code = net.code; if (o.onCode) o.onCode(pairURL(code), code); }
     var api = { menu: function () { menu(true); }, close: close, isOpen: function () { return ov.classList.contains('on') || !!playing; }, code: function () { return code; }, pairURL: function () { return pairURL(code); },
       state: function () { return { menu: stack.length, shown: ov.classList.contains('on'), playing: playing && playing.name, paired: paired(), grace: lost != null, home: home && home.name, room: playing && playing.room, p1: playing && playing.p1url || '' }; } };

@@ -195,8 +195,8 @@
                 ruthless: { label: 'Ruthless', reserve: 220, buyBias: 1, build: 1, trade: 0.45 } },
       thinkMs: [700, 1500],      // pause before an AI rolls / buys
       tradeEveryTurns: 3,        // an AI looks for a set-completing trade about this often
-      takeoverAfterMs: 10000,    // v0.2: a phone that drops mid-game shows a countdown on the TV, then an AI covers the seat
-      lostAfterMs: 9000,         // v0.2: no ping for this long = the phone is gone (phones ping every 4 s)
+      takeoverAfterMs: 20000,    // v0.2: a phone that drops mid-game shows a countdown on the TV, then an AI covers the seat
+      lostAfterMs: 15000,        // v0.2: no ping for this long = the phone is gone (phones ping every 4 s)
       lines: {
         greet:    { _: ['Let\'s get rich, Red Deer!', 'Good luck, everybody.', 'May the dice be kind.', 'Who brought snacks?'],
                     dez: ['Turn it up to eleven! \uD83E\uDD18', 'Life\'s too short for quiet guitars.'], grace: ['Bless this game, everyone!', 'I brought squares!'],

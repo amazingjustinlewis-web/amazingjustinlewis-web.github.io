@@ -18,7 +18,7 @@
     var framed = false; try { framed = root.parent && root.parent !== root; } catch (e) { framed = true; }
     if (!framed || typeof setInterval !== 'function') return;
     var last = '';
-    function post() { var n = h.conns ? Object.keys(h.conns).length : 0, G = root.RDR || root.ZT || root.LR, m = { ztp: kind, status: h.status, code: h.code, n: n, detail: h.detail || '', phase: root.ZTP_PHASE || (G && G.game && G.game.phase) || '' }, k = JSON.stringify(m);
+    function post() { var n = h.conns ? Object.keys(h.conns).length : 0, G = root.RDR || root.ZT || root.LR, m = { ztp: kind, status: h.status, code: h.code, n: n, detail: h.detail || '', phase: root.ZTP_PHASE || (G && G.game && G.game.phase) || '', off: G && G.game && G.game.players ? G.game.players.filter(function (p) { return !p.ai && !p.left && p.connected === false; }).length : 0 }, k = JSON.stringify(m);
       if (k !== last || kind === 'room') { last = k; try { root.parent.postMessage(m, '*'); } catch (e) {} } }
     setTimeout(post, 0); setInterval(post, kind === 'room' ? 1500 : 700);
   }

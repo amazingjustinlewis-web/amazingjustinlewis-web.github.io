@@ -121,7 +121,8 @@ input[type=text]{width:100%;padding:13px 14px;border-radius:12px;border:1px soli
  <button id="p1more" hidden style="position:absolute;top:6px;right:6px;z-index:3;width:34px;height:34px;border-radius:50%;border:1px solid rgba(226,184,74,.5);background:rgba(10,8,5,.8);color:#e2b84a;font:18px/1 Georgia,serif">&#8943;</button>
  <div id="p1bar" style="display:flex;gap:8px;padding:8px;background:#0a0805;border-bottom:1px solid rgba(226,184,74,.35)">
   <button id="p1start" class="btn" style="flex:1;background:linear-gradient(180deg,#f6dc8e,#d4a63e);color:#120d03">Start game</button>
-  <button id="p1back" class="btn" style="flex:1">Back out</button></div>
+  <button id="p1back" class="btn" style="flex:1">Back out</button>
+  <button id="p1end" class="btn" style="flex:1" hidden>End game</button></div>
  <div id="p1msg" style="color:#e9dcc0;font:13px Georgia,serif;text-align:center;padding:2px 8px" hidden></div>
  <iframe id="p1f" style="flex:1;border:0;width:100%;background:#000" allow="accelerometer; gyroscope; vibrate"></iframe></div>
 <script src="../cafe/js/cafe.js"></script>
@@ -181,11 +182,12 @@ $('cast').onclick=function(){var u=location.origin+location.pathname.replace(/go
 function howCast(){$('ex-cast').classList.add('on');$('castHow').innerHTML='<br><br><b>How to cast:</b> in Chrome open the menu (⋮) → <i>Cast…</i> and pick your TV, or open <b>amazingjustinlewis-web.github.io</b> in the TV\'s browser. A laptop plugged into a TV works too.'}
 // ---- remote for a paired screen ----
 var p1started=false,p1barOpen=false;
+$('p1end').onclick=function(){if(confirm('End the game for everyone and free the screen?'))rsend({t:'endgame'})};
 $('p1more').onclick=function(){p1barOpen=!p1barOpen;$('p1bar').style.display=p1barOpen?'flex':'none'};
 $('p1back').onclick=function(){rsend({t:'nav',d:'back'});if(!p1started)p1close();else dbg('Stepping out \u00b7 your seat is kept\u2026',1)};
 // someone else's game is on: join it if it takes late players, or queue your own game with an estimated wait
 function busyView(d){var h='';
- if(d.joinable)h+='<a href="#" class="btn" data-act="join">Join '+esc(d.name)+'</a>';
+ if(d.joinable)h+='<a href="#" class="btn" data-act="join">'+(d.started?'Join or rejoin ':'Join ')+esc(d.name)+'</a>';
  if(d.q)h+='<p class="muted" style="margin:14px 0 6px">'+(d.q.pos===1?'You\u2019re next':'You\u2019re number '+d.q.pos+' in line')+' with <b>'+esc(d.q.name)+'</b> \u00b7 about '+d.q.wait+' min</p><a href="#" class="btn" data-act="unqueue">Leave the queue</a>';
  else if(d.games&&d.games.length)h+='<p class="muted" style="margin:14px 0 6px">Queue your own game for this screen:</p>'+d.games.map(function(g){return '<a href="#" data-act="queue" data-g="'+g[0]+'">'+esc(g[1])+'<span>~'+g[2]+' min</span></a>'}).join('');
  $('rlist').innerHTML=h}
@@ -197,7 +199,7 @@ var dbgT=null;function dbg(t,keep){var e=$('dbg');e.textContent=t;e.style.transi
 var p1st='',p1tries=0,p1dog=null;
 function p1close(){clearTimeout(p1dog);$('p1').hidden=true;$('p1f').removeAttribute('src');$('p1f').dataset.u='';p1st=''}
 function p1load(u,n){p1tries=n;p1st='';$('p1f').dataset.u=u;$('p1f').src=u+(n?'&try='+n:'');dbg(n?'Rejoining the game (try '+(n+1)+')\u2026':'Joining the game on the TV\u2026',1);
- clearTimeout(p1dog);p1dog=setTimeout(function(){if(p1st==='online'||$('p1').hidden)return;if(n<4)p1load(u,n+1);else dbg('Could not join the game ('+(p1st||'no answer')+'). Scan the code on the TV, or Back out and try again.',1)},[15000,20000,30000,45000][n]||45000)}
+ clearTimeout(p1dog);p1dog=setTimeout(function(){if(p1st==='online'||$('p1').hidden)return;if(n<4)p1load(u,n+1);else dbg('Could not join the game ('+(p1st||'no answer')+'). Scan the code on the TV, or Back out and try again.',1)},[25000,30000,40000,60000][n]||45000)}
 addEventListener('message',function(e){var f=$('p1f');if(!f||e.source!==f.contentWindow||!e.data||e.data.ztp!=='client')return;var st=e.data.status;if(st===p1st)return;p1st=st;
  if(st==='online'){dbg('Joined the game \u2713');$('p1msg').hidden=true}else if(st==='noroom')dbg('Room '+(e.data.code||'')+' is not answering yet \u00b7 retrying\u2026',1);else if(st&&st!=='idle')dbg('Game link: '+st+(e.data.detail?' ('+e.data.detail+')':''),1)});
 $('p1start').onclick=function(){var b=null;try{b=$('p1f').contentDocument.getElementById('startBtn')}catch(e){}
@@ -219,9 +221,9 @@ var code='';function startRemote(c){code=c;show('remote');var o={prefix:'ztp-doo
    if(d.t==='go'){try{localStorage.setItem('ztp-last-room',JSON.stringify({code:code,t:Date.now(),local:qs.get('local')==='1'}))}catch(e){}if(d.release&&R){var r=R;R=null;setTimeout(function(){try{r.destroy()}catch(e){}},300)}setTimeout(function(){location.href=d.url},350)}
    if(d.t==='playing'&&d.member&&(d.p1||d.p1wait)){$('p1').hidden=false;
      // once the game is under way the Start / Back out bar gets out of the way (the corner button brings it back)
-     p1started=!!d.started;$('p1bar').style.display=p1started&&!p1barOpen?'none':'flex';$('p1more').hidden=!p1started;$('p1start').hidden=p1started;
+     p1started=!!d.started;$('p1bar').style.display=p1started&&!p1barOpen?'none':'flex';$('p1more').hidden=!p1started;$('p1start').hidden=p1started;$('p1end').hidden=!(p1started&&d.host);
      if(d.p1&&$('p1f').dataset.u!==d.p1)p1load(d.p1,0);else if(!d.p1&&!$('p1f').dataset.u)dbg('Opening the game room on the TV\u2026',1)}
-   else if(d.t==='menu'||d.t==='idle'||d.t==='ended'||d.t==='playing'){if(!$('p1').hidden){p1close();if(d.t==='menu')dbg('Back at the menu \u00b7 still connected to the screen')}}
+   else if(d.t==='menu'||d.t==='idle'||d.t==='ended'){if(!$('p1').hidden){p1close();if(d.t==='menu')dbg('Back at the menu \u00b7 still connected to the screen')}}
    if(d.t==='dbg')dbg(d.text,1);
    if(d.t==='steppedout'){try{localStorage.setItem('ztp-last-room',JSON.stringify({code:code,t:Date.now(),local:qs.get('local')==='1'}))}catch(e){}if(R){var r3=R;R=null;setTimeout(function(){try{r3.destroy()}catch(e){}},300)}p1close();
      $('rtitle').textContent='You stepped out';$('rstat').textContent='Your seat in '+(d.name||'the game')+' is kept. Scan the code on the TV to get back in.';$('rlist').innerHTML='';$('rplay').hidden=true;$('rpad').hidden=true}
