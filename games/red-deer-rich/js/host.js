@@ -25,6 +25,8 @@
   };
   var inGame = function () { return game.phase === 'play'; };
   window.RDR = { game: game, render: rnd, sfx: SFX };
+  window.addEventListener('message', function (e) { var d = e.data; if (e.source !== window.parent || !d || d.ztp !== 'qr' || !d.url) return;
+    if (window.ZTP_QR !== d.url) { window.ZTP_QR = d.url; dirty = true; } try { window.parent.postMessage({ ztp: 'qrok' }, '*'); } catch (x) {} });
   game.nightFn = function () { return rnd.darkness() > 0.5; };      // v0.5 Disasters follow the TV's day/night clock
   if (Q.has('mute')) SFX.setMuted(true);
   if (Q.get('mode')) game.setMode(Q.get('mode').toLowerCase());   // regular | medium | quick (old 'full' = regular)
@@ -372,7 +374,9 @@
     renderSv();
     $('potInfo').innerHTML = g.rules.jackpot && g.phase !== 'lobby' ? 'Dirt Lot pot <b>' + money(g.pot) + '</b>' : '';
     var wq = $('watchQr'), showQ = inGame() && net && net.status === 'online';
-    if (wq.hidden === !!showQ) { wq.hidden = !showQ; if (showQ && wq._code !== net.code) { wq._code = net.code; drawQr(controllerUrl(net.code) + '&watch=1', $('qrSmall'), 4, 'L'); } }
+    // inside the 0-Phi front door the door hands us its pair link: one QR that offers rejoin / take over an AI seat / watch / queue
+    var wUrl = window.ZTP_QR || (net && controllerUrl(net.code) + '&watch=1');
+    if (wq.hidden === !!showQ || (showQ && wq._code !== wUrl)) { wq.hidden = !showQ; if (showQ && wq._code !== wUrl) { wq._code = wUrl; drawQr(wUrl, $('qrSmall'), 4, 'L'); } }
     $('side').classList.toggle('crowd', g.players.length > 6);
     var rq = $('resQr'), showR = g.phase === 'over' && net && net.status === 'online';
     if (rq.hidden === !!showR) { rq.hidden = !showR; if (showR && rq._code !== net.code) { rq._code = net.code; drawQr(controllerUrl(net.code), $('qrRes'), 4, 'L'); } }

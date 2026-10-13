@@ -187,12 +187,12 @@ $('p1more').onclick=function(){p1barOpen=!p1barOpen;$('p1bar').style.display=p1b
 $('p1back').onclick=function(){rsend({t:'nav',d:'back'});if(!p1started)p1close();else dbg('Stepping out \u00b7 your seat is kept\u2026',1)};
 // someone else's game is on: join it if it takes late players, or queue your own game with an estimated wait
 function busyView(d){var h='';
- if(d.joinable)h+='<a href="#" class="btn" data-act="join">'+(d.started?'Join or rejoin ':'Join ')+esc(d.name)+'</a>';
+ if(d.joinable)h+='<a href="#" class="btn" data-act="join">'+(d.started?'Rejoin my seat in ':'Join ')+esc(d.name)+'</a>'+(d.started?'<a href="#" class="btn" data-act="watch" style="margin-top:8px">Watch, or take over an AI seat</a>':'');
  if(d.q)h+='<p class="muted" style="margin:14px 0 6px">'+(d.q.pos===1?'You\u2019re next':'You\u2019re number '+d.q.pos+' in line')+' with <b>'+esc(d.q.name)+'</b> \u00b7 about '+d.q.wait+' min</p><a href="#" class="btn" data-act="unqueue">Leave the queue</a>';
  else if(d.games&&d.games.length)h+='<p class="muted" style="margin:14px 0 6px">Queue your own game for this screen:</p>'+d.games.map(function(g){return '<a href="#" data-act="queue" data-g="'+g[0]+'">'+esc(g[1])+'<span>~'+g[2]+' min</span></a>'}).join('');
  $('rlist').innerHTML=h}
 function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
-document.addEventListener('click',function(e){var a=e.target.closest('#rlist [data-act]');if(!a)return;e.preventDefault();e.stopPropagation();var t=a.dataset.act;rsend(t==='queue'?{t:'queue',game:a.dataset.g}:{t:t})},true);
+document.addEventListener('click',function(e){var a=e.target.closest('#rlist [data-act]');if(!a)return;e.preventDefault();e.stopPropagation();var t=a.dataset.act;rsend(t==='queue'?{t:'queue',game:a.dataset.g}:t==='watch'?{t:'join',watch:1}:{t:t})},true);
 // small fading status line for join problems (player-1 frame and remote)
 var dbgT=null;function dbg(t,keep){var e=$('dbg');e.textContent=t;e.style.transition='none';e.style.opacity='1';clearTimeout(dbgT);dbgT=setTimeout(function(){e.style.transition='opacity 1.5s';e.style.opacity='0'},keep?9000:4000)}
 // player-1 controller frame: join watchdog with backoff (reload the controller if it hasn't joined the game's room)

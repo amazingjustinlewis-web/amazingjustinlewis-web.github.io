@@ -35,7 +35,7 @@
     function waitFor(i) { var w = playing && !playing.home ? Math.max(1, Math.round((playing.mins || 20) - (Date.now() - playing.since) / 60000)) : 0; for (var j = 0; j < i; j++) w += queue[j].mins || 20; return w; }
     function view(conn) { var v = view0(), id = who(conn); if (v.t !== 'playing') return v;
       var mi = playing.members.indexOf(id); v.member = mi >= 0; v.joinable = !!playing.p1ctrl && mi < 0; v.host = playing.owner === id || !connOf(playing.owner);
-      if (v.member && v.p1) v.p1 = v.p1.replace('name=Player%201', 'name=Player%20' + (mi + 1));
+      if (v.member && v.p1) { v.p1 = v.p1.replace('name=Player%201', 'name=Player%20' + (mi + 1)); if (playing.watch && playing.watch[id]) v.p1 += '&watch=1'; }
       if (!v.member) v.p1 = ''; v.started = !!playing.started; v.games = o.games ? o.games() : [];
       for (var q = 0; q < queue.length; q++) if (queue[q].owner === id) { v.q = { pos: q + 1, wait: waitFor(q), name: queue[q].name }; break; }
       return v; }
@@ -108,7 +108,9 @@
       if (e.source !== fr.contentWindow || !e.data) return; var d = e.data;
       if (d.ztp === 'end' || d.t === 'ztp-end') return endGame();
       if (d.ztp === 'started' && busy()) { playing.started = true; return sync(); }
-      if (d.ztp === 'room' && playing && !playing.home) { var it = playing, was = it.p1url, ws = it.started; it.roomStatus = d.status; if (d.phase && !/^(lobby|title|setup|join)$/.test(d.phase)) it.started = true; it.n = d.n || 0; if (it.n > 0) it.hadN = true;
+      if (d.ztp === 'qrok' && busy()) { if (!playing.ownQr) { playing.ownQr = true; paintCQ(); } return; }
+      if (d.ztp === 'room' && playing && !playing.home) { if (code) try { fr.contentWindow.postMessage({ ztp: 'qr', url: pairURL(code) + '&rejoin=1' }, '*'); } catch (x) {}   // a game with its own join QR shows ours instead (one QR)
+ var it = playing, was = it.p1url, ws = it.started; it.roomStatus = d.status; if (d.phase && !/^(lobby|title|setup|join)$/.test(d.phase)) it.started = true; it.n = d.n || 0; if (it.n > 0) it.hadN = true;
         if (d.status === 'online' && d.code && it.p1ctrl && (!it.p1url || it.room !== d.code)) { it.room = d.code; it.p1url = it.p1ctrl + '?room=' + d.code + '&name=Player%201&auto=1' + (LOCALQ ? '&local=1' : ''); }
         if (it.p1url !== was || it.started !== ws) sync();
         // nobody left anywhere (no remote, no players in the game): the screen frees itself
@@ -161,7 +163,7 @@
       passHost(id); delete remotes[conn.connectionId]; delete seen[conn.connectionId]; conn.ztpReleased = true; setTimeout(function () { try { conn.close(); } catch (e) {} }, 400);
       update(); sync(); }
     var cq = null;
-    function paintCQ() { var want = busy() && !playing.home && (playing.off > 0 || playing.members.some(function (m) { return !connOf(m); }) || !!playing.p1ctrl) && code && !inFrame;
+    function paintCQ() { var want = busy() && !playing.home && !playing.ownQr && (playing.off > 0 || playing.members.some(function (m) { return !connOf(m); }) || !!playing.p1ctrl) && code && !inFrame;
       if (!cq) { cq = document.createElement('div'); cq.id = 'doorcq'; cq.style.cssText = 'position:fixed;right:1.6vw;bottom:2vh;z-index:32;display:none;flex-direction:column;align-items:center;gap:.6vh;padding:1vh;border-radius:1.2vh;background:rgba(0,0,0,.72);border:1px solid rgba(226,184,74,.4);font:clamp(10px,1.5vh,16px) Georgia,serif;letter-spacing:.12em;color:#e2b84a;pointer-events:none'; document.body.appendChild(cq); }
       if (!want) { cq.style.display = 'none'; return; }
       if (cq.dataset.c !== code) { cq.dataset.c = code; var Q = qrcode(0, 'M'); Q.addData(pairURL(code)); Q.make(); var n = Q.getModuleCount() + 4, m = Math.max(2, Math.floor(innerHeight * 0.17 / n)), c = document.createElement('canvas'), x = c.getContext('2d');
@@ -198,7 +200,7 @@
       onJoin: function (conn) { remotes[conn.connectionId] = conn; seen[conn.connectionId] = Date.now(); clearGrace(); net.send(conn, { t: 'hello', screen: o.name || 'Zero to Phi' }); update(); if (!stack.length && !playing) menu(false); else if (!busy()) sync(); },
       onMessage: function (conn, d) { if (!remotes[conn.connectionId]) opts.onJoin(conn); seen[conn.connectionId] = Date.now(); if (!d || d.t === 'ping') return net.send(conn, { t: 'pong' });
         if (d.t === 'hi') { if (d.id) conn.ztpId = d.id; sync(); }
-        else if (d.t === 'join') { if (busy() && playing.p1ctrl && playing.members.indexOf(who(conn)) < 0) playing.members.push(who(conn)); sync(); }
+        else if (d.t === 'join') { if (busy() && playing.p1ctrl && playing.members.indexOf(who(conn)) < 0) playing.members.push(who(conn)); if (busy()) { playing.watch = playing.watch || {}; playing.watch[who(conn)] = !!d.watch; } sync(); }
         else if (d.t === 'endgame') { if (busy() && (who(conn) === playing.owner || !connOf(playing.owner))) endGame(); }
         else if (d.t === 'queue') { var qg = o.find && o.find(d.game); if (!qg) return; queue = queue.filter(function (q) { return q.owner !== who(conn); }); queue.push({ owner: who(conn), game: d.game, name: qg.name, mins: qg.mins || 20 }); if (!busy()) launchNext(); else sync(); }
         else if (d.t === 'unqueue') { queue = queue.filter(function (q) { return q.owner !== who(conn); }); sync(); }

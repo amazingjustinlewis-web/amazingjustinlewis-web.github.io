@@ -26,3 +26,5 @@ Done in menu2 for reference: the launching phone is the game's host (it can end 
 
 ## Iron Stride asymmetric direction (Oct 12, 2026)
 - Controller players pilot small agile mechs (twitch aim); phone players command huge slow monolithic mechs (tactical: mountain cover, target locks, planned shots). Both clash in the same world, PC and phone. First step: one phone-controlled heavy mech joining a local controller game.
+
+- End-of-game fireworks, podium and breakdown stay on screen at least a full minute before any handoff.
