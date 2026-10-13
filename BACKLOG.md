@@ -29,3 +29,7 @@ Done in menu2 for reference: the launching phone is the game's host (it can end 
 
 - End-of-game fireworks, podium and breakdown stay on screen at least a full minute before any handoff.
 - [ ] Phone wrap-up screen: small 'Made by Zero to Phi' credit that opens the company page. This is the only place the company link appears for café players.
+- [ ] Custom café skins: favourite shops get their own Red Deer Rich board (their street, logo, a signature item as a property), tied to their shop account.
+- [ ] Shop feedback button in the café setup / shop account.
+- [ ] Phone solo mode for Red Deer Rich (and others) so it's playable on a phone alone; replaces the "needs a big screen" note.
+- [ ] Firebase setup (tonight): Google Analytics with quiet usage counts (visits, one-sheet scans via business.html, games played, active cafés; no personal info), arcade-initials leaderboards without an account, optional Google sign-in profiles with a Founder #, and the character builder.
