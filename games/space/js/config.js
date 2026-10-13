@@ -4,7 +4,7 @@
   var TITLE = 'DRIFT SIGNAL';              // <-- the one place to rename the game
   var C = root.SPACE_CONFIG = {
     TITLE: TITLE, workingTitle: false,
-    version: '0.3',
+    version: '0.4',
     peerPrefix: 'ztp-driftsignal-v03-',
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }],
     liveControllerUrl: 'https://amazingjustinlewis-web.github.io/games/space/controller.html',

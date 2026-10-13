@@ -486,6 +486,7 @@
     else if (k === 'voice' && /^(off|occasional|detailed)$/.test(v)) settings.voice = v;
     else if (k === 'drone') settings.drone = !!v;
     else if (k === 'wild') settings.wild = !!v;
+    else if (k === 'family') settings.family = !!v;
     else return;
     if (k !== 'hue') { var D = C.presets.default; settings.preset = settings.danger === D.danger && settings.voice === D.voice && settings.drone === D.drone && settings.wild === D.wild ? 'default' : 'custom'; }
     saveSettings(); SFX.play('blip'); dirty = true;
@@ -993,7 +994,7 @@
     face: function (id) { faceNow(H.objs[id].position); }, log: function () { return logLines; }, alert: function () { return alertState; }, fps: function () { return fps; }, rung: function () { return rung; }, calls: function () { return renderer.info.render.calls; }, lastSpoken: function () { return SFX.lastText(); },
     mot: function () { return mot; }, roll: startRoll, fight: function () { return fight; }, evade: evade, fire: firePhasers, sweep: sweep, contacts: contacts, grab: function () { return grab; }, grabber: grabber, perfStep: perfStep, lite: function () { return lite; }, post: function () { return !!post && postAllowed(); } };
   Object.assign(X, { T: T, C: C, sceneMain: scene, camera: camera, renderer: renderer, ship: ship, defs: defs, H: H, say: say, log: log, hudNote: hudNote, addImpact: addImpact, fwd: fwd, faceToward: faceToward, faceNow: faceNow,
-    standoff: function (d) { return standoff(d); }, ACT: ACT_STATION, LABEL: LABEL, tow: tow, firePhasers: firePhasers, fight: function () { return fight; }, ev: function () { return ev; }, land: function () { return land; }, resetLand: function () { land = { step: 0, site: null, phase: '', t: 0, depth: 2.2 }; },
-    contacts: contacts, dirty: function () { dirty = true; }, simT: function () { return simT; }, motionQ: motionQ, crew: function () { return crew; }, grab: function () { return grab; }, endEvent: endEvent, rung: function () { return rung; }, lite: function () { return lite; } });
+    standoff: function (d) { return standoff(d); }, ACT: ACT_STATION, LABEL: LABEL, settings: function () { return settings; }, tow: tow, firePhasers: firePhasers, fight: function () { return fight; }, ev: function () { return ev; }, land: function () { return land; }, resetLand: function () { land = { step: 0, site: null, phase: '', t: 0, depth: 2.2 }; },
+    scan: scan, launchProbe: launchProbe, setCourse: setCourse, allStop: allStop, contacts: contacts, dirty: function () { dirty = true; }, simT: function () { return simT; }, motionQ: motionQ, crew: function () { return crew; }, grab: function () { return grab; }, endEvent: endEvent, rung: function () { return rung; }, lite: function () { return lite; } });
   function faceNow(p) { tmpM.lookAt(ship.pos, p, UP); ship.quat.setFromRotationMatrix(tmpM); camera.quaternion.copy(ship.quat); }
 })();

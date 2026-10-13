@@ -14,7 +14,7 @@
   Object.assign(X.LABEL, { lock: 'Lock target', phaser: 'Fire phasers', torpedo: 'Fire torpedo', tractor: 'Tractor beam', trade: 'Open trade', tradeOffer: 'Propose trade', tradeAccept: 'Accept counter-offer', tradeClose: 'Close trade', cave: 'Asteroid cave' });
 
   // ================================================================== ship-wide v0.3 state
-  var V = { lock: null, cargo: [], stats: null, over: null, trade: null, beam: null, holds: {}, cracks: [], crackFade: 0, buckle: 0, fx: [], tractor: null };
+  var V = { lock: null, cargo: [], stats: null, over: null, trade: null, beam: null, holds: {}, cracks: [], crackFade: 0, buckle: 0, fx: [], tractor: null }; X.v03 = V;
   function resetGame() {
     V.cargo = C.cargoStart.slice(); for (var i = 0; i < WP.torpedoes; i++) V.cargo.push('torp');
     V.stats = { t0: performance.now(), dist: 0, trades: 0, torps: 0, phasers: 0, worms: 0, landings: 0, caves: 0 };
@@ -298,6 +298,11 @@
   }
   function spawnWorm(R, angry, ang) { W.worms.push({ on: true, a: ang != null ? ang : Math.random() * 6.283, R: R, dir: Math.random() < 0.5 ? 1 : -1, hp: DN.wormHp, s: 0, angry: angry, trail: [], scared: 0 }); }
   function wormAttack(w) {
+    var fam = X.settings && X.settings().family || /[?&]family/.test(location.search);
+    if (fam) {   // family-friendly: it rises close by, circles once, then dives away
+      w = w || W.worms.find(function (q) { return q.on; }); if (w) { w.angry = false; w.scared = 9; w.R = Math.max(w.R, 90); }
+      SFX.play('rumble'); ship.shake = 0.35; say('It surfaced right beside us, had a good look, and dived away. Sandworms are shy, apparently.', 'calm'); return;
+    }
     w = w || W.worms.find(function (q) { return q.on; }); if (!w) { spawnWorm(120, true); w = W.worms[W.worms.length - 1]; }
     W.attack = { w: w, ph: 'rise', t: 0, total: 0, shield: 100, hp: w.hp, cool: 0, liftCool: 0, shots: 0, shotT: 0, beams: [], shards: null };
     W.head.visible = true; SFX.play('rumble'); SFX.play('alarm'); ship.alertManual = 'red'; say('Seismic spike directly ahead! It is coming up!', 'urgent'); dirty();

@@ -104,7 +104,7 @@
     // settings
     var st = S.set, cap = isCap(); $('capSet').hidden = !cap; $('notCap').hidden = cap;
     $('modeLbl').textContent = st.preset === 'default' ? 'DEFAULT' : 'CUSTOM';
-    segOn('segDanger', st.danger); segOn('segVoice', st.voice); pill('droneBtn', st.drone); pill('wildBtn', st.wild);
+    segOn('segDanger', st.danger); segOn('segVoice', st.voice); pill('droneBtn', st.drone); pill('wildBtn', st.wild); if ($('famBtn')) pill('famBtn', !!st.family);
     if (document.activeElement !== $('hueMin') && document.activeElement !== $('hueMax')) { $('hueMin').value = st.hue.min; $('hueMax').value = st.hue.max; } $('hueLbl').textContent = st.hue.min + '% \u2013 ' + st.hue.max + '%';
     renderSci(); renderFight();
     $('grabBtn').classList.toggle('on', !!sh.grab || !!S.grab); $('grabBtn').textContent = S.grab ? (S.grab === 'tumble' ? 'Release asteroid' : 'Grabber: ' + S.grab) : 'Grabber arms';
@@ -123,6 +123,7 @@
   $('segDanger').onclick = function (e) { var v = e.target.dataset.v; if (v) send({ t: 'set', k: 'danger', v: v }); };
   $('segVoice').onclick = function (e) { var v = e.target.dataset.v; if (v) send({ t: 'set', k: 'voice', v: v }); };
   $('droneBtn').onclick = function () { send({ t: 'set', k: 'drone', v: !S.set.drone }); };
+  if ($('famBtn')) $('famBtn').onclick = function () { send({ t: 'set', k: 'family', v: !(S.set && S.set.family) }); };
   $('wildBtn').onclick = function () { send({ t: 'set', k: 'wild', v: !S.set.wild }); };
   $('presetBtn').onclick = function () { send({ t: 'preset' }); toast('Default mode'); };
   function hue() { var a = Math.max(2, +$('hueMin').value), b = Math.max(2, +$('hueMax').value); if (b < a) { if (document.activeElement === $('hueMin')) b = a; else a = b; } $('hueMin').value = a; $('hueMax').value = b; $('hueLbl').textContent = a + '% \u2013 ' + b + '%'; send({ t: 'set', k: 'hue', v: { min: a, max: b, zone: $('hueZone').value } }); }
