@@ -8,7 +8,7 @@
 <link rel="icon" href="../assets/img/favicon.svg">
 <style>
 :root{--gold:#e2b84a;--gold2:#f3dc95;--dim:#8f7a4a;--line:rgba(226,184,74,.35)}
-*{box-sizing:border-box}html,body{margin:0;background:#000;color:#e9dcc0;font:16px/1.45 Georgia,"Times New Roman",serif}
+*{box-sizing:border-box}[hidden]{display:none!important}html,body{margin:0;background:#000;color:#e9dcc0;font:16px/1.45 Georgia,"Times New Roman",serif}
 body{min-height:100vh;padding:calc(18px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto}
 header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
 header img{width:40px;opacity:.85}header .who{font-size:13px;color:var(--dim);letter-spacing:.08em}
@@ -30,6 +30,8 @@ input[type=text]{width:100%;padding:13px 14px;border-radius:12px;border:1px soli
 .card{border:1px solid #241c0e;border-radius:14px;padding:14px 16px;margin:10px 0;background:#060504}
 #logoPrev{max-width:160px;max-height:90px;display:block;margin-top:10px}
 .back{margin-bottom:16px}.view{display:none}.view.on{display:block}
+.pad{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:22px}.pad div{display:flex;gap:10px}.pb{width:96px;height:72px;border-radius:18px;border:1px solid var(--line);background:#0a0805;color:var(--gold2);font:inherit;font-size:24px;cursor:pointer}.pb.ok{background:linear-gradient(180deg,#f6dc8e,#d4a63e);color:#120d03;letter-spacing:.2em}.pb:active{filter:brightness(1.3)}
+#rlist a.sel{color:#fff3cc;background:#2a200c}
 .brand{display:flex;align-items:center;gap:14px;margin-bottom:18px}.brand img{max-height:56px;max-width:120px}
 </style></head><body>
 <header><a href="../?tv=1" aria-label="Zero to Phi"><img src="../assets/img/logo.svg" alt="Zero to Phi"></a><div class="who" id="who"></div></header>
@@ -44,6 +46,8 @@ input[type=text]{width:100%;padding:13px 14px;border-radius:12px;border:1px soli
  <div class="ex" id="ex-create">Optional, secure and yours forever. Every profile gets a Founder number in signup order, honoured for the life of the studio. Show three arcade letters, a name, or more: you choose.</div>
  <div class="row"><button class="btn" data-go="biz">I'm a business</button><button class="q" data-ex="ex-biz" aria-label="What is this?">?</button></div>
  <div class="ex" id="ex-biz">Turn your café TV into an arcade: add your logo, pick the games, and launch a screen your customers can scan and play from their phones.</div>
+ <div class="row"><button class="btn" id="cast">Cast to a TV</button><button class="q" data-ex="ex-cast" aria-label="What is this?">?</button></div>
+ <div class="ex" id="ex-cast">Shows the Zero to Phi screen on a TV. Then scan the TV's code with this phone to use it as the remote.<span id="castHow"></span></div>
  <div class="row"><a class="btn" href="../classic.html">Explore 0-Phi</a><button class="q" data-ex="ex-explore" aria-label="What is this?">?</button></div>
  <div class="ex" id="ex-explore">The studio, the founder, and every game we're building.</div>
 </section>
@@ -92,12 +96,27 @@ input[type=text]{width:100%;padding:13px 14px;border-radius:12px;border:1px soli
  <label for="bn">Business name</label><input type="text" id="bn" maxlength="40" placeholder="The Daily Grind">
  <label for="bl">Logo</label><input type="file" id="bl" accept="image/*"><img id="logoPrev" alt="" hidden>
  <label>Games</label><div class="chips" id="bgames"></div>
- <label>Screen layout</label><div class="chips" id="blayout"><span class="chip on" data-v="zero">Zero (logo + scan)</span><span class="chip" data-v="grid">Café games grid</span></div>
+ <label>Logos</label><div class="chips" id="blogos"><span class="chip on" data-v="cl">&#10003; Show my café logo</span><span class="chip on" data-v="pl">&#10003; Show 0-Phi logo</span></div>
+ <label>Screen mode</label><div class="chips" id="blayout"><span class="chip on" data-v="zero">Zero (logo + scan)</span><span class="chip" data-v="grid">Café games grid</span><span class="chip" data-v="always">Always-on QR</span></div>
+ <p class="muted" style="font-size:13px">Always-on QR: the screen is just your logo and the code, which never sinks. Customers get your games menu on their own phones.</p>
  <p style="margin-top:22px"><button class="btn" id="launch">Launch screen &rarr;</button></p>
  <p class="muted" id="bizurl"></p>
 </section>
 
+
+<!-- REMOTE (paired to a TV) -->
+<section class="view" id="v-remote">
+ <p class="muted" id="rstat">Connecting to the screen…</p>
+ <h1 id="rtitle">Remote</h1>
+ <div class="list" id="rlist"></div>
+ <div id="rplay" class="card" hidden><b id="rpname"></b><p class="muted" id="rpmsg"></p><p id="rpjoin" hidden><a class="btn" id="rpjoina" href="#">Join the current game</a></p></div>
+ <div class="pad" id="rpad"><button class="pb" data-n="up" aria-label="Up">&#9650;</button><div><button class="pb" data-n="back" aria-label="Back">&#8617;</button><button class="pb ok" data-n="select">OK</button></div><button class="pb" data-n="down" aria-label="Down">&#9660;</button></div>
+ <p style="margin-top:18px"><button class="link" id="rleave">Disconnect</button> · <a class="link" href="./">Phone hub</a></p>
+</section>
 <script src="../cafe/js/cafe.js"></script>
+<script src="../cafe/js/vendor/peerjs.min.js"></script>
+<script>if(typeof Peer!=='function')document.write('<script src="../cafe/js/vendor/peerjs.legacy.min.js"><\/script>')</script>
+<script src="../cafe/js/net.js"></script>
 <script>
 (function(){
 var $=function(i){return document.getElementById(i)},qs=new URLSearchParams(location.search),PK='ztp-profile';
@@ -125,18 +144,45 @@ games.forEach(function(g){if(g.ready)sel[g.id]=1});
 $('bgames').innerHTML=games.map(function(g){return '<span class="chip'+(sel[g.id]?' on':'')+(g.ready?'':' off')+'" data-g="'+g.id+'">'+g.icon+' '+g.name+(g.ready?'':' (soon)')+'</span>'}).join('');
 $('bgames').onclick=function(e){var c=e.target.closest('.chip');if(!c)return;sel[c.dataset.g]=sel[c.dataset.g]?0:1;c.classList.toggle('on',!!sel[c.dataset.g])};
 $('blayout').onclick=function(e){var c=e.target.closest('.chip');if(!c)return;layout=c.dataset.v;[].forEach.call(this.children,function(k){k.classList.toggle('on',k===c)})};
+var logos={cl:1,pl:1};$('blogos').onclick=function(e){var c=e.target.closest('.chip');if(!c)return;logos[c.dataset.v]=logos[c.dataset.v]?0:1;c.classList.toggle('on',!!logos[c.dataset.v]);c.innerHTML=(logos[c.dataset.v]?'&#10003; ':'&#9633; ')+c.textContent.replace(/^\W+/,'')};
 $('bl').onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){ // shrink so it fits in localStorage
   var k=Math.min(1,600/Math.max(im.width,im.height)),cv=document.createElement('canvas');cv.width=im.width*k;cv.height=im.height*k;cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);
   logo=cv.toDataURL('image/png');$('logoPrev').src=logo;$('logoPrev').hidden=false};im.src=r.result};r.readAsDataURL(f)};
 $('launch').onclick=function(){var name=$('bn').value.trim()||'Your Café',id=(name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,20)||'cafe')+'-'+Math.random().toString(36).slice(2,6);
  var g=Object.keys(sel).filter(function(k){return sel[k]});if(logo)try{localStorage.setItem('ztp-biz-logo-'+id,logo)}catch(e){}
- var url='../screen/?biz='+encodeURIComponent(id)+'&n='+encodeURIComponent(name)+'&g='+g.join(',')+'&layout='+layout;$('bizurl').textContent='Screen: '+url.replace('..',location.origin);window.open(url,'_blank')};
+ var url='../screen/?biz='+encodeURIComponent(id)+'&n='+encodeURIComponent(name)+'&g='+g.join(',')+'&layout='+layout+'&cl='+logos.cl+'&pl='+logos.pl;$('bizurl').textContent='Screen: '+url.replace('..',location.origin);window.open(url,'_blank')};
 // ---- arriving from a business screen: branded hub ----
 if(qs.get('biz')){var bn=qs.get('n')||'this café',lg=localStorage.getItem('ztp-biz-logo-'+qs.get('biz'));
  $('brand').hidden=false;$('brand').innerHTML=(lg?'<img src="'+lg+'" alt="">':'')+'<div><div class="muted">Welcome to</div><h1 style="margin:0">'+bn.replace(/[<>&"]/g,'')+'</h1></div>';
- $('quick').href='../cafe/play.html';$('quick').textContent='PLAY HERE'}
-addEventListener('hashchange',function(){var k=location.hash.slice(1);if(document.getElementById('v-'+k))show(k)});
-var h=location.hash.slice(1);show(['login','create','biz','hub','me'].indexOf(h)>=0?h:(prof()&&!qs.get('biz')?'me':'hub'));
+ $('quick').href='../cafe/play.html';$('quick').textContent='PLAY HERE';
+ var bg=(qs.get('g')||'').split(',').map(function(i){return games.filter(function(g){return g.id===i})[0]}).filter(Boolean);
+ if(bg.length){var d=document.createElement('div');d.className='list';d.style.marginBottom='22px';d.innerHTML='<h2 style="margin-top:0">Games here</h2>'+bg.map(function(g){return '<a href="../cafe/play.html">'+g.icon+' '+g.name+'<span>'+(g.ready?'play':'soon')+'</span></a>'}).join('');$('quick').after(d)}}
+addEventListener('hashchange',function(){var k=location.hash.slice(1);if(k!=='remote'&&document.getElementById('v-'+k))show(k)});
+
+// ---- cast: Presentation API where supported, else instructions ----
+$('cast').onclick=function(){var u=location.origin+location.pathname.replace(/go\/.*$/,'')+'?tv=1';
+ if(window.PresentationRequest){try{new PresentationRequest([u]).start().catch(function(){howCast()});return}catch(e){}}howCast()};
+function howCast(){$('ex-cast').classList.add('on');$('castHow').innerHTML='<br><br><b>How to cast:</b> in Chrome open the menu (⋮) → <i>Cast…</i> and pick your TV, or open <b>amazingjustinlewis-web.github.io</b> in the TV\'s browser. A laptop plugged into a TV works too.'}
+// ---- remote for a paired screen ----
+var R=null,me='';
+function rsend(m){if(R)R.send(m)}
+function startRemote(code){show('remote');var o={prefix:'ztp-door-v1-',code:code,
+  onStatus:function(s){$('rstat').textContent=s==='online'?'Connected · you are the remote':s==='noroom'?'Screen not found yet, retrying…':'Connecting to the screen…';if(s==='online')rsend({t:'hi'})},
+  onMessage:function(d){if(!d)return;if(d.t==='hello'){$('rtitle').textContent=d.screen;me=d.you||''}
+   var playing=d.t==='playing';if(playing||d.t==='menu'||d.t==='idle'){$('rplay').hidden=!playing;$('rpad').hidden=!!(playing&&d.owner&&d.owner!==me)}
+   if(d.t==='menu'){$('rtitle').textContent=d.title;$('rstat').textContent='Connected · you are the remote';$('rlist').innerHTML=d.items.map(function(l,i){return '<a href="#" data-i="'+i+'"'+(i===d.sel?' class="sel"':'')+'>'+l+'<span>'+(i===d.sel?'&#9664;':'')+'</span></a>'}).join('')}
+   if(d.t==='idle')$('rlist').innerHTML='<p class="muted">Menu closed. Press OK to open it.</p>';
+   if(playing){$('rlist').innerHTML='';$('rpname').textContent=d.name;var mine=d.owner&&d.owner===me;
+    $('rtitle').textContent=mine?'Now playing':'This screen is busy';$('rstat').textContent=mine?'Connected · press back to return to the menu':'Connected';
+    var left=Math.max(1,Math.round(d.mins-(Date.now()-d.since)/60000));
+    $('rpmsg').textContent=d.late?'is on the big screen now. You can still jump in.':'is on the big screen now. About '+left+' min until this screen is free.';
+    $('rpjoin').hidden=!d.late;if(d.late)$('rpjoina').href=d.ctrl||'#'}
+   if(d.t==='open'){location.href=d.url.charAt(0)==='#'?location.pathname+d.url:d.url}}};
+ R=qs.get('local')==='1'?new LRNet.LocalClient(o):new LRNet.Client(o)}
+document.addEventListener('click',function(e){var b=e.target.closest('.pb');if(b){rsend({t:'nav',d:b.dataset.n});return}
+ var a=e.target.closest('#rlist a');if(a){e.preventDefault();rsend({t:'pick',i:+a.dataset.i})}});
+$('rleave').onclick=function(){if(R)R.destroy();R=null;history.replaceState(null,'',location.pathname);show('hub')};
+var h=location.hash.slice(1);if(qs.get('pair'))startRemote(qs.get('pair').toUpperCase());else show(['login','create','biz','hub','me'].indexOf(h)>=0?h:(prof()&&!qs.get('biz')?'me':'hub'));
 })();
 </script>
 </body></html>

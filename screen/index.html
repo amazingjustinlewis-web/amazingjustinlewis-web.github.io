@@ -20,6 +20,7 @@ body.grid #zero{display:none}body.grid #grid{display:grid}
 .tile{border:1px solid rgba(226,184,74,.35);border-radius:2vh;padding:3vh 2vh;text-align:center;background:#070604}
 .tile .i{font-size:8vh;line-height:1.1}.tile .n{font-size:2.8vh;letter-spacing:.1em;color:#f0dca8;margin-top:1vh}.tile .b{font-size:1.8vh;color:#8a7c60;margin-top:.8vh}
 #gr{display:grid;grid-template-rows:1fr auto}#ring2{width:100%;height:100%}
+body.always #games,body.always #scan{display:none}
 #mark{position:fixed;right:2vw;bottom:2vh;width:5vh;opacity:.55}
 </style></head><body>
 <div id="zero"><div id="top"></div><canvas id="ring"></canvas><div><div id="games"></div><div id="scan">SCAN TO PLAY</div></div></div>
@@ -28,23 +29,36 @@ body.grid #zero{display:none}body.grid #grid{display:grid}
 <script src="../assets/js/qrcode.js"></script>
 <script src="../assets/js/zero-qr.js"></script>
 <script src="../cafe/js/cafe.js"></script>
+<script src="../cafe/js/vendor/peerjs.min.js"></script>
+<script src="../cafe/js/net.js"></script>
+<script src="../assets/js/door.js"></script>
 <script>
 (function(){
-var qs=new URLSearchParams(location.search),id=qs.get('biz')||'demo',name=qs.get('n')||'Your Café',layout=qs.get('layout')==='grid'?'grid':'zero';
+var qs=new URLSearchParams(location.search),id=qs.get('biz')||'demo',name=qs.get('n')||'Your Café',layout=['grid','always'].indexOf(qs.get('layout'))>=0?qs.get('layout'):'zero',CL=qs.get('cl')!=='0',PL=qs.get('pl')!=='0';
 var still=matchMedia('(prefers-reduced-motion: reduce)').matches||qs.get('still')==='1';
 var ids=(qs.get('g')||'battleship,connect4').split(',').filter(Boolean),all=(window.Cafe&&Cafe.GAMES)||[];
 var games=ids.map(function(i){return all.filter(function(g){return g.id===i})[0]}).filter(Boolean);
 var logo=localStorage.getItem('ztp-biz-logo-'+id),esc=function(s){return s.replace(/[<>&"]/g,'')};
-document.title=name+' · Zero to Phi';if(layout==='grid')document.body.classList.add('grid');
-var head=logo?'<img id="bizLogo" src="'+logo+'" alt="'+esc(name)+'">':'<h1 id="bizName">'+esc(name)+'</h1>';
+document.title=name+' · Zero to Phi';if(layout==='grid')document.body.classList.add('grid');if(layout==='always')document.body.classList.add('always');
+// header: café logo (or name) if chosen; else the 0-Phi logo on top; neither = just games + QR
+var cafeHead=logo?'<img id="bizLogo" src="'+logo+'" alt="'+esc(name)+'">':'<h1 id="bizName">'+esc(name)+'</h1>',phiHead='<img id="bizLogo" src="../assets/img/logo.svg" alt="Zero to Phi" style="height:16vh;width:auto">';
+var head=CL?cafeHead:PL?phiHead:'';if(!(CL&&PL))document.getElementById('mark').style.display='none';
+if(layout==='always'){head=CL?cafeHead:phiHead;document.getElementById('games').style.display='none'}
 document.getElementById('top').innerHTML=head;
-document.getElementById('gh').innerHTML=(logo?'<img src="'+logo+'" alt="">':'')+'<h1>'+esc(name)+'</h1>';
+document.getElementById('gh').innerHTML=CL?(logo?'<img src="'+logo+'" alt="">':'')+'<h1>'+esc(name)+'</h1>':PL?'<img src="../assets/img/logo.svg" alt="Zero to Phi">':'';
 document.getElementById('games').textContent=games.map(function(g){return g.name}).join('  ·  ');
 document.getElementById('tiles').innerHTML=games.map(function(g){return '<div class="tile"><div class="i">'+g.icon+'</div><div class="n">'+g.name+'</div><div class="b">'+(g.blurb||'')+'</div></div>'}).join('');
 // the QR leads into this business's own hub
-var URL_='https://amazingjustinlewis-web.github.io/go/?biz='+encodeURIComponent(id)+'&n='+encodeURIComponent(name);
-var Q=qrcode(0,'H');Q.addData(URL_);Q.make();var N=Q.getModuleCount(),QZ=4;window.__qrURL=URL_;
-var ZQ=ZeroQR({key:'ztp-tv-session-'+id,still:still||qs.get('pulse')==='0'}),cv=document.getElementById(layout==='grid'?'ring2':'ring'),x=cv.getContext('2d'),D;
+var BIZQ='biz='+encodeURIComponent(id)+'&n='+encodeURIComponent(name)+'&g='+ids.join(',');
+var Q,N,QZ=4;function setQR(u){Q=qrcode(0,'H');Q.addData(u);Q.make();N=Q.getModuleCount();window.__qrURL=u}
+setQR('https://amazingjustinlewis-web.github.io/go/?'+BIZQ+'&menu=1');
+var ZQ=ZeroQR({key:'ztp-tv-session-'+id,still:still||qs.get('pulse')==='0'});
+// pairing front door (not in always-on mode, where the QR never sinks and phones get the menu themselves)
+var door=Door({name:name,title:name.toUpperCase(),extra:BIZQ,noPair:layout==='always',
+ items:function(){return[{label:'Café games',play:'../cafe/screen.html',name:'Café games',mins:15,late:1,ctrl:'../cafe/play.html'},{label:'Show a QR page',qr:1},{label:'Close',close:1}]},
+ onCode:function(u){setQR(u)},onPaired:function(p){ZQ.setForced(p?true:null,3.5)}});
+addEventListener('click',function(e){if(!door.isOpen()&&!e.target.closest('#door,#doorframe'))door.menu()});
+var _z=0,cv=document.getElementById(layout==='grid'?'ring2':'ring'),x=cv.getContext('2d'),D;
 function size(){D=devicePixelRatio||1;var r=cv.getBoundingClientRect();cv.width=Math.round(r.width*D);cv.height=Math.round(r.height*D)}
 function draw(ms){var T=+qs.get('t')||ms/1000,R=ZQ.frame(T),W=cv.width,H=cv.height,cx=W/2,cy=H/2;
  x.clearRect(0,0,W,H);
