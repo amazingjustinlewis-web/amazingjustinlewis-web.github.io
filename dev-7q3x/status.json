@@ -1,0 +1,14 @@
+{ "updated": "2026-10-13",
+  "games": [
+  {"name":"Red Deer Rich","status":"Live","ver":"v0.8","public":true,"fit":["TV","phone"],"url":"../games/red-deer-rich/","notes":"Polished: pointed property tabs, shake-to-roll from any screen, dread hops, buy pulse, Live/Queued/Turn-only property management, rent locked at landing, AI takes dropped seats. v0.8 frozen. Next: phone solo mode, café skins."},
+  {"name":"Iron Stride","status":"Working","ver":"v0.4","public":true,"fit":["TV","phone","controller"],"url":"../games/mech/","notes":"Buildings block shots, Xbox controller support, gyro aim. Next: asymmetric mechs."},
+  {"name":"Drift Signal","status":"Working","ver":"v0.4","public":true,"fit":["TV","phone"],"url":"../games/space/","notes":"AI pilot with Explore / Sightsee / Gather modes, family-friendly sandworm, phones as crew stations."},
+  {"name":"Walker","status":"Working","ver":"v0.4","public":true,"fit":["TV","phone"],"url":"../games/walker/","notes":"Calm play world with big picture buttons. Waiting on Justin's notes for the next pass."},
+  {"name":"Zombie Tiles","status":"Working","ver":"v0.5","public":true,"fit":["TV","phone"],"url":"../games/zombie-tiles/","notes":"Tile-laying zombie board game, 1-4 players, race for the helipad. Working title."},
+  {"name":"Laser Range","status":"Working","ver":"v0.1.2","public":true,"fit":["TV","phone"],"url":"../games/laser-range/","notes":"Light-gun gallery: point your phone at the TV. Early test build."},
+  {"name":"Battleship","status":"Working","ver":"v0.1","public":true,"fit":["phone"],"url":"../cafe/play.html","notes":"Phone-only café game; the only 'plays on your phone' title so far."},
+  {"name":"Charge Hop","status":"Working","ver":"v0.3","public":true,"fit":["TV","keyboard"],"url":"../games/charge-hop/","notes":"Keyboard / laptop game; reports its end to the front door."},
+  {"name":"Demolition Derby","status":"In development","ver":"v0.1","public":false,"fit":["TV","phone"],"url":"derby/","notes":"Six cars, front/side/back armour (none, plates, spikes), three boosts, joystick or tilt steering. Awaiting feedback."},
+  {"name":"Red Deer Rescue","status":"In development","ver":"v0.1","public":false,"fit":["TV","phone"],"url":"../games/rescue/","notes":"Blockout: downtown to Bower Ponds, heroes auto-roam, mutant bunnies, phone votes. Dev launcher only."},
+  {"name":"Bloat Flier","status":"In development","ver":"v02b","public":false,"fit":["TV"],"url":"bloatflier/","notes":"Rigged proxy model (bones placed, inner wing edge fixed); feeds the fighting-game rigs."}
+  ]}
