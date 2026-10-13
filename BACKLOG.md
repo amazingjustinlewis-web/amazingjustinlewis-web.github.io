@@ -28,3 +28,4 @@ Done in menu2 for reference: the launching phone is the game's host (it can end 
 - Controller players pilot small agile mechs (twitch aim); phone players command huge slow monolithic mechs (tactical: mountain cover, target locks, planned shots). Both clash in the same world, PC and phone. First step: one phone-controlled heavy mech joining a local controller game.
 
 - End-of-game fireworks, podium and breakdown stay on screen at least a full minute before any handoff.
+- [ ] Phone wrap-up screen: small 'Made by Zero to Phi' credit that opens the company page. This is the only place the company link appears for café players.
