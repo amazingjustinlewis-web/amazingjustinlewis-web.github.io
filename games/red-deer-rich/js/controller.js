@@ -80,7 +80,7 @@
     if (inc('boom')) boom(f.boomData || {});
     if (inc('missed')) { SFX.play('trombone'); vib([60, 80, 60, 80, 300]); toast('\uD83C\uDFBA ' + ((f.missedData || {}).name || 'They') + ' slipped away\u2026 too slow!', 3200); }
     if (inc('gotEm')) { SFX.play('cash'); vib([30, 40, 30]); toast('CAUGHT! +' + money((f.gotEmData || {}).amount), 2600); }   // cha-ching + light vibration for the catcher
-    if (inc('turn') && st.turn && st.turn.pid === st.me.id) { SFX.play('turn'); vib([40, 60, 40]); if (tab !== 'turn') { var busy = ui.builder || (document.activeElement && document.activeElement.id === 'chatText'); if (busy) toast('Your turn!'); else setTimeout(function () { setTab('turn'); }, 0); } }
+    if (inc('turn') && st.turn && st.turn.pid === st.me.id) { SFX.play('turn'); vib([40, 60, 40]); if (tab !== 'turn') toast('Your turn!'); }   // v0.7: no auto-jump; the My Turn badge grows and lights instead
     if (inc('offer')) { SFX.play('click'); vib(30); toast('\uD83E\uDD1D New deal offer'); }
     if (inc('deal')) { SFX.play('deal'); vib(60); toast('Deal CEMENTED!'); }
     if (inc('msg')) { vib(15); }
@@ -250,7 +250,7 @@
     if (!st || !st.chats) return;
     var n = unreadFor('all'); st.players.forEach(function (p) { if (p.id !== st.me.id) n += unreadFor(p.id); });
     var d = waitingDeals(null), el = $('bMsgs'); el.textContent = d ? '\uD83E\uDD1D' + d : n; el.className = 'dot' + (n || d ? ' show' : '');
-    var myTurn = st.turn && st.turn.pid === st.me.id; $('bTurn').textContent = '!'; $('bTurn').className = 'dot' + (myTurn && tab !== 'turn' ? ' show' : '');
+    var myTurn = st.turn && st.turn.pid === st.me.id; $('bTurn').textContent = '!'; $('bTurn').className = 'dot' + (myTurn && tab !== 'turn' ? ' show' + (canRollNow() ? ' roll' : '') : '');
   }
 
   // ------------------------------------------------------------------ My Turn
@@ -383,6 +383,8 @@
     if (st.timerOn) o.push(['timerOff', '\u23F1 Timer OFF', 'play it out']); else o.push(['timerOn', '\u23F1 Timer ON', st.timerLeft ? 'pick up where it stopped' : 'start the clock']);
     o.push(['add15', '\u2795 15 more minutes', 'on the game timer']);
     if (st.paused) o.push(['resume', '\u25B6 Resume', 'unfreeze the game']); else o.push(['pause', '\u23F8 Pause', 'freeze everything']);
+    o.push(st.rules.dreadHops ? ['dreadOff', '\uD83D\uDE2C Dread hops OFF', 'normal speed landings'] : ['dreadOn', '\uD83D\uDE2C Dread hops ON', 'slow hops toward painful rent']);
+    o.push(st.rules.turnManage ? ['manageAny', '\uD83C\uDFD7 Manage: Anytime', 'build, mortgage, trade whenever'] : ['manageTurn', '\uD83C\uDFD7 Manage: Your turn only', 'build, mortgage, trade on your turn']);
     o.push(st.rules.camera ? ['zoomOff', '\uD83C\uDFA5 TV zoom OFF', 'keep the whole board'] : ['zoomOn', '\uD83C\uDFA5 TV zoom ON', 'zoom in on the action']);
     return o;
   }

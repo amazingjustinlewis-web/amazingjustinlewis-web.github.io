@@ -76,7 +76,7 @@
     if (p.ai || (oldDefault && p.name === oldDefault.name)) p.name = ch.name;
     p.charId = charId; p.color = ch.color; p.ink = ch.ink; this.changed(); return true;
   };
-  G.setRule = function (k, v) { if (k in C.rules && (this.phase === 'lobby' || this.phase === 'over' || k === 'camera')) { this.rules[k] = !!v; if (k === 'feesToPot' && v) this.rules.jackpot = true; if (k === 'jackpot' && !v) this.rules.feesToPot = false; this.changed(); } };
+  G.setRule = function (k, v) { if (k in C.rules && (this.phase === 'lobby' || this.phase === 'over' || k === 'camera' || k === 'dreadHops' || k === 'turnManage')) { this.rules[k] = !!v; if (k === 'feesToPot' && v) this.rules.jackpot = true; if (k === 'jackpot' && !v) this.rules.feesToPot = false; this.changed(); } };
   G.setMode = function (m) { if (m === 'full') m = 'regular'; if (C.modes[m] && (this.phase === 'lobby' || this.phase === 'over')) { this.mode = m; this.changed(); } };
   G.timed = function () { return !!this.endsAt; };
   // v0.5 game timer: on/off + length, separate from the game length. null = the length's own default (Regular untimed, Medium 45, Quick 30)
@@ -756,13 +756,33 @@
     t.canRollAgain = r.dbl && !t.noExtra;
     this.startMove(p, r.total, false);
   };
+  // v0.7: 0 = normal, 1 = awful, 2 = devastating. Only with automatic rent (PAY UP race off).
+  G.dreadLevel = function (p, sp) {
+    if (!this.rules.dreadHops) return 0;
+    var pr = this.props[sp]; if (!pr || pr.owner < 0 || pr.owner === this.oid(p) || pr.hocked) return 0;
+    var owner = this.byId(pr.owner); if (!owner || owner.bankrupt) return 0;
+    var t = this.turn, amt = this.rentFor(sp, t && t.roll ? t.roll.total : 7, t && t.dblRent); if (!amt) return 0;
+    var DR = C.dread || {};
+    if (amt >= p.cash) return 2;
+    if (amt >= p.cash * (DR.awfulFrac || 0.25) || amt >= (DR.awfulAbs || 600)) return 1;
+    return 0;
+  };
   G.startMove = function (p, steps, card) {
     var t = this.turn, path = [], pos = p.pos, dir = steps < 0 ? -1 : 1;
     for (var k = 0; k < Math.abs(steps); k++) { pos = (pos + dir + 40) % 40; path.push(pos); }
     t.stage = 'moving';
     t.moving = { from: p.pos, path: path, start: this.now, step: this.ms(C.timing.step * (card ? 0.55 : 1)), back: dir < 0 };
-    t.moveEnd = this.now + t.moving.step * path.length + this.ms(C.timing.afterMove);
-    this.emit('move', { pid: p.id, path: path, back: dir < 0 });
+    // v0.7 dread: automatic rent (catch-renters OFF) that will hurt slows the last hops; devastating adds a thud, shake and money spill
+    var dread = this.dreadLevel(p, path[path.length - 1]), DR = C.dread || {}, durs = null, extra = 0;
+    if (dread) {
+      var mult = dread === 2 ? (DR.devMult || [1.5, 2.1, 2.9, 4.2]) : (DR.awfulMult || [2, 2]), st = t.moving.step;
+      durs = path.map(function () { return st; });
+      var nm = Math.min(mult.length, path.length); for (var q = 0; q < nm; q++) durs[path.length - nm + q] = st * mult[mult.length - nm + q];
+      if (dread === 2) extra = this.ms(DR.spillMs || 1300);
+    }
+    t.moving.durs = durs; t.moving.dread = dread;
+    t.moveEnd = this.now + (durs ? durs.reduce(function (a, b) { return a + b; }, 0) : t.moving.step * path.length) + this.ms(C.timing.afterMove) + extra;
+    this.emit('move', { pid: p.id, path: path, back: dir < 0, dread: dread, durs: durs });
   };
   G.moveToSpace = function (p, target) {   // forward to a target (cards); collect if passing
     var steps = (target - p.pos + 40) % 40; if (steps === 0) steps = 40;
@@ -800,8 +820,9 @@
           if (this.rules.payupRace) {
             t.payupSeq = (t.payupSeq || 0) + 1;
             t.payup = { owner: owner.id, sp: p.pos, mover: p.id, roll: t.roll ? t.roll.total : 7, dbl: !!t.dblRent, openedAt: this.now, caught: false, done: false, seq: t.payupSeq };
+            t.payup.rent = this.rentFor(p.pos, t.payup.roll, t.payup.dbl);   // v0.7: rent is fixed the moment they land
             t.graceUntil = this.now + this.ms(this.graceMs());   // v0.7 catch window (v0.1.1: no quick-tap sniping past PAY UP
-            this.emit('payupOpen', { pid: p.id, owner: owner.id, sp: p.pos, rent: this.rentFor(p.pos, t.payup.roll, t.payup.dbl) });
+            this.emit('payupOpen', { pid: p.id, owner: owner.id, sp: p.pos, rent: t.payup.rent });
           } else {
             var amt = this.rentFor(p.pos, t.roll ? t.roll.total : 7, t.dblRent);
             this.charge(p, amt, owner.id, 'rent on ' + s.name);
@@ -895,7 +916,7 @@
     var t = this.turn, pu = t && t.payup; if (!pu || pu.done || pu.caught || !this.byId(pid) || pu.owner !== this.oid(this.byId(pid))) return false;
     var owner = this.byId(pid), mover = this.byId(pu.mover); if (!owner || owner.bankrupt) return false;
     pu.caught = true; pu.caughtAt = this.now;
-    var amt = this.rentFor(pu.sp, pu.roll, pu.dbl); pu.amount = amt;
+    var amt = pu.rent != null ? pu.rent : this.rentFor(pu.sp, pu.roll, pu.dbl); pu.amount = amt;
     this.addLog('PAY UP! ' + owner.name + ' caught ' + mover.name + ' on ' + S[pu.sp].name + ' for ' + money(amt) + '.');
     this.emit('caught', { pid: mover.id, owner: owner.id, sp: pu.sp, amount: amt, ms: this.now - pu.openedAt });
     this.charge(mover, amt, owner.id, 'rent on ' + S[pu.sp].name);
@@ -1058,11 +1079,11 @@
         return '';
       case 'payup': return this.payup(pid) ? '' : 'too late';
       case 'bid': return this.bid(pid, +m.add);
-      case 'build': r = this.build(p, +m.sp); return r;
-      case 'sell': r = this.sellShop(p, +m.sp); if (!r && active && t.tab) this.settleTab(); return r;      // v0.4 PAID IN FULL the moment there's enough
-      case 'hock': r = this.hock(p, +m.sp); if (!r && active && t.tab) this.settleTab(); return r;
-      case 'unhock': return this.unhock(p, +m.sp);
-      case 'rush': return this.rush(p, +m.sp);                                                     // v0.5 RUSH REPAIR
+      case 'build': if (this.rules.turnManage && !active) return 'Only on your turn (house rule)'; r = this.build(p, +m.sp); return r;
+      case 'sell': if (this.rules.turnManage && !active) return 'Only on your turn (house rule)'; r = this.sellShop(p, +m.sp); if (!r && active && t.tab) this.settleTab(); return r;      // v0.4 PAID IN FULL the moment there's enough
+      case 'hock': if (this.rules.turnManage && !active) return 'Only on your turn (house rule)'; r = this.hock(p, +m.sp); if (!r && active && t.tab) this.settleTab(); return r;
+      case 'unhock': if (this.rules.turnManage && !active) return 'Only on your turn (house rule)'; return this.unhock(p, +m.sp);
+      case 'rush': if (this.rules.turnManage && !active) return 'Only on your turn (house rule)'; return this.rush(p, +m.sp);                                                     // v0.5 RUSH REPAIR
       case 'raise':
         if (!active || !t.tab) return 'no tab';
         this._raising = true; this.autoRaise(p, t.tab.amount); this.settleTab(); this._raising = false; return '';
@@ -1070,8 +1091,8 @@
         if (!active || !t.tab) return 'no tab';
         if (this.liquidValue(p) >= t.tab.amount) return 'You can still raise the cash';
         var to = t.tab.to, debt = t.tab.amount; t.tab = null; this.bankrupt(p, to, debt); return '';
-      case 'trade': return this.proposeTrade(pid, +m.to, m.give, m.get);
-      case 'counter': return this.counterTrade(pid, +m.id, m.give, m.get);
+      case 'trade': if (this.rules.turnManage && !active) return 'Only on your turn (house rule)'; return this.proposeTrade(pid, +m.to, m.give, m.get);
+      case 'counter': if (this.rules.turnManage && !active) return 'Only on your turn (house rule)'; return this.counterTrade(pid, +m.id, m.give, m.get);
       case 'accept': return this.acceptTrade(pid, +m.id);
       case 'decline': return this.declineTrade(pid, +m.id);
     }

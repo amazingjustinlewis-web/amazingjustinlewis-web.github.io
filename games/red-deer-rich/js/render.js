@@ -639,11 +639,14 @@
   P.tokenTarget = function (p, now) {
     var g = this.g, t = g.turn;
     if (t && t.pid === p.id && t.stage === 'moving' && t.moving) {
-      var m = t.moving, el = now - m.start, k = Math.floor(el / m.step);
+      var m = t.moving, el = now - m.start, k = Math.floor(el / m.step), f;
+      if (m.durs) { var acc = 0; k = 0; while (k < m.durs.length && el >= acc + m.durs[k]) { acc += m.durs[k]; k++; } f = k < m.durs.length ? (el - acc) / m.durs[k] : 1; }
+      else f = (el - k * m.step) / m.step;
       if (k < m.path.length) {
-        var from = k === 0 ? m.from : m.path[k - 1], to = m.path[k], f = (el - k * m.step) / m.step;
-        var a = this.slot(p, from), b = this.slot(p, to);
-        return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f - Math.sin(f * Math.PI) * this.w * 0.35, step: k, sp: f < 0.5 ? from : to };
+        var from = k === 0 ? m.from : m.path[k - 1], to = m.path[k];
+        var a = this.slot(p, from), b = this.slot(p, to), hk = 0.35;
+        if (m.dread && m.durs) { var ratio = m.durs[k] / m.step; hk = 0.35 * Math.min(m.dread === 2 && k === m.path.length - 1 ? 2.4 : 1.4, Math.sqrt(ratio)); var fe = f; f = m.dread && ratio > 1.01 ? fe * fe * (3 - 2 * fe) : fe; }
+        return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f - Math.sin(f * Math.PI) * this.w * hk, step: k, sp: f < 0.5 ? from : to };
       }
       // v0.2 fix: hops done but the engine is still in its short after-move pause: stay on the landing tile
       // (it used to fall back to p.pos, which is still the START tile until the move resolves, then slide back slowly)
@@ -956,6 +959,7 @@
     if (camOn) { c.save(); c.beginPath(); c.rect(this.bx, this.by, this.S, this.S); c.clip(); c.translate(this.bx + this.S / 2, this.by + this.S / 2); c.scale(cam.z, cam.z); c.translate(-cam.x, -cam.y); }
     c.drawImage(this.staticCv, this.bx, this.by, this.S, this.S);
     this.drawOwners(c, now);
+    this.drawBuyPulse(c, now);      // v0.7: the deed being considered throbs softly until BUY / PASS
     var dark = this.darkness();
     if (!opts.paused) this.stepLiving(dt);
     this.drawLiving(c, dark, opts.paused);
@@ -1037,6 +1041,12 @@
   // v0.4 owned tiles: a hard outline in the owner's colour right at the tile edge, feathering a little way inward in a
   // few soft rings. No wash over the tile: its middle and colour band stay their own colour. Trade fades still work
   // because the colour comes from ownerRgb (old owner -> new owner).
+  P.drawBuyPulse = function (c, now) {
+    var t = this.g.turn; if (!t || t.buy == null || t.auction || t.stage !== 'act') return;
+    var sp = t.buy, k = 0.5 - 0.5 * Math.cos(now / 1100 * Math.PI * 2), pts = this.silPts(sp, this.bx, this.by);
+    c.save(); polyPath(c, pts); c.fillStyle = 'rgba(255,236,150,' + (0.1 + 0.22 * k).toFixed(3) + ')'; c.fill();
+    c.lineJoin = 'round'; c.strokeStyle = 'rgba(255,214,60,' + (0.45 + 0.45 * k).toFixed(3) + ')'; c.lineWidth = Math.max(2, this.w * (0.05 + 0.04 * k)); c.stroke(); c.restore();
+  };
   P.drawOwners = function (c, now) {
     var g = this.g, L = C.ownerLine || {}, lw = Math.max(2.5, this.w * (L.line || 0.085)), fw = Math.max(3, this.w * (L.feather || 0.12));
     var steps = this.rung >= 4 ? 1 : this.rung >= 2 ? 2 : (L.steps || 4), sw = fw / steps;

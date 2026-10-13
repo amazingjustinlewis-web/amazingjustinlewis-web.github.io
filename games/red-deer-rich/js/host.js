@@ -112,7 +112,7 @@
       case 'start': SFX.play('fanfare'); noteClearAll(); syncCash(); break;
       case 'turn': SFX.play('turn'); if (p) banner(p, 'It\'s ' + p.name + '\'s turn', p.snow ? 'Stuck in the Snowbank: roll doubles, pay ' + money(C.towFee) + ' or use a Tow Pass' : 'Roll the dice!'); pfx(d.pid, 'turn'); break;
       case 'roll': SFX.play('dice'); diceAnim(d.d, Date.now()); rnd.rollDice(d.d, d.pid, C.timing.roll / game.speed, d.f); if (p) banner(p, p.name + ' rolled ' + d.total + (d.dbl ? ' (DOUBLES!)' : ''), ''); break;
-      case 'move': break;
+      case 'move': if (d.dread && d.durs && p) dreadFx(p, d); break;
       case 'land': if (p) { var lpr = game.props[d.sp], lown = lpr && lpr.owner >= 0 && lpr.owner !== game.oid(p) && !lpr.hocked ? game.byId(lpr.owner) : null; rnd.landBurst(p, d.sp, lown ? lown.color : null); } break;
       case 'halfway': SFX.play('cash'); if (d.exact) big(d.amount >= C.bullseyePay ? 'BULLSEYE!' : 'THE HALFWAY', '+' + money(d.amount) + ' for ' + p.name, '#7dff7d'); break;
       case 'offer': SFX.play('click'); showDeed(d.sp, true); break;
@@ -253,6 +253,14 @@
   }
   function big(a, b, col) { noteShow('big', '<div class="b1" style="color:' + (col || '#ffd23f') + '">' + esc(a) + '</div><div class="b2">' + boldMoney(esc(b || '')) + '</div>'); }
   function hideBig() { if (NOTE.cur === 'big') noteFade('big', true); }
+  // v0.7 landing dread: heavy thud on the last hop; devastating adds a screen shake and money spilling out of the token
+  function dreadFx(p, d) {
+    var land = d.durs.reduce(function (a, b) { return a + b; }, 0);
+    setTimeout(function () {
+      if (d.dread === 2) { SFX.play('disaster3'); shake(); var v = rnd.tokenPos(p.id); if (v && window.RDRFx) { RDRFx.lose(v.x, v.y, Math.max(400, p.cash)); RDRFx.lose(v.x, v.y, 300); } }
+      else SFX.play('deal');
+    }, land);
+  }
   function shake(soft) { var b = document.body; b.classList.remove('shake'); b.classList.remove('shake-soft'); void b.offsetWidth; var k = soft ? 'shake-soft' : 'shake'; b.classList.add(k); setTimeout(function () { b.classList.remove(k); }, 500); }   // v0.3: soft = PAY UP boom at half amplitude
   function flash(col, op) { var f = $('flash'); f.style.transition = 'none'; f.style.background = col; f.style.opacity = String(op || 0.55); void f.offsetWidth; f.style.transition = 'opacity .5s'; f.style.opacity = '0'; }
   function deedHtml(sp, ask) {
@@ -1031,7 +1039,7 @@
   var VK = C.vote || { pass: 0.85, ms: 30000, addMin: 15 };
   function svLabel(k, v) {
     return { timerOff: 'Turn the game timer OFF', timerOn: 'Turn the game timer back ON', add15: 'Add ' + VK.addMin + ' more minutes', pause: 'Pause the game', resume: 'Resume the game',
-      zoomOff: 'Turn the TV zoom OFF', zoomOn: 'Turn the TV zoom ON', 'catch': 'Catch window: ' + v + ' seconds' }[k] || k;
+      zoomOff: 'Turn the TV zoom OFF', zoomOn: 'Turn the TV zoom ON', dreadOff: 'Turn Dread hops OFF', dreadOn: 'Turn Dread hops ON', manageTurn: 'Manage properties only on your turn', manageAny: 'Manage properties anytime', 'catch': 'Catch window: ' + v + ' seconds' }[k] || k;
   }
   function svValid(k, v) {
     var g = game;
@@ -1043,6 +1051,10 @@
       case 'resume': return g.paused ? '' : 'Not paused';
       case 'zoomOff': return g.rules.camera ? '' : 'TV zoom is already off';
       case 'zoomOn': return !g.rules.camera ? '' : 'TV zoom is already on';
+      case 'dreadOff': return g.rules.dreadHops ? '' : 'Dread hops are already off';
+      case 'dreadOn': return !g.rules.dreadHops ? '' : 'Dread hops are already on';
+      case 'manageTurn': return !g.rules.turnManage ? '' : 'Already only on your turn';
+      case 'manageAny': return g.rules.turnManage ? '' : 'Already anytime';
       case 'catch': return !g.rules.payupRace ? 'The PAY UP race is off' : (C.payup.catchChoices.indexOf(+v) < 0 ? 'Pick 3, 5 or 8 s' : +v === g.catchSec ? 'Already ' + v + ' s' : '');
     }
     return 'Unknown setting';
@@ -1084,6 +1096,8 @@
     var g = game;
     if (k === 'timerOff') g.timerOff(); else if (k === 'timerOn') g.timerOn(); else if (k === 'add15') g.addMinutes(VK.addMin);
     else if (k === 'pause') setPause(true); else if (k === 'resume') setPause(false);
+    else if (k === 'dreadOff' || k === 'dreadOn') g.setRule('dreadHops', k === 'dreadOn');
+    else if (k === 'manageTurn' || k === 'manageAny') g.setRule('turnManage', k === 'manageTurn');
     else if (k === 'zoomOff') g.setRule('camera', false); else if (k === 'zoomOn') g.setRule('camera', true);
     else if (k === 'catch') { g.setCatch(+v); g.addLog('Catch window is now ' + v + ' seconds.'); }
     g.changed();

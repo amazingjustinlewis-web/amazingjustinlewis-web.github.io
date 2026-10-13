@@ -117,6 +117,8 @@
       shopShortage: true,        // limited bank stock
       teams: false,              // v0.6: 4+ players pair up into teams with shared cash and deeds
       disasters: false,          // v0.5: mild local mishaps close or halve a business's rent for 1-3 turns
+      dreadHops: true,           // v0.7: slow, heavy hops toward rent that will hurt (independent of PAY UP race)
+      turnManage: false,         // v0.7: Manage properties only on your turn (off = Anytime)
       heckle: true               // v0.4: everyone can heckle a player who stalls on their turn (escalating 15 s / 5 s / 3 s)
     },
 
@@ -144,7 +146,11 @@
       { k: 'disasters', icon: '\u26C8\uFE0F', tag: 'Disasters', label: 'Disasters', short: 'Hail, floods, raccoons: a business closes or earns half for a turn or three',
         long: 'Now and then a mild local mishap hits a random owned business: hail, a water main break on Gaetz, a goose standoff, a break-in at night. Minor ones last 1 turn, medium 2, major 3, and the business is closed (no rent) or earns half rent until it is fixed. Never two on the same deed, a few per round at most. The owner can pay for a RUSH REPAIR (about 10% of the price per turn skipped). No tornadoes.' },
       { k: 'teams', icon: '\uD83E\uDD1D', tag: 'Teams', label: 'Teams', short: '4+ players pair up: shared cash, shared deeds, bust together',
-        long: 'With 4 or more players, everyone is split into teams of 2 (or 3) by turn order, so teammates never go back to back. A team shares one bank balance and owns its deeds together: no rent between teammates, either teammate can build, mortgage or hit PAY UP on the team\'s deeds. If the team can\'t pay, the whole team goes bust. Fewer than 4 players: everyone plays solo.' }
+        long: 'With 4 or more players, everyone is split into teams of 2 (or 3) by turn order, so teammates never go back to back. A team shares one bank balance and owns its deeds together: no rent between teammates, either teammate can build, mortgage or hit PAY UP on the team\'s deeds. If the team can\'t pay, the whole team goes bust. Fewer than 4 players: everyone plays solo.' },
+      { k: 'dreadHops', icon: '\uD83D\uDE2C', tag: 'Dread hops', label: 'Dread hops', short: 'Heading for painful rent? The last hops slow down. Wipeout rent adds a thud and spilled cash',
+        long: 'When a token is about to land on rent that hurts (a quarter of their cash or more), the last two hops slow to half speed with a heavy thud. If the rent is more than they have, the last few hops crawl, the final one lands with a thump and a screen shake, and money spills out of their piece. Works with PAY UP race on or off.' },
+      { k: 'turnManage', icon: '\u23F3', tag: 'Manage on turn', label: 'Manage properties: only on your turn', short: 'Off = Anytime. On = build, sell, mortgage and trade only on your own turn',
+        long: 'Anytime (default): build, sell Shops, mortgage and propose trades whenever you like. Only on your turn: those wait for your own turn (you can still accept or decline offers). Either way, rent is locked in the moment someone lands.' },
     ],
     // one-tap presets (camera is a TV preference and is left alone). Edit anything afterwards and setup shows "Custom".
     presets: {
@@ -154,6 +160,7 @@
     },
 
     // ---- timing (ms). &fast in the URL divides these by 4 ----
+    dread: { awfulFrac: 0.25, awfulAbs: 600, awfulMult: [2, 2], devMult: [1.5, 2.1, 2.9, 4.2], spillMs: 1300 },   // v0.7 landing dread (automatic rent only)
     timing: { roll: 900, step: 230, card: 2600, afterMove: 350, turnGap: 500, banner: 2200 },
 
     // ---- characters: 11 playables, 8 seats max. shape = placeholder token shape ----
