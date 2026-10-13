@@ -42,12 +42,26 @@
     function drawBig(url) { var c = document.getElementById('doorqr'), Q = qrcode(0, 'M'); Q.addData(url); Q.make(); var n = Q.getModuleCount() + 8, m = Math.max(3, Math.floor(innerHeight * 0.42 / n)), x = c.getContext('2d');
       c.width = c.height = n * m; x.fillStyle = '#cea03e'; x.fillRect(0, 0, n * m, n * m); x.fillStyle = '#000'; for (var r = 0; r < n - 8; r++) for (var k = 0; k < n - 8; k++) if (Q.isDark(r, k)) x.fillRect((k + 4) * m, (r + 4) * m, m, m); }
     function menu(onTV) { stack = [{ title: o.title || 'ZERO TO PHI', items: o.items() }]; sel = 0; shown = !!onTV; paint(); }
+    // camera moves: paired -> the logo eases ~10% closer; launching -> fly through the 0's hollow; returning -> the reverse
+    var flown = false;
+    function flyTo(mode) {
+      var el = o.flyEl && o.flyEl(); if (!el) return;
+      if (o.flyOrigin) el.style.transformOrigin = o.flyOrigin();
+      var base = (Object.keys(remotes).length || lost != null) ? 1.1 : 1;
+      el.style.willChange = 'transform, opacity';
+      el.style.transition = mode === 'in' ? 'transform 1.1s cubic-bezier(.65,0,1,.55), opacity .75s ease-in .35s'
+        : mode === 'out' ? 'transform 1.1s cubic-bezier(0,.55,.35,1), opacity .6s ease-out' : 'transform 3.5s cubic-bezier(.45,0,.25,1)';
+      el.style.transform = 'scale(' + (mode === 'in' ? 18 : base) + ')'; el.style.opacity = mode === 'in' ? '0' : '1';
+    }
+    function enter() { flown = true; flyTo('in'); }
+    var outUntil = 0;
+    function leave() { if (!flown) return; flown = false; flyTo('out'); outUntil = Date.now() + 1150; }
     function close() { if (paired()) { menu(false); return; } stack = []; shown = false; paint(); }
-    function back() { if (playing) return stop(); if (stack.length > 1) { stack.pop(); sel = 0; paint(); } else if (shown) close(); }
+    function back() { if (playing) return stop(); if (stack.length > 1) { var wasBig = !!cur().big; stack.pop(); sel = 0; paint(); if (wasBig) leave(); } else if (shown) close(); }
     function act(it) {
       if (!it) return;
       if (it.sub) { stack.push({ title: it.label.toUpperCase(), items: it.sub() }); sel = 0; paint(); }
-      else if (it.qr) { stack.push({ title: 'SCAN TO PAIR A PHONE', items: [{ label: 'Back', back: 1 }], big: pairURL(code) }); sel = 0; paint(); }
+      else if (it.qr) { stack.push({ title: 'SCAN TO PAIR A PHONE', items: [{ label: 'Back', back: 1 }], big: pairURL(code) }); sel = 0; enter(); setTimeout(paint, 700); }
       else if (it.play) play(it);
       else if (it.phone && !Object.keys(remotes).length) location.href = it.phone;
       else if (it.phone) broadcast({ t: 'open', url: it.phone });
@@ -65,11 +79,11 @@
     }
     // fade the TV into a game in-page; the game shows its own join QR for everyone else
     function play(it) {
-      it.since = Date.now(); it.owner = it.owner || ''; playing = it; shown = false; stack = []; ov.classList.remove('on'); fade.classList.add('on');
-      setTimeout(function () { if (playing !== it) return; fr.onload = function () { if (playing !== it) return; fr.classList.add('on'); fade.classList.remove('on'); }; fr.src = it.play; }, 600);
+      it.since = Date.now(); it.owner = it.owner || ''; playing = it; shown = false; stack = []; ov.classList.remove('on'); enter(); setTimeout(function () { if (playing === it) fade.classList.add('on'); }, 450);
+      setTimeout(function () { if (playing !== it) return; fr.onload = function () { if (playing !== it) return; fr.classList.add('on'); fade.classList.remove('on'); }; fr.src = it.play; }, 750);
       if (o.onPlay) o.onPlay(true); update(); sync();
     }
-    function stop() { fr.onload = null; fade.classList.remove('on'); fr.classList.remove('on'); setTimeout(function () { if (!playing) fr.removeAttribute('src'); }, 900); playing = null; if (o.onPlay) o.onPlay(false); update(); menu(false); }
+    function stop() { fr.onload = null; fade.classList.remove('on'); fr.classList.remove('on'); setTimeout(function () { if (!playing) fr.removeAttribute('src'); }, 900); playing = null; if (o.onPlay) o.onPlay(false); leave(); update(); menu(false); }
     ov.addEventListener('click', function (e) { var li = e.target.closest('li'); if (!li) return; if (cur().big) return back(); sel = +li.dataset.i; act(items()[sel]); e.stopPropagation(); });
     addEventListener('keydown', function (e) {
       var k = e.key, vis = ov.classList.contains('on');
@@ -82,12 +96,12 @@
     function startGrace() {
       clearGrace();
       lost = setTimeout(function () {
-        if (playing) stop(); else if (stack.length > 1) { stack.pop(); sel = 0; paint(); } else if (shown) { shown = false; paint(); }
-        lost = setTimeout(function () { lost = null; if (playing) stop(); stack = []; shown = false; paint(); update(); }, 5000);
+        if (playing) stop(); else if (stack.length > 1) { var wb = !!cur().big; stack.pop(); sel = 0; paint(); if (wb) leave(); } else if (shown) { shown = false; paint(); }
+        lost = setTimeout(function () { lost = null; if (playing) stop(); leave(); stack = []; shown = false; paint(); update(); }, 5000);
       }, 10000);
     }
     function paired() { return Object.keys(remotes).length > 0 || lost != null; }
-    function update() { if (o.onPaired) o.onPaired(paired() && !playing); badge.textContent = Object.keys(remotes).length ? 'PAIRED' : ''; }
+    function update() { if (o.onPaired) o.onPaired(paired()); if (!flown && Date.now() > outUntil) flyTo('base'); badge.textContent = Object.keys(remotes).length ? 'PAIRED' : ''; }
     // phones ping every 4 s; a phone that went quiet (screen off, wifi gone) without closing counts as lost after 9 s
     var seen = {};
     setInterval(function () { var now = Date.now(); for (var k in remotes) if (now - (seen[k] || now) > 9000) { var c = remotes[k]; try { c.close(); } catch (e) {} opts.onClose(c); } }, 1500);

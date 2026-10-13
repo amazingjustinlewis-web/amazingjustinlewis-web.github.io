@@ -56,7 +56,7 @@ var ZQ=ZeroQR({key:'ztp-tv-session-'+id,still:still||qs.get('pulse')==='0'});
 // pairing front door (not in always-on mode, where the QR never sinks and phones get the menu themselves)
 var door=Door({name:name,title:name.toUpperCase(),extra:BIZQ,noPair:layout==='always',
  items:function(){return[{label:'Café games',play:'../cafe/screen.html',name:'Café games',mins:15,late:1,ctrl:'../cafe/play.html'},{label:'Show a QR page',qr:1},{label:'Close',close:1}]},
- onCode:function(u){setQR(u)},onPaired:function(p){ZQ.setForced(p?true:null,3.5)}});
+ onCode:function(u){setQR(u)},flyEl:function(){return document.getElementById(layout==='grid'?'ring2':'ring')},onPaired:function(p){ZQ.setForced(p?true:null,3.5)}});
 addEventListener('click',function(e){if(!door.isOpen()&&!e.target.closest('#door,#doorframe'))door.menu()});
 var _z=0,cv=document.getElementById(layout==='grid'?'ring2':'ring'),x=cv.getContext('2d'),D;
 function size(){D=devicePixelRatio||1;var r=cv.getBoundingClientRect();cv.width=Math.round(r.width*D);cv.height=Math.round(r.height*D)}
