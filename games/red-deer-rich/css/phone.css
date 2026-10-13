@@ -648,3 +648,14 @@ b.amt { color: #ffe27a; font-weight: 900; }
 /* v0.7: your roll: the My Turn badge doubles and glows (no auto-jump) */
 .tabs .dot.roll { transform: scale(2); transform-origin: 30% 70%; background: #ffd23f; color: #3a2a00; box-shadow: 0 0 8px 2px rgba(255,210,63,.75); animation: dotGlow 1.4s ease-in-out infinite; }
 @keyframes dotGlow { 50% { box-shadow: 0 0 14px 5px rgba(255,210,63,.95); } }
+/* v0.7 Queued manage mode: plan bar */
+.planbar { position: fixed; left: 8px; right: 8px; bottom: calc(var(--tabh) + 8px + env(safe-area-inset-bottom)); z-index: 54; background: #24203a; border: 1px solid rgba(255,210,63,.45); border-radius: 12px; padding: 8px 10px; font-size: 14px; color: #fff; box-shadow: 0 6px 20px rgba(0,0,0,.4); max-height: 40vh; overflow: auto; }
+.planbar[hidden] { display: none; }
+.planbar .pb-t { font-weight: 800; margin-bottom: 4px; }
+.planbar .pb-f { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; opacity: .92; }
+.planbar .pb-b { display: flex; gap: 8px; margin-top: 6px; }
+.planbar button { font: inherit; border: 0; border-radius: 8px; padding: 6px 12px; background: #3a3555; color: #fff; }
+.planbar button.on { background: #ffd23f; color: #2a1f00; font-weight: 800; }
+.planbar .pb-x { padding: 2px 8px; background: transparent; }
+.planbar:has(.pb-mini) { left: auto; padding: 0; background: transparent; border: 0; box-shadow: none; }
+.planbar .pb-mini { background: rgba(36,32,58,.92); border: 1px solid rgba(255,210,63,.45); font-size: 12px; padding: 5px 10px; border-radius: 14px; }

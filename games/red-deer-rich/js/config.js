@@ -118,7 +118,6 @@
       teams: false,              // v0.6: 4+ players pair up into teams with shared cash and deeds
       disasters: false,          // v0.5: mild local mishaps close or halve a business's rent for 1-3 turns
       dreadHops: true,           // v0.7: slow, heavy hops toward rent that will hurt (independent of PAY UP race)
-      turnManage: false,         // v0.7: Manage properties only on your turn (off = Anytime)
       heckle: true               // v0.4: everyone can heckle a player who stalls on their turn (escalating 15 s / 5 s / 3 s)
     },
 
@@ -149,8 +148,6 @@
         long: 'With 4 or more players, everyone is split into teams of 2 (or 3) by turn order, so teammates never go back to back. A team shares one bank balance and owns its deeds together: no rent between teammates, either teammate can build, mortgage or hit PAY UP on the team\'s deeds. If the team can\'t pay, the whole team goes bust. Fewer than 4 players: everyone plays solo.' },
       { k: 'dreadHops', icon: '\uD83D\uDE2C', tag: 'Dread hops', label: 'Dread hops', short: 'Heading for painful rent? The last hops slow down. Wipeout rent adds a thud and spilled cash',
         long: 'When a token is about to land on rent that hurts (a quarter of their cash or more), the last two hops slow to half speed with a heavy thud. If the rent is more than they have, the last few hops crawl, the final one lands with a thump and a screen shake, and money spills out of their piece. Works with PAY UP race on or off.' },
-      { k: 'turnManage', icon: '\u23F3', tag: 'Manage on turn', label: 'Manage properties: only on your turn', short: 'Off = Anytime. On = build, sell, mortgage and trade only on your own turn',
-        long: 'Anytime (default): build, sell Shops, mortgage and propose trades whenever you like. Only on your turn: those wait for your own turn (you can still accept or decline offers). Either way, rent is locked in the moment someone lands.' },
     ],
     // one-tap presets (camera is a TV preference and is left alone). Edit anything afterwards and setup shows "Custom".
     presets: {
@@ -160,6 +157,8 @@
     },
 
     // ---- timing (ms). &fast in the URL divides these by 4 ----
+    manageDefault: 'live',   // v0.7 Manage properties: live (anytime) | queue (plan off-turn, applies at turn start) | turn (only on your turn)
+    manageLabels: { live: 'Live (anytime)', queue: 'Queued (plan off-turn)', turn: 'Turn only' },
     dread: { awfulFrac: 0.25, awfulAbs: 600, awfulMult: [2, 2], devMult: [1.5, 2.1, 2.9, 4.2], spillMs: 1300 },   // v0.7 landing dread (automatic rent only)
     timing: { roll: 900, step: 230, card: 2600, afterMove: 350, turnGap: 500, banner: 2200 },
 

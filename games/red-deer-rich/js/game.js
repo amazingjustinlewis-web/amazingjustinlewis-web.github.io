@@ -21,6 +21,7 @@
     this.players = [];
     this.rules = {}; for (var k in C.rules) this.rules[k] = C.rules[k];
     this.mode = 'regular';
+    this.manageMode = C.manageDefault || 'live';   // v0.7: 'live' | 'queue' | 'turn'
     this.catchSec = C.payup.catchDefault || 5;   // v0.7: PAY UP catch window in seconds (3 / 5 / 8)
     this.paused = false;                   // v0.7: frozen by a pause vote (the TV stops the game clock too)
     this.timerMin = null;                  // v0.5: game timer in minutes, separate from the length (null = the length's default)
@@ -76,7 +77,7 @@
     if (p.ai || (oldDefault && p.name === oldDefault.name)) p.name = ch.name;
     p.charId = charId; p.color = ch.color; p.ink = ch.ink; this.changed(); return true;
   };
-  G.setRule = function (k, v) { if (k in C.rules && (this.phase === 'lobby' || this.phase === 'over' || k === 'camera' || k === 'dreadHops' || k === 'turnManage')) { this.rules[k] = !!v; if (k === 'feesToPot' && v) this.rules.jackpot = true; if (k === 'jackpot' && !v) this.rules.feesToPot = false; this.changed(); } };
+  G.setRule = function (k, v) { if (k in C.rules && (this.phase === 'lobby' || this.phase === 'over' || k === 'camera' || k === 'dreadHops')) { this.rules[k] = !!v; if (k === 'feesToPot' && v) this.rules.jackpot = true; if (k === 'jackpot' && !v) this.rules.feesToPot = false; this.changed(); } };
   G.setMode = function (m) { if (m === 'full') m = 'regular'; if (C.modes[m] && (this.phase === 'lobby' || this.phase === 'over')) { this.mode = m; this.changed(); } };
   G.timed = function () { return !!this.endsAt; };
   // v0.5 game timer: on/off + length, separate from the game length. null = the length's own default (Regular untimed, Medium 45, Quick 30)
@@ -88,6 +89,28 @@
   };
   // v0.1.1: an AI (or a late phone) can take a seat in a running game: starting cash, at The Halfway, last in turn order
   // v0.7: catch window, mid-game timer switches, auto-pass
+  // v0.7 Manage properties modes
+  G.MANAGE = ['live', 'queue', 'turn'];
+  G.setManage = function (m) { if (this.MANAGE.indexOf(m) < 0) return false; this.manageMode = m; if (m !== 'queue') this.players.forEach(function (q) { q.queue = []; }); this.changed(); return true; };
+  G.manageGate = function (active) {
+    if (active || this.manageMode === 'live') return '';
+    return this.manageMode === 'turn' ? 'Only on your turn (house rule)' : 'Plan it, then hit UPDATE to queue it for your turn';
+  };
+  G.QUEUE_OK = ['build', 'sell', 'hock', 'unhock', 'rush', 'trade'];
+  G.setQueue = function (p, list) {
+    if (this.manageMode !== 'queue') return 'Queued changes are off';
+    var self = this; list = Array.isArray(list) ? list.slice(0, 30) : [];
+    p.queue = list.filter(function (m) { return m && self.QUEUE_OK.indexOf(m.t) >= 0; }).map(function (m) { var o = { t: m.t }; if (m.sp != null) o.sp = +m.sp; if (m.to != null) o.to = +m.to; if (m.give) o.give = m.give; if (m.get) o.get = m.get; return o; });
+    p.queueFails = null; this.changed(); return '';
+  };
+  G.applyQueue = function (p) {
+    var q = p.queue || []; p.queue = []; if (!q.length) return;
+    var fails = [], ok = 0, self = this;
+    q.forEach(function (m) { var r = self.intent(p.id, m); if (r) fails.push({ m: m, why: r }); else ok++; });
+    p.queueFails = fails.length ? fails : null;
+    this.addLog(p.name + '\'s queued changes: ' + ok + ' applied' + (fails.length ? ', ' + fails.length + ' could not' : '') + '.');
+    this.emit('queueApplied', { pid: p.id, ok: ok, fails: fails.length });
+  };
   G.setCatch = function (s) { s = +s; if ((C.payup.catchChoices || [3, 5, 8]).indexOf(s) < 0) return false; this.catchSec = s; this.changed(); return true; };
   G.graceMs = function () { return (this.catchSec || 5) * 1000 + (this.rules.kidMode ? 1000 : 0); };
   G.timerOff = function () { if (!this.endsAt) return false; this.timerLeft = Math.max(60000 / this.spd(), this.endsAt - this.now); this.endsAt = 0; this.addLog('The game timer is off: play it out!'); this.changed(); return true; };
@@ -623,6 +646,7 @@
     this.turn = { pid: p.id, stage: 'roll', doubles: 0, roll: null, rollSeq: (this.turn ? this.turn.rollSeq : 0), canRollAgain: false, buy: null, payup: null, tab: null, card: null, graceUntil: 0, startedAt: this.now, payupSeq: (this.turn ? this.turn.payupSeq : 0),
       heckle: { stalls: 0, lastAct: this.now, open: false, forever: false, lastAt: -1e9, n: 0 } };   // v0.4 Heckle
     this.emit('turn', { pid: p.id });
+    if (this.manageMode === 'queue' && p.queue && p.queue.length) this.applyQueue(p);   // v0.7 queued changes land at the start of your turn
   };
   G.nextAfter = function (p) {
     var i = this.players.indexOf(p);
@@ -1079,11 +1103,11 @@
         return '';
       case 'payup': return this.payup(pid) ? '' : 'too late';
       case 'bid': return this.bid(pid, +m.add);
-      case 'build': if (this.rules.turnManage && !active) return 'Only on your turn (house rule)'; r = this.build(p, +m.sp); return r;
-      case 'sell': if (this.rules.turnManage && !active) return 'Only on your turn (house rule)'; r = this.sellShop(p, +m.sp); if (!r && active && t.tab) this.settleTab(); return r;      // v0.4 PAID IN FULL the moment there's enough
-      case 'hock': if (this.rules.turnManage && !active) return 'Only on your turn (house rule)'; r = this.hock(p, +m.sp); if (!r && active && t.tab) this.settleTab(); return r;
-      case 'unhock': if (this.rules.turnManage && !active) return 'Only on your turn (house rule)'; return this.unhock(p, +m.sp);
-      case 'rush': if (this.rules.turnManage && !active) return 'Only on your turn (house rule)'; return this.rush(p, +m.sp);                                                     // v0.5 RUSH REPAIR
+      case 'build': if ((r = this.manageGate(active))) return r; r = this.build(p, +m.sp); return r;
+      case 'sell': if ((r = this.manageGate(active))) return r; r = this.sellShop(p, +m.sp); if (!r && active && t.tab) this.settleTab(); return r;      // v0.4 PAID IN FULL the moment there's enough
+      case 'hock': if ((r = this.manageGate(active))) return r; r = this.hock(p, +m.sp); if (!r && active && t.tab) this.settleTab(); return r;
+      case 'unhock': if ((r = this.manageGate(active))) return r; return this.unhock(p, +m.sp);
+      case 'rush': if ((r = this.manageGate(active))) return r; return this.rush(p, +m.sp);                                                     // v0.5 RUSH REPAIR
       case 'raise':
         if (!active || !t.tab) return 'no tab';
         this._raising = true; this.autoRaise(p, t.tab.amount); this.settleTab(); this._raising = false; return '';
@@ -1091,8 +1115,10 @@
         if (!active || !t.tab) return 'no tab';
         if (this.liquidValue(p) >= t.tab.amount) return 'You can still raise the cash';
         var to = t.tab.to, debt = t.tab.amount; t.tab = null; this.bankrupt(p, to, debt); return '';
-      case 'trade': if (this.rules.turnManage && !active) return 'Only on your turn (house rule)'; return this.proposeTrade(pid, +m.to, m.give, m.get);
-      case 'counter': if (this.rules.turnManage && !active) return 'Only on your turn (house rule)'; return this.counterTrade(pid, +m.id, m.give, m.get);
+      case 'queue': return this.setQueue(p, m.list);
+      case 'queueSeen': p.queueFails = null; this.changed(); return '';
+      case 'trade': if ((r = this.manageGate(active))) return r; return this.proposeTrade(pid, +m.to, m.give, m.get);
+      case 'counter': if ((r = this.manageGate(active))) return r; return this.counterTrade(pid, +m.id, m.give, m.get);
       case 'accept': return this.acceptTrade(pid, +m.id);
       case 'decline': return this.declineTrade(pid, +m.id);
     }

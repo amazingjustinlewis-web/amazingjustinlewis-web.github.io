@@ -16,7 +16,43 @@
   var ui = { sel: 0, thread: null, builder: null, seen: JSON.parse(store.get('rdr_seen') || '{}'), carIdx: 0, aiChar: null, aiLevel: 'normal', lastRollSeq: -1, diceT: 0, graceUntil: 0, fades: {},
     stuffView: store.get('rdr_stuffView') === 'list' ? 'list' : 'cards', heckleAt: 0, heckToast: 0 };      // v0.4: My Stuff view is remembered (cards by default)
   function vib(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
-  function send(m) { if (net) net.send(m); }
+  function send(m) {
+    // v0.7 Queued mode: off-turn property changes are planned on the phone, then queued with UPDATE
+    if (m && planIntercept(m)) return;
+    if (net) net.send(m);
+  }
+  var PLAN_T = ['build', 'sell', 'hock', 'unhock', 'rush', 'trade'];
+  function planIntercept(m) {
+    if (!st || st.phase !== 'play' || st.manage !== 'queue' || !st.me || PLAN_T.indexOf(m.t) < 0) return false;
+    if (st.turn && st.turn.pid === st.me.id) return false;
+    if (!ui.plan) ui.plan = ((st.myQueue && st.myQueue.list) || []).slice();
+    ui.plan.push(m); toast('\uD83D\uDCDD Planned: ' + planLabel(m) + '. Hit UPDATE to queue it.', 2200); renderPlanBar(); return true;
+  }
+  function planLabel(m) { var nm = m.sp >= 0 && S[m.sp] ? S[m.sp].short || S[m.sp].name : ''; return ({ build: 'Build on ', sell: 'Sell a Shop on ', hock: 'Mortgage ', unhock: 'Unmortgage ', rush: 'Rush repair ', trade: 'Trade offer' }[m.t] || m.t) + (m.t === 'trade' ? '' : nm); }
+  function renderPlanBar() {
+    var el = $('planBar'); if (!el) { el = document.createElement('div'); el.id = 'planBar'; el.className = 'planbar'; document.body.appendChild(el); el.addEventListener('click', planClick); }
+    var q = st && st.myQueue, fails = q && q.fails && q.fails.length ? q.fails : null, h = '';
+    if (!st || st.phase !== 'play' || (st.manage !== 'queue' && !fails)) { el.hidden = true; ui.plan = null; return; }
+    if (fails) {
+      h = '<div class="pb-t">\u26A0 ' + fails.length + ' queued change' + (fails.length > 1 ? 's' : '') + ' couldn\'t apply:</div>' + fails.map(function (f) { return '<div class="pb-f">' + esc(planLabel({ t: f[0], sp: f[1] })) + ' <small>(' + esc(f[2]) + ')</small></div>'; }).join('') +
+        '<div class="pb-b"><button data-pb="ok">OK, I\'ll fix it</button></div>';
+    } else if (ui.plan) {
+      h = '<div class="pb-t">\uD83D\uDCDD ' + ui.plan.length + ' planned</div>' + ui.plan.map(function (m, i) { return '<div class="pb-f">' + esc(planLabel(m)) + ' <button class="pb-x" data-pb="rm" data-i="' + i + '">\u2715</button></div>'; }).join('') +
+        '<div class="pb-b"><button data-pb="update" class="on">UPDATE</button><button data-pb="cancel">Cancel</button></div>';
+    } else if (q && q.n) {
+      h = '<button class="pb-mini" data-pb="edit">\u23F3 ' + q.n + ' queued for your turn</button>';
+    } else { el.hidden = true; return; }
+    el.hidden = false; if (el._h !== h) { el._h = h; el.innerHTML = h; }
+  }
+  function planClick(e) {
+    var b = e.target.closest('[data-pb]'); if (!b) return; var k = b.getAttribute('data-pb');
+    if (k === 'update') { net && net.send({ t: 'queue', list: ui.plan || [] }); toast(ui.plan && ui.plan.length ? '\u23F3 Queued for your turn' : 'Queue cleared', 1800); ui.plan = null; SFX.play('click'); }
+    else if (k === 'cancel') ui.plan = null;
+    else if (k === 'rm') { ui.plan.splice(+b.getAttribute('data-i'), 1); }
+    else if (k === 'edit') ui.plan = ((st.myQueue && st.myQueue.list) || []).slice();
+    else if (k === 'ok') net && net.send({ t: 'queueSeen' });
+    vib(10); renderPlanBar();
+  }
   function toast(t, ms) { var el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function () { el.hidden = true; }, ms || 2400); }
   function pById(id) { if (!st) return null; for (var i = 0; i < st.players.length; i++) if (st.players[i].id === id) return st.players[i]; return null; }
   function initials(n) { return R.initials(n || '?'); }
@@ -71,7 +107,7 @@
     show('game');
     var obs = !!s.me.observer; document.body.classList.toggle('observer', obs);
     if (obs && tab !== 'board') setTab('board');
-    renderHead(); renderAuction(); renderTab(); renderBadges(); payupOverlay(); renderVote(); renderSv(); renderMyTurnFab();
+    renderHead(); renderAuction(); renderTab(); renderBadges(); payupOverlay(); renderVote(); renderSv(); renderMyTurnFab(); renderPlanBar();
   }
   function handleFx(prev) {
     var f = st.fx || {};
@@ -152,6 +188,7 @@
       setH($('hMode'), ['regular', 'medium', 'quick'].map(function (k) { return '<button data-mode="' + k + '" class="' + (st.mode === k ? 'on' : '') + '">' + C.modes[k].label + '</button>'; }).join(''));
       var tm = st.timer || { min: null, eff: 0 };
       $('hTimer').innerHTML = '\u23F1 ' + (tm.eff ? tm.eff + ' min' : 'No timer');
+      if ($('hManage').value !== (st.manage || 'live') && document.activeElement !== $('hManage')) $('hManage').value = st.manage || 'live';
       var cw = $('hCatchRow'); cw.hidden = !st.rules.payupRace; if ($('hCatch').value !== String(st.catchSec || 5) && document.activeElement !== $('hCatch')) $('hCatch').value = String(st.catchSec || 5);   // v0.7
       $('hTimer').classList.toggle('on', !!tm.eff);
       $('hModeInfo').textContent = C.modes[st.mode] ? C.modes[st.mode].label + ': ' + C.modes[st.mode].blurb + ' \u00b7 start with ' + money(C.modes[st.mode].startCash) + ' \u00b7 ' + (tm.eff ? 'ends after ' + tm.eff + ' min' : 'no timer') + (tm.min == null ? ' (mode default)' : '') : '';
@@ -184,7 +221,7 @@
   function showOptInfo(k) { var o = O.opt(k); if (!o) return; $('osH').textContent = o.icon + ' ' + o.label + (st.rules[k] ? ' (on)' : ' (off)'); $('osShort').textContent = o.short; $('osT').textContent = o.long; $('optSheet').hidden = false; }
   $('optSheet').onclick = function (e) { if (e.target === $('optSheet') || e.target === $('osOk')) $('optSheet').hidden = true; };
   // v0.2.1 remember last game: the host phone keeps the last-used setup and puts it back when it hosts again
-  function setupNow() { var r = {}; C.options.forEach(function (o) { r[o.k] = !!st.rules[o.k]; }); return { rules: r, mode: st.mode, timer: st.timer ? st.timer.min : null, catchSec: st.catchSec || 5, ai: st.players.filter(function (p) { return p.ai; }).length, level: ui.aiLevel }; }
+  function setupNow() { var r = {}; C.options.forEach(function (o) { r[o.k] = !!st.rules[o.k]; }); return { rules: r, mode: st.mode, timer: st.timer ? st.timer.min : null, catchSec: st.catchSec || 5, manage: st.manage || 'live', ai: st.players.filter(function (p) { return p.ai; }).length, level: ui.aiLevel }; }
   var saveT = 0;
   function saveSetupSoon() { clearTimeout(saveT); saveT = setTimeout(function () { if (st && st.me && st.me.vip && st.phase !== 'play') store.set('rdr_setup', JSON.stringify(setupNow())); }, 700); }
   function restoreSetup() {
@@ -194,7 +231,7 @@
     if (!saved || !saved.rules) return;
     if (saved.level && C.ai.levels[saved.level]) ui.aiLevel = saved.level;
     var nAi = st.players.filter(function (p) { return p.ai; }).length, add = Math.max(0, Math.min((saved.ai | 0) - nAi, C.maxPlayers - st.players.length));
-    var msg = { t: 'settings', rules: saved.rules, mode: saved.mode, addAI: add, level: ui.aiLevel }; if ('timer' in saved) msg.timer = saved.timer; if (saved.catchSec) msg.catchSec = saved.catchSec; send(msg);
+    var msg = { t: 'settings', rules: saved.rules, mode: saved.mode, addAI: add, level: ui.aiLevel }; if ('timer' in saved) msg.timer = saved.timer; if (saved.catchSec) msg.catchSec = saved.catchSec; if (saved.manage) msg.manage = saved.manage; send(msg);
     toast('Set up like last time. Change anything below.', 2400);
   }
   $('hostBox').addEventListener('click', function (e) {
@@ -205,6 +242,7 @@
     if (b.getAttribute('data-hueg')) send({ t: 'hue', toggle: b.getAttribute('data-hueg') });
   });
   $('hTimer').onclick = function () { var ch = C.timerChoices || [0, 20, 30, 45, 60, 90], cur = st.timer ? st.timer.eff || 0 : 0, i = ch.indexOf(cur); send({ t: 'timer', v: ch[(i + 1) % ch.length] }); vib(15); SFX.play('click'); saveSetupSoon(); };   // v0.5
+  $('hManage').onchange = function () { send({ t: 'manage', v: this.value }); vib(15); SFX.play('click'); saveSetupSoon(); };   // v0.7 manage mode
   $('hCatch').onchange = function () { send({ t: 'catch', v: +this.value }); vib(15); SFX.play('click'); saveSetupSoon(); };   // v0.7 catch window
   $('startBtn').onclick = function () { if (st) store.set('rdr_setup', JSON.stringify(setupNow())); send({ t: 'start' }); };
   function renderOver() {
@@ -384,7 +422,6 @@
     o.push(['add15', '\u2795 15 more minutes', 'on the game timer']);
     if (st.paused) o.push(['resume', '\u25B6 Resume', 'unfreeze the game']); else o.push(['pause', '\u23F8 Pause', 'freeze everything']);
     o.push(st.rules.dreadHops ? ['dreadOff', '\uD83D\uDE2C Dread hops OFF', 'normal speed landings'] : ['dreadOn', '\uD83D\uDE2C Dread hops ON', 'slow hops toward painful rent']);
-    o.push(st.rules.turnManage ? ['manageAny', '\uD83C\uDFD7 Manage: Anytime', 'build, mortgage, trade whenever'] : ['manageTurn', '\uD83C\uDFD7 Manage: Your turn only', 'build, mortgage, trade on your turn']);
     o.push(st.rules.camera ? ['zoomOff', '\uD83C\uDFA5 TV zoom OFF', 'keep the whole board'] : ['zoomOn', '\uD83C\uDFA5 TV zoom ON', 'zoom in on the action']);
     return o;
   }
@@ -393,6 +430,8 @@
     var h = '<div class="os-card sv-card"><div class="os-h">\u2699\uFE0F Game settings</div><div class="muted small">Propose a change: it happens when ' + (C.vote ? Math.round(C.vote.pass * 100) : 85) + '% of players vote yes.</div><div class="svopts">' +
       svOptions().map(function (x) { return '<button class="svopt" data-act="svProp" data-k="' + x[0] + '"><b>' + x[1] + '</b><small>' + esc(x[2]) + '</small></button>'; }).join('') + '</div>';
     if (st.rules.payupRace) h += '<div class="hb-sub">PAY UP catch window (now ' + (st.catchSec || 5) + ' s)</div><div class="row svcatch">' + (C.payup.catchChoices || [3, 5, 8]).map(function (s) { return '<button class="ghost' + (s === st.catchSec ? ' on' : '') + '" data-act="svProp" data-k="catch" data-v="' + s + '"' + (s === st.catchSec ? ' disabled' : '') + '>' + s + ' s</button>'; }).join('') + '</div>';
+    var ML = C.manageLabels || { live: 'Live', queue: 'Queued', turn: 'Turn only' };
+    h += '<div class="hb-sub">Manage properties (now ' + esc(ML[st.manage] || st.manage) + ')</div><div class="row svcatch">' + ['live', 'queue', 'turn'].map(function (k) { return '<button class="ghost' + (k === st.manage ? ' on' : '') + '" data-act="svProp" data-k="manage" data-v="' + k + '">' + esc(ML[k]) + '</button>'; }).join('') + '</div>';
     h += '<button class="big-btn" data-act="svClose">CLOSE</button></div>';
     $('setSheet').innerHTML = h; $('setSheet').hidden = false; SFX.play('card'); vib(10);
   }
@@ -1187,7 +1226,7 @@
       case 'closeSet': closeSet(); SFX.play('click'); vib(10); break;
       case 'bList': case 'bMapOn': if (ui.builder) { var wantMap = act === 'bMapOn'; if (!!ui.builder.map !== wantMap) { ui.builder.map = wantMap; store.set('rdr_tradeView', wantMap ? 'map' : 'list'); ui.builderBuilt = false; SFX.play('click'); renderMsgs(); } } break;
       case 'svOpen': openSettings(); break;
-      case 'svProp': send({ t: 'propose', k: el.getAttribute('data-k'), v: el.getAttribute('data-v') ? +el.getAttribute('data-v') : undefined }); vib(20); SFX.play('click'); $('setSheet').hidden = true; break;
+      case 'svProp': send({ t: 'propose', k: el.getAttribute('data-k'), v: el.getAttribute('data-v') ? (/^\d+$/.test(el.getAttribute('data-v')) ? +el.getAttribute('data-v') : el.getAttribute('data-v')) : undefined }); vib(20); SFX.play('click'); $('setSheet').hidden = true; break;
       case 'svYes': case 'svNo': if (st.svote) { send({ t: 'svote', id: st.svote.id, yes: act === 'svYes' }); vib(20); SFX.play('click'); } break;
       case 'svCancel': send({ t: 'svCancel' }); break;
       case 'svClose': $('setSheet').hidden = true; break;

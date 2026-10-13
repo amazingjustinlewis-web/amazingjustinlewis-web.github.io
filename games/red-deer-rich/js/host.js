@@ -461,13 +461,13 @@
   function saveTvSetup() {
     if (game.phase !== 'lobby') return;
     var r = {}; C.options.forEach(function (o) { r[o.k] = !!game.rules[o.k]; });
-    var j = JSON.stringify({ rules: r, mode: game.mode, timer: game.timerMin, catchSec: game.catchSec }); if (j !== tvSaved) { tvSaved = j; tvStore(TVKEY, j); }
+    var j = JSON.stringify({ rules: r, mode: game.mode, timer: game.timerMin, catchSec: game.catchSec, manage: game.manageMode }); if (j !== tvSaved) { tvSaved = j; tvStore(TVKEY, j); }
   }
   function loadTvSetup() {
     if (['local', 'nonet', 'autostart', 'ai', 'rules', 'mode', 'fresh'].some(function (k) { return Q.has(k); })) return false;
     var sv = null; try { sv = JSON.parse(tvStore(TVKEY) || 'null'); } catch (e) {}
     if (!sv || !sv.rules) return false;
-    applyRules(sv.rules); if (sv.mode) game.setMode(sv.mode); if ('timer' in sv) game.setTimer(sv.timer); if (sv.catchSec) game.setCatch(sv.catchSec); tvSaved = JSON.stringify(sv); return true;
+    applyRules(sv.rules); if (sv.mode) game.setMode(sv.mode); if ('timer' in sv) game.setTimer(sv.timer); if (sv.catchSec) game.setCatch(sv.catchSec); if (sv.manage) game.setManage(sv.manage); tvSaved = JSON.stringify(sv); return true;
   }
   function showOptInfo(k) {
     var o = O.opt(k), el = $('optInfo'); if (!o) return;
@@ -782,6 +782,7 @@
     if (m.t === 'propose') { svPropose(pl, conn, m); return; }        // v0.7 settings votes
     if (m.t === 'svote') { svCast(pl, m); return; }
     if (m.t === 'svCancel') { if (sv && sv.by === pl.id) svEnd(false, 'cancelled by ' + pl.name); return; }
+    if (m.t === 'manage') { if (isVip && lobbyish) { game.setManage(String(m.v)); setupEdited = true; dirty = phoneDirty = true; } return; }   // v0.7
     if (m.t === 'catch') { if (isVip && lobbyish) { game.setCatch(m.v); setupEdited = true; dirty = phoneDirty = true; } return; }   // v0.7
     if (m.t === 'leaveGame') {      // v0.1.1: leave mid-game (hand the seat to an AI, split, give to one player, or into the pot)
       var lr = game.leaveGame(pl.id, String(m.how || ''), m.to);
@@ -797,7 +798,7 @@
       if (!isVip || game.phase !== 'lobby' || !m.rules) return;
       if (setupEdited) { dirty = phoneDirty = true; return; }     // v0.3: this room's live setup wins over a reloading phone's saved one
       setupEdited = true;
-      applyRules(m.rules); if (m.mode) game.setMode(String(m.mode)); if ('timer' in m) game.setTimer(m.timer); if (m.catchSec) game.setCatch(m.catchSec);
+      applyRules(m.rules); if (m.mode) game.setMode(String(m.mode)); if ('timer' in m) game.setTimer(m.timer); if (m.catchSec) game.setCatch(m.catchSec); if (m.manage) game.setManage(String(m.manage));
       var lvl = C.ai.levels[m.level] ? m.level : 'normal';
       for (var ai = 0; ai < Math.min(+m.addAI || 0, C.maxPlayers); ai++) if (!addAI(null, lvl)) break;
       dirty = phoneDirty = true; return;
@@ -908,6 +909,7 @@
       hue: g.phase !== 'play' ? hueView(p) : null,
       setupEdited: setupEdited,
       lastFind: g.phase === 'play' && lastFind ? { idx: lastFind.idx, n: lastFind.n, fresh: Date.now() - lastFind.at < (C.cardHoldMs || 12000) } : null,
+      manage: g.manageMode, myQueue: { n: (p.queue || []).length, list: p.queue || [], fails: (p.queueFails || []).map(function (f) { return [f.m.t, f.m.sp, f.why]; }) },
       catchSec: g.catchSec, paused: !!g.paused, timerOn: !!g.endsAt, timerLeft: g.endsAt ? 0 : (g.timerLeft || 0),   // v0.7
       svote: svView(p), svDone: svDone && Date.now() - svDone.at < 4000 ? svDone : null,
       timer: { min: g.timerMin, eff: g.timerFor() }   // fresh: phones keep the whole card up while the TV shows it
@@ -1039,7 +1041,7 @@
   var VK = C.vote || { pass: 0.85, ms: 30000, addMin: 15 };
   function svLabel(k, v) {
     return { timerOff: 'Turn the game timer OFF', timerOn: 'Turn the game timer back ON', add15: 'Add ' + VK.addMin + ' more minutes', pause: 'Pause the game', resume: 'Resume the game',
-      zoomOff: 'Turn the TV zoom OFF', zoomOn: 'Turn the TV zoom ON', dreadOff: 'Turn Dread hops OFF', dreadOn: 'Turn Dread hops ON', manageTurn: 'Manage properties only on your turn', manageAny: 'Manage properties anytime', 'catch': 'Catch window: ' + v + ' seconds' }[k] || k;
+      zoomOff: 'Turn the TV zoom OFF', zoomOn: 'Turn the TV zoom ON', dreadOff: 'Turn Dread hops OFF', dreadOn: 'Turn Dread hops ON', manage: 'Manage properties: ' + ((C.manageLabels || {})[v] || v), 'catch': 'Catch window: ' + v + ' seconds' }[k] || k;
   }
   function svValid(k, v) {
     var g = game;
@@ -1053,8 +1055,7 @@
       case 'zoomOn': return !g.rules.camera ? '' : 'TV zoom is already on';
       case 'dreadOff': return g.rules.dreadHops ? '' : 'Dread hops are already off';
       case 'dreadOn': return !g.rules.dreadHops ? '' : 'Dread hops are already on';
-      case 'manageTurn': return !g.rules.turnManage ? '' : 'Already only on your turn';
-      case 'manageAny': return g.rules.turnManage ? '' : 'Already anytime';
+      case 'manage': return g.MANAGE.indexOf(v) < 0 ? 'Unknown mode' : v === g.manageMode ? 'Already that mode' : '';
       case 'catch': return !g.rules.payupRace ? 'The PAY UP race is off' : (C.payup.catchChoices.indexOf(+v) < 0 ? 'Pick 3, 5 or 8 s' : +v === g.catchSec ? 'Already ' + v + ' s' : '');
     }
     return 'Unknown setting';
@@ -1097,7 +1098,7 @@
     if (k === 'timerOff') g.timerOff(); else if (k === 'timerOn') g.timerOn(); else if (k === 'add15') g.addMinutes(VK.addMin);
     else if (k === 'pause') setPause(true); else if (k === 'resume') setPause(false);
     else if (k === 'dreadOff' || k === 'dreadOn') g.setRule('dreadHops', k === 'dreadOn');
-    else if (k === 'manageTurn' || k === 'manageAny') g.setRule('turnManage', k === 'manageTurn');
+    else if (k === 'manage') { g.setManage(v); g.addLog('Manage properties: ' + ((C.manageLabels || {})[v] || v) + '.'); }
     else if (k === 'zoomOff') g.setRule('camera', false); else if (k === 'zoomOn') g.setRule('camera', true);
     else if (k === 'catch') { g.setCatch(+v); g.addLog('Catch window is now ' + v + ' seconds.'); }
     g.changed();
