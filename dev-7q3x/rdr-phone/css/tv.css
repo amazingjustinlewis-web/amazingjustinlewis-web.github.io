@@ -354,3 +354,6 @@ html.ph #auctionPop { top: calc(var(--by) + var(--bs) * 0.74); transform: transl
 html.ph #banner { transform: scale(.75); transform-origin: 0 50%; }
 html.ph .optinfo { transform: translate(-50%, -50%) scale(.6); }
 html.ph #svTv, html.ph #autoTv, html.ph #pauseTv { transform: scale(.6); transform-origin: 100% 100%; }
+html.vw #banner { display: none !important; }
+html.ph #autoTv { left: calc(var(--bx) + 6px) !important; right: auto !important; top: auto !important; bottom: auto !important; transform: scale(.6); transform-origin: 0 0; margin-top: calc(var(--by) + var(--bs) - 40px); }
+html.ph .stamp, html.ph .sidestamp { display: none !important; }

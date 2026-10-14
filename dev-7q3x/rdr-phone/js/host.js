@@ -10,7 +10,7 @@
   var PH = Q.has('phonehost') || Q.has('viewer'), VIEWER = (Q.get('viewer') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4), FAST = Q.has('fast') ? 4 : 1, NONET = Q.has('nonet'), LOCAL = Q.has('local');
   var game = new Game({ seed: Q.get('seed') ? +Q.get('seed') : undefined, speed: +(Q.get('speed') || FAST) });
   var rnd = new window.RDRRender($('board'), game);
-  if (PH) { rnd.phoneCam = true; document.documentElement.className += ' ph'; }
+  if (PH) { rnd.phoneCam = true; document.documentElement.className += ' ph' + (VIEWER ? ' vw' : ''); }
   var net = null, lightsDoor = null, clients = {}, dirty = true, phoneDirty = true, lastVersion = -1;
   // the host phone is sticky: the first person to join stays host even after the turn order shuffles the seats
   // (v0.1.2 fix: before, whoever went first among the humans silently became host when the game started)
