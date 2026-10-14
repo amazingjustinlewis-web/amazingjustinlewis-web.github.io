@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<title>Iron Stride Squad (dev v0.5)</title>
+<style>
+@font-face{font-family:Fredoka;src:url(../../games/mech/assets/fredoka-latin-var.woff2) format('woff2');font-weight:300 700}
+html,body{margin:0;height:100%;overflow:hidden;background:#0d1218;color:#fff;font-family:Fredoka,system-ui,sans-serif}
+canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block}
+#tags{position:fixed;inset:0;pointer-events:none}#tags div{position:absolute;transform:translate(-50%,-100%);font-size:1.6vh;font-weight:600;text-shadow:0 1px 3px #000;text-align:center;white-space:nowrap}
+#tags i{display:block;height:.6vh;background:#0008;border-radius:.3vh;margin:.2vh auto 0;width:6vh;overflow:hidden}#tags i b{display:block;height:100%;background:#7ed957}
+#hud{position:fixed;left:1.5vw;top:2vh;display:flex;flex-direction:column;gap:.7vh}
+.pc{background:#000a;border-left:.6vh solid;border-radius:1vh;padding:.5vh 1vw;font-size:1.9vh;min-width:15vw}.pc small{opacity:.7}
+#score{position:fixed;right:1.5vw;top:2vh;background:#000a;border-radius:1vh;padding:.6vh 1vw;font-size:2.2vh}
+#lobby{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:5vw;background:radial-gradient(ellipse at 50% 40%,#1d2a38dd,#0d1218f4 70%)}
+h1{font-size:8vh;margin:0;color:#ffb02e;letter-spacing:.05em}.sub{font-size:2.3vh;color:#bcd;margin:.6vh 0 2.5vh;max-width:46vw;line-height:1.45}
+#qr{width:28vh;height:28vh;background:#fff;border-radius:2vh;padding:1.4vh}#qr svg{width:100%;height:100%}#code{font-size:6vh;letter-spacing:.3em;font-weight:700;text-align:center}
+#plist span{display:inline-block;margin:.4vh;padding:.5vh 1vw;border-radius:1vh;font-size:2.1vh;color:#111;font-weight:600}
+#hint{font-size:2vh;color:#9ab;margin-top:2vh}.tag2{display:inline-block;background:#ffb02e;color:#111;border-radius:.6vh;padding:0 .6vw;font-size:1.6vh;vertical-align:middle}
+#msg{position:fixed;left:0;right:0;top:40vh;text-align:center;font-size:8vh;font-weight:700;color:#ffb02e;text-shadow:0 0 3vh #000;pointer-events:none}
+</style></head><body>
+<canvas id="gl"></canvas><div id="tags"></div><div id="hud"></div><div id="score"></div><div id="msg"></div>
+<div id="lobby"><div>
+  <h1>IRON STRIDE <span class="tag2">SQUAD DEV v0.5</span></h1>
+  <div class="sub"><b>Controller = Strider</b>: small and quick. Left stick walks, right stick aims, RT fires, A dashes.<br><b>Phone = Titan</b>: six times bigger, slow, heavy guns. Tap the map to walk, tap an enemy to lock it, call Barrage and Stomp. Buildings block every shot.</div>
+  <div id="plist"></div><div id="hint"></div>
+</div><div><div id="qr"></div><div id="code">&mdash;</div></div></div>
+<script src="../../games/mech/js/vendor/three.min.js"></script>
+<script src="../../games/mech/js/vendor/peerjs.min.js"></script>
+<script src="../../games/mech/js/vendor/qrcode.js"></script>
+<script src="../../games/mech/js/config.js"></script>
+<script src="../../games/mech/js/world.js"></script>
+<script src="js/squad-config.js"></script>
+<script src="../../games/mech/js/net.js"></script>
+<script src="js/squad.js"></script>
+<script src="js/tv.js"></script>
+</body></html>
