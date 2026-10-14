@@ -51,7 +51,7 @@
     var S = game.sim;
     if (game.phase === 'countdown') { var n = Math.ceil(C.countdownSec - game.phaseT); banner(n > 0 ? String(n) : 'SMASH!'); if (game.phaseT >= C.countdownSec) { setPhase('play'); setTimeout(function () { if (game.phase === 'play') banner(''); }, 700); } }
     if (game.phase === 'play' || game.phase === 'roundover') {
-      acc += dt; while (acc >= 1 / 60) { acc -= 1 / 60;
+      if (stopT > 0) { stopT -= dt; acc = 0; } else acc += dt; while (acc >= 1 / 60) { acc -= 1 / 60;
         S.cars.forEach(function (c) { var p = byId(c.id); if (c.ai || (p && p.aiCover)) S.think(c, 1 / 60); });
         if (game.phase === 'play' || game.phaseT < 1.5) S.step(1 / 60); }
       S.events.forEach(onEvent); S.events = [];
@@ -68,13 +68,36 @@
   // ---------------------------------------------------------------- events -> fx, phones, feed
   function onEvent(e) {
     var p;
-    if (e.k === 'hit') { p = byId(e.id); if (p && p.conn) send(p.conn, { t: 'buzz', s: Math.min(1, e.amt / 30) }); if (e.amt > 6) sparks(e.x, e.y, e.z + 0.8, Math.min(40, 6 + e.amt), 0xffc040); }
-    if (e.k === 'crush') { sparks(e.x, e.y, 1.5, 60, 0xff7020); shake(0.9); feed(nm(e.by) + ' CRUSHED ' + nm(e.id) + '!'); p = byId(e.id); if (p && p.conn) send(p.conn, { t: 'buzz', s: 1 }); }
-    if (e.k === 'smash' && e.s > 14) shake(Math.min(0.6, e.s / 40));
-    if (e.k === 'ko') { feed(e.how === 'ringout' ? nm(e.id) + ' fell out' + (e.by ? ' (thanks ' + nm(e.by) + ')' : '') : nm(e.by || e.id) === nm(e.id) ? nm(e.id) + ' wrecked' : nm(e.by) + ' wrecked ' + nm(e.id)); if (e.how === 'wreck') boom(e.x, e.y, e.z); p = byId(e.id); if (p && p.conn) send(p.conn, { t: 'buzz', s: 1, long: 1 }); }
+    if (e.k === 'hit') { p = byId(e.id); if (p && p.conn) send(p.conn, { t: 'buzz', s: Math.min(1, e.amt / 30) }); if (e.amt > 6) sparks(e.x, e.y, e.z + 0.8, Math.min(30, 4 + e.amt * 0.6), 0xffc040); }
+    if (e.k === 'crush') { sparks(e.x, e.y, 1.5, 60, 0xff7020); debris(e.x, e.y, 1.5, 14, byId(e.id) && byId(e.id).color); shake(1.4); crunch(1.3, 'metal'); hitStop(0.09); feed(nm(e.by) + ' CRUSHED ' + nm(e.id) + '!'); p = byId(e.id); if (p && p.conn) send(p.conn, { t: 'buzz', s: 1 }); }
+    if (e.k === 'smash') { var f = Math.min(1, e.s / 30);
+      shake(0.15 + f * (e.ram ? 1.3 : 0.9)); crunch(f, e.spk ? 'spike' : e.pl ? 'plate' : 'metal');
+      sparks(e.x, e.y, 0.9, Math.round(8 + f * 34), e.spk ? 0xfff0a0 : e.pl ? 0xbfd8ff : 0xffc040);
+      if (e.s > 10) { debris(e.x, e.y, 0.9, Math.round(2 + f * 8), e.ca); debris(e.x, e.y, 0.9, Math.round(2 + f * 8), e.cb); }
+      if (e.s > 18) { flashAt3(e.x, e.y); hitStop(e.ram ? 0.08 : 0.05); } }
+    if (e.k === 'bump') { /* light nudges stay quiet */ }
+    if (e.k === 'wall' && e.s > 8) { shake(Math.min(0.6, e.s / 40)); crunch(Math.min(0.7, e.s / 40), 'wall'); sparks(e.x, e.y, 0.8, 8, 0xffc040); }
+    if (e.k === 'boost') { var c0 = game.sim && game.sim.byId(e.id); if (c0) { boostFx(c0, e.b); whoosh(e.b); } }
+    if (e.k === 'ko') { feed(e.how === 'ringout' ? nm(e.id) + ' fell out' + (e.by ? ' (thanks ' + nm(e.by) + ')' : '') : nm(e.by || e.id) === nm(e.id) ? nm(e.id) + ' wrecked' : nm(e.by) + ' wrecked ' + nm(e.id)); if (e.how === 'wreck') { boom(e.x, e.y, e.z); debris(e.x, e.y, e.z + 1, 22, byId(e.id) && byId(e.id).color); crunch(1.4, 'boom'); hitStop(0.12); } p = byId(e.id); if (p && p.conn) send(p.conn, { t: 'buzz', s: 1, long: 1 }); }
     if (e.k === 'gate') feed('THE GATE OPENS');
-    if (e.k === 'land' && e.s > 8) { shake(0.25); sparks(e.x, e.y, 0.2, 10, 0xd8b080); }
+    if (e.k === 'land' && e.s > 8) { shake(Math.min(0.7, e.s / 25)); crunch(Math.min(0.6, e.s / 30), 'wall'); sparks(e.x, e.y, 0.2, 14, 0xd8b080); }
   }
+  // ---------------------------------------------------------------- audio: synthesised crunch (no files)
+  var AC = null, lastCrunch = 0;
+  function ac() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (x) { AC = false; } } if (AC && AC.state === 'suspended') AC.resume(); return AC; }
+  ['pointerdown', 'keydown'].forEach(function (k) { window.addEventListener(k, ac, { once: true }); });
+  function noiseBuf(a, sec) { var b = a.createBuffer(1, Math.floor(a.sampleRate * sec), a.sampleRate), d = b.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.5); return b; }
+  function crunch(f, kind) {
+    var a = ac(); if (!a || a.state !== 'running') return; var now = a.currentTime; if (now - lastCrunch < 0.04) return; lastCrunch = now;
+    var src = a.createBufferSource(), bp = a.createBiquadFilter(), g = a.createGain(), dur = 0.18 + f * 0.35;
+    src.buffer = noiseBuf(a, dur); bp.type = kind === 'boom' ? 'lowpass' : 'bandpass'; bp.frequency.value = kind === 'boom' ? 500 : kind === 'spike' ? 2600 : kind === 'plate' ? 1500 : 900; bp.Q.value = kind === 'plate' ? 6 : 1.2;
+    g.gain.value = Math.min(0.9, 0.25 + f * 0.6); src.connect(bp); bp.connect(g); g.connect(a.destination); src.start(now);
+    var o = a.createOscillator(), og = a.createGain(); o.type = kind === 'plate' ? 'triangle' : 'sawtooth'; o.frequency.setValueAtTime(kind === 'plate' ? 420 : 110 + f * 60, now); o.frequency.exponentialRampToValueAtTime(40, now + dur);
+    og.gain.setValueAtTime(0.25 * f, now); og.gain.exponentialRampToValueAtTime(0.001, now + dur); o.connect(og); og.connect(a.destination); o.start(now); o.stop(now + dur);
+  }
+  function whoosh(b) { var a = ac(); if (!a || a.state !== 'running') return; var now = a.currentTime, src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    src.buffer = noiseBuf(a, 0.5); f.type = 'bandpass'; f.frequency.setValueAtTime(b === 'dash' ? 2000 : 300, now); f.frequency.exponentialRampToValueAtTime(b === 'dash' ? 600 : 1400, now + 0.45); g.gain.value = 0.35; src.connect(f); f.connect(g); g.connect(a.destination); src.start(now); }
+  var stopT = 0; function hitStop(s) { stopT = Math.max(stopT, s); }
   function nm(id) { var p = byId(id); return p ? p.name : '?'; }
   function feed(t) { game.feed.unshift({ t: t, at: performance.now() }); game.feed = game.feed.slice(0, 5); }
   var flashMsg = '', flashAt = 0; function flash(t) { flashMsg = t; flashAt = performance.now(); }
@@ -108,8 +131,8 @@
     // crowd stands (cheap: a dark ring of boxes far out)
     for (var i = 0; i < 48; i++) { var b = i * Math.PI * 2 / 48; if (Math.abs(Math.atan2(Math.sin(b - ga), Math.cos(b - ga))) < 0.25) continue;
       var st = new R3.Mesh(new R3.BoxGeometry(6, 3 + (i % 3), 4), new R3.MeshLambertMaterial({ color: [0x2a1e30, 0x302438, 0x261a28][i % 3] })); st.position.set(Math.sin(b) * (A.R + 22), -6, Math.cos(b) * (A.R + 22)); st.rotation.y = b; scene.add(st); }
-    for (var k = 0; k < 160; k++) { var sp = new R3.Mesh(new R3.BoxGeometry(0.25, 0.25, 0.25), new R3.MeshBasicMaterial({ color: 0xffc040 })); sp.visible = false; scene.add(sp); sparkPool.push({ m: sp, life: 0 }); }
-    resize(); window.addEventListener('resize', resize);
+    for (var k = 0; k < 260; k++) { var sp = new R3.Mesh(new R3.BoxGeometry(0.25, 0.25, 0.25), new R3.MeshBasicMaterial({ color: 0xffc040 })); sp.visible = false; scene.add(sp); sparkPool.push({ m: sp, life: 0 }); }
+    initFx(); resize(); window.addEventListener('resize', resize);
   }
   function resize() { renderer.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); }
   function clearCars() { for (var k in carMeshes) scene.remove(carMeshes[k].g); carMeshes = {}; }
@@ -139,13 +162,31 @@
   }
   function buildCars() { clearCars(); $('tags').innerHTML = ''; game.sim.cars.forEach(function (c) { carMeshes[c.id] = carMesh(c); }); }
   function sparks(x, y, z, n, col) { for (var i = 0; i < n; i++) { var s = sparkPool.find(function (q) { return q.life <= 0; }); if (!s) return; s.life = 0.4 + Math.random() * 0.5; s.m.visible = true; s.m.material.color.setHex(col); s.m.position.set(x, z, y); s.v = [(Math.random() - 0.5) * 18, Math.random() * 12 + 2, (Math.random() - 0.5) * 18]; } }
-  function boom(x, y, z) { sparks(x, y, z + 1, 50, 0xff5a1a); sparks(x, y, z + 1, 30, 0x333333); shake(0.7); }
+  var debrisPool = [], flashes = [], trails = [];
+  function initFx() {
+    var geo = new R3.BoxGeometry(0.5, 0.18, 0.4);
+    for (var k = 0; k < 120; k++) { var m = new R3.Mesh(geo, new R3.MeshLambertMaterial({ color: 0x888888 })); m.visible = false; scene.add(m); debrisPool.push({ m: m, life: 0 }); }
+    for (var f = 0; f < 6; f++) { var fl = new R3.Mesh(new R3.SphereGeometry(1, 12, 8), new R3.MeshBasicMaterial({ color: 0xfff2c0, transparent: true, opacity: 0, depthWrite: false })); fl.visible = false; scene.add(fl); flashes.push({ m: fl, life: 0 }); }
+    for (var t = 0; t < 8; t++) { var tr = new R3.Mesh(new R3.RingGeometry(1.4, 2.2, 24), new R3.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, side: 2, depthWrite: false })); tr.rotation.x = -Math.PI / 2; tr.visible = false; scene.add(tr); trails.push({ m: tr, life: 0 }); }
+  }
+  function debris(x, y, z, n, col) { for (var i = 0; i < n; i++) { var d = debrisPool.find(function (q) { return q.life <= 0; }); if (!d) return; d.life = 1.6 + Math.random();
+    d.m.visible = true; d.m.material.color.set(Math.random() < 0.35 ? '#444' : (col || '#999')); d.m.position.set(x, z, y); d.m.scale.setScalar(0.6 + Math.random() * 0.9);
+    d.v = [(Math.random() - 0.5) * 16, Math.random() * 10 + 4, (Math.random() - 0.5) * 16]; d.spin = [(Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14]; } }
+  function flashAt3(x, y) { var f = flashes.find(function (q) { return q.life <= 0; }); if (!f) return; f.life = 0.18; f.m.visible = true; f.m.position.set(x, 1, y); }
+  function boostFx(c, b) { var t = trails.find(function (q) { return q.life <= 0; }); if (!t) return; t.life = 0.5; t.m.visible = true; t.b = b; t.m.position.set(c.x, c.z + 0.2, c.y);
+    t.m.material.color.setHex(b === 'ram' ? 0xff4020 : b === 'dash' ? 0x40e0ff : 0xffd23f); }
+  function stepFx(dt) {
+    debrisPool.forEach(function (d) { if (d.life <= 0) return; d.life -= dt; var p = d.m.position; if (p.y > 0.12 || d.v[1] > 0) { d.v[1] -= 30 * dt; p.x += d.v[0] * dt; p.y += d.v[1] * dt; p.z += d.v[2] * dt; d.m.rotation.x += d.spin[0] * dt; d.m.rotation.z += d.spin[1] * dt; if (p.y < 0.12) { p.y = 0.12; d.v[1] *= -0.3; d.v[0] *= 0.5; d.v[2] *= 0.5; if (Math.abs(d.v[1]) < 1.5) d.v[1] = 0; } } if (d.life <= 0) d.m.visible = false; });
+    flashes.forEach(function (f) { if (f.life <= 0) return; f.life -= dt; f.m.scale.setScalar(1 + (0.18 - f.life) * 25); f.m.material.opacity = Math.max(0, f.life / 0.18) * 0.8; if (f.life <= 0) f.m.visible = false; });
+    trails.forEach(function (t) { if (t.life <= 0) return; t.life -= dt; t.m.scale.setScalar(1 + (0.5 - t.life) * (t.b === 'ram' ? 5 : 3)); t.m.material.opacity = Math.max(0, t.life / 0.5) * 0.9; if (t.life <= 0) t.m.visible = false; });
+  }
+  function boom(x, y, z) { sparks(x, y, z + 1, 50, 0xff5a1a); sparks(x, y, z + 1, 30, 0x333333); shake(1.2); }
   var V = null;
   function render(dt) {
     var S = game.sim, t = performance.now() / 1000;
     var tilt = game.phase === 'lobby' ? t * 0.08 : 0;
-    var camR = 86, camH = 84; shakeAmt *= Math.pow(0.02, dt);
-    cam.position.set(Math.sin(tilt) * camR * 0.0 + Math.sin(tilt) * 0 + (Math.random() - 0.5) * shakeAmt, camH + (Math.random() - 0.5) * shakeAmt, camR * 0.56 + (Math.random() - 0.5) * shakeAmt);
+    var camR = 86, camH = 84; shakeAmt *= Math.pow(0.015, dt); stepFx(dt); var sk = shakeAmt * 2.2;
+    cam.position.set(Math.sin(tilt) * camR * 0.0 + Math.sin(tilt) * 0 + (Math.random() - 0.5) * sk, camH + (Math.random() - 0.5) * sk, camR * 0.56 + (Math.random() - 0.5) * sk);
     if (game.phase === 'lobby') cam.position.set(Math.sin(tilt) * 70, 55, Math.cos(tilt) * 70);
     cam.lookAt(0, 0, game.phase === 'lobby' ? 0 : 4);
     if (S) {
@@ -158,7 +199,7 @@
         var pitch = 0; if (c.air) pitch = -Math.max(-0.5, Math.min(0.5, c.vz * 0.04)); else { var r = Math.hypot(c.x, c.y); if (r < A.moundR) { var fx = Math.sin(c.a), fy = Math.cos(c.a), rad = (c.x * fx + c.y * fy) / Math.max(0.01, r); pitch = rad * Math.atan(A.moundH / A.moundR); } }
         m.g.rotation.x = c.state === 'fall' ? (A.R - Math.hypot(c.x, c.y)) * 0.08 : pitch;
         m.sh.position.set(c.x, window.DDSim.ground(c.x, c.y) + 0.05, c.y);
-        var hpf = c.hp / c.maxhp; m.body.material.color.set(c.color).lerp(new R3.Color(0x222222), (1 - hpf) * 0.6);
+        var hpf = c.hp / c.maxhp; m.body.scale.set(1, 1 - (1 - hpf) * 0.25, 1 - (1 - hpf) * 0.12); if (c.boostT > 0 && Math.random() < dt * 30) sparks(c.x - Math.sin(c.a) * 2, c.y - Math.cos(c.a) * 2, c.z + 0.5, 1, c.boostType === 'ram' ? 0xff4020 : c.boostType === 'dash' ? 0x40e0ff : 0xffd23f); m.body.material.color.set(c.color).lerp(new R3.Color(0x222222), (1 - hpf) * 0.6);
         if (vis && hpf < 0.35 && Math.random() < dt * 12) sparks(c.x, c.y, c.z + 1.4, 1, 0x444444);
         V.set(c.x, c.z + c.T.size[2] + 1.2, c.y).project(cam);
         if (vis && c.state !== 'fall' && V.z < 1) { m.tag.style.display = ''; m.tag.style.left = ((V.x + 1) / 2 * innerWidth) + 'px'; m.tag.style.top = ((1 - V.y) / 2 * innerHeight) + 'px';

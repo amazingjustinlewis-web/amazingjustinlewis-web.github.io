@@ -55,8 +55,8 @@
   function normalAt(x, y) { var nx = 0, ny = 0; for (var a = 0; a < 16; a++) { var t = a / 16 * Math.PI * 2, c = Math.cos(t), s = Math.sin(t); if (solid(x + c * 9, y + s * 9)) { nx -= c; ny -= s; } } var m = Math.hypot(nx, ny) || 1; return [nx / m, ny / m]; }
   function los(x0, y0, x1, y1) { var n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4); for (var i = 1; i < n; i++) if (solid(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n)) return false; return true; }
   // ================================================================ entities
-  var rings = [], projs = [], parts = [], fires = [], washers = [], decoys = [], bubbles = [], pops = [], chunks = [], shake = 0, flashes = [];
-  function bubble(s, text, col) { bubbles.push({ s: s, x: s.x, y: s.y, text: text, t: 2.6, col: col || '#fff' }); }
+  var mines = [], cam = { x: 1200, y: 600, z: 1 }, rings = [], projs = [], parts = [], fires = [], washers = [], decoys = [], bubbles = [], pops = [], chunks = [], shake = 0, flashes = [];
+  function bubble(s, text, col) { bubbles = bubbles.filter(function (b) { return b.s !== s; }); bubbles.push({ s: s, x: s.x, y: s.y, text: text, t: 2.6, col: col || '#fff' }); }
   function pop(x, y, text, col) { pops.push({ x: x, y: y, text: text, col: col || '#fff', t: 1.6 }); }
   function feed(t) { (game.feed = game.feed || []).push({ t: t, at: performance.now() }); if (game.feed.length > 6) game.feed.shift(); }
   function banner(t, sec) { game.banner = t; game.bannerT = sec || 2; }
@@ -74,7 +74,9 @@
     } else if (cond(s) !== before) { pop(s.x, s.y - 74, cond(s).toUpperCase() + '!', '#ffe7a0'); if (cond(s) === 'shredded') bubble(s, 'my stuffing!'); }
   }
   function explode(x, y, r, dmg, src, why, soapy) {
-    carve(x, y, r); shake = Math.max(shake, r / 6); flashes.push({ x: x, y: y, r: r * 1.6, t: 0.35 });
+    carve(x, y, r); shake = Math.max(shake, r / 5); flashes.push({ x: x, y: y, r: r * 1.8, t: 0.45 }); rings.push({ x: x, y: y, R: r * 2.2, t: 0.45, max: 0.45 });
+    for (var sm = 0; sm < r / 8; sm++) parts.push({ x: x + rnd(-r, r) * 0.4, y: y + rnd(-r, r) * 0.4, vx: rnd(-40, 40), vy: rnd(-90, -20), t: rnd(1, 2), k: 'smoke', s: rnd(r * 0.25, r * 0.5) });
+    mines.forEach(function (m) { if (Math.hypot(m.x - x, m.y - y) < r + 10 && !m.fuse) m.fuse = 0.15; });
     var n = Math.min(70, r | 0);
     for (var i = 0; i < n; i++) { var a = rnd(0, 6.28), v = rnd(80, 420) * r / 60; parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, t: rnd(0.6, 1.6), k: soapy ? 'bub' : 'spark', s: rnd(4, 12) * (soapy ? 1.4 : 1) }); }
     for (i = 0; i < Math.min(10, r / 10 | 0); i++) { var b = rnd(-2.6, -0.5); chunks.push({ x: x + rnd(-r, r) * 0.5, y: y - r * 0.3, vx: Math.cos(b) * rnd(100, 340), vy: Math.sin(b) * rnd(150, 420), r: rnd(5, 11), rest: 0 }); }
@@ -89,7 +91,7 @@
     var want = clamp(+Q.get('fill') || 2, 2, 4);
     if (game.bots) while (game.players.length < want) game.players.push({ id: 'ai' + game.players.length, ai: true, name: BOTN[game.players.length] });
     if (game.players.length < 2) { game.flash = 'Need at least 2 teams (turn AI fill on)'; game.flashAt = performance.now(); return; }
-    genTerrain(); projs = []; parts = []; fires = []; washers = []; decoys = []; bubbles = []; pops = []; chunks = []; game.feed = [];
+    genTerrain(); mines = []; projs = []; parts = []; fires = []; washers = []; decoys = []; bubbles = []; pops = []; chunks = []; game.feed = [];
     game.teams = game.players.slice(0, C.maxTeams).map(function (p, i) { var t = { idx: i, p: p, name: p.ai ? p.name : (p.name + "'s " + C.teamNames[i]), color: C.teamColors[i], socks: [], cur: 0, used: {}, dmg: 0, kos: 0, taken: 0, lost: 0 }; p.team = t; return t; });
     game.socks = []; var spots = [];
     var n = game.teams.length * C.socksPerTeam;
@@ -124,6 +126,8 @@
     if (w === 'decoy') { var tgt = nearestEnemy(s, true); if (!tgt) { bubble(s, "can't see anyone to fool!"); return; }
       bubble(s, '*snip snip* *dab dab*'); decoys.push({ x: s.x + s.face * 20, y: s.y, vx: 0, vy: 0, dir: tgt.x > s.x ? 1 : -1, t: 0, team: t, color: t.color, lured: null, ground: false, built: 0 }); }
     else if (w === 'washer') { var wx = s.x + s.face * 46, wy = s.y - 30; washers.push({ x: wx, y: wy, vy: 0, ground: false, team: t, cool: 0, uses: 2, spin: 0 }); bubble(s, 'fresh load!'); }
+    else if (w === 'mine') { mines.push({ x: s.x + s.face * 36, y: s.y - 20, vy: 0, ground: false, team: t, t: 0, fuse: 0 }); bubble(s, 'dirty laundry, anyone?'); }
+    else if (w === 'airstrike') { var ax0 = clamp(s.x + s.face * (120 + pw * 1000), 80, W - 80); for (var ii = 0; ii < W0.n; ii++) projs.push({ k: 'iron', x: ax0 + (ii - 2) * 46 - s.face * 300, y: -60 - ii * 50, vx: s.face * 160, vy: 200, t: 0.2, team: t, spin: 0 }); banner('IRON AIRSTRIKE!', 1.2); bubble(s, 'pressing matters!'); }
     else if (w === 'mgun') { game.mg = { n: W0.shots, t: 0 }; }
     else if (w === 'drill') { game.drill = { t: W0.dur }; bubble(s, 'SPIN CYCLE!'); }
     else projs.push({ k: w, x: px, y: py, vx: v[0] * W0.speed * pw, vy: v[1] * W0.speed * pw, fuse: W0.fuse || 0, t: 0, team: t, spin: 0 });
@@ -177,7 +181,7 @@
         if (D.kind === 'boom' && !D.done) { D.done = true; for (var i = 0; i < 40; i++) { var a = rnd(0, 6.28), v = rnd(60, 380); parts.push({ x: o.x, y: o.y - 18, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 100, t: rnd(1, 2.2), k: 'fuzz', s: rnd(4, 10), c: o.team.color }); } o.dieAt = 0.3; explode(o.x, o.y - 10, 22, 8, null, 'chain'); }
         if (D.t > (D.kind === 'dopey' ? 2.2 : 0.3)) { o.alive = false; o.tomb = true; o.dying = null; o.team.lost++; } }
       if (o.alive && cond(o) === 'shredded') { o.stuffT -= dt; if (o.stuffT <= 0) { o.stuffT = rnd(0.25, 0.6); parts.push({ x: o.x - o.face * 6, y: o.y - 10, vx: rnd(-20, 20), vy: rnd(-30, 0), t: 1.4, k: 'stuff', s: rnd(3, 6) }); } } });
-    projs = projs.filter(function (p) { var W0 = WP[p.k]; p.t += dt;
+    projs = projs.filter(function (p) { var W0 = WP[p.k === 'blet' ? 'mortar' : p.k === 'iron' ? 'airstrike' : p.k] || {}; p.t += dt;
       if (W0.wind) p.vx += game.wind * C.windAcc * W0.wind * dt; if (p.k !== 'mgun') p.vy += C.grav * dt;
       p.spin += dt * 8;
       var steps = Math.ceil(Math.hypot(p.vx, p.vy) * dt / 3) || 1;
@@ -187,6 +191,9 @@
           if (p.k === 'holy' && !hitS) { var n = normalAt(nx, ny), d = p.vx * n[0] + p.vy * n[1]; p.vx = (p.vx - 2 * d * n[0]) * 0.55; p.vy = (p.vy - 2 * d * n[1]) * 0.55; break; }
           if (p.k === 'molotov') { explode(nx, ny, W0.r, W0.dmg, p.team, 'hot sauce'); for (var f = 0; f < 9; f++) fires.push({ x: nx + rnd(-30, 30), y: ny - 10, vx: rnd(-120, 120), vy: rnd(-200, -60), life: 3, team: p.team, tick: 0 }); return false; }
           if (p.k === 'dryer') { dryerBlast(nx, ny, p.team); return false; }
+          if (p.k === 'mortar') { explode(nx, ny, W0.r, W0.dmg, p.team, 'softener', true); for (var bl = 0; bl < W0.blets; bl++) projs.push({ k: 'blet', x: nx, y: ny - 20, vx: rnd(-260, 260), vy: rnd(-520, -320), t: 0.1, team: p.team, spin: 0 }); return false; }
+          if (p.k === 'blet') { explode(nx, ny, WP.mortar.br, WP.mortar.bdmg, p.team, 'softener', true); return false; }
+          if (p.k === 'iron') { explode(nx, ny, W0.r, W0.dmg, p.team, 'ironed flat'); for (var st2 = 0; st2 < 10; st2++) parts.push({ x: nx, y: ny, vx: rnd(-120, 120), vy: rnd(-260, -80), t: 1.2, k: 'smoke', s: rnd(8, 18) }); return false; }
           explode(nx, ny, W0.r, W0.dmg, p.team, W0.name.toLowerCase(), p.k === 'bazooka'); if (p.k === 'bazooka') bubbleAt(nx, ny); return false; }
         p.x = nx; p.y = ny; }
       if (p.k === 'holy') { p.fuse -= dt; if (p.fuse <= 0) { explode(p.x, p.y, W0.r, W0.dmg, p.team, 'blessed', true); banner('HALLELUJAH!', 1.5); return false; } }
@@ -202,28 +209,35 @@
           o.x = w.x; o.y = w.y; o.vx = rnd(-1, 1) > 0 ? rnd(260, 420) : -rnd(260, 420); o.vy = -rnd(380, 520); o.ground = false; o.dizzy = 1; hurt(o, WP.washer.dmg, w.team, 'spin-cycled');
           for (var i = 0; i < 24; i++) parts.push({ x: w.x, y: w.y, vx: rnd(-200, 200), vy: rnd(-300, -50), t: 1.2, k: 'bub', s: rnd(4, 9) }); } }); });
     washers = washers.filter(function (w) { return w.y < WD.water && (w.uses > 0 || w.cool > 0); });
-    decoys.forEach(function (d) { d.t += dt; d.built = Math.min(1, d.t / 0.8);
+    mines.forEach(function (m) { m.t += dt; if (!m.ground) { m.vy += C.grav * dt; var ny = m.y + m.vy * dt; if (solid(m.x, ny + 14)) { m.vy = 0; m.ground = true; while (solid(m.x, ny + 14)) ny--; } m.y = ny; } else if (!solid(m.x, m.y + 15)) m.ground = false;
+      if (!m.fuse && m.t > WP.mine.arm && game.socks.some(function (o) { return o.alive && !o.dying && Math.hypot(o.x - m.x, o.y - 14 - m.y) < WP.mine.trig; })) { m.fuse = 1; var vic = game.socks.filter(function (o) { return o.alive && Math.hypot(o.x - m.x, o.y - 14 - m.y) < WP.mine.trig; })[0]; if (vic) bubble(vic, 'is that\u2026 beeping?'); }
+      if (m.fuse) { m.fuse -= dt; if (m.fuse <= 0) { m.dead = true; explode(m.x, m.y, WP.mine.r, WP.mine.dmg, m.team, 'hamper mine', true); } } if (m.y > WD.water) m.dead = true; });
+    mines = mines.filter(function (m) { return !m.dead; });
+    decoys.forEach(function (d) { var pt = d.t; d.t += dt; d.built = Math.min(1, d.t / 1.6);
+      if (pt < 0.8 && d.t >= 0.8 && game.active) bubble(game.active, '*dab dab* \uD83C\uDFA8');
+      if (pt < 1.6 && d.t >= 1.6) { if (game.active) bubble(game.active, "go get 'em, sweetie"); bubbles.push({ s: null, x: d.x, y: d.y, text: 'hey there \u2665', t: 2, col: '#ffd0e0' }); }
+      if (d.built < 1 && Math.random() < 0.5) parts.push({ x: d.x + rnd(-14, 14), y: d.y - rnd(0, 50) * d.built, vx: rnd(-60, 60), vy: rnd(-80, 0), t: 0.6, k: 'paint', s: rnd(3, 6), c: d.color });
       if (!d.ground) { d.vy += C.grav * dt; var ny = d.y + d.vy * dt; if (solid(d.x, ny)) { d.vy = 0; d.ground = true; while (solid(d.x, ny)) ny--; } d.y = ny; }
       else if (d.built >= 1) { var nx = d.x + d.dir * WP.decoy.speed * dt, ok = null; for (var up = -8; up <= 8; up++) if (!solid(nx, d.y + up) && solid(nx, d.y + up + 1)) { ok = d.y + up; break; }
         if (ok !== null && !solid(nx, ok - 26)) { d.x = nx; d.y = ok; } else if (ok === null && !solid(nx, d.y)) { d.x = nx; d.ground = false; } else if (Math.random() < dt) d.dir = -d.dir; }
       if (!d.lured) { var en = null, bd = WP.decoy.lure; game.socks.forEach(function (o) { if (o.alive && !o.dying && o.team !== d.team) { var dd = Math.hypot(o.x - d.x, o.y - d.y); if (dd < bd) { bd = dd; en = o; } } });
-        if (en) { d.lured = en; d.fuseT = 1.6; bubble(en, 'MY OTHER HALF!', '#ffd0e0'); game.socks.forEach(function (o) { if (o !== en && o.alive && !o.dying && o.team === en.team && Math.hypot(o.x - en.x, o.y - en.y) < 400) bubble(o, "IT'S A TRAP!", '#ffe7a0'); }); } }
+        if (en) { d.lured = en; d.fuseT = 1.8; bubble(en, 'MY OTHER HALF!', '#ffd0e0'); game.socks.forEach(function (o) { if (o !== en && o.alive && !o.dying && o.team === en.team && Math.hypot(o.x - en.x, o.y - en.y) < 400) bubble(o, "IT'S A TRAP!", '#ffe7a0'); }); } }
       if (d.lured) { var L = d.lured; if (L.alive && L.ground) { var dir = d.x > L.x ? 1 : -1; moveSock(L, dir * 2.2, dt); } d.fuseT -= dt; if (d.fuseT <= 0) d.dead = true; }
-      if (d.t > WP.decoy.fuse || d.y > WD.water) d.dead = true;
+      if (d.t > WP.decoy.fuse + 1.6 || d.y > WD.water) d.dead = true;
       if (d.dead) { explode(d.x, d.y - 16, WP.decoy.r, WP.decoy.dmg, d.team, 'mismatched pair', true); banner('IT WAS A TRAP!', 1.2); } });
     decoys = decoys.filter(function (d) { return !d.dead; });
     chunks.forEach(function (c) { c.vy += C.grav * dt; var nx = c.x + c.vx * dt, ny = c.y + c.vy * dt;
       if (solid(nx, ny + c.r)) { var n = normalAt(nx, ny + c.r); c.vy = -Math.abs(c.vy) * 0.25; c.vx = c.vx * 0.7 + n[0] * 60; if (Math.abs(c.vy) < 30) { c.vy = 0; c.vx += n[0] * 120 * dt * 10; c.rest += dt; } ny = c.y; if (solid(nx, ny + c.r)) nx = c.x; }
-      c.x = nx; c.y = ny; if (c.rest > 0.5 || (Math.abs(c.vx) < 8 && c.rest > 0.15)) { c.done = true; stamp(c.x, c.y, c.r); } if (c.y > WD.water) c.done = true; });
+      c.x = nx; c.y = ny; if (c.rest > 0.5 || (Math.abs(c.vx) < 8 && c.rest > 0.15)) { c.done = true; if (solid(c.x, c.y + c.r + 2) && solid(c.x - c.r, c.y + c.r + 3) && solid(c.x + c.r, c.y + c.r + 3)) stamp(c.x, c.y + 2, c.r * 0.8); } if (c.y > WD.water) c.done = true; });
     chunks = chunks.filter(function (c) { return !c.done; });
-    parts.forEach(function (p) { p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.k === 'bub' ? -40 : p.k === 'fuzz' || p.k === 'stuff' ? 160 : 500) * dt; p.vx *= 0.98; if ((p.k === 'fuzz' || p.k === 'stuff') && solid(p.x, p.y)) { p.vx = 0; p.vy = 0; } });
+    parts.forEach(function (p) { p.t -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.k === 'bub' ? -40 : p.k === 'smoke' ? -30 : p.k === 'paint' ? 300 : p.k === 'fuzz' || p.k === 'stuff' ? 160 : 500) * dt; p.vx *= 0.98; if ((p.k === 'fuzz' || p.k === 'stuff') && solid(p.x, p.y)) { p.vx = 0; p.vy = 0; } });
     parts = parts.filter(function (p) { return p.t > 0; });
     bubbles.forEach(function (b) { b.t -= dt; }); bubbles = bubbles.filter(function (b) { return b.t > 0; });
     pops.forEach(function (b) { b.t -= dt; b.y -= 30 * dt; }); pops = pops.filter(function (b) { return b.t > 0; });
     rings.forEach(function (r) { r.t -= dt; }); rings = rings.filter(function (r) { return r.t > 0; });
     flashes.forEach(function (f) { f.t -= dt; }); flashes = flashes.filter(function (f) { return f.t > 0; });
     if (game.state === 'settle') { game.settleT += dt;
-      var busy = projs.length || decoys.length || game.mg || game.drill || chunks.length || game.socks.some(function (o) { return o.dying || (o.alive && !o.ground); });
+      var busy = projs.length || decoys.length || mines.some(function (m) { return m.fuse > 0 || !m.ground; }) || game.mg || game.drill || chunks.length || game.socks.some(function (o) { return o.dying || (o.alive && !o.ground); });
       if ((!busy && game.settleT > 0.8) || game.settleT > C.settleMaxSec) { fires.forEach(function (f) { f.life--; }); game.state = 'next'; setTimeout(function () { if (game.phase === 'play') nextTurn(); }, 300); } }
     if (game.bannerT > 0) game.bannerT -= dt;
   }
@@ -255,7 +269,9 @@
       if (cluster >= 2 && canUse(s.team, 'holy') && best.d < 90) w = 'holy';
       else if (seen && near < 650 && Math.random() < 0.3) { w = 'mgun'; best = { d: 0, face: tgt.x > s.x ? 1 : -1, a: Math.atan2(tgt.y - s.y, Math.abs(tgt.x - s.x)), pw: 1 }; }
       else if (seen && near > 400 && canUse(s.team, 'decoy') && Math.random() < 0.15) w = 'decoy';
-      else if (best.d > 120 && Math.random() < 0.3) w = 'washer';
+      else if (best.d > 120 && canUse(s.team, 'airstrike') && Math.abs(tgt.x - s.x) > 160) { w = 'airstrike'; best = { d: 0, face: tgt.x > s.x ? 1 : -1, a: -0.5, pw: clamp((Math.abs(tgt.x - s.x) - 120) / 1000, 0.05, 1) }; }
+      else if (best.d < 100 && cluster >= 1 && Math.random() < 0.35) w = 'mortar';
+      else if (best.d > 120 && Math.random() < 0.4) w = Math.random() < 0.5 ? 'washer' : 'mine';
       var err = game.dizzyNow ? 0.12 : 0.04;
       A.plan = { w: w, face: best.face, a: best.a + rnd(-err, err), pw: clamp(best.pw + rnd(-0.03, 0.03), 0.2, 1) };
       if (w === 'holy') A.plan.pw *= 0.85;
@@ -277,7 +293,7 @@
     if (s.spin) { c.rotate(s.spin); }
     c.rotate(lean); c.scale(s.face * sc, sc);
     // foot + leg tube
-    c.fillStyle = col; c.strokeStyle = '#0006'; c.lineWidth = 2;
+    c.fillStyle = col; c.strokeStyle = '#1a1020'; c.lineWidth = 3;
     c.beginPath(); c.moveTo(-9, -40); c.lineTo(9, -40); c.lineTo(9, -10); c.quadraticCurveTo(9, 0, 20, 0); c.lineTo(20, 0); c.quadraticCurveTo(26, 0, 24, -6);
     c.lineTo(22, -10); c.quadraticCurveTo(14, -12, 12, -16); c.lineTo(-9, -16); c.closePath();
     c.beginPath(); c.moveTo(-9, -42); c.lineTo(-9, -6); c.quadraticCurveTo(-9, 0, -2, 0); c.lineTo(18, 0); c.quadraticCurveTo(25, 0, 24, -6); c.quadraticCurveTo(22, -12, 10, -12); c.lineTo(9, -42); c.closePath(); c.fill(); c.stroke();
@@ -303,10 +319,28 @@
     c.fillStyle = '#222'; c.beginPath(); c.arc(1, -16, 3.2, 0, 6.3); c.fill(); c.fillStyle = '#888'; c.fillRect(-0.5, -17.5, 1, 1); c.fillRect(2, -17.5, 1, 1);
     c.fillStyle = '#fff'; c.font = '9px sans-serif'; c.textAlign = 'center'; c.fillText('RIP', 0, -6); c.restore(); }
   function drawFuzzPile(s) { var c = cx; c.fillStyle = s.team.color; for (var i = 0; i < 7; i++) { c.beginPath(); c.arc(s.x - 12 + i * 4, s.y - 3 - (i % 3) * 2, 4, 0, 6.3); c.fill(); } }
+  var camLast = performance.now();
+  function camTarget() {
+    var full = { x: W / 2, y: H / 2, z: 1 };
+    if (game.phase !== 'play' || !game.active) return full;
+    var s = game.active, p = projs.filter(function (q) { return q.k !== 'mgun'; })[0];
+    if (p) { if (p.k === 'iron' || p.k === 'blet') { var xs = projs.map(function (q) { return q.x; }); return { x: (Math.min.apply(0, xs) + Math.max.apply(0, xs)) / 2, y: Math.max(p.y, 500), z: 1.35 }; } return { x: p.x + p.vx * 0.25, y: p.y + p.vy * 0.15, z: 1.55 }; }
+    var dc = decoys[0]; if (dc) return { x: dc.lured ? (dc.x + dc.lured.x) / 2 : dc.x, y: dc.y - 40, z: 1.8 };
+    var fm = mines.filter(function (m) { return m.fuse > 0; })[0]; if (fm) return { x: fm.x, y: fm.y - 30, z: 1.9 };
+    var mover = game.socks.filter(function (o) { return o.alive && (!o.ground || o.dying) && o !== s; })[0];
+    if (game.state === 'settle' && mover) return { x: mover.x, y: mover.y - 40, z: 1.5 };
+    if (game.state === 'settle' || game.state === 'next') return { x: W / 2, y: H / 2, z: 1.1 };
+    if (s.alive) { var v = aimVec(s); return { x: s.x + v[0] * 120 * (game.state === 'aim' ? 1 : 0), y: s.y - 50 + v[1] * 60, z: game.drill ? 2.4 : 2.3 }; }
+    return full;
+  }
+  function updateCam() { var now = performance.now(), dt = Math.min(0.1, (now - camLast) / 1000); camLast = now; var T = camTarget(), k = 1 - Math.exp(-dt * (T.z > cam.z ? 2.2 : 1.6));
+    cam.z += (T.z - cam.z) * k; cam.x += (T.x - cam.x) * Math.min(1, k * 1.6); cam.y += (T.y - cam.y) * Math.min(1, k * 1.6);
+    var S = scale * cam.z, hw = cv.width / 2 / S, hh = cv.height / 2 / S;
+    cam.x = hw * 2 >= W ? W / 2 : clamp(cam.x, hw, W - hw); cam.y = hh * 2 >= H ? H / 2 : clamp(cam.y, hh, H - hh); }
   function draw() {
     var d = window.devicePixelRatio || 1; scale = Math.min(cv.width / W, cv.height / H); offX = (cv.width - W * scale) / 2; offY = (cv.height - H * scale) / 2;
     var g = cx.createLinearGradient(0, 0, 0, cv.height); g.addColorStop(0, '#6e8fe0'); g.addColorStop(1, '#f7c6a8'); cx.fillStyle = g; cx.fillRect(0, 0, cv.width, cv.height);
-    cx.save(); var sh = shake > 0.2 ? shake : 0; cx.translate(offX + rnd(-sh, sh) * scale, offY + rnd(-sh, sh) * scale); cx.scale(scale, scale);
+    updateCam(); var S = scale * cam.z; cx.save(); var sh = shake > 0.2 ? shake : 0; cx.translate(cv.width / 2 + rnd(-sh, sh) * S, cv.height / 2 + rnd(-sh, sh) * S); cx.scale(S, S); cx.translate(-cam.x, -cam.y);
     clouds.forEach(function (k) { k.x += game.wind * 0.4 + 0.05; if (k.x > W + 200) k.x = -200; if (k.x < -200) k.x = W + 200; cx.fillStyle = '#ffffffaa'; [[0, 0, 40], [40, -10, 50], [85, 0, 38]].forEach(function (b) { cx.beginPath(); cx.arc(k.x + b[0] * k.s, k.y + b[1] * k.s, b[2] * k.s, 0, 6.3); cx.fill(); }); });
     // clothesline backdrop
     cx.strokeStyle = '#0003'; cx.lineWidth = 3; cx.beginPath(); cx.moveTo(0, 200); cx.quadraticCurveTo(W / 2, 290, W, 200); cx.stroke();
@@ -321,14 +355,26 @@
         cx.fillStyle = '#9ad'; cx.beginPath(); cx.arc(0, 4, 14, 0, 6.3); cx.fill(); cx.strokeStyle = '#555'; cx.beginPath(); cx.arc(0, 4, 14, 0, 6.3); cx.stroke();
         cx.rotate(w.spin); cx.fillStyle = '#fff'; for (var i = 0; i < 3; i++) { cx.rotate(2.1); cx.beginPath(); cx.arc(7, 0, 3, 0, 6.3); cx.fill(); } cx.restore();
         cx.fillStyle = '#333'; cx.fillRect(w.x - 16, w.y - 20, 10, 4); });
+      mines.forEach(function (m) { cx.save(); cx.translate(m.x, m.y); cx.fillStyle = '#c9a26a'; cx.strokeStyle = '#7a5a2a'; cx.lineWidth = 3; cx.beginPath(); cx.moveTo(-15, 14); cx.lineTo(-18, -12); cx.lineTo(18, -12); cx.lineTo(15, 14); cx.closePath(); cx.fill(); cx.stroke();
+        for (var hx = -12; hx <= 12; hx += 6) { cx.beginPath(); cx.moveTo(hx, -10); cx.lineTo(hx * 0.85, 12); cx.stroke(); } cx.fillStyle = m.team.color; cx.fillRect(-10, -18, 20, 7);
+        var blink = m.fuse > 0 ? (game.t * 12 | 0) % 2 : m.t > WP.mine.arm ? (game.t * 2 | 0) % 2 : 0; cx.fillStyle = blink ? '#ff2a2a' : '#5a1010'; cx.beginPath(); cx.arc(0, -20, 4, 0, 6.3); cx.fill(); cx.restore(); });
       game.socks.forEach(function (s) { if (s.tomb) { drawFuzzPile(s); drawTomb(s); } });
       game.socks.forEach(function (s) { if (s.alive) { drawSock(s, s.x, s.y); if (s.dying && s.dying.kind === 'dopey') { cx.fillStyle = s.team.color; for (var i = 0; i < 5; i++) { cx.beginPath(); cx.arc(s.x - 10 + i * 5, s.y - 2, 2 + s.dying.t * 1.5, 0, 6.3); cx.fill(); } } } });
-      decoys.forEach(function (dc) { var fake = { team: { color: dc.color }, alive: true, hp: 100, face: dc.dir, wob: 1, x: dc.x, y: dc.y }; cx.save(); cx.globalAlpha = dc.built; drawSock(fake, dc.x, dc.y); cx.restore();
+      decoys.forEach(function (dc) { var fake = { team: { color: dc.color }, alive: true, hp: 100, face: dc.dir, wob: 1, x: dc.x, y: dc.y };
+        if (dc.built < 1) { var bt = dc.built; cx.fillStyle = dc.color; cx.strokeStyle = '#0006'; cx.lineWidth = 2; cx.beginPath(); cx.ellipse(dc.x - dc.dir * 34, dc.y - 8, 10, 8 * (1 - bt) + 2, 0, 0, 6.3); cx.fill(); cx.stroke();   // fabric bolt unrolling
+          cx.fillRect(Math.min(dc.x, dc.x - dc.dir * 34), dc.y - 3, 34, 3);
+          cx.save(); cx.beginPath(); cx.rect(dc.x - 50, dc.y - 70 * bt, 100, 70 * bt + 4); cx.clip(); cx.globalAlpha = 0.5 + bt * 0.5; drawSock(fake, dc.x, dc.y); cx.restore();
+          var bx2 = dc.x + Math.sin(game.t * 18) * 12, by2 = dc.y - 70 * bt; cx.save(); cx.translate(bx2, by2); cx.rotate(0.6); cx.fillStyle = '#c8873a'; cx.fillRect(-2, -22, 4, 20); cx.fillStyle = '#ddd'; cx.fillRect(-3, -4, 6, 4); cx.fillStyle = dc.color; cx.fillRect(-3, 0, 6, 6); cx.restore();
+          cx.strokeStyle = '#ccc'; cx.lineWidth = 2; var sx2 = dc.x - dc.dir * 22, sy2 = dc.y - 30, sa = Math.abs(Math.sin(game.t * 20)) * 0.5; cx.beginPath(); cx.moveTo(sx2, sy2); cx.lineTo(sx2 + Math.cos(sa) * 12, sy2 - Math.sin(sa) * 12); cx.moveTo(sx2, sy2); cx.lineTo(sx2 + Math.cos(-sa) * 12, sy2 - Math.sin(-sa) * 12); cx.stroke(); }
+        else drawSock(fake, dc.x, dc.y);
         cx.fillStyle = '#f33'; cx.font = 'bold 14px sans-serif'; cx.textAlign = 'center'; if ((game.t * 4 | 0) % 2) cx.fillText('tick', dc.x, dc.y - 50); cx.fillStyle = '#fffa'; cx.fillText('\u2665', dc.x - 4, dc.y - 20); });
       projs.forEach(function (p) { cx.save(); cx.translate(p.x, p.y);
         if (p.k === 'bazooka') { cx.rotate(Math.atan2(p.vy, p.vx)); cx.fillStyle = '#3ac0ff'; cx.beginPath(); cx.ellipse(0, 0, 11, 7, 0, 0, 6.3); cx.fill(); cx.fillStyle = '#ff5ad0'; cx.beginPath(); cx.ellipse(-3, 0, 6, 7, 0, -1.57, 1.57); cx.fill(); cx.fillStyle = '#fff9'; cx.fillRect(2, -4, 4, 2); }
         else if (p.k === 'mgun') { cx.fillStyle = '#fff'; cx.beginPath(); cx.arc(0, 0, 3, 0, 6.3); cx.fill(); }
         else if (p.k === 'molotov') { cx.rotate(p.spin); cx.fillStyle = '#c0281a'; cx.fillRect(-5, -9, 10, 16); cx.fillStyle = '#fff'; cx.fillRect(-3, -14, 6, 5); cx.fillStyle = '#ffb23f'; cx.fillRect(-4, -3, 8, 4); }
+        else if (p.k === 'mortar') { cx.rotate(p.spin * 0.6); cx.fillStyle = '#bfa8ff'; cx.fillRect(-9, -12, 18, 22); cx.fillStyle = '#fff'; cx.fillRect(-4, -17, 8, 6); cx.fillStyle = '#ff9ad5'; cx.fillRect(-9, -4, 18, 6); }
+        else if (p.k === 'blet') { cx.fillStyle = '#e0d4ff'; cx.beginPath(); cx.arc(0, 0, 7, 0, 6.3); cx.arc(5, -3, 5, 0, 6.3); cx.fill(); }
+        else if (p.k === 'iron') { cx.rotate(0.3); cx.fillStyle = '#d23a3a'; cx.beginPath(); cx.moveTo(-18, 6); cx.lineTo(16, 6); cx.quadraticCurveTo(14, -10, -10, -8); cx.closePath(); cx.fill(); cx.fillStyle = '#ccc'; cx.fillRect(-18, 6, 34, 4); cx.fillStyle = '#ff9'; cx.fillRect(-14, 10, 26, 2); }
         else if (p.k === 'dryer') { cx.rotate(p.spin * 0.5); cx.fillStyle = '#eee'; cx.fillRect(-11, -11, 22, 22); cx.fillStyle = '#556'; cx.beginPath(); cx.arc(0, 2, 6, 0, 6.3); cx.fill(); cx.fillStyle = '#9ef'; cx.fillRect(-9, -15, 8, 5); }
         else if (p.k === 'holy') { cx.rotate(p.spin); cx.fillStyle = '#f5e6c0'; cx.beginPath(); cx.ellipse(0, 0, 9, 12, 0, 0, 6.3); cx.fill(); cx.fillStyle = '#d4a020'; cx.fillRect(-1.5, -10, 3, 16); cx.fillRect(-6, -5, 12, 3);
           cx.rotate(-p.spin); cx.fillStyle = '#fff'; cx.font = 'bold 14px sans-serif'; cx.textAlign = 'center'; cx.fillText(Math.max(0, Math.ceil(p.fuse)), 0, -18); }
@@ -337,7 +383,9 @@
       flashes.forEach(function (f) { var k = f.t / 0.35; cx.fillStyle = 'rgba(255,240,200,' + (k * 0.7) + ')'; cx.beginPath(); cx.arc(f.x, f.y, f.r * (1.2 - k * 0.5), 0, 6.3); cx.fill();
         cx.strokeStyle = 'rgba(255,255,255,' + k + ')'; cx.lineWidth = 6; cx.beginPath(); cx.arc(f.x, f.y, f.r * (1.5 - k), 0, 6.3); cx.stroke(); });
       parts.forEach(function (p) { var a = Math.min(1, p.t * 2);
-        if (p.k === 'bub') { cx.strokeStyle = 'rgba(255,255,255,' + a + ')'; cx.lineWidth = 2; cx.fillStyle = 'rgba(200,240,255,' + a * 0.35 + ')'; cx.beginPath(); cx.arc(p.x, p.y, p.s, 0, 6.3); cx.fill(); cx.stroke(); }
+        if (p.k === 'smoke') { cx.fillStyle = 'rgba(235,230,240,' + a * 0.45 + ')'; cx.beginPath(); cx.arc(p.x, p.y, p.s * (1.6 - a * 0.6), 0, 6.3); cx.fill(); }
+        else if (p.k === 'paint') { cx.fillStyle = p.c; cx.globalAlpha = a; cx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s); cx.globalAlpha = 1; }
+        else if (p.k === 'bub') { cx.strokeStyle = 'rgba(255,255,255,' + a + ')'; cx.lineWidth = 2; cx.fillStyle = 'rgba(200,240,255,' + a * 0.35 + ')'; cx.beginPath(); cx.arc(p.x, p.y, p.s, 0, 6.3); cx.fill(); cx.stroke(); }
         else if (p.k === 'spark') { cx.fillStyle = 'rgba(255,' + (150 + p.t * 60 | 0) + ',60,' + a + ')'; cx.beginPath(); cx.arc(p.x, p.y, p.s * 0.6, 0, 6.3); cx.fill(); }
         else { cx.fillStyle = p.k === 'stuff' ? '#fffdf0' : p.c; cx.globalAlpha = a; cx.beginPath(); cx.arc(p.x, p.y, p.s, 0, 6.3); cx.arc(p.x + p.s * 0.7, p.y + 1, p.s * 0.7, 0, 6.3); cx.fill(); cx.globalAlpha = 1; } });
       // active sock: aim + power
@@ -347,12 +395,13 @@
         cx.beginPath(); cx.moveTo(ax + v[0] * 24, ay + v[1] * 24); cx.lineTo(ax + v[0] * (40 + 80 * game.power), ay + v[1] * (40 + 80 * game.power)); cx.stroke(); cx.setLineDash([]);
         cx.fillStyle = '#ff4060'; cx.beginPath(); cx.arc(ax + v[0] * (44 + 80 * game.power), ay + v[1] * (44 + 80 * game.power), 6, 0, 6.3); cx.fill();
         cx.fillStyle = '#fff'; cx.beginPath(); cx.moveTo(s.x, s.y - 70 + Math.sin(game.t * 5) * 4); cx.lineTo(s.x - 8, s.y - 82); cx.lineTo(s.x + 8, s.y - 82); cx.fill();
+        if (game.weapon === 'airstrike') { var mx0 = clamp(s.x + s.face * (120 + game.power * 1000), 80, W - 80); cx.strokeStyle = '#ff4060'; cx.lineWidth = 4; cx.beginPath(); cx.arc(mx0, dropSpot(mx0), 26 + Math.sin(game.t * 6) * 4, 0, 6.3); cx.moveTo(mx0 - 36, dropSpot(mx0)); cx.lineTo(mx0 + 36, dropSpot(mx0)); cx.stroke(); }
         if (game.weapon === 'dryer') { var dxp = s.x + s.face * 30, prep = Math.min(1, (C.turnSec - game.turnT) / 1.5); cx.fillStyle = '#eee'; cx.fillRect(dxp - 13, s.y - 26, 26, 26); cx.fillStyle = '#556'; cx.beginPath(); cx.arc(dxp, s.y - 12, 7, 0, 6.3); cx.fill();
           for (var sh2 = 0; sh2 < 3; sh2++) { var ph2 = (game.t * 1.5 + sh2 / 3) % 1; if (prep < 1 || ph2 < 0.5) { cx.fillStyle = '#9ef'; cx.fillRect(dxp - 6 + sh2 * 4, s.y - 40 + ph2 * 22, 8, 5); } } }
         cx.font = 'bold 16px Fredoka,sans-serif'; cx.textAlign = 'center'; cx.fillStyle = '#fff'; cx.fillText(WP[game.weapon].icon + ' ' + WP[game.weapon].name, s.x, s.y - 88); }
       // names
-      cx.font = '600 14px Fredoka,sans-serif'; cx.textAlign = 'center';
-      game.socks.forEach(function (s) { if (!s.alive || s.dying) return; cx.fillStyle = '#0008'; cx.fillText(s.name, s.x + 1, s.y - 51); cx.fillStyle = s.team.color; cx.fillText(s.name, s.x, s.y - 52); });
+      cx.font = '700 17px Fredoka,sans-serif'; cx.textAlign = 'center'; cx.lineWidth = 4; cx.strokeStyle = '#000b';
+      game.socks.forEach(function (s) { if (!s.alive || s.dying) return; var ny0 = s.y - 62 * (s.size || 1); cx.strokeText(s.name, s.x, ny0); cx.fillStyle = s.team.color; cx.fillText(s.name, s.x, ny0); });
       bubbles.forEach(function (b) { var s = b.s; if (s && (s.alive || s.dying)) { b.x = s.x; b.y = s.y; } var tx = b.text; cx.font = '600 17px Fredoka,sans-serif'; var w = cx.measureText(tx).width + 20, bx = clamp(b.x, w / 2 + 4, W - w / 2 - 4), by = b.y - 100;
         cx.globalAlpha = Math.min(1, b.t * 3); cx.fillStyle = b.col; cx.strokeStyle = '#222'; cx.lineWidth = 2; cx.beginPath(); cx.roundRect ? cx.roundRect(bx - w / 2, by - 16, w, 28, 12) : cx.rect(bx - w / 2, by - 16, w, 28); cx.fill(); cx.stroke();
         cx.beginPath(); cx.moveTo(b.x - 6, by + 12); cx.lineTo(b.x, by + 26); cx.lineTo(b.x + 6, by + 12); cx.fill(); cx.fillStyle = '#222'; cx.fillText(tx, bx, by + 4); cx.globalAlpha = 1; });
@@ -367,7 +416,7 @@
     $('lobby').style.display = ph === 'lobby' ? 'flex' : 'none'; $('over').style.display = ph === 'over' ? 'flex' : 'none';
     $('teams').style.display = $('top').style.display = $('feed').style.display = ph === 'play' ? '' : 'none';
     $('cornerqr').style.display = ph === 'play' && net && net.status === 'online' ? '' : 'none';
-    $('banner').style.opacity = game.bannerT > 0 ? 1 : 0; if (game.bannerT > 0) $('banner').textContent = game.banner;
+    $('banner').style.opacity = game.bannerT > 0 && ph === 'play' ? 1 : 0; if (game.bannerT > 0) $('banner').textContent = game.banner;
     if (ph === 'lobby') { var L = leader(), k = JSON.stringify([humans().map(function (p) { return [p.name, p.connected]; }), game.bots, game.flash, L && L.name]);
       if (k !== uiKey) { uiKey = k;
         $('plist').innerHTML = humans().map(function (p, i) { return '<span style="background:' + C.teamColors[i % 4] + ';opacity:' + (p.connected ? 1 : 0.4) + '">' + esc(p.name) + ' \u00b7 ' + C.teamNames[i % 4] + '</span>'; }).join('') || '<span style="background:#fff3;color:#fff">Waiting for sock wranglers&hellip;</span>';
@@ -440,14 +489,14 @@
     var n = +e.key; if (n >= 1 && n <= C.weapons.length && game.state === 'aim') { var w = C.weapons[n - 1].id; if (canUse(game.active.team, w)) game.weapon = w; }
     if (e.key === ' ' && !charging && game.state === 'aim') { charging = true; game.power = 0.1; } });
   window.addEventListener('keyup', function (e) { keys[e.key] = false; if (e.key === ' ' && charging) { charging = false; if (game.phase === 'play' && !game.ai) fire(); } });
-  var last = performance.now(), kbUsed = false;
+  var last = performance.now(), kbUsed = false, SPEED = clamp(+Q.get('speed') || 1, 1, 8) | 0;
   function tick(now) {
     var dt = Math.min(0.05, (now - last) / 1000); last = now; game.phaseT += dt;
     if (game.phase === 'play') {
       if (!game.ai && (keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown)) { kbUsed = true; game.inp = { mx: (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0), ay: (keys.ArrowDown ? 1 : 0) - (keys.ArrowUp ? 1 : 0) }; }
       else if (kbUsed) { kbUsed = false; game.inp = { mx: 0, ay: 0 }; }
       if (charging) game.power = Math.min(1, game.power + dt * 0.8);
-      sim(dt);
+      for (var sp = 0; sp < SPEED; sp++) sim(dt);
     }
     if (game.phase === 'over' && !EMBED && game.phaseT > C.winHoldSec + 2) toLobby();
     draw(); ui(); sendStates(now); requestAnimationFrame(tick);

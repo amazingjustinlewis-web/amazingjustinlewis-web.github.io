@@ -1107,7 +1107,7 @@
       if (ak !== p.actKey) { p.actKey = ak; p.actAt = now; }
       if (t.stage === 'rolling' || t.stage === 'moving') p.actAt = now;
       var v = this.vis[t.pid];
-      if (v && now - p.actAt < PC.holdMs) { follow = true; tx = v.x; ty = v.y; tz = p.userZ || PC.autoZ; }
+      if (v && isFinite(v.x) && isFinite(v.y) && now - p.actAt < PC.holdMs) { follow = true; tx = v.x; ty = v.y; tz = p.userZ || PC.autoZ; }
     }
     if (p.fit) { follow = true; tz = 1; tx = this.bx + S0 / 2; ty = this.by + S0 / 2; if (Math.abs(cam.z - 1) < 0.003) { p.fit = false; cam.z = 1; } }
     if (now < p.idleUntil && !p.fit) follow = false;     // the player just looked somewhere: leave the view alone for a bit
@@ -1117,6 +1117,7 @@
       var mv = PC.maxV * S0; p.vx = Math.max(-mv, Math.min(mv, p.vx)); p.vy = Math.max(-mv, Math.min(mv, p.vy));
     } else { var d = Math.exp(-s / 0.35); p.vx *= d; p.vy *= d; p.vz *= d; }      // nothing to follow: coast to a gentle stop
     cam.x += p.vx * s; cam.y += p.vy * s; cam.z = Math.max(1, Math.min(PC.maxZ, cam.z + p.vz * s));
+    if (!isFinite(cam.x) || !isFinite(cam.y) || !isFinite(cam.z)) { cam.x = this.bx + S0 / 2; cam.y = this.by + S0 / 2; cam.z = 1; p.vx = p.vy = p.vz = 0; }
     this.pclamp(); return cam;
   };
 

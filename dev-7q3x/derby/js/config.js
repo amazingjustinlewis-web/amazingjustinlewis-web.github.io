@@ -1,7 +1,7 @@
-/* DEMOLITION DERBY v0.1 - every tunable number. TV and phones read this file. */
+/* DEMOLITION DERBY v0.2 - every tunable number. TV and phones read this file. */
 (function (root) {
   root.DD_CONFIG = {
-    version: '0.1',
+    version: '0.2',
     maxPlayers: 8,
     colors: ['#ff4b55', '#3aa8ff', '#45e07a', '#ffd23f', '#ff8a2a', '#c16bff', '#3fe0d0', '#ff6bc1'],
     rounds: 3, lives: 2, countdownSec: 3, roundOverSec: 4, podiumSec: 60,
@@ -19,17 +19,18 @@
       { id: 'buggy', name: 'Buggy', speed: 29, accel: 40, mass: 0.6, hp: 70, turn: 3.8, grip: 0.6, size: [1.7, 2.6, 0.9] }
     ],
     armour: {
-      none: { name: 'None', take: 1.0, deal: 0, mass: 0 },
-      plate: { name: 'Plates', take: 0.5, deal: 0, mass: 0.12 },
-      spike: { name: 'Spikes', take: 1.15, deal: 14, mass: 0.05 }
+      // take = damage taken on that side, deal = flat spike damage on contact, push = knockback taken, spd = top-speed multiplier per piece
+      none: { name: 'None', desc: 'Light and fast: +10% speed and quicker boost refill per bare side', take: 0.85, deal: 0, mass: 0, push: 1.0, spd: 1.1 },
+      plate: { name: 'Plates', desc: 'Tank: half damage, hard to shove, but slower', take: 0.78, deal: 0, mass: 0.14, push: 0.75, spd: 0.92 },
+      spike: { name: 'Spikes', desc: 'Glass cannon: big contact damage, grinds on touch', take: 1.05, deal: 24, mass: 0.05, push: 1.0, spd: 1.0, grind: 12 }
     },
     sideMul: { front: 0.6, side: 1.2, back: 1.45 },
     boosts: {
-      ram: { name: 'Ram burst', desc: 'Big shove + extra damage, long cooldown', dur: 0.8, mul: 2.4, cd: 5, dmg: 1.5 },
-      sustain: { name: 'Long boost', desc: 'Hold for a steady push, meter refills', dur: 3, mul: 1.5, regen: 0.35, dmg: 1.0 },
-      dash: { name: 'Quick dash', desc: 'Instant hop of speed, short cooldown', kick: 13, cd: 2.2, dmg: 1.15 }
+      ram: { name: 'Ram burst', desc: 'Unstoppable charge: double weight, x1.6 damage, long cooldown', dur: 0.9, mul: 2.4, cd: 5, dmg: 1.6, massMul: 2 },
+      sustain: { name: 'Long boost', desc: 'Hold for steady speed you can steer with, meter refills', dur: 3, mul: 1.55, regen: 0.35, dmg: 1.0 },
+      dash: { name: 'Hop dash', desc: 'Instant hop forward: dodge, or land on someone for a crush', kick: 13, hop: 7.5, cd: 2.4, dmg: 1.15 }
     },
-    peerPrefix: 'ztp-derby-v01-',
+    peerPrefix: 'ztp-derby-v02-',
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }],
     liveControllerUrl: 'https://amazingjustinlewis-web.github.io/dev-7q3x/derby/controller.html'
   };

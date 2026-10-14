@@ -33,7 +33,7 @@
     var self = this;
     if (this.peer) try { this.peer.destroy(); } catch (e) {}
     var peer = this.peer = new root.Peer((this.o.prefix || C.peerPrefix) + this.code, peerOpts());
-    peer.on('open', function () { self.tries = 0; self.setStatus('online'); });
+    peer.on('open', function () { self.tries = 0; self.everOpen = true; self.setStatus('online'); });
     peer.on('connection', function (conn) {
       conn.on('open', function () { self.conns[conn.connectionId] = conn; });
       conn.on('data', function (d) { self.conns[conn.connectionId] = conn; if (self.o.onMessage) self.o.onMessage(conn, d); });
@@ -47,7 +47,7 @@
     });
     peer.on('error', function (e) {
       if (peer !== self.peer) return;
-      if (e.type === 'unavailable-id') { if (self.o.fixedCode) { self.setStatus('offline', 'code taken'); return; } self.code = makeCode(); self.open(); return; }
+      if (e.type === 'unavailable-id') { if (self.everOpen) { self.setStatus('reconnecting', 'reclaiming room'); setTimeout(function () { if (peer === self.peer) self.open(); }, 3000); return; } if (self.o.fixedCode) { self.setStatus('offline', 'code taken'); return; } self.code = makeCode(); self.open(); return; }
       if (e.type === 'peer-unavailable') return;
       self.tries++;
       self.setStatus(self.tries > 3 ? 'offline' : 'reconnecting', e.type);

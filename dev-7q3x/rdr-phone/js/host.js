@@ -7,7 +7,7 @@
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var money = Game.money, charById = Game.charById;
   var Q = new URLSearchParams(location.search);
-  var PH = Q.has('phonehost'), FAST = Q.has('fast') ? 4 : 1, NONET = Q.has('nonet'), LOCAL = Q.has('local');
+  var PH = Q.has('phonehost') || Q.has('viewer'), VIEWER = (Q.get('viewer') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4), FAST = Q.has('fast') ? 4 : 1, NONET = Q.has('nonet'), LOCAL = Q.has('local');
   var game = new Game({ seed: Q.get('seed') ? +Q.get('seed') : undefined, speed: +(Q.get('speed') || FAST) });
   var rnd = new window.RDRRender($('board'), game);
   if (PH) { rnd.phoneCam = true; document.documentElement.className += ' ph'; }
@@ -752,6 +752,7 @@
     if (!m || typeof m !== 'object') return;
     if ((m.t === 'hello' && m.role === 'lights') || conn._lights) { onLightsMessage(conn, m); return; }
     if ((m.t === 'hello' && m.role === 'mover') || conn._mover) { onMover(conn, m); return; }
+    if ((m.t === 'hello' && m.role === 'viewer') || conn._viewer) { if (m.t === 'hello') { conn._viewer = true; viewers.push(conn); conn._vs = -1; } else if (m.t === 'ping') send(conn, { t: 'pong' }); return; }
     if (m.t === 'hello' && m.role === 'adopt') { if (game.phase === 'lobby' && !game.players.some(function (q) { return !q.ai; })) { adoptStart(String(m.from || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4), m.by); send(conn, { t: 'adoptOk' }); } else send(conn, { t: 'reject', reason: 'This TV already has a game going.' }); return; }
     if (moved && moved.done) { send(conn, { t: 'moved', room: moved.room }); return; }
     if (m.t === 'hello') {
@@ -1169,11 +1170,11 @@
   function loop() {
     var now = performance.now(), dt = Math.min(200, now - lastT); lastT = now;
     try {
-      if (!game.paused) { game.tick(now - pauseOff); AI.tick(game); }      // v0.7: a paused game's clock stands still
+      if (VIEWER) { if (vNow && !game.paused) game.now = vNow.base + (now - vNow.at); } else if (!game.paused) { game.tick(now - pauseOff); AI.tick(game); }      // v0.7: a paused game's clock stands still
       var t = game.turn, paused = inGame() && t && (t.stage === 'card' || (t.payup && !t.payup.done) || t.stage === 'rolling');
       var band = rnd.bandLevel();
       if (inGame()) SFX.band(band.vol, band.near); else SFX.band(0, 0);
-      rnd.frame(now, dt, { paused: paused, band: SFX.bandLevel ? Math.max(SFX.bandLevel(), inGame() ? band.vol * 0.3 : 0) : band.vol });
+      rnd.frame(VIEWER && vNow ? game.now : now, dt, { paused: paused, band: SFX.bandLevel ? Math.max(SFX.bandLevel(), inGame() ? band.vol * 0.3 : 0) : band.vol });
       if (Date.now() - dice.t < C.timing.roll / FAST + 100) drawDice();
       renderAuction();
       moneyTick(now, dt);
@@ -1190,7 +1191,7 @@
   setInterval(function () {
     if (!document.hidden) return;
     try {
-      if (!game.paused) { game.tick(performance.now() - pauseOff); AI.tick(game); }
+      if (!VIEWER && !game.paused) { game.tick(performance.now() - pauseOff); AI.tick(game); }
       if (game.version !== lastVer) { lastVer = game.version; phoneDirty = true; }
       if (phoneDirty) { phoneDirty = false; pushPhones(); }
     } catch (e) { if (window.console) console.error(e); }
@@ -1228,7 +1229,7 @@
       if (!inGame()) { doMove(); return; }               // lobby or results: nothing to lose, move at once
       if (sv && sv.k !== 'moveTv') svEnd(false, 'a TV asked for the game');
       var need = voters().map(function (q) { return q.id; });
-      sv = { id: ++svSeq, k: 'moveTv', v: mover.room, label: 'Move this game to the TV (' + mover.room + ')?', by: -1, byName: 'a TV', until: Date.now() + 20000, yes: {}, no: {}, need: need, pass: 0.5 };
+      sv = { id: ++svSeq, k: 'moveTv', v: mover.room, label: 'Move this game to the TV (' + mover.room + ')?', by: -1, byName: 'a TV', until: Date.now() + 60000, yes: {}, no: {}, need: need, pass: 0.5 };
       if (m.by) { var bp = game.players.filter(function (q) { return q.clientId === m.by; })[0]; if (bp && need.indexOf(bp.id) >= 0) sv.yes[bp.id] = 1; }
       send(conn, { t: 'moveWait' }); SFX.play('pop'); svCheck(); dirty = phoneDirty = true;
       return;
@@ -1248,6 +1249,48 @@
     try { window.parent.postMessage({ rdrPh: 'moved', room: moved.room }, '*'); } catch (e) {}
     big('MOVED TO THE TV', 'Keep playing on the big screen', '#7dff7d');
   }
+
+  // phone mode v2: the host phone stepping away (camera app to scan a TV QR, a call, screen off). iOS freezes a background tab,
+  // so pause cleanly instead of letting the clock / AI / PAY UP windows run wild, then on return reconnect and resend everything.
+  var phAway = null;
+  if (PH && !VIEWER) {
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) { phAway = { at: Date.now(), paused: false }; setTimeout(function () { if (phAway && document.hidden && inGame() && !game.paused && !(moved && moved.done)) { phAway.paused = true; setPause(true); game.addLog('Paused: the host phone stepped away.'); } }, 1500); return; }
+      var a = phAway; phAway = null; phResume(a);
+    });
+    window.addEventListener('pageshow', function (e) { if (e.persisted) phResume({ paused: false }); });
+    window.addEventListener('message', function (e) { if (e.source === window.parent && e.data && e.data.rdrCam === 'resume') phResume(null); });
+  }
+  function phResume(a) {
+    try { if (net && net.peer) { if (net.peer.destroyed) net.open(); else if (net.peer.disconnected) net.peer.reconnect(); } } catch (e) { try { net.open(); } catch (x) {} }
+    if (sv && sv.k === 'moveTv') sv.until = Math.max(sv.until, Date.now() + 30000);     // a move vote waits for the host to come back
+    if (a && a.paused && game.paused && !(moved && moved.done)) setTimeout(function () { setPause(false); game.addLog('The host phone is back. Play on!'); }, 600);
+    for (var cid in clients) clients[cid].lastSent = '';
+    dirty = phoneDirty = true;
+  }
+  window.RDR.phResume = phResume;
+
+  // phone mode v2: board viewers (a friend's phone.html shows the real board with pinch-zoom). The host sends a trimmed
+  // snapshot when the game changes (at most every 400 ms); the viewer only draws it, it never runs the rules.
+  var viewers = [], viewT = 0;
+  function viewSnap() { var o = {}; for (var k in game) { if (!Object.prototype.hasOwnProperty.call(game, k) || k === 'listeners' || k === 'rand' || k === 'log' || k === 'chats' || k === 'trades' || k === 'aiMem' || typeof game[k] === 'function') continue; o[k] = game[k]; } return o; }
+  function pushViewers(now) {
+    viewers = viewers.filter(function (c) { return c.open; }); if (!viewers.length || now - viewT < 400) return;
+    var need = viewers.filter(function (c) { return c._vs !== game.version; }); if (!need.length) return;
+    viewT = now; var js = JSON.parse(JSON.stringify(viewSnap()));
+    need.forEach(function (c) { c._vs = game.version; send(c, { t: 'view', g: js, at: Date.now() }); });
+  }
+  setInterval(function () { try { pushViewers(performance.now()); } catch (e) {} }, 200);
+  var vNow = null;
+  function viewerStart() {
+    var opts = { code: VIEWER, onOpen: function () { vcl.send({ t: 'hello', role: 'viewer' }); }, onStatus: function () {},
+      onMessage: function (m) { if (!m) return;
+        if (m.t === 'view' && m.g) { var g = m.g; for (var k in g) game[k] = g[k]; vNow = { base: g.now || 0, at: performance.now() }; game.version++; $('lobby').hidden = true; $('banner').hidden = true; $('results').hidden = game.phase !== 'over'; dirty = true; }
+        if (m.t === 'moved') { /* the controller sheet handles the move */ } } };
+    var vcl = LOCAL ? new window.RDRNet.LocalClient(opts) : new window.RDRNet.Client(opts);
+    window.RDR.viewerClient = vcl;
+  }
+  window.RDR.viewers = function () { return viewers.length; };
   window.RDR.exportState = exportState; window.RDR.importState = importState; window.RDR.moved = function () { return moved; };
   // TV side: ?adopt=ROOM dials the phone's game once our own room is open
   var ADOPT = (Q.get('adopt') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4), adoptCl = null, adoptState = '';
@@ -1270,7 +1313,8 @@
   if (window.matchMedia && matchMedia('(max-width: 760px) and (pointer: coarse)').matches) $('phoneHint').hidden = false;
   layout();
   var roomQ = Q.get('room') ? Q.get('room').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4) : null;
-  if (LOCAL) net = new window.RDRNet.LocalHost({ code: roomQ || 'TEST', onStatus: setNetUi, onMessage: onPhoneMessage, onClose: onPhoneClose });
+  if (VIEWER) { net = null; viewerStart(); }
+  else if (LOCAL) net = new window.RDRNet.LocalHost({ code: roomQ || 'TEST', onStatus: setNetUi, onMessage: onPhoneMessage, onClose: onPhoneClose });
   else if (!NONET) net = new window.RDRNet.Host({ code: roomQ, onStatus: setNetUi, onMessage: onPhoneMessage, onClose: onPhoneClose });
   else setNetUi('offline', null, 'phones disabled with ?nonet');
   loadTvSetup();

@@ -345,3 +345,12 @@ b.amt { font-weight: 900; color: #ffe27a; }
 /* dev phone mode (phone.html hosts the game; this page is just the board in the top of the phone) */
 html.ph #top, html.ph #side, html.ph #lobby, html.ph #watchQr, html.ph #resQr, html.ph #netBadge, html.ph .res-note, html.ph .res-btns { display: none !important; }
 html.ph #results { background: rgba(20,18,27,.9); }
+/* phone mode v2: compact overlays that leave the board visible (cards tuck into the top of the board, small toasts) */
+html.ph .pop { top: calc(var(--by) + var(--bs) * 0.3); transform: translate(-50%, -50%) scale(.52); transform-origin: 50% 50%; }
+html.ph #cardPop { left: calc(var(--bx) + var(--bs) * 0.5); top: calc(var(--by) + var(--bs) * 0.27); }
+html.ph #payupBar { top: calc(var(--by) + var(--bs) * 0.16); transform: translateX(-50%) scale(.62); transform-origin: 50% 0; max-width: 150%; }
+html.ph #big { top: calc(var(--by) + var(--bs) * 0.5); transform: translate(-50%, -50%) scale(.6); }
+html.ph #auctionPop { top: calc(var(--by) + var(--bs) * 0.74); transform: translate(-50%, -50%) scale(.55); }
+html.ph #banner { transform: scale(.75); transform-origin: 0 50%; }
+html.ph .optinfo { transform: translate(-50%, -50%) scale(.6); }
+html.ph #svTv, html.ph #autoTv, html.ph #pauseTv { transform: scale(.6); transform-origin: 100% 100%; }

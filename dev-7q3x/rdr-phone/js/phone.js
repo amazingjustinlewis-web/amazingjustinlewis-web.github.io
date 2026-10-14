@@ -8,13 +8,15 @@
   var store = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }, del: function (k) { try { localStorage.removeItem(k); } catch (e) {} } };
   var base = location.href.replace(/[^/]*([?#].*)?$/, ''), room = '', ctlLoaded = false, sheet = 'tabs', curTab = 'turn', name = '', moved = false;
   function code4() { var A = 'ABCDEFGHJKLMNPQRSTUVWXYZ', s = ''; for (var i = 0; i < 4; i++) s += A.charAt(Math.floor(Math.random() * A.length)); return s; }
-  function friendUrl(c) { return base + 'controller.html?room=' + c + (LOCAL ? '&local=1' : ''); }
+  function friendUrl(c) { return base + 'phone.html?join=' + c + (LOCAL ? '&local=1' : ''); }
+  var JOIN = (Q.get('join') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
   function vib(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
 
   $('nm').value = store.get('rdr_name') || '';
   $('goBtn').onclick = function () {
     name = $('nm').value.trim(); if (!name) { $('nm').focus(); return; }
     store.set('rdr_name', name); $('start').hidden = true;
+    if (JOIN) { room = JOIN; $('boardF').src = 'index.html?viewer=' + room + (LOCAL ? '&local=1' : ''); loadCtl(); setSheet('full'); return; }
     room = (Q.get('room') || code4()).toUpperCase();
     $('boardF').src = 'index.html?phonehost=1&room=' + room + (LOCAL ? '&local=1' : '') + (Q.get('speed') ? '&speed=' + Q.get('speed') : '');
     setSheet('full');
@@ -53,7 +55,7 @@
     if (e.source === $('boardF').contentWindow) {
       if (d.ztp === 'room' && d.status === 'online' && d.code) {
         if (d.code !== room || !ctlLoaded) { room = d.code; drawQr(friendUrl(room)); }
-        if (!ctlLoaded) { ctlLoaded = true; $('ctlF').src = 'controller.html?room=' + room + '&auto=1&embed=1&name=' + encodeURIComponent(name) + (LOCAL ? '&local=1' : ''); $('qrBox').hidden = false; $('menuBtn').hidden = false; $('fitBtn').hidden = false; }
+        if (!ctlLoaded) loadCtl();
       }
       if (d.rdrPh === 'moved') goMoved(d.room);
     }
@@ -67,6 +69,9 @@
       if (d.rdrPh === 'moved') goMoved(d.room);
     }
   });
+  function loadCtl() { ctlLoaded = true; $('ctlF').src = 'controller.html?room=' + room + '&auto=1&embed=1&name=' + encodeURIComponent(name) + (LOCAL ? '&local=1' : '') + (Q.get('cid') ? '&cid=' + encodeURIComponent(Q.get('cid')) : ''); drawQr(friendUrl(room)); $('qrBox').hidden = false; $('menuBtn').hidden = !!JOIN; $('fitBtn').hidden = false; }
+  if (JOIN) { $('goBtn').textContent = 'JOIN THE GAME'; $('joinBtn').hidden = true; document.querySelector('#start p').textContent = 'You\u2019re joining room ' + JOIN + '. You get the whole board on your phone (pinch to zoom) and your own cards, cash and deals.'; }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) try { $('boardF').contentWindow.postMessage({ rdrCam: 'resume' }, '*'); } catch (e) {} });
   $('dice').onclick = function () { post({ rdr: 'roll' }); vib(30); };
   $('fitBtn').onclick = function () { try { $('boardF').contentWindow.postMessage({ rdrCam: 'fit' }, '*'); } catch (e) {} };
   $('qrBox').onclick = function () { this.classList.toggle('big'); };
@@ -78,14 +83,14 @@
   }
 
   // ---- heartbeat so a TV join link opened on this phone can offer "Move your game here?"
-  setInterval(function () { if (room && ctlLoaded && !moved) store.set(KEY, JSON.stringify({ room: room, at: Date.now(), base: base })); }, 2000);
+  setInterval(function () { if (room && ctlLoaded && !moved && !JOIN) store.set(KEY, JSON.stringify({ room: room, at: Date.now(), base: base })); }, 2000);
   window.addEventListener('pagehide', function () { if (!moved) store.del(KEY); });
 
   // ---- moved: this phone becomes a normal TV controller (same seat: same client id in localStorage)
   function goMoved(to) {
     if (moved) return; moved = true; store.del(KEY); store.set('rdr_moved', JSON.stringify({ room: to, at: Date.now() })); store.set('rdr_room', to);
     vib([40, 40, 120]);
-    setTimeout(function () { location.replace('controller.html?room=' + to + '&auto=1&name=' + encodeURIComponent(name || store.get('rdr_name') || 'Player') + (LOCAL ? '&local=1' : '')); }, 700);
+    setTimeout(function () { location.replace('controller.html?room=' + to + '&auto=1&name=' + encodeURIComponent(name || store.get('rdr_name') || 'Player') + (LOCAL ? '&local=1' : '') + (Q.get('cid') ? '&cid=' + encodeURIComponent(Q.get('cid')) : '')); }, 700);
   }
 
   // ---- Move to a TV by code (the TV shows its room code in the lobby)

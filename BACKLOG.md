@@ -37,6 +37,6 @@ Done in menu2 for reference: the launching phone is the game's host (it can end 
 - [ ] Screen-type dropdown (Phone / Tablet / Big screen): auto-detects, remembers the choice, tight layouts for each.
 
 ## Lost Sock (Oct 13, 2026) - v0.1 on the dev page
-- [ ] Laundry arsenal, next (dryer bomb is in v0.1 as a proxy): bleach bomb (fades the team colour), clothespin sniper, static cling grenade (sticks socks together), lint roller steamroller, iron airstrike, fabric softener mortar (cluster), laundry hamper landmine.
+- [ ] Laundry arsenal, next (dryer bomb is in v0.1 as a proxy): bleach bomb (fades the team colour), clothespin sniper, static cling grenade (sticks socks together), lint roller steamroller. (Mortar, airstrike and hamper mine shipped in v0.2.)
 - [ ] Mismatched Pair polish (in v0.1 as a basic version): fabric + paint build animation, smarter pathing toward the enemy.
 - [ ] Private table mode, sock customisation, camera zoom/follow on bigger maps, sound.

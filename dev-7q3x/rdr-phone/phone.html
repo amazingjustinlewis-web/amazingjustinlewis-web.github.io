@@ -29,7 +29,7 @@ html, body { margin: 0; height: 100%; background: #14121b; color: #f4f0ff; font-
 #qrBox .lbl { position: absolute; right: 0; top: 100%; margin-top: 3px; font: 600 9px Fredoka, sans-serif; color: #cfc8e6; white-space: nowrap; line-height: 1.2; text-align: right; }
 #dice { position: fixed; left: 8px; top: 8px; z-index: 6; width: 44px; height: 44px; border-radius: 12px; border: 2px solid #ffd23f; background: rgba(20,18,27,.85); font-size: 24px; color: #fff; box-shadow: 0 0 10px rgba(255,210,63,.6); animation: dg 1.4s ease-in-out infinite; }
 @keyframes dg { 50% { box-shadow: 0 0 18px rgba(255,210,63,.95); } }
-#menuBtn { position: fixed; left: 8px; bottom: calc(var(--tabh) + var(--safe) + 8px); z-index: 3; width: 34px; height: 34px; border-radius: 50%; border: 0; background: rgba(40,34,58,.85); color: #cfc8e6; font-size: 18px; }
+#menuBtn { position: fixed; left: 8px; bottom: calc(var(--tabh) + var(--safe) + 8px); z-index: 3; height: 34px; padding: 0 12px; border-radius: 17px; border: 2px solid #f2c230; background: rgba(40,34,58,.92); color: #fff; font: 600 14px Fredoka, sans-serif; }
 #fitBtn { position: fixed; right: 8px; bottom: calc(var(--tabh) + var(--safe) + 8px); z-index: 3; width: 34px; height: 34px; border-radius: 50%; border: 0; background: rgba(40,34,58,.85); color: #cfc8e6; font-size: 16px; }
 .card { position: fixed; inset: 0; z-index: 9; display: flex; align-items: center; justify-content: center; background: rgba(10,8,16,.86); padding: 18px; }
 .card .in { width: 100%; max-width: 380px; background: #1f1a2c; border: 2px solid #2c2640; border-radius: 18px; padding: 20px; }
@@ -47,7 +47,7 @@ html, body { margin: 0; height: 100%; background: #14121b; color: #f4f0ff; font-
 <div id="scrim"></div>
 <div id="qrBox" hidden><canvas id="qr" width="216" height="216"></canvas><div class="lbl">friends scan to join</div></div>
 <button id="dice" hidden aria-label="Roll the dice">&#127922;</button>
-<button id="menuBtn" hidden aria-label="Menu">&#8943;</button>
+<button id="menuBtn" hidden aria-label="Move to a TV">&#128250; Move to TV</button>
 <button id="fitBtn" hidden aria-label="Show the whole board">&#10530;</button>
 <div id="sheet" class="tabs"><div id="grip"><i></i></div><iframe id="ctlF" title="Your controls" allow="autoplay; accelerometer; gyroscope; vibrate"></iframe></div>
 
@@ -62,7 +62,7 @@ html, body { margin: 0; height: 100%; background: #14121b; color: #f4f0ff; font-
 
 <div id="menu" class="card" hidden><div class="in">
   <h1>&#128250; Move to a TV</h1>
-  <p>Open Red Deer Rich (or the 0-Phi front door) on the TV and scan its code with this phone, or type the 4-letter room code shown on the TV here. Everyone votes, then the game moves over with every seat, deed and dollar.</p>
+  <p><b>Easiest:</b> open Red Deer Rich on the TV and type the 4-letter room code it shows. This phone keeps hosting while you type, so nothing stalls.</p><p class="small">Scanning the TV's QR also works, but it opens your camera and a new tab, and iPhones pause this game until you switch back here to vote. Everyone votes, then the game moves over with every seat, deed and dollar.</p>
   <input id="tvCode" maxlength="4" placeholder="TV room code" autocapitalize="characters" autocomplete="off">
   <button class="go" id="mvBtn">MOVE THE GAME TO THAT TV</button>
   <div id="mvSt"></div>

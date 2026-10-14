@@ -1,7 +1,7 @@
 /* LOST SOCK v0.1 - every tunable number. TV and phones read this file. */
 (function (root) {
   root.LS_CONFIG = {
-    version: '0.1',
+    version: '0.2',
     maxTeams: 4, socksPerTeam: 3, hp: 100,
     teamColors: ['#ff5a6e', '#3aa8ff', '#5fdc7a', '#ffc93f'],
     teamNames: ['Left Feet', 'Odd Ones', 'Holey Rollers', 'Dryer Escapees'],
@@ -18,6 +18,9 @@
       { id: 'washer', name: 'Washing Machine', icon: '\uD83E\uDDFA', desc: 'Place a trap. Any sock that walks in gets spin-cycled and flung out dizzy.', dmg: 22 },
       { id: 'holy', name: 'Holy Darning Egg', icon: '\uD83E\uDD5A', desc: 'Bouncy, 3s fuse, enormous blessed boom. Once per team.', speed: 700, fuse: 3, r: 120, dmg: 95, limit: 1 },
       { id: 'dryer', name: 'Dryer Bomb', icon: '\uD83C\uDF2C\uFE0F', desc: 'Stuffed with dryer sheets. Big shockwave rings (hard, medium, soft knockback) and it shrinks socks nearby. Once per team.', speed: 820, wind: 0.5, r: 70, dmg: 45, rings: [110, 190, 280], push: [700, 420, 200], limit: 1 },
+      { id: 'mortar', name: 'Fabric Softener Mortar', icon: '\uD83E\uDDF4', desc: 'Lob a softener jug. It bursts into 5 fluffy bomblets.', speed: 800, wind: 0.8, r: 44, dmg: 30, blets: 5, br: 36, bdmg: 20 },
+      { id: 'airstrike', name: 'Iron Airstrike', icon: '\u2708\uFE0F', desc: 'Power sets how far. Five hot irons drop from the sky. Once per team.', r: 52, dmg: 34, n: 5, limit: 1 },
+      { id: 'mine', name: 'Hamper Landmine', icon: '\uD83E\uDDF3', desc: 'Place a hamper. Anyone who wanders close: beep beep BOOM.', r: 78, dmg: 58, arm: 2, trig: 40 },
       { id: 'decoy', name: 'Mismatched Pair', icon: '\uD83E\uDDE6', desc: 'Needs line of sight. Stitches a fake partner sock that walks to the enemy, lures them in, then blows up big.', r: 85, dmg: 70, speed: 70, lure: 170, fuse: 9, limit: 1 },
       { id: 'drill', name: 'Spin-Cycle Drill', icon: '\uD83C\uDF00', desc: 'Ride a spinning washer drum through the ground the way you aim, 3 seconds.', dur: 3 }
     ],
