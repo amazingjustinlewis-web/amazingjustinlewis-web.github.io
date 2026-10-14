@@ -207,6 +207,12 @@
         else if (d.t === 'nav') { actor = conn; nav(d.d, who(conn)); actor = null; }
         else if (d.t === 'release') release(conn);
         else if (d.t === 'launch') { var g = o.find && o.find(d.game); if (!g) return; if (Object.keys(remotes).some(function (k) { return remotes[k] !== conn; }) || busy()) return net.send(conn, { t: 'busy' }); g.owner = who(conn); play(g); }
+        else if (d.t === 'adopt') {     // a phone hosting a game (dev phone mode) moves it onto this screen: the game page dials the phone's room, the phones vote
+          var au = String(d.url || ''), af = String(d.from || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
+          if (!/^(games|dev-7q3x)\/[\w\/.-]+\.html$/.test(au) || af.length !== 4) return;
+          if (busy()) return net.send(conn, { t: 'busy' });
+          play({ name: d.name ? String(d.name).slice(0, 40) : 'Red Deer Rich', play: location.origin + '/' + au + '?adopt=' + af + '&by=' + encodeURIComponent(String(d.by || '').slice(0, 40)) + (LOCALQ ? '&local=1' : ''), mins: 60, owner: who(conn) });
+          net.send(conn, { t: 'adoptOk' }); }
         else if (d.t === 'screen') { if (d.logo && d.id) try { localStorage.setItem('ztp-biz-logo-' + d.id, d.logo); } catch (e) {} setHome({ name: d.name || 'Caf\u00e9 screen', play: d.url, mins: 60, home: true }); }
         else if (d.t === 'qrpage') { if (busy()) return; if (!stack.length) menu(false); act({ qr: 1 }); }
         else if (d.t === 'pick') { if (busy()) return; if (!stack.length) menu(false); sel = d.i; var it = items()[d.i]; if (it && it.play) it.owner = who(conn); actor = conn; act(it); actor = null; } },

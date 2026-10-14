@@ -5,6 +5,7 @@ window.DEV_GAMES = [
   { id: 'zerologo', name: 'Zero logo + QR', ver: 'v0.1', url: 'zero/logo.html', img: 'zero/logo-shot.png', tag: 'Logo pulse \u00b7 3 light modes', mode: 'tab' },
   { id: 'zeroqr', name: 'Zero QR test', ver: 'v0.1', url: 'zero-qr/index.html', img: 'zero-qr/shot.png', tag: 'Hidden QR \u00b7 5 contrast presets', mode: 'tab' },
   { id: 'zero', name: 'Zero front page (draft)', ver: 'v0.1', url: 'zero/index.html', img: 'zero/shot.png', tag: 'New 0\u2011Phi home \u00b7 draft', mode: 'tab' },
+  { id: 'rdrphone', name: 'Red Deer Rich \u00b7 phone mode', ver: 'v0.9-dev', url: 'rdr-phone/phone.html', img: 'rdr-phone/shot.png', tag: 'Play on one phone \u00b7 friends join \u00b7 Move to TV', mode: 'tab' },
   { id: 'lostsock', name: 'Lost Sock', ver: 'v0.1', url: 'lostsock/index.html', img: 'lostsock/shot.png', tag: 'Sock artillery \u00b7 phones \u00b7 WIP' },
   { id: 'derby', name: 'Demolition Derby', ver: 'v0.1', url: 'derby/index.html', img: 'derby/shot.png', tag: 'Car smash \u00b7 phones \u00b7 WIP' },
   { id: 'rescue', name: 'Red Deer Rescue', ver: 'v0.1', url: '../games/rescue/index.html', img: '../games/rescue/shots/cover-card.webp', tag: 'Hero crawler \u00b7 phones vote' },

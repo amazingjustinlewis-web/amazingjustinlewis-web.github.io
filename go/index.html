@@ -125,6 +125,7 @@ input[type=text]{width:100%;padding:13px 14px;border-radius:12px;border:1px soli
 <section class="view" id="v-remote">
  <p class="muted" id="rstat">Connecting to the screen…</p>
  <h1 id="rtitle">Remote</h1>
+ <div id="rmove" class="card" hidden></div>
  <div class="list" id="rlist"></div>
  <div id="rplay" class="card" hidden><b id="rpname"></b><p class="muted" id="rpmsg"></p><p id="rpjoin" hidden><a class="btn" id="rpjoina" href="#">Join the current game</a></p></div>
  <div class="pad" id="rpad"><button class="pb" data-n="up" aria-label="Up">&#9650;</button><div><button class="pb" data-n="back" aria-label="Back">&#8617;</button><button class="pb ok" data-n="select">OK</button></div><button class="pb" data-n="down" aria-label="Down">&#9660;</button></div>
@@ -227,8 +228,12 @@ $('p1start').onclick=function(){var b=null;try{b=$('p1f').contentDocument.getEle
  if(b&&!b.disabled&&b.offsetParent){b.click();$('p1msg').hidden=true}else{$('p1msg').textContent=b&&b.offsetParent?'Waiting for more players: they can scan the code on the TV.':'Use the game\u2019s own start button below.';$('p1msg').hidden=false}};
 var launched=0,R=null,me=(qs.get('local')==='1'&&qs.get('rid'))||localStorage.getItem('ztp-remote-id')||('r'+Math.random().toString(36).slice(2,10));if(!qs.get('rid'))localStorage.setItem('ztp-remote-id',me);   // rid: test-only (local mode) second phone
 function rsend(m){if(R)R.send(m)}
+function moveOffer(){var ph=null;try{ph=JSON.parse(localStorage.getItem('rdr_phonehost')||'null')}catch(e){}var b=$('rmove');if(!ph||!ph.room||Date.now()-ph.at>120000||!ph.base){b.hidden=true;return}
+ var path='';try{path=new URL(ph.base).pathname.replace(/^\//,'')+'index.html'}catch(e){return}
+ b.innerHTML='<b>&#128250; Move your game to this TV?</b><p class="muted">This phone is hosting Red Deer Rich (room '+ph.room+'). Everyone keeps their seat, cash and deeds. The players vote first.</p><p><a class="btn" id="rmoveGo" href="#">Move it to this TV</a></p>';b.hidden=false;
+ $('rmoveGo').onclick=function(e){e.preventDefault();rsend({t:'adopt',url:path,from:ph.room,by:localStorage.getItem('rdr_client')||''});b.innerHTML='<b>Asking your game\u2026</b><p class="muted"><b>Switch back to your game tab</b> to vote. When it passes, the game moves to the TV and every phone follows.</p>'}}
 var code='';function startRemote(c){code=c;show('remote');var o={prefix:'ztp-door-v1-',code:c,
-  onStatus:function(s){$('rstat').textContent=s==='online'?'Connected · you are the remote':s==='noroom'?'Screen not found yet, retrying…':'Connecting to the screen…';if(s==='online'){rsend({t:'hi',id:me});if(qs.get('launch')&&!launched){launched=1;rsend({t:'launch',game:qs.get('launch')})}}},
+  onStatus:function(s){$('rstat').textContent=s==='online'?'Connected · you are the remote':s==='noroom'?'Screen not found yet, retrying…':'Connecting to the screen…';if(s==='online'){rsend({t:'hi',id:me});moveOffer();if(qs.get('launch')&&!launched){launched=1;rsend({t:'launch',game:qs.get('launch')})}}},
   onMessage:function(d){if(!d)return;if(d.t==='hello')$('rtitle').textContent=d.screen;
    var playing=d.t==='playing';if(playing||d.t==='menu'||d.t==='idle'){$('rplay').hidden=!playing;$('rpad').hidden=!!(playing&&d.owner&&d.owner!==me)}
    if(d.t==='menu'){$('rtitle').textContent=d.title;$('rstat').textContent='Connected · you are the remote';$('rlist').innerHTML=d.items.map(function(l,i){return '<a href="#" data-i="'+i+'"'+(i===d.sel?' class="sel"':'')+'><span style="color:inherit;font-size:inherit">'+l.replace(/\s+·\s+(TV|phone)$/,'')+(d.meta&&d.meta[i]&&d.meta[i].d?'<span class="gdesc">'+d.meta[i].d+'</span>':'')+(d.meta&&d.meta[i]?gbadge(d.meta[i].k):'')+'</span><span>'+(i===d.sel?'&#9664;':'')+'</span></a>'}).join('')}
