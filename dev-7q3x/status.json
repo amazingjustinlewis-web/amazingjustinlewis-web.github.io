@@ -1,7 +1,7 @@
 { "updated": "2026-10-14",
   "games": [
   {"name":"Red Deer Rich","status":"Live","ver":"v0.8","public":true,"fit":["TV","phone"],"url":"../games/red-deer-rich/","notes":"Polished: pointed property tabs, shake-to-roll from any screen, dread hops, buy pulse, Live/Queued/Turn-only property management, rent locked at landing, AI takes dropped seats. v0.8 frozen. Next: phone solo mode, café skins."},
-  {"name":"Iron Stride","status":"Working","ver":"v0.4","public":true,"fit":["TV","phone","controller"],"url":"../games/mech/","notes":"Buildings block shots, Xbox controller support, gyro aim. Asymmetric mechs are in a dev build: Iron Stride Squad v0.5-dev."},
+  {"name":"Iron Stride","status":"Working","ver":"v0.4.1","public":true,"fit":["TV","phone","controller"],"url":"../games/mech/","notes":"v0.4.1: an Xbox controller switches to standard FPS controls (centre crosshair, right stick turns the view, both triggers fire); phone and mouse unchanged. v0.4 frozen. Buildings block shots, Xbox controller support, gyro aim. Asymmetric mechs are in a dev build: Iron Stride Squad v0.5-dev."},
   {"name":"Drift Signal","status":"Working","ver":"v0.4","public":true,"fit":["TV","phone"],"url":"../games/space/","notes":"AI pilot with Explore / Sightsee / Gather modes, family-friendly sandworm, phones as crew stations."},
   {"name":"Walker","status":"Working","ver":"v0.4","public":true,"fit":["TV","phone"],"url":"../games/walker/","notes":"Calm play world with big picture buttons. Waiting on Justin's notes for the next pass."},
   {"name":"Zombie Tiles","status":"Working","ver":"v0.5","public":true,"fit":["TV","phone"],"url":"../games/zombie-tiles/","notes":"Tile-laying zombie board game, 1-4 players, race for the helipad. Working title."},

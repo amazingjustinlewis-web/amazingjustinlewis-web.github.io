@@ -2,7 +2,7 @@
    Every gameplay number lives here. The TV and the phones both read this file. */
 (function (root) {
   var C = root.MECH_CONFIG = {
-    version: '0.3',
+    version: '0.4.1',
     title: 'IRON STRIDE',
     peerPrefix: 'ztp-ironstride-v01-',
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }],
@@ -36,6 +36,7 @@
       { id: 'rail', label: 'RAIL', short: 'RAIL', mag: 2, reloadSec: 2.6, chargeSec: 1.1, minCharge: 0.25, damage: 2, maxDamage: 8, color: '#7af0ff' }
     ],
     gunner: { weapon: 0 },         // co-pilot gunner phone: own crosshair, autocannon
+    gpFps: { yawDegPerSec: 120, pitchDegPerSec: 75, curve: 1.7, boostAt: 0.92, boostRampSec: 0.35, boostDegPerSec: 110, invertY: false },   // v0.4.1 controller FPS look (deadzone 0.14 in gpPoll)
     pad: { holdSec: 0.8, decaySec: 3.5, swipeBoost: 1.0 },   // v0.3 thumb-pad momentum: hold the swipe speed, then fade (time constant)
     tilt: { deadDeg: 6, fullDeg: 22 },   // v0.3 trackpad mode: lean the phone to walk
     lock: { radius: 0.3, keepRadius: 0.5, acquireSec: 0.4, max: 3, loseSec: 0.8 },   // v0.3 rocket lock-on (fairly forgiving)

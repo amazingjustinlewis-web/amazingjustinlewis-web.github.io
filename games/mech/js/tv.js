@@ -307,6 +307,7 @@
     if (s.ix == null) { s.ix = s.ax; s.iy = s.ay; }
     var k = 1 - Math.exp(-dt / lerp(A.intentTauShaky, A.intentTauSteady, st));
     s.ix += (gx - s.ix) * k; s.iy += (gy - s.iy) * k;
+    if (GP.fps && s.seat === 0) { s.ix = s.iy = 0; st = 1; }   // controller FPS: shots go exactly where the centre crosshair points
     s.intent = { x: s.ix, y: s.iy, t: L, tight: st, R: R };
   }
   // ray vs world: nearest of enemies, barrels, buildings, ground
@@ -618,7 +619,7 @@
     kbMode = true; seats[0] = newSeat(0, { kb: true, name: 'Mouse', ready: true }); $('kbHelp').hidden = false; lobbyDirty = true; startGame();
   }
   $('kbBtn').onclick = function (e) { e.preventDefault(); SFX.unlock(); kbStart(); };
-  window.addEventListener('mousemove', function (e) { if (!kbMode || !seats[0]) return; setAim(seats[0], e.clientX / window.innerWidth * 2 - 1, 1 - e.clientY / window.innerHeight * 2); });
+  window.addEventListener('mousemove', function (e) { if (!kbMode || !seats[0] || GP.fps) return; setAim(seats[0], e.clientX / window.innerWidth * 2 - 1, 1 - e.clientY / window.innerHeight * 2); });
   canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   window.addEventListener('mousedown', function (e) {
     if (!kbMode || !seats[0] || phase !== 'play') return;
@@ -644,11 +645,13 @@
   function kbMove() { if (!kbMode) return; var x = (keys.d ? 1 : 0) - (keys.a ? 1 : 0), y = (keys.w ? 1 : 0) - (keys.s ? 1 : 0), m = Math.hypot(x, y) || 1; setMove(x / m, y / m); }
 
   // ================================================================== Xbox / standard gamepad (Gamepad API, hot-plug; keyboard + mouse keep working)
-  // LS walk (relative to facing) . RS aim (push to the edge to turn) . RT fire . LT brace . A fire-tap / start . X reload . Y next weapon
+  // FPS mode while a controller is in use: crosshair fixed at centre . RS turns the view (yaw/pitch) . LS walk + strafe . RT/LT fire . L3 brace . A fire-tap / start . X reload . Y next weapon
   // LB / RB previous / next weapon . D-pad left/up/right = weapons 1-3 . B autopilot on/off . View mute . Menu start . hold L3+R3 eject
-  var GP = { idx: -1, prev: [], aim: [0, 0], used: false, ejT: 0 };
+  var GP = { idx: -1, prev: [], aim: [0, 0], used: false, ejT: 0, fps: false, acc: 0 };
+  // v0.4.1 FPS mode: while a controller drives the pilot seat the crosshair is locked to screen centre and the right stick turns the view
+  function setFps(on) { if (GP.fps === on) return; GP.fps = on; document.body.classList.toggle('gpfps', on); GP.acc = 0; if (seats[0]) { seats[0].ax = seats[0].ay = 0; seats[0].ix = seats[0].iy = 0; } }
   window.addEventListener('gamepadconnected', function (e) { if (e.gamepad) GP.idx = e.gamepad.index; flashMsg('CONTROLLER CONNECTED', '#7af0ff'); });
-  window.addEventListener('gamepaddisconnected', function (e) { if (!e.gamepad || e.gamepad.index === GP.idx) { GP.idx = -1; if (seats[0] && seats[0].kb) { seats[0].fire = false; setMove(0, 0); } flashMsg('CONTROLLER DISCONNECTED', '#ff8a5a'); } });
+  window.addEventListener('gamepaddisconnected', function (e) { if (!e.gamepad || e.gamepad.index === GP.idx) { GP.idx = -1; setFps(false); if (seats[0] && seats[0].kb) { seats[0].fire = false; setMove(0, 0); } flashMsg('CONTROLLER DISCONNECTED', '#ff8a5a'); } });
   function gpGet() {
     var list = navigator.getGamepads ? navigator.getGamepads() : []; if (!list) return null;
     if (GP.idx >= 0 && list[GP.idx] && list[GP.idx].connected) return list[GP.idx];
@@ -657,7 +660,7 @@
   }
   function dz(x, y, d) { var m = Math.hypot(x, y); if (m < d) return [0, 0]; var k = Math.min(1, (m - d) / (1 - d)) / m; return [x * k, y * k]; }
   function gpPoll(dt) {
-    var g = gpGet(); if (!g) return;
+    var g = gpGet(); if (!g) { setFps(false); return; }
     var B = g.buttons.map(function (b) { return b ? (typeof b === 'object' ? b.value : b) : 0; }), pr = GP.prev, down = function (i) { return (B[i] || 0) > 0.5 && !((pr[i] || 0) > 0.5); };
     GP.prev = B;
     var any = B.some(function (v) { return v > 0.5; });
@@ -666,12 +669,18 @@
     var s = seats[0], ax = g.axes || [], L = dz(ax[0] || 0, ax[1] || 0, 0.18), R = dz(ax[2] || 0, ax[3] || 0, 0.14);
     var moving = L[0] || L[1];
     if (moving) { GP.used = true; setMove(L[0], -L[1]); } else if (GP.used) { GP.used = false; kbMove(); }
-    if (R[0] || R[1]) {           // right stick drives the crosshair; curved for fine aim, fast at full tilt
-      var rm = Math.hypot(R[0], R[1]), sp = 1.9 * Math.pow(rm, 1.8) / rm;
-      setAim(s, clamp(s.ax + R[0] * sp * dt, -1, 1), clamp(s.ay - R[1] * sp * dt * (window.innerWidth / window.innerHeight) * 0.75, -1, 1));
-    }
-    var rt = (B[7] || 0) > 0.35; if (rt !== GP.rt) { GP.rt = rt; s.fire = rt; }
-    if (down(6)) brace();
+    setFps(true);
+    // FPS look: crosshair fixed at centre, right stick = yaw / pitch. Response curve for fine aim, plus a turn boost that ramps in when held at full tilt
+    s.ax = s.ay = 0; s.hist.push([performance.now() / 1000, 0, 0]); if (s.hist.length > 40) s.hist.shift();
+    var F = C.gpFps, rm = Math.hypot(R[0], R[1]);
+    if (rm > 0) {
+      GP.acc = rm > F.boostAt ? Math.min(1, GP.acc + dt / F.boostRampSec) : Math.max(0, GP.acc - dt * 4);
+      var k = Math.pow(rm, F.curve) / rm, yaw = (F.yawDegPerSec + GP.acc * F.boostDegPerSec) * D2R, pit = F.pitchDegPerSec * D2R;
+      M.faceTo = null; M.torso -= R[0] * k * yaw * dt;
+      M.pitch = clamp(M.pitch - R[1] * k * pit * dt * (F.invertY ? -1 : 1), C.aim.pitchLimitDeg[0] * D2R, C.aim.pitchLimitDeg[1] * D2R);
+    } else GP.acc = 0;
+    var rt = (B[7] || 0) > 0.35 || (B[6] || 0) > 0.35; if (rt !== GP.rt) { GP.rt = rt; s.fire = rt; }
+    if (down(10) && !((B[11] || 0) > 0.5)) brace();   // FPS mode: both triggers fire, brace moved to L3 click
     if (down(0)) fireOnce(s);
     if (down(2)) startReload(WEAP[wsel], s);
     if (down(3) || down(5)) selectWeapon((wsel + 1) % WEAP.length);

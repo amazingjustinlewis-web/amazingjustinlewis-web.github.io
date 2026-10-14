@@ -29,3 +29,6 @@ TV + phones mech prototype. `index.html` = TV (three.js cockpit view), `controll
 ## v0.3.1
 - Enemy bolts/shells use a swept segment test against every building box each frame (no tunnelling at low fps), and a shot that's near the cockpit only counts if no building sits between it and you. Fixes shots coming through buildings.
 - Xbox / standard gamepad (Gamepad API, hot-plug, keyboard + mouse still work): LS walk, RS aim (edge-turn as with the mouse), RT fire, LT brace, A tap-fire / start, X reload, Y/RB next weapon, LB previous, D-pad left/up/right weapons 1-3, B autopilot, View mute, hold L3+R3 eject. Any button on the lobby starts a local game. Rumble on hits where supported. `MECH.gp` for debug.
+
+## v0.4.1 (v0.4 frozen in v0.4/)
+- Controller FPS mode: whenever a gamepad drives the pilot seat, the crosshair locks to screen centre and the mouse cursor is hidden/ignored. RS turns the view (deadzone 0.14, response curve u^1.7, 120 deg/s yaw + up to 110 deg/s boost ramping in over 0.35 s at full tilt, 75 deg/s pitch; `C.gpFps`). LS walks/strafes, RT or LT fires, L3 braces. Shots go exactly to the centre (no reticle pull). Switches back to phone/mouse aiming automatically when the controller disconnects. Test: /workspace/passes/oct14/mech_fps_test.py.
