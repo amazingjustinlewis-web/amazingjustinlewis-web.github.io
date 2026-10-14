@@ -80,6 +80,8 @@
     if (e.k === 'boost') { var c0 = game.sim && game.sim.byId(e.id); if (c0) { boostFx(c0, e.b); whoosh(e.b); } }
     if (e.k === 'ko') { feed(e.how === 'ringout' ? nm(e.id) + ' fell out' + (e.by ? ' (thanks ' + nm(e.by) + ')' : '') : nm(e.by || e.id) === nm(e.id) ? nm(e.id) + ' wrecked' : nm(e.by) + ' wrecked ' + nm(e.id)); if (e.how === 'wreck') { boom(e.x, e.y, e.z); debris(e.x, e.y, e.z + 1, 22, byId(e.id) && byId(e.id).color); crunch(1.4, 'boom'); hitStop(0.12); } p = byId(e.id); if (p && p.conn) send(p.conn, { t: 'buzz', s: 1, long: 1 }); }
     if (e.k === 'gate') feed('THE GATE OPENS');
+    if (e.k === 'shrinkwarn') { feed('THE ARENA IS SHRINKING!'); banner('EDGE DROPPING!', '#ff5040'); setTimeout(function () { if (game.phase === 'play') banner(''); }, 1600); }
+    if (e.k === 'shrunk') { shake(0.8); crunch(1, 'boom'); }
     if (e.k === 'land' && e.s > 8) { shake(Math.min(0.7, e.s / 25)); crunch(Math.min(0.6, e.s / 30), 'wall'); sparks(e.x, e.y, 0.2, 14, 0xd8b080); }
   }
   // ---------------------------------------------------------------- audio: synthesised crunch (no files)
@@ -103,7 +105,7 @@
   var flashMsg = '', flashAt = 0; function flash(t) { flashMsg = t; flashAt = performance.now(); }
   var bannerTxt = null; function banner(t, col) { if (t === bannerTxt) return; bannerTxt = t; var b = $('banner'); b.textContent = t; b.style.color = col || '#ffd23f'; b.style.opacity = t ? 1 : 0; }
   // ---------------------------------------------------------------- three.js scene
-  var R3 = window.THREE, renderer, scene, cam, carMeshes = {}, gateMesh, sparkPool = [], shakeAmt = 0;
+  var rings = [], wallSegs = [], R3 = window.THREE, renderer, scene, cam, carMeshes = {}, gateMesh, sparkPool = [], shakeAmt = 0;
   function shake(a) { shakeAmt = Math.max(shakeAmt, a); }
   function initGL() {
     renderer = new R3.WebGLRenderer({ canvas: $('gl'), antialias: window.devicePixelRatio < 2, powerPreference: 'low-power' });
@@ -112,8 +114,15 @@
     cam = new R3.PerspectiveCamera(42, 1, 1, 400);
     scene.add(new R3.HemisphereLight(0xfff0dd, 0x302010, 0.9)); var sun = new R3.DirectionalLight(0xffffff, 0.8); sun.position.set(30, 60, 20); scene.add(sun);
     // floor: dirt disc with painted rings
-    var floor = new R3.Mesh(new R3.CylinderGeometry(A.R, A.R - 1, 2, 72), new R3.MeshLambertMaterial({ color: 0x8a6a48 })); floor.position.y = -1; scene.add(floor);
-    [0.3, 0.6, 0.9].forEach(function (f) { var ring = new R3.Mesh(new R3.RingGeometry(A.R * f - 0.25, A.R * f + 0.25, 72), new R3.MeshBasicMaterial({ color: 0xa88a62 })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; scene.add(ring); });
+    // v0.2.1: centre disc + outer sectioned rings that sink away as the arena shrinks
+    var SR = A.shrinkR, inner = SR[SR.length - 1];
+    var floor = new R3.Mesh(new R3.CylinderGeometry(inner, inner - 0.6, 2, 72), new R3.MeshLambertMaterial({ color: 0x8a6a48 })); floor.position.y = -1; scene.add(floor);
+    var ln = new R3.Mesh(new R3.RingGeometry(inner * 0.5 - 0.25, inner * 0.5 + 0.25, 72), new R3.MeshBasicMaterial({ color: 0xa88a62 })); ln.rotation.x = -Math.PI / 2; ln.position.y = 0.02; scene.add(ln);
+    for (var ri = SR.length - 2; ri >= 0; ri--) { var ro = SR[ri], rin = SR[ri + 1], sh = new R3.Shape(); sh.absarc(0, 0, ro, 0, Math.PI * 2, false); var hole = new R3.Path(); hole.absarc(0, 0, rin + 0.05, 0, Math.PI * 2, true); sh.holes.push(hole);
+      var gm = new R3.ExtrudeGeometry(sh, { depth: 2, bevelEnabled: false, curveSegments: 72 }); gm.rotateX(Math.PI / 2);
+      var mat = new R3.MeshLambertMaterial({ color: ri % 2 ? 0x8a6a48 : 0x7e6040, transparent: true }), rg = new R3.Group(), rm = new R3.Mesh(gm, mat); rg.add(rm);
+      var edge = new R3.Mesh(new R3.RingGeometry(rin - 0.05, rin + 0.45, 72), new R3.MeshBasicMaterial({ color: 0xa88a62, transparent: true })); edge.rotation.x = -Math.PI / 2; edge.position.y = 0.02; rg.add(edge);
+      scene.add(rg); rings[ri] = { g: rg, mat: mat, edge: edge, base: new R3.Color(mat.color.getHex()) }; }
     // mound (ramp)
     var mound = new R3.Mesh(new R3.ConeGeometry(A.moundR, A.moundH, 40, 1, true), new R3.MeshLambertMaterial({ color: 0xb08850 })); mound.position.y = A.moundH / 2; scene.add(mound);
     var stripe = new R3.Mesh(new R3.ConeGeometry(A.moundR * 0.35, A.moundH * 0.35, 40, 1, true), new R3.MeshLambertMaterial({ color: 0xffd23f })); stripe.position.y = A.moundH * (1 - 0.35 / 2); scene.add(stripe);
@@ -122,7 +131,7 @@
     A.walls.forEach(function (w) { for (var d = w[0]; d < w[1]; d += 4) {
       if (Math.abs(((d + 2 - A.gateAt + 540) % 360) - 180) < A.gateW / 2) continue;
       var a = (d + 2) * Math.PI / 180, seg = new R3.Mesh(new R3.BoxGeometry(A.R * 0.072, A.wallH, 1), ((d / 4) | 0) % 2 ? wm : wm2);
-      seg.position.set(Math.sin(a) * (A.R + 0.2), A.wallH / 2, Math.cos(a) * (A.R + 0.2)); seg.rotation.y = a + Math.PI / 2; scene.add(seg); } });
+      seg.position.set(Math.sin(a) * (A.R + 0.2), A.wallH / 2, Math.cos(a) * (A.R + 0.2)); seg.rotation.y = a + Math.PI / 2; scene.add(seg); wallSegs.push({ m: seg, a: a }); } });
     var ga = A.gateAt * Math.PI / 180;
     gateMesh = new R3.Mesh(new R3.BoxGeometry(A.R * A.gateW * Math.PI / 180, A.wallH * 1.4, 1.2), new R3.MeshLambertMaterial({ color: 0x555a66 }));
     gateMesh.position.set(Math.sin(ga) * (A.R + 0.3), A.wallH * 0.7, Math.cos(ga) * (A.R + 0.3)); gateMesh.rotation.y = ga + Math.PI / 2; scene.add(gateMesh);
@@ -190,6 +199,13 @@
     if (game.phase === 'lobby') cam.position.set(Math.sin(tilt) * 70, 55, Math.cos(tilt) * 70);
     cam.lookAt(0, 0, game.phase === 'lobby' ? 0 : 4);
     if (S) {
+      // shrinking edge: barricades + gate ride inward with the edge; the doomed ring pulses red, then sinks and fades dark
+      var kR = S.R / A.R; wallSegs.forEach(function (w) { w.m.position.x = Math.sin(w.a) * (S.R + 0.2); w.m.position.z = Math.cos(w.a) * (S.R + 0.2); w.m.scale.x = kR; });
+      var gaA = A.gateAt * Math.PI / 180; gateMesh.position.x = Math.sin(gaA) * (S.R + 0.3); gateMesh.position.z = Math.cos(gaA) * (S.R + 0.3); gateMesh.scale.x = kR;
+      rings.forEach(function (r, i) { var gone = i < S.stage, doom = S.shr && i === S.stage, u = 0, warn = 0;
+        if (doom) { var sh = S.shr; warn = sh.t < A.warnSec ? 0.5 + 0.5 * Math.sin(sh.t * 12) : 0; u = Math.max(0, Math.min(1, (sh.t - A.warnSec) / A.sinkSec)); }
+        if (gone) u = 1; r.g.visible = u < 1; r.g.position.y = -u * u * 14;
+        r.mat.color.copy(r.base).lerp(new R3.Color(0xff3020), warn * 0.6).multiplyScalar(1 - u * 0.85); r.mat.opacity = 1 - u * u; r.edge.material.opacity = 1 - u; });
       var g = S.gate; gateMesh.position.y = A.wallH * 0.7 - (g.open > 0 ? Math.min(1, (A.gateOpenSec - g.open) * 3, g.open * 3) * A.wallH * 1.5 : 0);
       if (!V) V = new R3.Vector3();
       S.cars.forEach(function (c) { var m = carMeshes[c.id]; if (!m) return;

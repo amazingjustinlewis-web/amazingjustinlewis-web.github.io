@@ -18,7 +18,7 @@
     return false;
   }
 
-  function Sim() { this.cars = []; this.t = 0; this.gate = { open: 0, timer: A.gateEverySec, queue: [] }; this.events = []; }
+  function Sim() { this.R = A.R; this.stage = 0; this.cars = []; this.t = 0; this.gate = { open: 0, timer: A.gateEverySec, queue: [] }; this.events = []; }
   Sim.prototype.addCar = function (o) {
     var T = carType(o.type), arm = o.armour || { front: 'none', side: 'none', back: 'none' };
     var AR = C.armour, spd = AR[arm.front].spd * AR[arm.side].spd * AR[arm.side].spd * AR[arm.back].spd;
@@ -38,7 +38,7 @@
       c.x = Math.sin(ang) * r; c.y = Math.cos(ang) * r; c.z = 0; c.vx = c.vy = c.vz = 0; c.a = ang + Math.PI;
       c.hp = c.maxhp; c.alive = true; c.state = 'drive'; c.lives = C.lives; c.boost = 1; c.cd = 0; c.boostT = 0; c.fall = 0; c.lastHit = null; c.air = false; c.placeT = 0;
     });
-    this.out = []; this.t = 0;
+    this.out = []; this.t = 0; this.R = A.R; this.stage = 0; this.n0 = n; this.shr = null; this.stageT = 0;
   };
   Sim.prototype.ev = function (e) { this.events.push(e); };
   Sim.prototype.knockout = function (c, how) {
@@ -69,15 +69,21 @@
 
   Sim.prototype.step = function (dt) {
     var self = this, cars = this.cars; this.t += dt;
+    // v0.2.1 shrinking arena: warn, then the outer ring sinks and its edge becomes drop-off
+    var SR = A.shrinkR; this.stageT += dt;
+    if (!this.shr && this.stage < SR.length - 1) { var liv = this.living().length, frac = liv / Math.max(2, this.n0), want = frac <= 0.34 || liv <= 2 ? 3 : frac <= 0.5 ? 2 : frac <= 0.75 ? 1 : 0;
+      if (want > this.stage || this.stageT > A.stageMaxSec) { this.shr = { from: SR[this.stage], to: SR[this.stage + 1], t: 0 }; this.ev({ k: 'shrinkwarn', stage: this.stage + 1 }); } }
+    if (this.shr) { var sh = this.shr; sh.t += dt; var u = clamp((sh.t - A.warnSec) / A.sinkSec, 0, 1); u = u * u * (3 - 2 * u); this.R = sh.from + (sh.to - sh.from) * u;
+      if (sh.t >= A.warnSec + A.sinkSec) { this.stage++; this.R = sh.to; this.shr = null; this.stageT = 0; this.ev({ k: 'shrunk', stage: this.stage }); } }
     // gate: opens every gateEverySec while someone is waiting to come in
     var g = this.gate;
     if (g.open > 0) { g.open -= dt; }
     else if (g.queue.length) { g.timer -= dt; if (g.timer <= 0) { g.open = A.gateOpenSec; g.timer = A.gateEverySec; this.ev({ k: 'gate' }); g.entering = g.queue.splice(0, 3); g.entering.forEach(function (id, j) {
-      var c = self.byId(id), ga = A.gateAt * D2R, r = A.R + 4 + j * 6; c.x = Math.sin(ga) * r; c.y = Math.cos(ga) * r; c.z = 0; c.a = ga + Math.PI; c.vx = -Math.sin(ga) * 14; c.vy = -Math.cos(ga) * 14; c.vz = 0;
+      var c = self.byId(id), ga = A.gateAt * D2R, r = self.R + 4 + j * 6; c.x = Math.sin(ga) * r; c.y = Math.cos(ga) * r; c.z = 0; c.a = ga + Math.PI; c.vx = -Math.sin(ga) * 14; c.vy = -Math.cos(ga) * 14; c.vz = 0;
       c.hp = c.maxhp; c.state = 'enter'; c.air = false; c.lastUp = 0; c.alive = true; c.boost = 1; c.fall = 0; }); } }
     cars.forEach(function (c) {
       if (c.state === 'enter') {     // rolls in through the gate on rails
-        c.x += c.vx * dt; c.y += c.vy * dt; if (Math.sqrt(c.x * c.x + c.y * c.y) < A.R - 5) { c.state = 'drive'; c.spawnSafe = 1.5; self.ev({ k: 'enter', id: c.id }); } return;
+        c.x += c.vx * dt; c.y += c.vy * dt; if (Math.sqrt(c.x * c.x + c.y * c.y) < self.R - 5) { c.state = 'drive'; c.spawnSafe = 1.5; self.ev({ k: 'enter', id: c.id }); } return;
       }
       if (c.state === 'fall') { c.vz -= P.grav * dt; c.z += c.vz * dt; c.x += c.vx * dt; c.y += c.vy * dt; c.a += c.spin * dt; if (c.z < -18) self.knockout(c, 'ringout'); return; }
       if (c.state !== 'drive') return;
@@ -98,7 +104,8 @@
       }
       var top = T.speed * c.spdMul * (mul > 1 ? 1 + (mul - 1) * 0.5 : 1);
       if (!c.air) {
-        var acc = T.accel * mul * thr; if (thr < 0) acc *= 0.6;
+        c.thrS = c.thrS || 0; if (thr > c.thrS) c.thrS = Math.min(thr, c.thrS + dt / A.thrRampSec); else c.thrS = thr;   // v0.2.1: gas ramps in gradually
+        var thrE = thr > 0 ? c.thrS : thr, acc = T.accel * mul * thrE * (thr > 0 ? 0.55 + 0.45 * clamp(1 - fwd / Math.max(1, top), 0, 1) : 1); if (thr < 0) acc *= 0.6;
         if ((thr > 0 && fwd < top) || (thr < 0 && fwd > -top * 0.5)) { c.vx += fx * acc * dt; c.vy += fy * acc * dt; }
         var sp = Math.hypot(c.vx, c.vy), turn = T.turn * clamp(Math.abs(fwd) / 6, 0, 1) * (fwd < 0 ? -1 : 1);
         c.a = wrap(c.a + steer * turn * dt * (c.boostT > 0 && c.boostType === 'ram' ? 0.6 : 1));
@@ -119,13 +126,13 @@
       else { c.vz -= P.grav * dt; c.z += c.vz * dt; if (c.z <= g1) { var hard = -c.vz; c.z = g1; c.vz = 0; c.air = false; c.st.air += self.t - c.airStart; self.ev({ k: 'land', id: c.id, s: hard, x: c.x, y: c.y }); } }
       // ring-out / walls
       var r = Math.hypot(c.x, c.y);
-      if (r > A.R - 1.4) {
+      if (r > self.R - 1.4) {
         var deg = Math.atan2(c.x, c.y) / D2R, nx = c.x / r, ny = c.y / r;
         if (wallAt(deg, g.open > 0) && c.z < A.wallH + 0.5) {
           var vn = c.vx * nx + c.vy * ny;
           if (vn > 0) { c.vx -= (1 + P.wallBounce) * vn * nx; c.vy -= (1 + P.wallBounce) * vn * ny; var s = sideOf(c, nx, ny); if (vn > P.minHit + 4) self.damage(c, (vn - P.minHit - 4) * 0.8 * C.sideMul[s] * C.armour[armSide(c, s)].take, null, s); self.ev({ k: 'wall', id: c.id, s: vn, x: c.x, y: c.y }); }
-          c.x = nx * (A.R - 1.4); c.y = ny * (A.R - 1.4);
-        } else if (r > A.R + 0.6) { c.state = 'fall'; c.vz = Math.min(c.vz, 0); c.spin = (Math.random() - 0.5) * 4; self.ev({ k: 'fall', id: c.id, x: c.x, y: c.y }); }
+          c.x = nx * (self.R - 1.4); c.y = ny * (self.R - 1.4);
+        } else if (r > self.R + 0.6) { c.state = 'fall'; c.vz = Math.min(c.vz, 0); c.spin = (Math.random() - 0.5) * 4; self.ev({ k: 'fall', id: c.id, x: c.x, y: c.y }); }
       }
     });
     // car vs car
@@ -173,12 +180,12 @@
   Sim.prototype.think = function (c, dt) {
     if (c.state !== 'drive') return;
     c.aiT = (c.aiT || 0) - dt;
-    var self = this, best = null, bd = 1e9, B = C.boosts[c.boostType];
+    var self = this, best = null, bd = 1e9, B = C.boosts[c.boostType], ER = this.shr ? this.shr.to : this.R;   // AI plans for the edge that is coming
     // pick a target: close, weakened, and ideally near an open drop-off (easy ring-out)
     if (c.aiT <= 0 || !c.target || !this.byId(c.target) || this.byId(c.target).state !== 'drive') {
       c.aiT = 1.8 + Math.random() * 1.8; c.target = null; c.ramp = c.boostType === 'dash' ? false : Math.random() < 0.12;
       this.cars.forEach(function (o) { if (o === c || o.state !== 'drive' || o.spawnSafe > 0) return;
-        var ro = Math.hypot(o.x, o.y), gap = ro > A.R - 10 && !wallAt(Math.atan2(o.x, o.y) / D2R, false) ? 0.6 : 1;
+        var ro = Math.hypot(o.x, o.y), gap = ro > ER - 10 && !wallAt(Math.atan2(o.x, o.y) / D2R, false) ? 0.6 : 1;
         var d = Math.hypot(o.x - c.x, o.y - c.y) * (0.45 + 0.55 * o.hp / o.maxhp) * gap * (0.8 + Math.random() * 0.4); if (d < bd) { bd = d; best = o; } });
       if (best) c.target = best.id;
     }
@@ -196,20 +203,20 @@
       var tf = [Math.sin(t.a), Math.cos(t.a)], rel = [(c.x - t.x) / Math.max(1, dist0), (c.y - t.y) / Math.max(1, dist0)];
       if (dist0 > 9 && tf[0] * rel[0] + tf[1] * rel[1] > 0.5) { var sd = (tf[0] * rel[1] - tf[1] * rel[0]) > 0 ? 1 : -1; tx += tf[1] * 6 * sd; ty -= tf[0] * 6 * sd; }
       // push it outward when it is near a gap: come from the arena side
-      var rt = Math.hypot(t.x, t.y); if (rt > A.R - 14 && dist0 > 6) { tx -= t.x / rt * 4; ty -= t.y / rt * 4; }
+      var rt = Math.hypot(t.x, t.y); if (rt > ER - 14 && dist0 > 6) { tx -= t.x / rt * 4; ty -= t.y / rt * 4; }
     }
     var r = Math.hypot(c.x, c.y), dx = tx - c.x, dy = ty - c.y;
     // edge sense: look ahead along velocity, much more careful over open drop-offs
-    var px = c.x + c.vx * 0.5, py = c.y + c.vy * 0.5, pr = Math.hypot(px, py), open = !wallAt(Math.atan2(px, py) / D2R, this.gate.open > 0), lim = open ? A.R - 6 : A.R - 4;
+    var px = c.x + c.vx * 0.5, py = c.y + c.vy * 0.5, pr = Math.hypot(px, py), open = !wallAt(Math.atan2(px, py) / D2R, this.gate.open > 0), lim = open ? ER - 6 : ER - 4;
     if (pr > lim) { var w = clamp((pr - lim) / 5, 0, 1); dx = dx * (1 - w) - px / pr * 25 * w; dy = dy * (1 - w) - py / pr * 25 * w; }
     var want = Math.atan2(dx, dy), d = wrap(want - c.a), dist = Math.hypot(dx, dy);
     c.inp.abs = null; c.inp.steer = clamp(d * 2.4, -1, 1);
     c.inp.thr = Math.abs(d) > 2.2 ? (sp > 8 ? -0.5 : 0.5) : Math.abs(d) > 1.2 ? 0.6 : 1;
-    if (open && pr > A.R - 4 && Math.abs(d) > 1) c.inp.thr = -1;    // brake hard before a drop
-    var lined = Math.abs(d) < 0.25 && t && !c.ramp, safe = pr < A.R - 12;
+    if (open && pr > ER - 4 && Math.abs(d) > 1) c.inp.thr = -1;    // brake hard before a drop
+    var lined = Math.abs(d) < 0.25 && t && !c.ramp, safe = pr < ER - 12;
     if (c.boostType === 'sustain') c.inp.boost = lined && dist0 < 26 && c.boost > 0.25 && safe;
     else if (c.boostType === 'ram') c.inp.boost = lined && dist0 < 13 && dist0 > 4 && safe;
-    else c.inp.boost = (lined && dist0 < 8 && dist0 > 3) || (open && pr > A.R - 6 && Math.abs(d) < 0.6);   // hop-crush or hop to safety
+    else c.inp.boost = (lined && dist0 < 8 && dist0 > 3) || (open && pr > ER - 6 && Math.abs(d) < 0.6);   // hop-crush or hop to safety
   };
   Sim.ground = ground; Sim.wallAt = wallAt; Sim.carType = carType;
   root.DDSim = Sim;
