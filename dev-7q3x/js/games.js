@@ -13,6 +13,7 @@ window.DEV_GAMES = [
   { id: 'puck', name: 'Glide Puck', ver: 'v0.1', url: 'puck/index.html', img: 'puck/shot.jpg', tag: 'Air hockey \u00b7 radar / auto zoom / follow cams' },
   { id: 'stack', name: 'Stack Attack', ver: 'v0.1', url: 'stack/index.html', img: 'stack/shot.jpg', tag: 'Build a tower, then survive the disaster' },
   { id: 'buddy', name: 'Balloon Buddy', ver: 'v0.1.1', url: 'buddy/index.html', img: 'buddy/shot.jpg', tag: 'Silly word guessing \u00b7 pop the balloons' },
+  { id: 'orbit', name: 'Orbit Brawl', ver: 'v0.1', url: 'orbit/index.html', img: 'orbit/shot.jpg', tag: 'Phone cockpit space dogfight \u00b7 2\u201320 pilots \u00b7 TV = live cinematic cam' },
   { id: 'lostsock', name: 'Lost Sock', ver: 'v0.3', url: 'lostsock/index.html', img: 'lostsock/shot.png', tag: 'Sock artillery \u00b7 phones \u00b7 WIP' },
   { id: 'derby', name: 'Demolition Derby', ver: 'v0.3.2', url: 'derby/index.html', img: 'derby/shot.png', tag: 'Car smash \u00b7 phones \u00b7 WIP' },
   { id: 'mechsquad', name: 'Iron Stride Squad', ver: 'v0.5-dev', url: 'mech-squad/index.html', img: 'mech-squad/shot.png', tag: 'Controllers = small Striders \u00b7 phones = giant Titans' },
