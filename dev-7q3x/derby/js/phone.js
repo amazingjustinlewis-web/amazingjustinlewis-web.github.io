@@ -72,6 +72,37 @@
     if (m.t === 'reject') { $('st').textContent = m.reason; }
     if (m.t === 'buzz') { if (navigator.vibrate) navigator.vibrate(m.long ? [120, 60, 220] : Math.round(25 + m.s * 90)); if (cur === 'drive') { $('drive').classList.remove('hit'); void $('drive').offsetWidth; $('drive').classList.add('hit'); } }
     if (m.t === 'st') { S = m; paint(); }
+    if (m.t === 'replay') playReplay(m);
+  }
+  // v0.4.1: wrecked -> full-screen cinematic replay of your crash (slow-mo, camera pushes in on your car), then RESPAWNING x3
+  var RP = null;
+  function playReplay(m) {
+    var f = m.f; if (!f || !f.length) return; RP = { m: m, t0: performance.now(), dur: (f[f.length - 1].t - f[0].t) / DD_CONFIG.replay.speed };
+    $('replay').classList.add('on'); $('rtag').innerHTML = '<span>YOUR CRASH \u00b7 REPLAY</span>'; $('rresp').className = ''; if (navigator.vibrate) navigator.vibrate([200, 80, 300]); requestAnimationFrame(drawReplay);
+  }
+  function drawReplay() {
+    if (!RP) return; var cv = $('rcv'), d = devicePixelRatio || 1, W = cv.clientWidth * d, H = cv.clientHeight * d; if (cv.width !== W) { cv.width = W; cv.height = H; }
+    var g = cv.getContext('2d'), m = RP.m, f = m.f, u = Math.min(1, (performance.now() - RP.t0) / RP.dur), tt = f[0].t + (f[f.length - 1].t - f[0].t) * u, i = 0; while (i < f.length - 1 && f[i + 1].t <= tt) i++;
+    var a = f[i], b = f[Math.min(f.length - 1, i + 1)], k = b.t > a.t ? (tt - a.t) / (b.t - a.t) : 0;
+    function pos(id, fr) { for (var j = 0; j < fr.c.length; j++) if (fr.c[j][0] === id) return fr.c[j]; return null; }
+    var me = pos(m.id, a) || a.c[0], me2 = pos(m.id, b) || me, cx = me[1] + (me2[1] - me[1]) * k, cy = me[2] + (me2[2] - me[2]) * k, ease = u * u * (3 - 2 * u), sc = Math.min(W, H) / 42 * (1 + 2.2 * ease);
+    var rot = Math.sin(u * 2) * 0.25, hit = tt >= m.hitT;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = m.mode === 'race' ? '#4a6a34' : '#120c08'; g.fillRect(0, 0, W, H);
+    g.translate(W / 2, H / 2); g.rotate(rot); g.scale(sc, sc); g.translate(-cx, -cy);
+    if (m.mode === 'race' && window.DDTrack) { var T = window.DDTrack; g.fillStyle = '#4e4a46'; g.beginPath(); for (var q = 0; q <= T.N; q++) { var p = T.at(q * T.STEP, T.HALF); if (q) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); } for (q = T.N; q >= 0; q--) { p = T.at(q * T.STEP, -T.HALF); g.lineTo(p.x, p.y); } g.fill();
+      g.strokeStyle = '#d03028'; g.lineWidth = 0.8; [-1, 1].forEach(function (sg) { g.beginPath(); for (var q = 0; q <= T.N; q++) { var p = T.at(q * T.STEP, sg * T.HALF); if (q) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); } g.stroke(); });
+      g.fillStyle = '#3a78c8aa'; T.puddles.forEach(function (pp) { g.beginPath(); g.arc(pp.x, pp.y, pp.r, 0, 7); g.fill(); }); }
+    else { g.fillStyle = '#8a6a48'; g.beginPath(); g.arc(0, 0, m.R || 40, 0, 7); g.fill(); g.strokeStyle = '#c23a2a'; g.lineWidth = 1; g.stroke(); }
+    a.c.forEach(function (q) { var q2 = pos(q[0], b) || q; if (q[6] === 2) return; var x = q[1] + (q2[1] - q[1]) * k, y = q[2] + (q2[2] - q[2]) * k, an = q[4]; g.save(); g.translate(x, y); g.rotate(-an);
+      g.fillStyle = q[6] === 1 ? '#2a2420' : (m.cols[q[0]] || '#888'); g.fillRect(-1, -2, 2, 4); g.fillStyle = '#0006'; g.fillRect(-0.8, -0.6, 1.6, 1.2);
+      if (q[0] === m.id) { g.strokeStyle = '#fff'; g.lineWidth = 0.25; g.strokeRect(-1.2, -2.2, 2.4, 4.4); }
+      if (q[6] === 1) for (var z = 0; z < 5; z++) { g.fillStyle = Math.random() < 0.5 ? '#ff6a10' : '#ffc030'; g.fillRect((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 3, 0.5, 0.5); }
+      g.restore(); });
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    if (hit && tt - m.hitT < 260) { g.fillStyle = 'rgba(255,240,200,' + (1 - (tt - m.hitT) / 260) + ')'; g.fillRect(0, 0, W, H); }
+    if (u < 1) { requestAnimationFrame(drawReplay); return; }
+    var out = (m.lives || 0) <= 0; $('rresp').textContent = out ? 'OUT \u00b7 SPECTATING' : 'RESPAWNING'; $('rresp').className = 'on'; RP = null;
+    setTimeout(function () { $('replay').classList.remove('on'); $('rresp').className = ''; }, 1950);
   }
   function paint() {
     var ph = S.phase;
@@ -81,7 +112,7 @@
       $('againBtn').style.display = S.leader ? '' : 'none'; }
     else { show('drive');
       var f = S.maxhp ? S.hp / S.maxhp : 0; $('hp').firstChild.style.width = (f * 100) + '%'; $('hp').firstChild.style.background = f > 0.5 ? '#7ed957' : f > 0.25 ? '#ffd23f' : '#ff4b55';
-      $('lives').textContent = S.mode === 'race' && S.pos ? (S.done ? 'FINISHED' : 'P' + S.pos + ' \u00b7 Lap ' + S.lap + '/' + S.laps) : S.cs === 'out' ? 'OUT' : '\u2665'.repeat(Math.max(0, S.lives || 0));
+      $('lives').textContent = S.mode === 'race' && S.pos ? (S.done ? 'FINISHED' : S.cs === 'out' ? 'OUT' : 'P' + S.pos + ' \u00b7 Lap ' + S.lap + '/' + S.laps + ' ' + '\u2665'.repeat(Math.max(0, S.lives || 0))) : S.cs === 'out' ? 'OUT' : '\u2665'.repeat(Math.max(0, S.lives || 0));
       $('boost').classList.toggle('cd', (S.boost || 0) < 0.99 && setup.boost !== 'sustain'); $('boost').querySelector('s').style.width = ((S.boost || 0) * 100) + '%';
       var info = ph === 'countdown' ? 'Get ready\u2026' : ph === 'roundover' ? 'Round over' : S.cs === 'wait' ? 'Wrecked! Wait at the gate\u2026' : S.cs === 'enter' ? 'Rolling in!' : S.cs === 'out' ? 'Out this round. Watch the TV!' : S.cs === undefined ? 'You join next round' : '';
       if (!msgT || info) $('msg').textContent = info; }

@@ -58,7 +58,7 @@
         S.cars.forEach(function (c) { var p = byId(c.id); if (c.ai || (p && p.aiCover)) { if (S.mode === 'race') S.thinkRace(c, 1 / 60); else S.think(c, 1 / 60); } });
         if (game.phase === 'play' || game.phaseT < 1.5) S.step(1 / 60); }
       S.events.forEach(onEvent); S.events = [];
-      if (S.mode === 'race') { if (game.phase === 'play') { var hum = S.cars.filter(function (c) { return !c.ai; }), allDone = S.cars.every(function (c) { return c.done; }) || (hum.length && hum.every(function (c) { return c.done; }));
+      if (S.mode === 'race') { if (game.phase === 'play') { var hum = S.cars.filter(function (c) { return !c.ai; }), fin = function (c) { return c.done || c.state === 'out'; }, allDone = S.cars.every(fin) || (hum.length && hum.every(fin)) || S.cars.filter(function (c) { return !fin(c); }).length === 0;
           if (S.finish.length && !S.firstT) S.firstT = game.phaseT; if (allDone || (S.firstT && game.phaseT - S.firstT > C.race.finishWaitSec) || game.phaseT > 420) endRound(); } }
       else {
       if (game.phase === 'play' && S.living().length <= 1 && S.cars.every(function (c) { return c.state !== 'fall' && c.state !== 'wreck'; })) endRound();
@@ -87,6 +87,9 @@
     if (e.k === 'boost') { var c0 = game.sim && game.sim.byId(e.id); if (c0) { boostFx(c0, e.b); whoosh(e.b); } }
     if (e.k === 'ko') { feed(e.how === 'ringout' ? nm(e.id) + ' fell out' + (e.by ? ' (thanks ' + nm(e.by) + ')' : '') : nm(e.by || e.id) === nm(e.id) ? nm(e.id) + ' wrecked' : nm(e.by) + ' wrecked ' + nm(e.id)); if (e.how === 'wreck') { boom(e.x, e.y, e.z); debris(e.x, e.y, e.z + 1, 22, byId(e.id) && byId(e.id).color); crunch(1.4, 'boom'); hitStop(0.12); var wc = game.sim && game.sim.byId(e.id); if (wc) wreckFx(wc); } p = byId(e.id); if (p && p.conn) send(p.conn, { t: 'buzz', s: 1, long: 1 }); }
     if (e.k === 'gate') feed('THE GATE OPENS');
+    if (e.k === 'smash' && e.s > 12) bumpAct(Math.min(1, e.s / 30), e.x, e.y);
+    if (e.k === 'jump') { var jc = game.sim && game.sim.byId(e.id); if (jc) bumpAct(0.45, jc.x, jc.y); }
+    if (e.k === 'ko' && e.how === 'wreck') onCrash(e);
     if (e.k === 'cleared') { var cl = game.sim && game.sim.byId(e.id); if (cl) { flashAt3(cl.x, cl.y); sparks(cl.x, cl.y, cl.z + 1, 20, 0xffffff); } }
     if (e.k === 'lap') { if (!game.sim.byId(e.id).ai) feed(nm(e.id) + ': LAP ' + e.lap + '/' + game.sim.laps); }
     if (e.k === 'finish') { feed(nm(e.id) + ' FINISHED #' + e.place + ' (' + e.t.toFixed(1) + 's)'); if (e.place === 1) { banner(nm(e.id) + ' WINS!', byId(e.id) && byId(e.id).color); setTimeout(function () { if (game.phase === 'play') banner(''); }, 1800); } }
@@ -124,7 +127,7 @@
     renderer = new R3.WebGLRenderer({ canvas: $('gl'), antialias: window.devicePixelRatio < 2, powerPreference: 'low-power' });
     renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
     scene = new R3.Scene(); scene.background = new R3.Color(0x120c08); scene.fog = new R3.Fog(0x120c08, 90, 170);
-    cam = new R3.PerspectiveCamera(42, 1, 1, 400);
+    cam = new R3.PerspectiveCamera(42, 1, 1, 1000); pipCam = new R3.PerspectiveCamera(46, 1.6, 0.5, 400);
     scene.add(new R3.HemisphereLight(0xfff0dd, 0x302010, 0.9)); var sun = new R3.DirectionalLight(0xffffff, 0.8); sun.position.set(30, 60, 20); scene.add(sun);
     // floor: dirt disc with painted rings
     // v0.2.1: centre disc + outer sectioned rings that sink away as the arena shrinks
@@ -162,7 +165,7 @@
   function showWorld(mode) {
     if (mode === 'race' && !trackG) buildTrack();
     arenaObjs.forEach(function (o) { o.visible = mode !== 'race'; }); if (trackG) trackG.visible = mode === 'race';
-    scene.background.setHex(mode === 'race' ? 0x7d95a8 : 0x120c08); scene.fog.color.setHex(mode === 'race' ? 0x7d95a8 : 0x120c08); scene.fog.near = mode === 'race' ? 150 : 90; scene.fog.far = mode === 'race' ? 520 : 170;
+    scene.background.setHex(mode === 'race' ? 0x7d95a8 : 0x120c08); scene.fog.color.setHex(mode === 'race' ? 0x7d95a8 : 0x120c08); scene.fog.near = mode === 'race' ? 320 : 90; scene.fog.far = mode === 'race' ? 950 : 170;
   }
   function buildTrack() {
     var TR = window.DDTrack, g = trackG = new R3.Group(); scene.add(g);
@@ -336,10 +339,50 @@
     var spread = 0; focus.forEach(function (c) { spread = Math.max(spread, Math.hypot(c.x - cx, c.y - cy)); });
     if (mode === 'dynamic' && me) { var near = 1e9; act.forEach(function (o) { if (o !== me) near = Math.min(near, Math.hypot(o.x - me.x, o.y - me.y)); }); spread = Math.min(near, 40) * 0.8; }
     var ht = mode === 'close' ? 22 : mode === 'wide' ? 150 : Math.max(30, Math.min(120, spread * 1.5 + 26));
+    if (race && mode === 'dynamic') {   // v0.4.1: 2.5x further out by default; soft zoom-in on action, all the way in on a crash
+      ht *= C.race.camOut; var pack = 0; act.forEach(function (o) { if (Math.hypot(o.x - cx, o.y - cy) < 14) pack++; });
+      ACT.v = Math.max(ACT.v * Math.pow(0.45, dt), pack >= 3 ? 0.35 + Math.min(0.25, (pack - 3) * 0.08) : 0);
+      var cr = ACT.crash && performance.now() < ACT.crash.until ? ACT.crash : null;
+      if (cr) { var cc = S.byId(cr.id); if (cc) { cx += (cc.x - cx) * 0.85; cy += (cc.y - cy) * 0.85; } ht = 24; }
+      else { ht = ht * (1 - 0.55 * Math.min(1, ACT.v)); if (ACT.v > 0.2 && ACT.x != null) { cx += (ACT.x - cx) * 0.4 * ACT.v; cy += (ACT.y - cy) * 0.4 * ACT.v; } }
+    }
     if (me && mode !== 'wide') { var sp = Math.hypot(me.vx, me.vy); ht += sp * 0.35; cx += me.vx * 0.35; cy += me.vy * 0.35; }
-    var k = 1 - Math.pow(0.04, dt); camC.x += (cx - camC.x) * k; camC.z += (cy - camC.z) * k; camHt += (ht - camHt) * (1 - Math.pow(0.15, dt));
+    var k = 1 - Math.pow(0.04, dt); camC.x += (cx - camC.x) * k; camC.z += (cy - camC.z) * k; camHt += (ht - camHt) * (1 - Math.pow(ht < camHt ? 0.35 : 0.25, dt));
     cam.position.set(camC.x + (Math.random() - 0.5) * sk, camHt + (Math.random() - 0.5) * sk, camC.z + camHt * 0.56 + (Math.random() - 0.5) * sk); cam.lookAt(camC.x, 0, camC.z);
   }
+  // ---------------------------------------------------------------- v0.4.1 action zoom + crash replays (PiP on the shared screen, full screen on the wrecked player's phone)
+  var ACT = { v: 0, x: null, y: null, crash: null }, REC = [], recT = 0, pipCam = null, PIP = null;
+  function bumpAct(v, x, y) { if (v > ACT.v) { ACT.v = v; ACT.x = x; ACT.y = y; } }
+  function recFrame(S) { var now = performance.now(); if (now - recT < 50) return; recT = now;
+    REC.push({ t: now, c: S.cars.map(function (c) { return [c.id, +c.x.toFixed(2), +c.y.toFixed(2), +c.z.toFixed(2), +c.a.toFixed(3), +(c.roll || 0).toFixed(2), c.state === 'wreck' ? 1 : c.state === 'drive' || c.state === 'enter' ? 0 : 2]; }) });
+    while (REC.length && now - REC[0].t > 5000) REC.shift(); }
+  function onCrash(e) {
+    var now = performance.now(); ACT.crash = { id: e.id, until: now + 2600 };
+    PIP = { id: e.id, t0: now - C.replay.before * 1000, t1: now + C.replay.after * 1000, start: now + C.replay.after * 1000, x: e.x, y: e.y, full: touchP && touchP.id === e.id };
+    var p = byId(e.id);
+    setTimeout(function () { var fr = REC.filter(function (f) { return f.t >= PIP0(e, now) && f.t <= now + C.replay.after * 1000; }); if (!fr.length || !game.sim) return;
+      var cols = {}; game.sim.cars.forEach(function (c) { cols[c.id] = c.color; });
+      if (p && p.conn) send(p.conn, { t: 'replay', id: e.id, mode: game.sim.mode, hitT: now, f: fr, cols: cols, lives: game.sim.byId(e.id).lives, R: game.sim.R }); }, C.replay.after * 1000 + 30);
+  }
+  function PIP0(e, now) { return now - C.replay.before * 1000; }
+  function renderPip(S) {
+    if (!PIP) return false; var now = performance.now(); if (now < PIP.start) return false;
+    var dur = (PIP.t1 - PIP.t0) / C.replay.speed, u = (now - PIP.start) / dur; if (u > 1) { if (PIP.full && !PIP.resp) { PIP.resp = now; respawnFlash(); } PIP = null; return false; }
+    var tt = PIP.t0 + (PIP.t1 - PIP.t0) * u, f = null; for (var i = 0; i < REC.length; i++) { if (REC[i].t >= tt) { f = REC[i]; break; } } if (!f) return false;
+    var saved = [];
+    f.c.forEach(function (q) { var m = carMeshes[q[0]]; if (!m) return; saved.push([m, m.g.position.clone(), m.g.rotation.clone(), m.g.visible]); m.g.position.set(q[1], q[3], q[2]); m.g.rotation.set(0, q[4], q[5]); m.g.visible = q[6] !== 2; });
+    var me = f.c.filter(function (q) { return q[0] === PIP.id; })[0] || [0, PIP.x, PIP.y, 0, 0], orb = 0.6 + u * 1.4;
+    pipCam.position.set(me[1] + Math.sin(orb) * 11, me[3] + 5.5, me[2] + Math.cos(orb) * 11); pipCam.lookAt(me[1], me[3] + 0.8, me[2]);
+    var W = innerWidth, H = innerHeight, pw = PIP.full ? W : Math.round(W * 0.34), ph = PIP.full ? H : Math.round(pw / 1.6), px = PIP.full ? 0 : W - pw - Math.round(W * 0.015), py = PIP.full ? 0 : Math.round(H * 0.12);
+    pipCam.aspect = pw / ph; pipCam.updateProjectionMatrix();
+    renderer.setScissorTest(true); renderer.setViewport(px, py, pw, ph); renderer.setScissor(px, py, pw, ph); renderer.render(scene, pipCam);
+    renderer.setScissorTest(false); renderer.setViewport(0, 0, W, H);
+    saved.forEach(function (sv) { sv[0].g.position.copy(sv[1]); sv[0].g.rotation.copy(sv[2]); sv[0].g.visible = sv[3]; });
+    var el = $('pipLbl'); el.style.display = ''; el.style.left = (PIP.full ? 0 : px) + 'px'; el.style.bottom = py + 'px'; el.style.width = pw + 'px'; el.style.height = ph + 'px'; el.className = PIP.full ? 'full' : '';
+    el.firstChild.textContent = (PIP.full ? 'YOUR CRASH' : 'REPLAY \u00b7 ' + nm(PIP.id)) + (tt > PIP.t1 - C.replay.after * 1000 ? ' \uD83D\uDCA5' : '');
+    return true;
+  }
+  function respawnFlash() { var b = $('resp'); if (!b) return; var me = touchP && game.sim && game.sim.byId(touchP.id); b.textContent = me && me.lives <= 0 ? 'OUT \u00b7 SPECTATING' : 'RESPAWNING'; b.className = 'on'; setTimeout(function () { b.className = ''; }, 1900); }
   var V = null;
   function render(dt) {
     var S = game.sim, t = performance.now() / 1000;
@@ -364,6 +407,7 @@
       if (!V) V = new R3.Vector3();
       S.cars.forEach(function (c) { var m = carMeshes[c.id]; if (!m) return;
         var vis = c.state === 'drive' || c.state === 'fall' || c.state === 'enter' || c.state === 'wreck';
+        if (c.state === 'wait' && c.ghost && c.spawnS != null) { if (!c.ghostDone) { c.ghostDone = true; c.fresh = true; } var gw = window.DDTrack.at(c.spawnS, 0); m.g.visible = Math.floor(performance.now() / 160) % 2 === 0; m.g.position.set(gw.x, window.DDTrack.height(c.spawnS, 0) + C.wreck.dropH, gw.y); m.g.rotation.set(0, Math.atan2(gw.tx, gw.ty), 0); m.sh.visible = true; m.sh.position.set(gw.x, window.DDTrack.height(c.spawnS, 0) + 0.05, gw.y); if (m.aimR) m.aimR.visible = false; m.tag.style.display = 'none'; return; }
         m.g.visible = vis; m.sh.visible = vis && c.state !== 'fall';
         if (m.aimR) { var gy0 = window.DDSim.ground(c.x, c.y) + 0.08, ab = c.inp.abs, held = vis && c.state === 'drive' && ab && Math.hypot(ab[0], ab[1]) > 0.25, ta0 = held ? Math.atan2(ab[0], ab[1]) : 0;
           m.aimR.visible = vis && c.state !== 'fall'; m.aimR.position.set(c.x, gy0, c.y); m.aimT.visible = !!held;
@@ -390,6 +434,7 @@
     }
     sparkPool.forEach(function (s) { if (s.life <= 0) return; s.life -= dt; if (s.up) { s.v[1] += 1.5 * dt; s.m.scale.multiplyScalar(1 + dt * 0.5); } else s.v[1] -= 30 * dt; s.m.position.x += s.v[0] * dt; s.m.position.y += s.v[1] * dt; s.m.position.z += s.v[2] * dt; if (s.m.position.y < 0.1) { s.m.position.y = 0.1; s.v[1] *= -0.4; } if (s.life <= 0) s.m.visible = false; });
     renderer.render(scene, cam);
+    if (S && game.phase !== 'lobby') { recFrame(S); if (!renderPip(S)) $('pipLbl').style.display = 'none'; }
   }
   // ---------------------------------------------------------------- DOM UI
   var uiKey = '';
@@ -402,7 +447,7 @@
       var L = leader(), k = JSON.stringify([game.players.map(function (p) { return [p.name, p.color, p.ready, p.connected, p.type, p.boost, p.armour.front]; }), game.bots, flashMsg, L && L.name, game.mode, game.cam]);
       if (k !== uiKey) { uiKey = k;
         $('plist').innerHTML = humans().map(function (p) { return '<span style="background:' + p.color + ';opacity:' + (p.connected ? 1 : 0.4) + '">' + esc(p.name) + ' \u00b7 ' + window.DDSim.carType(p.type).name + (p.pad != null ? ' \u00b7 ' + C.boosts[p.boost].name + ' \u00b7 ' + C.armour[p.armour.front].name : '') + (p.ready ? ' \u2714' : '') + '</span>'; }).join('') || '<span style="background:#fff3;color:#fff">Waiting for drivers&hellip;</span>';
-        $('hint').innerHTML = (L ? '<b>' + esc(L.name) + '</b> starts the derby from their phone' : 'Scan to join (up to ' + C.maxPlayers + ')') + ' \u00b7 AI fill ' + (game.bots ? 'ON' : 'OFF') + ' \u00b7 ' + (game.mode === 'race' ? 'RACE: ' + C.race.laps + ' laps, ' + game.rounds + ' race' + (game.rounds > 1 ? 's' : '') : 'DERBY: ' + game.rounds + ' rounds, ' + C.lives + ' lives each') + (flashMsg && performance.now() - flashAt < 4000 ? '<br><span style="color:#ff9">' + esc(flashMsg) + '</span>' : '') + '<br><small>Controller: A = join / start \u00b7 D-pad = car + boost \u00b7 X = armour \u00b7 Menu = settings. Y = Derby/Race. Keyboard: Enter = start, B = AI on/off, M = Derby/Race, C = camera</small>';
+        $('hint').innerHTML = (L ? '<b>' + esc(L.name) + '</b> starts the derby from their phone' : 'Scan to join (up to ' + C.maxPlayers + ')') + ' \u00b7 AI fill ' + (game.bots ? 'ON' : 'OFF') + ' \u00b7 ' + (game.mode === 'race' ? 'RACE: ' + C.race.laps + ' laps, ' + C.lives + ' lives, ' + game.rounds + ' race' + (game.rounds > 1 ? 's' : '') : 'DERBY: ' + game.rounds + ' rounds, ' + C.lives + ' lives each') + (flashMsg && performance.now() - flashAt < 4000 ? '<br><span style="color:#ff9">' + esc(flashMsg) + '</span>' : '') + '<br><small>Controller: A = join / start \u00b7 D-pad = car + boost \u00b7 X = armour \u00b7 Menu = settings. Y = Derby/Race. Keyboard: Enter = start, B = AI on/off, M = Derby/Race, C = camera</small>';
         $('modeTag').textContent = game.mode === 'race' ? 'RACE' : 'DERBY'; $('h1').textContent = game.mode === 'race' ? 'DEMOLITION RACE' : 'DEMOLITION DERBY'; $('sub').textContent = game.mode === 'race' ? 'Long winding track: jumps, ledges, puddles, gravel. First across the line after ' + C.race.laps + ' laps wins. Wrecks respawn on the track.' : 'Pick a car on your phone. Last car rolling wins the round.';
         if ($('tMode')) { $('tMode').textContent = 'Mode: ' + (game.mode === 'race' ? 'Race' : 'Derby'); $('tCar').textContent = 'Car: ' + (touchP ? window.DDSim.carType(touchP.type).name : ''); $('tBoost').textContent = 'Boost: ' + (touchP ? C.boosts[touchP.boost].name : ''); }
       }
@@ -411,7 +456,7 @@
       $('cards').innerHTML = game.sim.cars.map(function (c) { var p = byId(c.id), hpf = Math.max(0, c.hp / c.maxhp), out = c.state === 'out';
         return '<div class="pc' + (out ? ' out' : '') + '" style="border-color:' + c.color + '"><span class="nm">' + esc(c.name) + (c.ai ? ' <small>AI</small>' : p && p.aiCover ? ' <small>(AI)</small>' : '') + '</span>' +
           (c.state === 'wait' ? '<span class="w">' + (game.sim.mode === 'race' ? 'respawning' : 'at gate') + '</span>' : c.state === 'wreck' ? '<span class="w">WRECKED</span>' : '<span class="hp"><i style="width:' + (hpf * 100) + '%;background:' + (hpf > 0.5 ? '#7ed957' : hpf > 0.25 ? '#ffd23f' : '#ff4b55') + '"></i></span>') +
-          '<span class="lv">' + (game.sim.mode === 'race' ? (c.done ? 'FIN #' + (game.sim.finish.indexOf(c.id) + 1) : 'P' + (game.sim.order().indexOf(c) + 1) + ' \u00b7 L' + Math.min(game.sim.laps, c.lap + 1)) : out ? 'OUT' : '\u2665'.repeat(Math.max(0, c.lives))) + '</span><span>' + (p ? p.score : 0) + '</span></div>'; }).join('') + '<div class="pc" style="border-color:#ffd23f;min-width:0">' + (game.sim.mode === 'race' ? 'Race ' : 'Round ') + game.round + '/' + game.rounds + '</div>';
+          '<span class="lv">' + (game.sim.mode === 'race' ? (c.done ? 'FIN #' + (game.sim.finish.indexOf(c.id) + 1) : out ? 'OUT' : 'P' + (game.sim.order().indexOf(c) + 1) + ' \u00b7 L' + Math.min(game.sim.laps, c.lap + 1) + ' ' + '\u2665'.repeat(Math.max(0, c.lives))) : out ? 'OUT' : '\u2665'.repeat(Math.max(0, c.lives))) + '</span><span>' + (p ? p.score : 0) + '</span></div>'; }).join('') + '<div class="pc" style="border-color:#ffd23f;min-width:0">' + (game.sim.mode === 'race' ? 'Race ' : 'Round ') + game.round + '/' + game.rounds + '</div>';
       $('feed').innerHTML = (game.feed || []).filter(function (f) { return performance.now() - f.at < 6000; }).map(function (f) { return '<div>' + esc(f.t) + '</div>'; }).join('');
     }
     if (ph === 'over') { $('pbar').firstChild.style.width = Math.min(100, game.phaseT / C.podiumSec * 100) + '%'; $('pnext').textContent = EMBED ? '' : 'Back to the lobby in ' + Math.max(0, Math.ceil(C.podiumSec - game.phaseT)) + 's'; }
@@ -549,6 +594,6 @@
   else if (!NONET) net = new window.DDNet.Host({ code: roomQ, fixedCode: !!roomQ, onStatus: setNetUi, onMessage: onPhoneMessage, onClose: onPhoneClose });
   initGL(); setPhase('lobby'); tjButtons(); if (Q.get('play') === '1') addTouch();
   if (Q.get('autostart') === '1') setTimeout(startMatch, 300);
-  window.DD.debug = { startMatch: startMatch, toLobby: toLobby, game: game, setMode: setMode, addTouch: addTouch, cam: function (m) { game.cam = m; }, touchP: function () { return touchP; } };
+  window.DD.debug = { act: ACT, pip: function () { return PIP; }, camHt: function () { return camHt; }, startMatch: startMatch, toLobby: toLobby, game: game, setMode: setMode, addTouch: addTouch, cam: function (m) { game.cam = m; }, touchP: function () { return touchP; } };
   requestAnimationFrame(tick);
 })();

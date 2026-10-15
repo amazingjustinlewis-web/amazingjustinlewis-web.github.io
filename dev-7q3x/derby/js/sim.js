@@ -63,7 +63,7 @@
     if (c.state !== 'drive' && c.state !== 'fall') return;
     var killer = c.lastHit && this.t - c.lastHitT < 5 ? this.byId(c.lastHit) : null;
     if (killer && killer !== c) { killer.st.kos++; if (how === 'ringout') killer.st.ringouts++; }
-    if (this.mode !== 'race') c.lives--; c.alive = false; c.hp = 0;
+    c.lives--; c.alive = false; c.hp = 0;
     this.ev({ k: 'ko', id: c.id, by: killer ? killer.id : null, how: how, x: c.x, y: c.y, z: c.z, lives: c.lives });
     // v0.4: a wreck stays on the floor: falls apart, burns, half weight, harmless; fades, flashes, then is cleared and respawns shortly
     if (how === 'wreck' && c.state === 'drive') { c.state = 'wreck'; c.wreckT = 0; c.mass = c.mass0 * 0.5; c.boostT = 0; return; }
@@ -72,7 +72,8 @@
   };
   Sim.prototype.afterWreck = function (c) {
     if (c.air) { c.st.air += this.t - c.airStart; c.air = false; }
-    if (this.mode === 'race') { c.state = 'wait'; c.waitT = C.wreck.respawnSec; return; }
+    if (this.mode === 'race') { if (c.lives <= 0) { c.state = 'out'; this.out.push(c.id); c.st.survived = this.t; return; }
+      c.state = 'wait'; c.waitT = C.wreck.raceGhostSec; c.spawnS = ((c.s || 0) - 6 + TR.L) % TR.L; c.ghost = true; this.ev({ k: 'ghost', id: c.id, s: c.spawnS }); return; }   // v0.4.1: the car flashes at its respawn spot, then drops in
     if (c.lives > 0) { c.state = 'wait'; this.gate.queue.push(c.id); this.gate.timer = Math.min(this.gate.timer, C.wreck.respawnSec); } else { c.state = 'out'; this.out.push(c.id); c.st.survived = this.t; }
   };
   Sim.prototype.byId = function (id) { for (var i = 0; i < this.cars.length; i++) if (this.cars[i].id === id) return this.cars[i]; return null; };
@@ -115,7 +116,7 @@
       if (c.state === 'enter') {     // rolls in through the gate on rails
         c.x += c.vx * dt; c.y += c.vy * dt; if (Math.sqrt(c.x * c.x + c.y * c.y) < self.R - 5) { c.state = 'drive'; c.spawnSafe = 1.5; self.ev({ k: 'enter', id: c.id }); } return;
       }
-      if (c.state === 'wait' && race) { c.waitT -= dt; if (c.waitT <= 0) { self.placeOnTrack(c, ((c.s || 0) - 6 + TR.L) % TR.L); self.ev({ k: 'enter', id: c.id }); } return; }
+      if (c.state === 'wait' && race) { c.waitT -= dt; if (c.waitT <= 0) { self.placeOnTrack(c, c.spawnS != null ? c.spawnS : ((c.s || 0) - 6 + TR.L) % TR.L); c.ghost = false; c.ghostDone = false; c.z += C.wreck.dropH; c.vz = 0; self.ev({ k: 'enter', id: c.id, drop: 1 }); } return; }
       if (c.state === 'fall') { c.vz -= G * dt; c.z += c.vz * dt; c.x += c.vx * dt; c.y += c.vy * dt; c.a += c.spin * dt; if (c.z < -18) { if (c.wrecked) { c.wrecked = false; self.afterWreck(c); } else self.knockout(c, 'ringout'); } return; }
       var wreck = c.state === 'wreck';
       if (wreck) { c.wreckT += dt; if (c.wreckT >= C.wreck.sec) { c.wreckT = 0; self.ev({ k: 'cleared', id: c.id }); self.afterWreck(c); return; } }

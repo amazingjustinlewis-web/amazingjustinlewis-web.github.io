@@ -30,6 +30,9 @@ button.go{background:#ffd23f;color:#3a2000;font-weight:700;width:100%;font-size:
 #msg{position:absolute;left:0;right:0;top:40%;text-align:center;font-size:26px;font-weight:700;color:#ffd23f;pointer-events:none;text-shadow:0 2px 6px #000}
 #drive.hit{animation:hit .25s}@keyframes hit{0%{background:#7a1a10}100%{background:#120c08}}
 table{width:100%;font-size:16px}td{padding:4px}td:last-child{text-align:right;font-weight:600}
+#replay{position:fixed;inset:0;background:#120c08;display:none;z-index:20}#replay.on{display:block}#rcv{width:100%;height:100%;display:block}
+#rtag{position:absolute;left:0;right:0;top:18px;text-align:center;font-size:22px;font-weight:700;color:#3a2000}#rtag span{background:#ffd23f;padding:4px 14px;border-radius:10px}
+#rresp{position:absolute;left:0;right:0;top:42%;text-align:center;font-size:44px;font-weight:700;color:#fff;text-shadow:0 0 18px #ff5a2a;opacity:0}#rresp.on{animation:rf .63s 3 steps(2,jump-none)}@keyframes rf{0%{opacity:1}50%{opacity:0}100%{opacity:1}}
 </style></head><body>
 <div class="scr on" id="join"><h2>DEMOLITION DERBY</h2>
   <p class="note">Room</p><input id="room" maxlength="4" autocapitalize="characters" placeholder="ABCD">
@@ -50,8 +53,9 @@ table{width:100%;font-size:16px}td{padding:4px}td:last-child{text-align:right;fo
   <button id="boost">BOOST<div class="m"><s></s></div></button>
   <div id="msg"></div></div>
 <div class="scr" id="over"><h2 id="oTitle">DERBY OVER</h2><table id="oTab"></table><button class="go" id="againBtn">BACK TO LOBBY</button><p class="note">Wait for the leader, or scan the TV again later.</p></div>
+<div id="replay"><canvas id="rcv"></canvas><div id="rtag">YOUR CRASH</div><div id="rresp"></div></div>
 <div id="st"></div>
 <script src="js/vendor/peerjs.min.js"></script>
 <script>if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
-<script src="js/config.js"></script><script src="js/net.js"></script><script src="js/phone.js"></script>
+<script src="js/config.js"></script><script src="js/track.js"></script><script src="js/net.js"></script><script src="js/phone.js"></script>
 </body></html>

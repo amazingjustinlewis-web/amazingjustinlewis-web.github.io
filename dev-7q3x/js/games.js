@@ -16,7 +16,7 @@ window.DEV_GAMES = [
   { id: 'orbit', name: 'Orbit Brawl', ver: 'v0.1.1', url: 'orbit/index.html', img: 'orbit/shot.jpg', tag: 'Phone cockpit space dogfight \u00b7 2\u201320 pilots \u00b7 TV = live cinematic cam' },
   { id: 'bubble', name: 'Bubble Hockey', ver: 'v0.1.1', url: 'bubble/index.html', img: 'bubble/shot.jpg', tag: 'Table-top rod hockey \u00b7 drag, dangle, flick to pass' },
   { id: 'lostsock', name: 'Lost Sock', ver: 'v0.3', url: 'lostsock/index.html', img: 'lostsock/shot.png', tag: 'Sock artillery \u00b7 phones \u00b7 WIP' },
-  { id: 'derby', name: 'Demolition Derby', ver: 'v0.4-dev', url: 'derby/index.html', img: 'derby/shot.png', tag: 'Car smash + Race mode \u00b7 phones \u00b7 play on a phone screen' },
+  { id: 'derby', name: 'Demolition Derby', ver: 'v0.4.1-dev', url: 'derby/index.html', img: 'derby/shot.png', tag: 'Car smash + Race mode \u00b7 phones \u00b7 play on a phone screen' },
   { id: 'mechsquad', name: 'Iron Stride Squad', ver: 'v0.6-dev', url: 'mech-squad/index.html', img: 'mech-squad/shot.png', tag: '3/4 mech brawler \u00b7 jump/hover \u00b7 spare the city' },
   { id: 'mechopen', name: 'Iron Stride: Cockpit', ver: 'v0.5-dev', url: 'mech-open/index.html', img: 'mech-open/shot.png', tag: 'First-person open world \u00b7 placeholder name' },
   { id: 'rescue', name: 'Red Deer Rescue', ver: 'v0.2', url: '../games/rescue/index.html', img: '../games/rescue/shots/cover-card.webp', tag: 'Hero crawler \u00b7 pick a hero \u00b7 Francis the giant pig' },

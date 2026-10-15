@@ -36,11 +36,14 @@ table{border-collapse:collapse;font-size:2.1vh;margin:0 auto}td,th{padding:.5vh 
 #tView{position:fixed;right:1.5vw;bottom:2vh;display:none;z-index:5;background:#000a}body.touchplay #tView{display:block}body.touchplay #cornerqr{bottom:9vh}
 #tj{touch-action:none;z-index:4}body.touchplay{touch-action:none}
 @media (max-aspect-ratio:1/1){.lb{flex-direction:column;gap:2vh}h1{font-size:6vh}#qr{width:22vh;height:22vh}#cards .pc{font-size:1.6vh;min-width:0}}
+#pipLbl{position:fixed;pointer-events:none;border:.5vh solid #ffd23f;border-radius:1vh;box-sizing:border-box;z-index:3}#pipLbl span{position:absolute;left:1vh;top:.6vh;background:#ffd23f;color:#3a2000;font-weight:700;font-size:2vh;padding:.2vh .8vw;border-radius:.6vh}
+#pipLbl.full{border:0}#pipLbl.full span{font-size:4vh;left:50%;top:6vh;transform:translateX(-50%)}
+#resp{position:fixed;left:0;right:0;top:38vh;text-align:center;font-size:10vh;font-weight:700;color:#fff;text-shadow:0 0 3vh #ff5a2a;opacity:0;pointer-events:none;z-index:6}#resp.on{animation:rf .63s 3 steps(2,jump-none)}@keyframes rf{0%{opacity:1}50%{opacity:0}100%{opacity:1}}
 </style></head><body>
 <canvas id="gl"></canvas>
 <div class="ov" id="tags"></div>
 <div id="cards"></div><div id="feed"></div><div id="banner"></div>
-<canvas id="tj" class="ov"></canvas><button id="tView">View: dynamic</button>
+<canvas id="tj" class="ov"></canvas><div id="pipLbl" style="display:none"><span></span></div><div id="resp"></div><button id="tView">View: dynamic</button>
 <div id="cornerqr"><div id="cq"></div>Join: <b id="cqcode"></b></div>
 <div id="lobby"><div class="lb">
   <div><h1 id="h1">DEMOLITION DERBY</h1><div class="sub"><b id="modeTag" style="background:#ffd23f;color:#3a2000;padding:0 .8vw;border-radius:.8vh;margin-right:.6vw">DERBY</b><span id="sub">Pick a car on your phone. Last car rolling wins the round.</span></div>
