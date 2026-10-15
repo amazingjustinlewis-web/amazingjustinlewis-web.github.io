@@ -1,0 +1,37 @@
+# Iron Stride (working title) - v0.2 "Thumb pad" (v0.1 archived in v0.1/)
+
+TV + phones mech prototype. `index.html` = TV (three.js cockpit view), `controller.html` = phone (portrait).
+
+- Networking/lobby: same PeerJS room-code + QR pattern as Laser Range / Red Deer Rich (`js/net.js`, peer prefix `ztp-ironstride-v01-`). `?local=1&room=ABCD` on both pages = BroadcastChannel test mode.
+- Aiming: phone `deviceorientation` -> pointing vector (`js/aim.js` from Laser Range) -> yaw/pitch. 3-tap calibration (centre, left edge, right edge) on the phone. Crosshair past 55% of the half-screen turns the torso.
+- Hidden aim assist (`assist()` in `js/tv.js`, numbers in `js/config.js`): RMS crosshair speed over 450 ms -> steadiness. Steady = small cone and strong pull; shaky = wide cone, soft pull and a bit of scatter. Locks are sticky for 350 ms.
+- Map: finger stroke -> RDP simplify -> Catmull-Rom as cubic Beziers -> points every 3 m -> the TV follows them with a lookahead.
+- Seats: pilot (seat 0) and an optional gunner (seat 1, own crosshair + autocannon).
+- Mouse + keys: "Play here with mouse + keys" on the TV lobby, or `?kb`.
+- Quality: rungs in `config.js` (render scale + particle count). Starts low on TV sticks (CrKey etc.), steps down if fps < 40 for 3 s. `?fx=0..4` pins a rung, `?fps` shows fps.
+- Debug: `?mute`, `?nonet`, `window.MECH` on the TV, `window.MP` on the phone.
+
+## v0.2
+- Two reticles: small raw gyro crosshair + big intent reticle (smoothed, tau 0.07 s steady .. 0.32 s shaky). Shots go to the intent reticle with steadiness-based spread. Reticle gravity: soft pull toward an enemy inside the assist cone, fading toward the cone edge.
+- Edge turning: outer 20% each side (|x| > 0.6), speed = 115 deg/s * u^2.6.
+- Pitch: full -89..+89 degrees.
+- Phone thumb pad (`move` {x,y} relative to the facing, `face` {a}, `tap`): floating stick; release slows to a stop. Outer ring = facing arrow (drag + release -> pod turns at 150 deg/s, the whole pad display rotates back in sync). Inner ring = travel direction + speed. Holo mini-map (heading-up, ~12 Hz state).
+- Mouse + keys: WASD walk relative to facing, Q/E swing torso, mouse aims.
+- Tests: /workspace/mech/tests/sim.py (v0.1 flow) and sim02.py (v0.2 controls).
+
+## v0.3 (v0.2 archived in v0.2/)
+- Thumb-pad momentum: on release the phone sends the swipe's speed (`move` with `rel:1`); the TV holds it `C.pad.holdSec` (0.8 s) then fades with time constant `C.pad.decaySec` (3.5 s).
+- Edge turning feathers in from 35% of the half-screen: 115 deg/s * u^2.8.
+- Rocket lock-on (`C.lock`): forgiving 0.3 cone around the intent reticle, 0.4 s to acquire, up to 3 locks, kept out to 0.5. Flashing red brackets, lock tones; firing sends a staggered salvo, one strongly homing rocket per lock.
+- Trackpad mode (phone ⚙ or the Combat tab quick switch, remembered): relative aim with pointer acceleration (`pad` messages), tap = one shot, hold = keep firing / charge. Lean to walk: forward/back walks, left/right strafes (dead zone 6°, full at 22°, levelled when the mode starts; "Level tilt" re-levels).
+- Tests: sim03.py (momentum, edge curve, rocket lock + salvo, trackpad aim/tap/hold, tilt walk).
+
+## v0.3.1
+- Enemy bolts/shells use a swept segment test against every building box each frame (no tunnelling at low fps), and a shot that's near the cockpit only counts if no building sits between it and you. Fixes shots coming through buildings.
+- Xbox / standard gamepad (Gamepad API, hot-plug, keyboard + mouse still work): LS walk, RS aim (edge-turn as with the mouse), RT fire, LT brace, A tap-fire / start, X reload, Y/RB next weapon, LB previous, D-pad left/up/right weapons 1-3, B autopilot, View mute, hold L3+R3 eject. Any button on the lobby starts a local game. Rumble on hits where supported. `MECH.gp` for debug.
+
+## v0.4.1 (v0.4 frozen in v0.4/)
+- Controller FPS mode: whenever a gamepad drives the pilot seat, the crosshair locks to screen centre and the mouse cursor is hidden/ignored. RS turns the view (deadzone 0.14, response curve u^1.7, 120 deg/s yaw + up to 110 deg/s boost ramping in over 0.35 s at full tilt, 75 deg/s pitch; `C.gpFps`). LS walks/strafes, RT or LT fires, L3 braces. Shots go exactly to the centre (no reticle pull). Switches back to phone/mouse aiming automatically when the controller disconnects. Test: /workspace/passes/oct14/mech_fps_test.py.
+
+## v0.4.2 (v0.4.1 frozen in v0.4.1/)
+- Controller settings via the shared /assets/js/ztp-pad-settings.js (gear bottom-right, or Menu during play): swap sticks, invert look Y, invert look X; localStorage ztp-pad-ironstride.

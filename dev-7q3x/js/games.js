@@ -9,6 +9,7 @@ window.DEV_GAMES = [
   { id: 'lostsock', name: 'Lost Sock', ver: 'v0.2', url: 'lostsock/index.html', img: 'lostsock/shot.png', tag: 'Sock artillery \u00b7 phones \u00b7 WIP' },
   { id: 'derby', name: 'Demolition Derby', ver: 'v0.3.2', url: 'derby/index.html', img: 'derby/shot.png', tag: 'Car smash \u00b7 phones \u00b7 WIP' },
   { id: 'mechsquad', name: 'Iron Stride Squad', ver: 'v0.5-dev', url: 'mech-squad/index.html', img: 'mech-squad/shot.png', tag: 'Controllers = small Striders \u00b7 phones = giant Titans' },
+  { id: 'mechopen', name: 'Iron Stride \u00b7 open world', ver: 'v0.5-dev', url: 'mech-open/index.html', img: 'mech-open/shot.png', tag: 'FPS canopy look \u00b7 mountains & ruins \u00b7 phones = Titans' },
   { id: 'rescue', name: 'Red Deer Rescue', ver: 'v0.1', url: '../games/rescue/index.html', img: '../games/rescue/shots/cover-card.webp', tag: 'Hero crawler \u00b7 phones vote' },
   { id: 'rdr', name: 'Red Deer Rich', ver: 'v0.8', url: '../games/red-deer-rich/index.html', img: '../assets/img/red-deer-rich/cover-card.webp', tag: 'Board game \u00b7 phones' },
   { id: 'walker', name: 'Walker', ver: 'v0.4', url: '../games/walker/index.html', img: '../assets/img/walker/cover-card.webp', tag: 'Calm play world' },
