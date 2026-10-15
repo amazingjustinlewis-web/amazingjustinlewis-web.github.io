@@ -43,3 +43,9 @@ Done in menu2 for reference: the launching phone is the game's host (it can end 
 
 ## Demolition Derby (Oct 14, 2026)
 - [ ] Car picker: several models (sedan v02 is the first), with paint / texture / look options. Every model fully bustable (separate hood, doors, trunk, glass, wheels with pivots, same as sedan_v02).
+
+## Controls plan (long-term, Oct 15, 2026)
+- [ ] Layer 1, good defaults: every game just works with phone, controller, keyboard or mouse, with no setup.
+- [ ] Layer 2, quick presets behind the small gear (shared ztp-pad-settings.js): Standard, Southpaw, Inverted (plus the swap and invert checkboxes that exist today).
+- [ ] Layer 3, full "map anything to anything" remapping for deep players and adaptive / accessibility controllers (e.g. one-handed designs), saved per player and per game.
+- [ ] Someday: custom 0-Phi controllers.
