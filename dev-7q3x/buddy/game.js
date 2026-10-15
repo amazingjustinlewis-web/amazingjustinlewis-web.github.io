@@ -35,20 +35,21 @@
     ctx.fillStyle = '#ff7ab0'; ctx.beginPath(); ctx.ellipse(px, py, pw, H * .07, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#4fc3f7'; ctx.beginPath(); ctx.ellipse(px, py - H * .01, pw * .88, H * .05, 0, 0, 7); ctx.fill();
     ctx.fillStyle = '#ffd23f'; var dx = px + pw * .5 + Math.sin(t * 1.5) * 8; ctx.beginPath(); ctx.ellipse(dx, py - H * .02, H * .025, H * .018, 0, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(dx + H * .018, py - H * .042, H * .014, 0, 7); ctx.fill(); ctx.fillStyle = '#ff8a3d'; ctx.beginPath(); ctx.moveTo(dx + H * .03, py - H * .045); ctx.lineTo(dx + H * .045, py - H * .04); ctx.lineTo(dx + H * .03, py - H * .036); ctx.fill();
     var n = s ? s.balloons : 7, lost = s && s.phase === 'lost', won = s && s.phase === 'won';
-    var ty = lost ? H * .83 : H * (.36 + (7 - n) * .055); if (won) anim.up += 1 / 60; else anim.up = 0;
-    if (!anim.y) anim.y = ty; anim.y += (ty - anim.y) * (lost ? .12 : .05); var by = anim.y - (won ? anim.up * anim.up * H * .25 : 0), bx = W * .5 + Math.sin(t * 1.3) * W * .02;
-    var u = H * .06;
+    var u = H * .06, e = n / 7, ty = lost ? H * .83 : won ? H * .9 - u * 2 : H * (.36 + (7 - n) * .055), tx = won ? W * .2 : W * .5; if (won) anim.up += 1 / 60; else anim.up = 0;
+    if (!anim.y) anim.y = ty; if (!anim.x) anim.x = tx; anim.y += (ty - anim.y) * (lost ? .12 : won ? .08 : .05); anim.x += (tx - anim.x) * .05;
+    var landed = won && Math.abs(anim.y - ty) < u * .3, hop = landed ? Math.abs(Math.sin(t * (3 + 6 * e))) * u * 1.1 * e * e : 0, sway = landed ? Math.sin(t * (1.5 + 3 * e)) * u * (.15 + .7 * e) : 0;
+    var by = anim.y - hop, bx = anim.x + (won ? sway : Math.sin(t * 1.3) * W * .02), fly = won ? anim.up * anim.up * H * .35 : 0, hx = anim.x, hy = anim.y;
     if (!lost) for (var i = 0; i < 7; i++) {   // balloons
-      var a = -1.1 + i * (2.2 / 6), lx = bx + Math.sin(a) * u * 2.4, ly = by - u * 3.2 - Math.cos(a) * u * 1.3 + Math.sin(t * 2 + i) * 4;
-      if (i < n) { ctx.strokeStyle = '#555'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(bx, by - u * .9); ctx.quadraticCurveTo((bx + lx) / 2 + 6, (by + ly) / 2, lx, ly + u * .65); ctx.stroke();
+      var a = -1.1 + i * (2.2 / 6), lx = bx + Math.sin(a) * u * 2.4, ly = (won ? hy : by) - u * 3.2 - Math.cos(a) * u * 1.3 + Math.sin(t * 2 + i) * 4 - fly; if (won) lx = hx + Math.sin(a) * u * 2.4 + Math.sin(t + i) * u * .3;
+      if (i < n) { ctx.strokeStyle = '#555'; ctx.lineWidth = 1.5; ctx.beginPath(); if (won) { ctx.moveTo(lx, ly + u * .65); ctx.lineTo(lx + Math.sin(t * 3 + i) * 6, ly + u * 1.8); } else ctx.moveTo(bx, by - u * .9); if (!won) ctx.quadraticCurveTo((bx + lx) / 2 + 6, (by + ly) / 2, lx, ly + u * .65); ctx.stroke();
         ctx.fillStyle = COLS[i]; ctx.beginPath(); ctx.ellipse(lx, ly, u * .55, u * .68, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#fff6'; ctx.beginPath(); ctx.ellipse(lx - u * .18, ly - u * .25, u * .12, u * .2, -.4, 0, 7); ctx.fill(); }
       else if (!anim.popped[i + ':' + (s ? s.round : 0)]) { anim.popped[i + ':' + (s ? s.round : 0)] = 1; for (var k = 0; k < 14; k++) anim.parts.push({ x: lx, y: ly, vx: (Math.random() - .5) * 9, vy: (Math.random() - .5) * 9, c: COLS[i], l: 1, txt: k === 0 ? 'POP!' : '' }); }
     }
     // buddy
-    ctx.save(); ctx.translate(bx, by); var wig = Math.sin(t * (lost ? 2 : 8)) * (n < 3 && !lost ? .15 : .04); ctx.rotate(wig);
+    ctx.save(); ctx.translate(bx, by); if (won) ctx.scale(1.5, 1.5); var wig = landed ? Math.sin(t * (2.5 + 5 * e)) * (.1 + .3 * (1 - e)) : Math.sin(t * (lost ? 2 : 8)) * (n < 3 && !lost ? .15 : .04); ctx.rotate(wig);
     ctx.strokeStyle = '#2a2a3a'; ctx.lineWidth = u * .12; ctx.lineCap = 'round';
-    var kick = Math.sin(t * (n < 4 ? 12 : 4)) * u * .3; ctx.beginPath(); ctx.moveTo(-u * .2, u * .6); ctx.lineTo(-u * .35 - kick * .5, u * 1.3); ctx.moveTo(u * .2, u * .6); ctx.lineTo(u * .35 + kick * .5, u * 1.3); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-u * .35, -u * .1); ctx.lineTo(0, -u * .9); ctx.lineTo(u * .35, -u * .1); ctx.stroke();
+    var kick = landed ? Math.sin(t * (3 + 6 * e)) * u * (.08 + .55 * e) : Math.sin(t * (n < 4 ? 12 : 4)) * u * .3; ctx.beginPath(); ctx.moveTo(-u * .2, u * .6); ctx.lineTo(-u * .35 - kick * .5, u * 1.3); ctx.moveTo(u * .2, u * .6); ctx.lineTo(u * .35 + kick * .5, u * 1.3); ctx.stroke();
+    ctx.beginPath(); if (landed) { var wa = Math.sin(t * (3 + 6 * e)) * (.3 + .9 * e), up = -.6 - 1.4 * e; [-1, 1].forEach(function (k, j) { var an = (j && e < .3 ? .3 : up) + (j ? wa : -wa); ctx.moveTo(k * u * .3, -u * .05); ctx.lineTo(k * u * .3 + k * Math.cos(an) * u * .55, -u * .05 + Math.sin(an) * u * .55); }); } else { ctx.moveTo(-u * .35, -u * .1); ctx.lineTo(0, -u * .9); ctx.lineTo(u * .35, -u * .1); } ctx.stroke();
     ctx.fillStyle = '#ff9f43'; ctx.beginPath(); ctx.roundRect(-u * .42, -u * .2, u * .84, u * .9, u * .3); ctx.fill();
     if (lost) { ctx.fillStyle = '#ff5a6e'; [-1, 1].forEach(function (k) { ctx.beginPath(); ctx.arc(k * u * .5, -u * .05, u * .2, 0, 7); ctx.fill(); }); }
     ctx.fillStyle = '#ffe0bd'; ctx.beginPath(); ctx.arc(0, -u * .55, u * .42, 0, 7); ctx.fill();
@@ -56,6 +57,7 @@
     ctx.fillStyle = '#222'; var eyes = n <= 2 && !won && !lost ? 'big' : 'dot'; [-1, 1].forEach(function (k) { ctx.beginPath(); ctx.arc(k * u * .15, -u * .6, eyes === 'big' ? u * .09 : u * .05, 0, 7); ctx.fill(); });
     ctx.strokeStyle = '#a0303a'; ctx.lineWidth = u * .06; ctx.beginPath(); if (won || lost) ctx.arc(0, -u * .45, u * .16, .2, Math.PI - .2); else if (n <= 3) ctx.ellipse(0, -u * .38, u * .08, u * .1, 0, 0, 7); else ctx.arc(0, -u * .48, u * .12, .3, Math.PI - .3); ctx.stroke();
     ctx.restore();
+    if (landed) { var DN = n >= 7 ? 'FULL BOUNCY JIG!' : n >= 5 ? 'Happy hop!' : n >= 3 ? 'Wiggle wiggle' : n === 2 ? 'Noodle sway…' : 'Wobbly one-balloon shuffle'; ctx.font = '700 ' + Math.round(u * .55) + 'px Fredoka,sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 5; ctx.strokeStyle = '#fff'; ctx.strokeText(DN, hx, hy - u * 2.3); ctx.fillStyle = '#6a3a8a'; ctx.fillText(DN, hx, hy - u * 2.3); ctx.textAlign = 'left'; }
     if (lost) { ctx.fillStyle = '#d0f0ff'; for (var j = 0; j < 6; j++) { ctx.beginPath(); ctx.arc(bx - u + j * u * .4, py - H * .03 - Math.abs(Math.sin(t * 3 + j)) * u * .4, u * .08, 0, 7); ctx.fill(); } }
     if (won) for (var c2 = 0; c2 < 30; c2++) { ctx.fillStyle = COLS[c2 % 7]; ctx.fillRect((c2 * 97 + t * 60) % W, ((c2 * 53) + t * 140 * (1 + c2 % 3)) % H, 8, 12); }
     anim.parts = anim.parts.filter(function (q) { q.x += q.vx; q.y += q.vy; q.vy += .3; q.l -= .025; if (q.txt) { ctx.fillStyle = '#222'; ctx.font = '700 ' + Math.round(u * .6) + 'px Fredoka,sans-serif'; ctx.fillText(q.txt, q.x, q.y); } else { ctx.fillStyle = q.c; ctx.fillRect(q.x, q.y, 5, 5); } return q.l > 0; });
