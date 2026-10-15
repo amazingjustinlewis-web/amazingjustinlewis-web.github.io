@@ -23,7 +23,7 @@
     var r = BS.fire(foe.board, c); if (r.r === 'again') return; me.shots++;
     if (r.r === 'miss') me.view[c] = 'm'; else if (r.r === 'hit') me.view[c] = 'h'; else { r.cells.forEach(function (x) { me.view[x] = 's'; }); me.sunk++; }
     if (me.brain) me.brain.learn(c, r);
-    this.last = { by: i, c: c, r: r.r }; this.log = me.name + (r.r === 'miss' ? ': splash, a miss' : r.r === 'hit' ? ': HIT!' : ' sank the ' + r.ship + '!');
+    this.shotN = (this.shotN || 0) + 1; this.last = { by: i, c: c, r: r.r, n: this.shotN }; this.log = me.name + (r.r === 'miss' ? ': splash, a miss' : r.r === 'hit' ? ': HIT!' : ' sank the ' + r.ship + '!');
     if (r.over) { this.phase = 'over'; this.winner = i; this.log = me.name + ' wins in ' + me.shots + ' shots!'; return; }
     this.turn = 1 - i; this.aiMaybe();
   };
@@ -34,8 +34,8 @@
   Match.prototype.push = function () {
     var self = this;
     this.s.forEach(function (p, i) { var foe = self.s[1 - i];
-      self.emit(i, { t: 'bs', phase: self.phase, seat: i, me: p.name, foe: foe ? foe.name : '', turn: self.turn === i, mine: { grid: p.board.grid, shots: p.board.shots }, view: p.view, ready: p.ready, log: self.log, last: self.last, win: self.phase === 'over' ? self.winner === i : null, sunk: p.sunk, lost: foe ? foe.sunk : 0, shots: p.shots }); });
-    this.emit(-1, { phase: this.phase, turn: this.turn, log: this.log, last: this.last, winner: this.winner, s: this.s.map(function (p) { return { name: p.name, ai: p.ai, ready: p.ready, view: p.view, sunk: p.sunk, shots: p.shots }; }) });
+      self.emit(i, { t: 'bs', phase: self.phase, seat: i, me: p.name, foe: foe ? foe.name : '', turn: self.turn === i, mine: { grid: p.board.grid, shots: p.board.shots }, view: p.view, ready: p.ready, log: self.log, last: self.last, win: self.phase === 'over' ? self.winner === i : null, sunk: p.sunk, lost: foe ? foe.sunk : 0, shots: p.shots, reveal: self.phase === 'over' && foe ? { grid: foe.board.grid, shots: foe.board.shots } : null }); });
+    this.emit(-1, { phase: this.phase, turn: this.turn, log: this.log, last: this.last, winner: this.winner, s: this.s.map(function (p) { return { name: p.name, ai: p.ai, ready: p.ready, view: p.view, sunk: p.sunk, shots: p.shots, board: self.phase === 'over' ? { grid: p.board.grid, shots: p.board.shots } : null }; }) });
   };
   // grid html: kind 'enemy' (view only) or 'mine' (ships + shots)
   function gridHtml(N, cellFn) { var h = ''; for (var c = 0; c < N * N; c++) h += '<i data-c="' + c + '" class="' + cellFn(c) + '"></i>'; return h; }

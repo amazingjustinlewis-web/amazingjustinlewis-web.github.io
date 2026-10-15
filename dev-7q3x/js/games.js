@@ -7,7 +7,7 @@ window.DEV_GAMES = [
   { id: 'zero', name: 'Zero front page (draft)', ver: 'v0.1', url: 'zero/index.html', img: 'zero/shot.png', tag: 'New 0\u2011Phi home \u00b7 draft', mode: 'tab' },
   { id: 'rdrphone', name: 'Red Deer Rich \u00b7 phone mode', ver: 'v0.9-dev', url: 'rdr-phone/phone.html', img: 'rdr-phone/shot.png', tag: 'Play on one phone \u00b7 friends join \u00b7 Move to TV', mode: 'tab' },
   { id: 'hoptop', name: 'Hop Top', ver: 'v0.1', url: 'hoptop/index.html', img: 'hoptop/shot.jpg', tag: 'Peg triangle puzzle \u00b7 solo on a phone or TV' },
-  { id: 'broadside', name: 'Dangerous Waters', ver: 'v0.1.1', url: 'broadside/index.html', img: 'broadside/shot.jpg', tag: 'Classic battleships \u00b7 TV board + private phone fleets' },
+  { id: 'broadside', name: 'Dangerous Waters', ver: 'v0.1.2', url: 'broadside/index.html', img: 'broadside/shot.jpg', tag: 'Classic battleships \u00b7 TV board + private phone fleets' },
   { id: 'swish', name: 'Swish Flick', ver: 'v0.1.1', url: 'swish/index.html', img: 'swish/shot.jpg', tag: 'Flick-to-shoot arcade hoops' },
   { id: 'dunk', name: 'Splash Clown', ver: 'v0.1.1', url: 'dunk/index.html', img: 'dunk/shot.jpg', tag: 'Flick at the target, dunk the clown' },
   { id: 'puck', name: 'Glide Puck', ver: 'v0.2.1', url: 'puck/index.html', img: 'puck/shot.jpg', tag: 'Phone air hockey \u00b7 optional TV mirror' },

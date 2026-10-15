@@ -16,7 +16,7 @@
   <div id="lobQr"></div><div id="plist"></div><p id="lh">Scan to join. The first captain taps Start.</p></div></div>
 <div class="big" id="big" style="opacity:0"></div>
 <script>window.MINI = 'broadside';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script>
-<script src="../../cafe/js/games.js"></script><script src="rules.js"></script>
+<script src="../../cafe/js/games.js"></script><script src="rules.js"></script><script src="fx.js"></script>
 <script>
 (function () {
   var M, host, $ = function (i) { return document.getElementById(i); }, seats = {};
@@ -33,9 +33,11 @@
       el.querySelector('h2').textContent = p.name + '\u2019s waters' + (p.ai ? ' \uD83E\uDD16' : '');
       el.classList.toggle('turn', st.phase === 'battle' && st.turn === (1 - i));
       var v = foe ? foe.view : {}, last = st.last && st.last.by === 1 - i ? st.last.c : -1;
-      $('g' + i).innerHTML = Broadside.gridHtml(10, function (c) { return (v[c] || '') + (c === last ? ' new' : ''); });
+      var bd = st.phase === 'over' && p.board; $('g' + i).classList.toggle('reveal', !!bd);
+      $('g' + i).innerHTML = Broadside.gridHtml(10, bd ? function (c) { var sh = bd.grid[c] >= 0; return (sh ? 'ship ' : '') + (bd.shots[c] || '') + (sh && !bd.shots[c] ? ' alive' : ''); } : function (c) { return (v[c] || '') + (c === last ? ' new' : ''); });
       el.querySelector('.sub').textContent = st.phase === 'place' ? (p.ready ? 'Fleet hidden \u2714' : 'Placing ships\u2026') : (foe ? foe.sunk : 0) + '/5 of their ships sunk';
     });
+    if (st.last && st.last.n !== tv.n) { tv.n = st.last.n; BSFX.shot($('g' + (1 - st.last.by)), st.last.c, st.last.r !== 'miss'); }
     var b = $('big'); if (st.phase === 'over') { b.textContent = st.s[st.winner].name + ' wins!'; b.style.opacity = 1; } else b.style.opacity = 0;
   }
   Kit.over(function () { return M.phase === 'over'; }, 40000);

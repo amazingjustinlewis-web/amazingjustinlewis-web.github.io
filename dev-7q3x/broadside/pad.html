@@ -6,7 +6,7 @@
 <div id="small"><div class="grid" id="mine"></div><div class="note">your fleet</div></div><div class="row"><button class="btn go" id="start" style="display:none">START</button></div></div>
 <div class="st" id="st"></div>
 <script>window.MINI = 'broadside';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script>
-<script src="../../cafe/js/games.js"></script><script src="rules.js"></script>
+<script src="../../cafe/js/games.js"></script><script src="rules.js"></script><script src="fx.js"></script>
 <script>
 (function () {
   var $ = function (i) { return document.getElementById(i); }, S = null, solo = null, c;
@@ -20,12 +20,15 @@
     $('prow').style.display = place && !S.ready ? '' : 'none'; $('small').style.display = place ? 'none' : '';
     $('hd').textContent = place ? 'YOUR FLEET' : (S.foe + '\u2019s waters');
     var mine = function (c) { return (S.mine.grid[c] >= 0 ? 'ship ' : '') + (S.mine.shots[c] || '') + (S.last && S.last.by !== S.seat && S.last.c === c ? ' new' : ''); };
+    var rev = function (b) { return function (c) { var sh = b.grid[c] >= 0; return (sh ? 'ship ' : '') + (b.shots[c] || '') + (sh && !b.shots[c] ? ' alive' : ''); }; };
     var foe = function (c) { return (S.view[c] || '') + (S.last && S.last.by === S.seat && S.last.c === c ? ' new' : ''); };
-    $('big').innerHTML = Broadside.gridHtml(10, place ? mine : foe); $('mine').innerHTML = Broadside.gridHtml(10, mine);
+    $('big').innerHTML = Broadside.gridHtml(10, place ? mine : over && S.reveal ? rev(S.reveal) : foe); $('mine').innerHTML = Broadside.gridHtml(10, over ? rev(S.mine) : mine); $('big').classList.toggle('reveal', over); $('mine').classList.toggle('reveal', over);
+    if (over) $('hd').textContent = S.foe + '\u2019s fleet revealed';
     $('big').classList.toggle('aim', S.phase === 'battle' && S.turn);
     $('stat').textContent = place ? (S.ready ? 'Hidden! Waiting for ' + (S.foe || 'the other captain') + '\u2026' : 'Shuffle until you like it, then Ready') : over ? (S.win ? '\uD83C\uDFC6 You win! ' : '\uD83C\uDF0A Sunk! ') + S.log : (S.turn ? '\uD83C\uDFAF Your turn: tap their waters' : S.foe + ' is aiming\u2026') + ' \u00b7 ' + S.sunk + '/5 sunk';
     if (over) { $('start').style.display = ''; $('start').textContent = 'PLAY AGAIN'; }
-    if (S.last && S.last.by !== S.seat && navigator.vibrate) navigator.vibrate(S.last.r === 'miss' ? 10 : 60);
+    if (S.last && S.last.n !== draw.n) { draw.n = S.last.n; var hit = S.last.r !== 'miss', mineShot = S.last.by !== S.seat; BSFX.shot(mineShot ? $('mine') : $('big'), S.last.c, hit);
+      if (navigator.vibrate) navigator.vibrate(hit ? (mineShot ? [90, 40, 160] : [60, 30, 90]) : 15); }
   }
   $('big').addEventListener('click', function (e) { var d = e.target.closest('[data-c]'); if (d && S && S.phase === 'battle' && S.turn) send({ t: 'fire', c: +d.dataset.c }); });
   $('shuf').onclick = function () { send({ t: 'shuffle' }); }; $('ready').onclick = function () { send({ t: 'ready' }); };
