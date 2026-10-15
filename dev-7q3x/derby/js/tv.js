@@ -62,7 +62,7 @@
     if (game.phase === 'over' && game.phaseT > C.podiumSec && !EMBED) toLobby();
     // phones away for a while: AI drives their car
     game.players.forEach(function (p) { if (!p.ai) p.aiCover = !p.connected && now - (p.goneAt || now) > C.phys.aiCoverSec * 1000; });
-    render(dt); ui(); sendStates(now);
+    pollPads(); render(dt); ui(); sendStates(now);
     requestAnimationFrame(tick);
   }
   // ---------------------------------------------------------------- events -> fx, phones, feed
@@ -304,10 +304,10 @@
     $('cards').style.display = $('feed').style.display = inGame ? '' : 'none';
     $('cornerqr').style.display = inGame && net && net.status === 'online' ? '' : 'none';
     if (ph === 'lobby') {
-      var L = leader(), k = JSON.stringify([game.players.map(function (p) { return [p.name, p.color, p.ready, p.connected, p.type]; }), game.bots, flashMsg, L && L.name]);
+      var L = leader(), k = JSON.stringify([game.players.map(function (p) { return [p.name, p.color, p.ready, p.connected, p.type, p.boost, p.armour.front]; }), game.bots, flashMsg, L && L.name]);
       if (k !== uiKey) { uiKey = k;
-        $('plist').innerHTML = humans().map(function (p) { return '<span style="background:' + p.color + ';opacity:' + (p.connected ? 1 : 0.4) + '">' + esc(p.name) + ' \u00b7 ' + window.DDSim.carType(p.type).name + (p.ready ? ' \u2714' : '') + '</span>'; }).join('') || '<span style="background:#fff3;color:#fff">Waiting for drivers&hellip;</span>';
-        $('hint').innerHTML = (L ? '<b>' + esc(L.name) + '</b> starts the derby from their phone' : 'Scan to join (up to ' + C.maxPlayers + ')') + ' \u00b7 AI fill ' + (game.bots ? 'ON' : 'OFF') + ' \u00b7 ' + game.rounds + ' rounds, ' + C.lives + ' lives each' + (flashMsg && performance.now() - flashAt < 4000 ? '<br><span style="color:#ff9">' + esc(flashMsg) + '</span>' : '') + '<br><small>Keyboard: Enter = start, B = AI on/off</small>';
+        $('plist').innerHTML = humans().map(function (p) { return '<span style="background:' + p.color + ';opacity:' + (p.connected ? 1 : 0.4) + '">' + esc(p.name) + ' \u00b7 ' + window.DDSim.carType(p.type).name + (p.pad != null ? ' \u00b7 ' + C.boosts[p.boost].name + ' \u00b7 ' + C.armour[p.armour.front].name : '') + (p.ready ? ' \u2714' : '') + '</span>'; }).join('') || '<span style="background:#fff3;color:#fff">Waiting for drivers&hellip;</span>';
+        $('hint').innerHTML = (L ? '<b>' + esc(L.name) + '</b> starts the derby from their phone' : 'Scan to join (up to ' + C.maxPlayers + ')') + ' \u00b7 AI fill ' + (game.bots ? 'ON' : 'OFF') + ' \u00b7 ' + game.rounds + ' rounds, ' + C.lives + ' lives each' + (flashMsg && performance.now() - flashAt < 4000 ? '<br><span style="color:#ff9">' + esc(flashMsg) + '</span>' : '') + '<br><small>Controller: A = join / start \u00b7 D-pad = car + boost \u00b7 X = armour \u00b7 Menu = settings. Keyboard: Enter = start, B = AI on/off</small>';
       }
     }
     if (inGame && game.sim) {
@@ -359,6 +359,35 @@
     if (m.t === 'leave') { p.left = true; p.connected = false; p.goneAt = performance.now() - 1e6; if (game.phase === 'lobby') game.players.splice(game.players.indexOf(p), 1); }
   }
   function onPhoneClose(conn) { var p = conn._p; if (p && p.conn === conn) { p.connected = false; p.goneAt = performance.now(); if (game.phase === 'lobby') setTimeout(function () { if (!p.connected && game.phase === 'lobby') { var i = game.players.indexOf(p); if (i >= 0) game.players.splice(i, 1); } }, 30000); } }
+  // ---------------------------------------------------------------- v0.3.1 Xbox / standard gamepads (up to 4), alongside phones
+  // A joins (lobby) / boosts. Left stick steers, RT gas, LT brake + reverse, RB boost too. Lobby: D-pad left/right = car, up/down = boost type, A again = start (pad leader). Menu = settings.
+  var PADSET = window.ZTPPad ? window.ZTPPad.init({ game: 'derby', sticks: { L: 'Steer', R: 'Not used' }, invert: false, corner: 'br' }) : null, padP = {}, MAXPADS = 4;
+  window.addEventListener('gamepaddisconnected', function (e) { var p = padP[e.gamepad.index]; if (p) { p.connected = false; p.goneAt = performance.now(); if (game.phase === 'lobby') { game.players.splice(game.players.indexOf(p), 1); delete padP[e.gamepad.index]; } } });
+  function pollPads() {
+    var gp = navigator.getGamepads ? navigator.getGamepads() : []; if (!gp) return;
+    for (var i = 0; i < gp.length; i++) { var g = gp[i]; if (!g || !g.connected) continue;
+      var B = g.buttons.map(function (b) { return b ? (typeof b === 'object' ? b.value : b) : 0; }), p = padP[i], pr = (p && p.prevB) || (pollPads.pre[i] || []), dn = function (k) { return (B[k] || 0) > 0.5 && !((pr[k] || 0) > 0.5); };
+      pollPads.pre[i] = B;
+      if (PADSET && PADSET.isOpen()) { if (p) p.prevB = B; continue; }
+      if (!p) { if (dn(0) && Object.keys(padP).length < MAXPADS && humans().length < C.maxPlayers) {
+          p = padP[i] = { id: 'pad' + i + '-' + Date.now().toString(36), name: 'Pad ' + (i + 1), pad: i, color: freeColor(), type: 'muscle', armour: { front: 'plate', side: 'none', back: 'none' }, boost: 'ram', score: 0, connected: true, ready: true, tot: { dmg: 0, kos: 0, ringouts: 0, crushes: 0, air: 0, wins: 0 } };
+          if (game.phase !== 'lobby') p.spectator = true; game.players.push(p); if (game.phase === 'lobby') { var ai = game.players.filter(function (q) { return q.ai; }); if (ai.length) game.players.splice(game.players.indexOf(ai[0]), 1); }
+          flash(p.name + ' joined'); p.prevB = B; } continue; }
+      p.connected = true; p.prevB = B;
+      if (game.phase === 'lobby') {
+        var ct = C.cars.map(function (c) { return c.id; }), ci = ct.indexOf(p.type);
+        if (dn(15)) p.type = ct[(ci + 1) % ct.length]; if (dn(14)) p.type = ct[(ci + ct.length - 1) % ct.length];
+        if (dn(12) || dn(13)) { var bi = BST.indexOf(p.boost); p.boost = BST[(bi + (dn(12) ? 1 : 2)) % 3]; }
+        if (dn(2)) { var k = ['plate', 'spike', 'none'], ai2 = k.indexOf(p.armour.front); p.armour = { front: k[(ai2 + 1) % 3], side: k[(ai2 + 1) % 3] === 'spike' ? 'none' : k[(ai2 + 1) % 3], back: 'none' }; }
+        if (dn(0) && (leader() === p || !leader() || leader().pad != null)) startMatch(); continue; }
+      if (game.phase === 'over') { if (dn(0)) toLobby(); continue; }
+      var c = game.sim && game.sim.byId(p.id); if (!c || p.aiCover) continue;
+      var rd = PADSET ? PADSET.read(g) : { L: [g.axes[0] || 0, g.axes[1] || 0] }, sx = Math.abs(rd.L[0]) < 0.15 ? 0 : rd.L[0];
+      c.inp.abs = null; c.inp.steer = Math.max(-1, Math.min(1, sx * 1.15)); c.inp.thr = (B[7] || 0) - (B[6] || 0);
+      var bp = (B[0] || 0) > 0.5 || (B[5] || 0) > 0.5; if (c.boostType === 'sustain') c.inp.boost = bp; else if (dn(0) || dn(5)) c.inp.boost = true;
+    }
+  }
+  pollPads.pre = {};
   function controllerUrl(code) { var base = location.protocol === 'file:' ? C.liveControllerUrl : location.href.replace(/[^/]*([?#].*)?$/, '') + 'controller.html'; return base + '?room=' + code + (LOCAL ? '&local=1' : ''); }
   function qrSvg(text) { var q = window.qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); }
   function setNetUi(st, code, detail) {

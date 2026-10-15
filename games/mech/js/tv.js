@@ -647,6 +647,7 @@
   // ================================================================== Xbox / standard gamepad (Gamepad API, hot-plug; keyboard + mouse keep working)
   // FPS mode while a controller is in use: crosshair fixed at centre . RS turns the view (yaw/pitch) . LS walk + strafe . RT/LT fire . L3 brace . A fire-tap / start . X reload . Y next weapon
   // LB / RB previous / next weapon . D-pad left/up/right = weapons 1-3 . B autopilot on/off . View mute . Menu start . hold L3+R3 eject
+  var PADSET = window.ZTPPad ? window.ZTPPad.init({ game: 'ironstride', sticks: { L: 'Move', R: 'Look' }, invert: true, invertX: true, corner: 'br', canOpen: function () { return phase !== 'lobby'; } }) : null;
   var GP = { idx: -1, prev: [], aim: [0, 0], used: false, ejT: 0, fps: false, acc: 0 };
   // v0.4.1 FPS mode: while a controller drives the pilot seat the crosshair is locked to screen centre and the right stick turns the view
   function setFps(on) { if (GP.fps === on) return; GP.fps = on; document.body.classList.toggle('gpfps', on); GP.acc = 0; if (seats[0]) { seats[0].ax = seats[0].ay = 0; seats[0].ix = seats[0].iy = 0; } }
@@ -666,7 +667,8 @@
     var any = B.some(function (v) { return v > 0.5; });
     if (phase === 'lobby') { if (any && !GP.armed) { GP.armed = true; SFX.unlock(); if (!kbMode) kbStart(); else if (down(0) || down(9)) startGame(); } if (!any) GP.armed = false; return; }
     if (!kbMode || !seats[0] || phase !== 'play') return;
-    var s = seats[0], ax = g.axes || [], L = dz(ax[0] || 0, ax[1] || 0, 0.18), R = dz(ax[2] || 0, ax[3] || 0, 0.14);
+    if (PADSET && PADSET.isOpen()) { setMove(0, 0); if (GP.rt) { GP.rt = false; seats[0].fire = false; } return; }   // v0.4.2 settings panel open: pause pad input
+    var s = seats[0], rd = PADSET ? PADSET.read(g) : { L: [(g.axes || [])[0] || 0, (g.axes || [])[1] || 0], R: [(g.axes || [])[2] || 0, (g.axes || [])[3] || 0] }, L = dz(rd.L[0], rd.L[1], 0.18), R = dz(rd.R[0], rd.R[1], 0.14);
     var moving = L[0] || L[1];
     if (moving) { GP.used = true; setMove(L[0], -L[1]); } else if (GP.used) { GP.used = false; kbMove(); }
     setFps(true);

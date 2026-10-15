@@ -32,3 +32,6 @@ TV + phones mech prototype. `index.html` = TV (three.js cockpit view), `controll
 
 ## v0.4.1 (v0.4 frozen in v0.4/)
 - Controller FPS mode: whenever a gamepad drives the pilot seat, the crosshair locks to screen centre and the mouse cursor is hidden/ignored. RS turns the view (deadzone 0.14, response curve u^1.7, 120 deg/s yaw + up to 110 deg/s boost ramping in over 0.35 s at full tilt, 75 deg/s pitch; `C.gpFps`). LS walks/strafes, RT or LT fires, L3 braces. Shots go exactly to the centre (no reticle pull). Switches back to phone/mouse aiming automatically when the controller disconnects. Test: /workspace/passes/oct14/mech_fps_test.py.
+
+## v0.4.2 (v0.4.1 frozen in v0.4.1/)
+- Controller settings via the shared /assets/js/ztp-pad-settings.js (gear bottom-right, or Menu during play): swap sticks, invert look Y, invert look X; localStorage ztp-pad-ironstride.

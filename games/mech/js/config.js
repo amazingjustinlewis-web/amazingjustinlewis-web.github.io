@@ -2,7 +2,7 @@
    Every gameplay number lives here. The TV and the phones both read this file. */
 (function (root) {
   var C = root.MECH_CONFIG = {
-    version: '0.4.1',
+    version: '0.4.2',
     title: 'IRON STRIDE',
     peerPrefix: 'ztp-ironstride-v01-',
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }],
