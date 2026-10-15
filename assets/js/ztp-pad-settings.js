@@ -1,5 +1,5 @@
 /* 0-Phi shared controller settings: a subtle gear in a corner + a tiny panel (stick diagram, southpaw swap, invert look).
-   Usage: var pad = ZTPPad.init({ game: 'derby', sticks: { L: 'Steer', R: 'Not used' }, invert: true, invertX: true, canOpen: fn, corner: 'br' });
+   Usage (extra: [[key, label]] adds game checkboxes, read via pad.opts[key]): var pad = ZTPPad.init({ game: 'derby', sticks: { L: 'Steer', R: 'Not used' }, invert: true, invertX: true, canOpen: fn, corner: 'br' });
    pad.read(gamepad) -> { L: [x, y], R: [x, y] }  (swap + inverts applied to the look stick R). pad.isOpen(). pad.opts = { swap, invY, invX }.
    Start/Menu (button 9) toggles the panel; D-pad up/down + A to change, B or Start to close. Saved in localStorage per game. */
 (function (root) {
@@ -15,7 +15,7 @@
     var c = o.corner || 'br', pos = (c[0] === 't' ? 'top:' : 'bottom:') + '12px;' + (c[1] === 'l' ? 'left:' : 'right:') + '12px;', ppos = (c[0] === 't' ? 'top:' : 'bottom:') + '54px;' + (c[1] === 'l' ? 'left:' : 'right:') + '12px;';
     var gear = document.createElement('button'); gear.className = 'ztpg'; gear.style.cssText = pos; gear.title = 'Controller settings'; gear.innerHTML = '&#9881;';
     var panel = document.createElement('div'); panel.className = 'ztpp'; panel.style.cssText = ppos;
-    var rows = [['swap', 'Swap sticks (southpaw)']]; if (o.invert !== false) rows.push(['invY', 'Invert look up/down']); if (o.invertX) rows.push(['invX', 'Invert look left/right']);
+    var rows = [['swap', 'Swap sticks (southpaw)']]; if (o.invert !== false) rows.push(['invY', 'Invert look up/down']); if (o.invertX) rows.push(['invX', 'Invert look left/right']); (o.extra || []).forEach(function (r) { rows.push(r); });
     panel.innerHTML = '<h4>Controller</h4><div class="pd"><div><b>&#9673;</b><span data-s="L"></span></div><div><b>&#9673;</b><span data-s="R"></span></div></div>' +
       rows.map(function (r) { return '<label data-k="' + r[0] + '"><input type="checkbox"> ' + r[1] + '</label>'; }).join('') + '<small>Menu button opens this \u00b7 D-pad + A to change \u00b7 B closes</small>';
     document.body.appendChild(gear); document.body.appendChild(panel);

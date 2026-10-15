@@ -1,7 +1,7 @@
 /* DEMOLITION DERBY v0.2 - every tunable number. TV and phones read this file. */
 (function (root) {
   root.DD_CONFIG = {
-    version: '0.3.1',
+    version: '0.3.2',
     maxPlayers: 8,
     colors: ['#ff4b55', '#3aa8ff', '#45e07a', '#ffd23f', '#ff8a2a', '#c16bff', '#3fe0d0', '#ff6bc1'],
     rounds: 3, lives: 2, countdownSec: 3, roundOverSec: 4, podiumSec: 60,

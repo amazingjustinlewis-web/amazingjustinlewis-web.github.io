@@ -93,7 +93,9 @@
       // absolute (joystick) input -> steer + throttle
       var steer = clamp(inp.steer + (c.pull || 0), -1, 1), thr = inp.thr;   // v0.3: a missing wheel pulls the car toward it
       if (inp.abs) { var m = Math.min(1, Math.hypot(inp.abs[0], inp.abs[1])); if (m > 0.15) { var ta = Math.atan2(inp.abs[0], inp.abs[1]), d = wrap(ta - c.a);
-        if (Math.abs(d) > 2.4 && fwd < 4) { thr = -m; steer = clamp(-wrap(ta + Math.PI - c.a) * 2.5, -1, 1); } else { thr = m * (Math.abs(d) > 1.6 ? 0.4 : 1); steer = clamp(d * 2.5, -1, 1); } } else { thr = 0; steer = 0; } }
+        if (inp.trig != null) { thr = inp.trig; var rev = thr < 0 && fwd < 1;   // v0.3.2 controller stick-aim: triggers = gas/brake, stick = where to face (reversing: aim where you want to back up)
+          steer = rev ? clamp(-wrap(ta + Math.PI - c.a) * 2.5, -1, 1) : clamp(d * 2.5, -1, 1); }
+        else if (Math.abs(d) > 2.4 && fwd < 4) { thr = -m; steer = clamp(-wrap(ta + Math.PI - c.a) * 2.5, -1, 1); } else { thr = m * (Math.abs(d) > 1.6 ? 0.4 : 1); steer = clamp(d * 2.5, -1, 1); } } else { thr = inp.trig != null ? inp.trig : 0; steer = 0; } }
       // boost
       var mul = 1;
       if (c.boostType === 'sustain') { if (inp.boost && c.boost > 0.02) { c.boostT = 0.1; c.boost = Math.max(0, c.boost - dt / B.dur); mul = B.mul; thr = Math.max(thr, 1); } else { c.boostT = 0; c.boost = Math.min(1, c.boost + dt * c.bRate * B.regen / B.dur * 3); } }

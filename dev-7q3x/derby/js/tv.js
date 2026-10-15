@@ -147,7 +147,7 @@
     initFx(); resize(); window.addEventListener('resize', resize);
   }
   function resize() { renderer.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); }
-  function clearCars() { for (var k in carMeshes) scene.remove(carMeshes[k].g); carMeshes = {}; }
+  function clearCars() { for (var k in carMeshes) { scene.remove(carMeshes[k].g); if (carMeshes[k].aimR) { scene.remove(carMeshes[k].aimR); scene.remove(carMeshes[k].aimT); } } carMeshes = {}; }
   function carMesh(c) {
     var T = c.T, g = new R3.Group(), col = new R3.Color(c.color), s = T.size;
     var body = new R3.Mesh(new R3.BoxGeometry(s[0], s[2] * 0.55, s[1]), new R3.MeshLambertMaterial({ color: col })); body.position.y = s[2] * 0.45; g.add(body);
@@ -178,7 +178,10 @@
     var sh = new R3.Mesh(new R3.CircleGeometry(s[1] * 0.42, 16), new R3.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.35, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.renderOrder = 1;
     g.scale.setScalar(1.25); sh.scale.setScalar(1.25); scene.add(sh); scene.add(g);
     var tag = document.createElement('div'); tag.className = 'tag'; tag.innerHTML = '<span></span><div class="hb"><i></i></div>'; tag.style.color = c.color; $('tags').appendChild(tag);
-    return { g: g, sh: sh, tag: tag, body: { material: paint }, crumple: body, smoke: 0, sed: sed };
+    var aimR = null, aimT = null;
+    if (!c.ai) { aimR = new R3.Mesh(new R3.RingGeometry(2.6, 3.0, 40), new R3.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.35, depthWrite: false })); aimR.rotation.x = -Math.PI / 2; scene.add(aimR);
+      var tg = new R3.BufferGeometry(); tg.setAttribute('position', new R3.Float32BufferAttribute([0, 0, 0.75, -0.5, 0, -0.35, 0.5, 0, -0.35], 3)); aimT = new R3.Mesh(tg, new R3.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85, side: 2, depthWrite: false })); aimT.visible = false; aimT.scale.setScalar(1.7); scene.add(aimT); }
+    return { aimR: aimR, aimT: aimT, g: g, sh: sh, tag: tag, body: { material: paint }, crumple: body, smoke: 0, sed: sed };
   }
   var SED_M = null;
   function sedMats() { SED_M = { glass: new R3.MeshLambertMaterial({ color: 0x9fd0e8, transparent: true, opacity: 0.45, side: 2, depthWrite: false }), trim: new R3.MeshLambertMaterial({ color: 0x18181c, side: 2 }), tyre: new R3.MeshLambertMaterial({ color: 0x111111 }) }; }
@@ -223,7 +226,7 @@
     }
     if (!S) return;
     S.cars.forEach(function (c) { var m = carMeshes[c.id]; if (!m || !m.sed) return;
-      if (c.fresh) { c.fresh = false; scene.remove(m.g); scene.remove(m.sh); m.tag.remove(); carMeshes[c.id] = carMesh(c); return; }   // back through the gate: a fresh car
+      if (c.fresh) { c.fresh = false; scene.remove(m.g); if (m.aimR) { scene.remove(m.aimR); scene.remove(m.aimT); } scene.remove(m.sh); m.tag.remove(); carMeshes[c.id] = carMesh(c); return; }   // back through the gate: a fresh car
       var sp = Math.hypot(c.vx, c.vy), P = m.sed.parts;
       for (var k in P) { var p = P[k]; if (p.st !== 2) continue; var n = p.node, f = Math.min(1, sp / 9);
         if (p.kind === 'hood') n.rotation.x = 0.08 + (0.25 + 0.6 * Math.abs(Math.sin(t * (4 + sp * 0.4) + p.ph))) * f;   // flaps open/closed while driving
@@ -281,6 +284,9 @@
       S.cars.forEach(function (c) { var m = carMeshes[c.id]; if (!m) return;
         var vis = c.state === 'drive' || c.state === 'fall' || c.state === 'enter';
         m.g.visible = vis; m.sh.visible = vis && c.state !== 'fall';
+        if (m.aimR) { var gy0 = window.DDSim.ground(c.x, c.y) + 0.08, ab = c.inp.abs, held = vis && c.state === 'drive' && ab && Math.hypot(ab[0], ab[1]) > 0.25, ta0 = held ? Math.atan2(ab[0], ab[1]) : 0;
+          m.aimR.visible = vis && c.state !== 'fall'; m.aimR.position.set(c.x, gy0, c.y); m.aimT.visible = !!held;
+          if (held) { m.aimT.position.set(c.x + Math.sin(ta0) * 4.2, gy0 + 0.6 + Math.sin(performance.now() / 180) * 0.12, c.y + Math.cos(ta0) * 4.2); m.aimT.rotation.y = ta0; } }
         m.g.position.set(c.x, c.z, c.y); m.g.rotation.y = c.a;
         var pitch = 0; if (c.air) pitch = -Math.max(-0.5, Math.min(0.5, c.vz * 0.04)); else { var r = Math.hypot(c.x, c.y); if (r < A.moundR) { var fx = Math.sin(c.a), fy = Math.cos(c.a), rad = (c.x * fx + c.y * fy) / Math.max(0.01, r); pitch = rad * Math.atan(A.moundH / A.moundR); } }
         m.g.rotation.x = c.state === 'fall' ? (A.R - Math.hypot(c.x, c.y)) * 0.08 : pitch;
@@ -361,7 +367,7 @@
   function onPhoneClose(conn) { var p = conn._p; if (p && p.conn === conn) { p.connected = false; p.goneAt = performance.now(); if (game.phase === 'lobby') setTimeout(function () { if (!p.connected && game.phase === 'lobby') { var i = game.players.indexOf(p); if (i >= 0) game.players.splice(i, 1); } }, 30000); } }
   // ---------------------------------------------------------------- v0.3.1 Xbox / standard gamepads (up to 4), alongside phones
   // A joins (lobby) / boosts. Left stick steers, RT gas, LT brake + reverse, RB boost too. Lobby: D-pad left/right = car, up/down = boost type, A again = start (pad leader). Menu = settings.
-  var PADSET = window.ZTPPad ? window.ZTPPad.init({ game: 'derby', sticks: { L: 'Steer', R: 'Not used' }, invert: false, corner: 'br' }) : null, padP = {}, MAXPADS = 4;
+  var PADSET = window.ZTPPad ? window.ZTPPad.init({ game: 'derby', sticks: { L: 'Steer', R: 'Not used' }, invert: false, extra: [['classic', 'Classic steering (left/right)']], corner: 'br' }) : null, padP = {}, MAXPADS = 4;
   window.addEventListener('gamepaddisconnected', function (e) { var p = padP[e.gamepad.index]; if (p) { p.connected = false; p.goneAt = performance.now(); if (game.phase === 'lobby') { game.players.splice(game.players.indexOf(p), 1); delete padP[e.gamepad.index]; } } });
   function pollPads() {
     var gp = navigator.getGamepads ? navigator.getGamepads() : []; if (!gp) return;
@@ -383,7 +389,9 @@
       if (game.phase === 'over') { if (dn(0)) toLobby(); continue; }
       var c = game.sim && game.sim.byId(p.id); if (!c || p.aiCover) continue;
       var rd = PADSET ? PADSET.read(g) : { L: [g.axes[0] || 0, g.axes[1] || 0] }, sx = Math.abs(rd.L[0]) < 0.15 ? 0 : rd.L[0];
-      c.inp.abs = null; c.inp.steer = Math.max(-1, Math.min(1, sx * 1.15)); c.inp.thr = (B[7] || 0) - (B[6] || 0);
+      var trig = (B[7] || 0) - (B[6] || 0);
+      if (PADSET && PADSET.opts.classic) { c.inp.abs = null; c.inp.trig = null; c.inp.steer = Math.max(-1, Math.min(1, sx * 1.15)); c.inp.thr = trig; }
+      else { var ax = rd.L[0], ay = rd.L[1], mg = Math.hypot(ax, ay); c.inp.trig = trig; c.inp.abs = mg > 0.25 ? [ax, ay] : [0, 0]; }   // stick-aim: screen up = arena far side (-y), matches the 3/4 camera
       var bp = (B[0] || 0) > 0.5 || (B[5] || 0) > 0.5; if (c.boostType === 'sustain') c.inp.boost = bp; else if (dn(0) || dn(5)) c.inp.boost = true;
     }
   }

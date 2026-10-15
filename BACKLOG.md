@@ -49,3 +49,7 @@ Done in menu2 for reference: the launching phone is the game's host (it can end 
 - [ ] Layer 2, quick presets behind the small gear (shared ztp-pad-settings.js): Standard, Southpaw, Inverted (plus the swap and invert checkboxes that exist today).
 - [ ] Layer 3, full "map anything to anything" remapping for deep players and adaptive / accessibility controllers (e.g. one-handed designs), saved per player and per game.
 - [ ] Someday: custom 0-Phi controllers.
+
+## Demolition Derby, future (Oct 15, 2026)
+- [ ] More modes on the same bustable car physics: full-contact racing, and a stunt / trick scoring mode.
+- [ ] Hand-modelled "hero wreck" variants for each car (wrapped around a pole, nose-planted, folded in half), swapped in for big slow-motion crash moments.

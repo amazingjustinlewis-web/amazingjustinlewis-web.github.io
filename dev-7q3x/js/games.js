@@ -7,7 +7,7 @@ window.DEV_GAMES = [
   { id: 'zero', name: 'Zero front page (draft)', ver: 'v0.1', url: 'zero/index.html', img: 'zero/shot.png', tag: 'New 0\u2011Phi home \u00b7 draft', mode: 'tab' },
   { id: 'rdrphone', name: 'Red Deer Rich \u00b7 phone mode', ver: 'v0.9-dev', url: 'rdr-phone/phone.html', img: 'rdr-phone/shot.png', tag: 'Play on one phone \u00b7 friends join \u00b7 Move to TV', mode: 'tab' },
   { id: 'lostsock', name: 'Lost Sock', ver: 'v0.2', url: 'lostsock/index.html', img: 'lostsock/shot.png', tag: 'Sock artillery \u00b7 phones \u00b7 WIP' },
-  { id: 'derby', name: 'Demolition Derby', ver: 'v0.3.1', url: 'derby/index.html', img: 'derby/shot.png', tag: 'Car smash \u00b7 phones \u00b7 WIP' },
+  { id: 'derby', name: 'Demolition Derby', ver: 'v0.3.2', url: 'derby/index.html', img: 'derby/shot.png', tag: 'Car smash \u00b7 phones \u00b7 WIP' },
   { id: 'mechsquad', name: 'Iron Stride Squad', ver: 'v0.5-dev', url: 'mech-squad/index.html', img: 'mech-squad/shot.png', tag: 'Controllers = small Striders \u00b7 phones = giant Titans' },
   { id: 'rescue', name: 'Red Deer Rescue', ver: 'v0.1', url: '../games/rescue/index.html', img: '../games/rescue/shots/cover-card.webp', tag: 'Hero crawler \u00b7 phones vote' },
   { id: 'rdr', name: 'Red Deer Rich', ver: 'v0.8', url: '../games/red-deer-rich/index.html', img: '../assets/img/red-deer-rich/cover-card.webp', tag: 'Board game \u00b7 phones' },
