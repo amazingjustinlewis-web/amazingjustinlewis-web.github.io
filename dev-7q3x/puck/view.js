@@ -11,13 +11,16 @@
     return { p: p, pv: seat === 1 ? [-st.p[2], -st.p[3]] : [st.p[2], st.p[3]], me: f(st.m[seat][0], st.m[seat][1]), them: f(st.m[1 - seat][0], st.m[1 - seat][1]) };
   };
   View.prototype.update = function (st, seat, dt) {
-    var W = this.cv.clientWidth, H = this.cv.clientHeight, F = this.frame(st, seat), sOut = Math.min(W / 1.06, H / 2.12), sIn = Math.max(sOut, Math.min(H / 1.1, W / .62)), k = 1 - Math.exp(-dt * 5);
+    var W = this.cv.clientWidth, H = this.cv.clientHeight, F = this.frame(st, seat), Z = 1 / 1.15, sOut = Math.min(W / 1.06, H / 2.12) * Z, sIn = Math.max(sOut, Math.min(H / 1.1, W / .62) * Z), k = 1 - Math.exp(-dt * 5);
     var home = F.pv[1] < -.05 || F.p[1] < 1, ts, tcx, tcy;
-    if (this.mode === 'radar') { ts = W / 1.06; tcx = .5; tcy = H / 2 / ts - .03; }   // own goal line just above the bottom edge
+    // goal celebration: fly in to the goal that was scored on, then hard-cut back
+    if (st.cel > 0) { var gy = (st.cw === seat) ? 2 : 0, cs = Math.min(W / .7, H / .9), kk = 1 - Math.exp(-dt * 4); this.celOn = true; this.s += (cs - this.s) * kk; this.cx += (.5 - this.cx) * kk; this.cy += (gy + (gy ? -.25 : .25) - this.cy) * kk; this.F = F; return; }
+    var cut = this.celOn; this.celOn = false;
+    if (this.mode === 'radar') { ts = W / 1.06 * Z; tcx = .5; tcy = H / 2 / ts - .03; }   // own goal line just above the bottom edge
     else if (this.mode === 'auto') {
       // 1) precise framing. In: your half (bottom just below your goal). Out: far top edge of the board in view, reached
       //    half by zooming out and half by shifting up.
-      var vIn = H / sIn, bIn = -.02, need = (2.03 - (bIn + vIn)) / 2, vOut = vIn + need, bOut = bIn + need;
+      var vIn = H / sIn, bIn = -.02, need = Math.max(0, 2.03 - (bIn + vIn)) / 2, vOut = vIn + need, bOut = bIn + need;
       // 2) openness = how far the puck is into their half; leaky integrator: fills gently, drains faster, settles at equilibrium
       var o = Math.max(0, Math.min(1, (F.p[1] - .85) / .4)); if (F.pv[1] < -.4) o *= .4;
       this.lvl = this.lvl == null ? o : this.lvl; this.lvl += (o - this.lvl) * (o > this.lvl ? 1.4 : 4) * dt;
@@ -26,13 +29,13 @@
       this.ax = this.ax == null ? .5 : this.ax + ((F.p[0] + F.me[0]) / 2 - this.ax) * (1 - Math.exp(-dt * 2.5));
       ts = H / v; tcy = b + v / 2; tcx = this.ax;
       // 3) soft critically damped spring on top
-      var K = 30, D = 2 * Math.sqrt(K), sp = this.sp || (this.sp = { s: [ts, 0], x: [tcx, 0], y: [tcy, 0] });
+      var K = 30, D = 2 * Math.sqrt(K), sp = this.sp || (this.sp = { s: [ts, 0], x: [tcx, 0], y: [tcy, 0] }); if (cut) { sp.s = [ts, 0]; sp.x = [tcx, 0]; sp.y = [tcy, 0]; }
       [['s', ts], ['x', tcx], ['y', tcy]].forEach(function (q) { var a = sp[q[0]]; a[1] += (K * (q[1] - a[0]) - D * a[1]) * dt; a[0] += a[1] * dt; });
       this.s = sp.s[0]; this.cx = sp.x[0]; this.cy = sp.y[0]; this.clampX(W); this.F = F; return;
     }
     else { ts = sIn; var hv = H / 2 / ts, homeCy = hv - .02; tcx = F.p[0]; tcy = home ? homeCy : Math.max(homeCy, F.p[1]); var sk = home ? 1 - Math.exp(-dt * 14) : 1 - Math.exp(-dt * 3);
-      this.s = ts; this.cy += (tcy - this.cy) * sk; if (home) this.cy = Math.min(this.cy, homeCy + Math.max(0, F.p[1] - .8)); this.cx += (tcx - this.cx) * (1 - Math.exp(-dt * 6)); this.clampX(W); this.F = F; return; }
-    this.s = this.s ? this.s + (ts - this.s) * k : ts; this.cx += (tcx - this.cx) * k; this.cy += (tcy - this.cy) * k; this.clampX(W); this.F = F;
+      if (cut) this.cy = tcy; this.s = ts; this.cy += (tcy - this.cy) * sk; if (home) this.cy = Math.min(this.cy, homeCy + Math.max(0, F.p[1] - .8)); this.cx += (tcx - this.cx) * (1 - Math.exp(-dt * 6)); this.clampX(W); this.F = F; return; }
+    this.s = this.s && !cut ? this.s + (ts - this.s) * k : ts; this.cx += (tcx - this.cx) * k; this.cy += (tcy - this.cy) * k; this.clampX(W); this.F = F;
   };
   View.prototype.clampX = function (W) { var hw = W / 2 / this.s; if (hw >= .53) this.cx = .5; else this.cx = Math.max(hw - .03, Math.min(1.03 - hw, this.cx)); };
   View.prototype.toScr = function (x, y) { var W = this.cv.clientWidth, H = this.cv.clientHeight; return [W / 2 + (x - this.cx) * this.s, H / 2 - (y - this.cy) * this.s]; };
@@ -47,10 +50,13 @@
     ctx.beginPath(); ctx.arc(c[0], c[1], .16 * s, radar ? Math.PI : 0, radar ? 2 * Math.PI : 7); ctx.stroke();
     ctx.strokeStyle = '#3aa8ff66'; [0, 2].forEach(function (y) { if (radar && y === 2) return; var g = S(.5, y); ctx.beginPath(); ctx.arc(g[0], g[1], .2 * s, y ? 0 : Math.PI, y ? Math.PI : 2 * Math.PI); ctx.stroke(); });
     ctx.fillStyle = '#111'; [0, 2].forEach(function (y) { if (radar && y === 2) return; var g0 = S(.5 - C.GOAL / 2, y), g1 = S(.5 + C.GOAL / 2, y); ctx.fillRect(g0[0], g0[1] - (y ? .025 * s : 0), g1[0] - g0[0], .025 * s); });
-    function disc(x, y, r, col, ring) { var q = S(x, y); ctx.beginPath(); ctx.arc(q[0], q[1] + r * s * .12, r * s, 0, 7); ctx.fillStyle = '#0003'; ctx.fill(); ctx.beginPath(); ctx.arc(q[0], q[1], r * s, 0, 7); ctx.fillStyle = col; ctx.fill(); if (ring) { ctx.beginPath(); ctx.arc(q[0], q[1], r * s * .45, 0, 7); ctx.fillStyle = '#fff6'; ctx.fill(); } }
-    if (!radar || F.them[1] < 1) disc(F.them[0], F.them[1], C.MR, colors[1 - seat] || '#888', true);
-    disc(F.me[0], F.me[1], C.MR, colors[seat] || '#fc3', true);
-    if (!radar || F.p[1] < 1 + C.PR) disc(F.p[0], F.p[1], C.PR, '#1b1b2a');
+    function disc(x, y, r, col, ring, hop) { var q = S(x, y); if (hop) { ctx.beginPath(); ctx.ellipse(q[0], q[1], r * s * (1 - hop * .3), r * s * (1 - hop * .3) * .6, 0, 0, 7); ctx.fillStyle = '#0003'; ctx.fill(); q = [q[0], q[1] - hop * r * s * 1.6]; } ctx.beginPath(); ctx.arc(q[0], q[1] + r * s * .12, r * s, 0, 7); ctx.fillStyle = '#0003'; ctx.fill(); ctx.beginPath(); ctx.arc(q[0], q[1], r * s, 0, 7); ctx.fillStyle = col; ctx.fill(); if (ring) { ctx.beginPath(); ctx.arc(q[0], q[1], r * s * .45, 0, 7); ctx.fillStyle = '#fff6'; ctx.fill(); } }
+    var me = F.me, them = F.them, hp = null;
+    if (st.cel > 0) { hp = celPos(st, t); var o = seat === 1 ? [1 - hp[0], 2 - hp[1]] : [hp[0], hp[1]]; if (st.cw === seat) me = o; else them = o; }   // scorer hops by the goal it beat
+    if (!radar || them[1] < 1 || hp) disc(them[0], them[1], C.MR, colors[1 - seat] || '#888', true, hp && st.cw !== seat ? hp[2] : 0);
+    disc(me[0], me[1], C.MR, colors[seat] || '#fc3', true, hp && st.cw === seat ? hp[2] : 0);
+    if (!hp && (!radar || F.p[1] < 1 + C.PR)) { if (st.drop > 0) dropDisc(F.p[0], F.p[1]); else disc(F.p[0], F.p[1], C.PR, '#1b1b2a'); }
+    function dropDisc(x, y) { var q = S(x, y), k = st.drop / .7, r = C.PR * s * (1 + k * 2.2); ctx.beginPath(); ctx.arc(q[0], q[1], C.PR * s * (1 - k * .4), 0, 7); ctx.fillStyle = 'rgba(0,0,0,' + (.35 * (1 - k)) + ')'; ctx.fill(); ctx.globalAlpha = 1 - k * .5; ctx.beginPath(); ctx.arc(q[0], q[1] - k * k * .25 * s, r, 0, 7); ctx.fillStyle = '#1b1b2a'; ctx.fill(); ctx.globalAlpha = 1; }
     if (radar) {   // the ping
       ctx.fillStyle = '#0c1226'; ctx.fillRect(0, 0, W, c[1] - 1); ctx.strokeStyle = '#5fdc7a33'; ctx.lineWidth = 1; for (var i = 1; i < 5; i++) { ctx.beginPath(); ctx.arc(W / 2, c[1], i * (c[1] / 4), Math.PI, 2 * Math.PI); ctx.stroke(); }
       if (F.p[1] > 1) { var far = Math.min(1, (F.p[1] - 1) / 1), x = S(F.p[0], 1)[0], r = (1 - far) * .085 * s + .02 * s, y = c[1] - (far * .85 + .08) * (c[1] - 20);
@@ -58,6 +64,9 @@
         ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = F.pv[1] < 0 ? '#ff5a6e' : '#5fdc7a'; ctx.fill(); }
     }
   };
+  // celebrating paddle: world coords (seat-0 frame) circling in front of the beaten goal, plus hop 0..1
+  function celPos(st, t) { var a = t * 3.2, x = .5 + Math.sin(a) * .22, d = .24 + Math.cos(a * .5) * .06, gy = st.cw === 0 ? 2 : 0; return [x, gy ? 2 - d : d, Math.abs(Math.sin(t * 9))]; }
+  root.PuckCel = celPos;
   // effects: subtle hit ring, flames when ahead by 3 (fully on fire at 6), fireworks on goals. map(x, y) -> screen in table coords
   function FX() { this.parts = []; this.hits = null; this.sc = null; this.banner = 0; this.who = -1; }
   FX.prototype.run = function (ctx, st, map, s, W, H, colors, dt) {

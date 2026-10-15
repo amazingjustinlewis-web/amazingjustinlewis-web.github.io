@@ -76,3 +76,5 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - [ ] Throwing cars; light building damage.
 - [ ] Cats stuck up trees to rescue.
 - [ ] A long list of arcade-style bits to add over time (collect ideas here). For now the proxies sliding around is fine.
+
+- Bubble Hockey: animate players stickhandling and shooting (currently static figures that slide along their slots).

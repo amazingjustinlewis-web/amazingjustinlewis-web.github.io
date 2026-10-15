@@ -7,7 +7,7 @@
 (function () {
   var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), ctx = cv.getContext('2d'), dpr = 1, sim = new Puck.Sim(), C = Puck.C, seats = [null, null], colors = ['#ff5a6e', '#3aa8ff'];
   sim.ai = [true, true]; sim.reset(); var demo = true;
-  var mir = null, mirAt = 0, FXo = new PuckFX();
+  var mir = null, mirAt = 0, FXo = new PuckFX(), zz = { k: 0 };
   var host = Kit.host({ max: 8, onJoin: function () {},
     onLeave: function (p) { if (p.ts != null) { sim.ai[p.ts] = true; seats[p.ts] = null; p.ts = null; names(); } },
     onMsg: function (p, m) {
@@ -27,13 +27,17 @@
     while (acc > 1 / 120) { sim.step(1 / 120); acc -= 1 / 120; if (demo && sim.over >= 0) sim.reset(); }
     sendT += dt; if (sendT > 1 / 30) { sendT = 0; var sn = sim.snap(); host.players.forEach(function (p) { if (p.ts != null) host.send(p, sn); }); }
     var V = mirroring() ? mir.s : sim.snap(), cols = mirroring() ? mir.colors : colors; names.k = (names.k || 0) + dt; if (names.k > 1) { names.k = 0; names(); }
-    var W = innerWidth, H = innerHeight, s = Math.min((W * .9) / 2, (H * .78) / 1), ox = W / 2 - s, oy = H / 2 - s / 2 + H * .03, P = function (x, y) { return [ox + y * s, oy + x * s]; };
+    var W = innerWidth, H = innerHeight, s = Math.min((W * .9) / 2, (H * .78) / 1), ox = W / 2 - s, oy = H / 2 - s / 2 + H * .03, s0 = s, P0 = function (x, y) { return [ox + y * s0, oy + x * s0]; };
+    var zt = V.cel > 0 ? 1 : 0; zz.k += (zt - zz.k) * (zt ? 1 - Math.exp(-dt * 4) : 1); var gq = P0(.5, V.cw === 0 ? 1.7 : .3), Zm = 1 + zz.k * .7, P = function (x, y) { var q = P0(x, y); return [W / 2 + (q[0] - (W / 2 + (gq[0] - W / 2) * zz.k)) * Zm, H / 2 + (q[1] - (H / 2 + (gq[1] - H / 2) * zz.k)) * Zm]; };
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#0c1226'; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#2b3a6e'; ctx.fillRect(ox - .04 * s, oy - .04 * s, 2.08 * s, 1.08 * s); ctx.fillStyle = '#e8f2ff'; ctx.fillRect(ox, oy, 2 * s, s);
+    ctx.save(); var o0 = P(0, 0); ctx.translate(o0[0] - ox * Zm, o0[1] - oy * Zm); ctx.scale(Zm, Zm); ctx.fillStyle = '#2b3a6e'; ctx.fillRect(ox - .04 * s, oy - .04 * s, 2.08 * s, 1.08 * s); ctx.fillStyle = '#e8f2ff'; ctx.fillRect(ox, oy, 2 * s, s);
     ctx.strokeStyle = '#ff5a6e88'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(ox + s, oy); ctx.lineTo(ox + s, oy + s); ctx.stroke(); ctx.beginPath(); ctx.arc(ox + s, oy + s / 2, .16 * s, 0, 7); ctx.stroke();
-    ctx.fillStyle = '#111'; ctx.fillRect(ox - .03 * s, oy + (.5 - C.GOAL / 2) * s, .03 * s, C.GOAL * s); ctx.fillRect(ox + 2 * s, oy + (.5 - C.GOAL / 2) * s, .03 * s, C.GOAL * s);
+    ctx.fillStyle = '#111'; ctx.fillRect(ox - .03 * s, oy + (.5 - C.GOAL / 2) * s, .03 * s, C.GOAL * s); ctx.fillRect(ox + 2 * s, oy + (.5 - C.GOAL / 2) * s, .03 * s, C.GOAL * s); ctx.restore(); var sZ = s; s = s * Zm;
     function disc(x, y, r, col, ring) { var q = P(x, y); ctx.beginPath(); ctx.arc(q[0], q[1] + r * s * .12, r * s, 0, 7); ctx.fillStyle = '#0003'; ctx.fill(); ctx.beginPath(); ctx.arc(q[0], q[1], r * s, 0, 7); ctx.fillStyle = col; ctx.fill(); if (ring) { ctx.beginPath(); ctx.arc(q[0], q[1], r * s * .45, 0, 7); ctx.fillStyle = '#fff6'; ctx.fill(); } }
-    V.m.forEach(function (m, i) { disc(m[0], m[1], C.MR, cols[i], true); }); disc(V.p[0], V.p[1], C.PR, '#1b1b2a'); FXo.run(ctx, V, P, s, W, H, cols, dt);
+    var hp = V.cel > 0 ? PuckCel(V, t / 1000) : null;
+    V.m.forEach(function (m, i) { if (hp && i === V.cw) { var q = P(hp[0], hp[1]); ctx.beginPath(); ctx.ellipse(q[0], q[1], C.MR * s, C.MR * s * .6, 0, 0, 7); ctx.fillStyle = '#0003'; ctx.fill(); var lift = hp[2] * C.MR * 1.6; disc(hp[0] - lift, hp[1], C.MR, cols[i], true); } else disc(m[0], m[1], C.MR, cols[i], true); });
+    if (!hp) { if (V.drop > 0) { var k = V.drop / .7; ctx.globalAlpha = 1 - k * .5; var q = P(V.p[0], V.p[1]); ctx.beginPath(); ctx.arc(q[0], q[1] - k * k * .25 * s, C.PR * s * (1 + k * 2.2), 0, 7); ctx.fillStyle = '#1b1b2a'; ctx.fill(); ctx.globalAlpha = 1; } else disc(V.p[0], V.p[1], C.PR, '#1b1b2a'); }
+    FXo.run(ctx, V, P, s, W, H, cols, dt); s = sZ;
     $('sc').innerHTML = '<span style="color:' + cols[0] + '">' + V.sc[0] + '</span> : <span style="color:' + cols[1] + '">' + V.sc[1] + '</span>';
     var b = $('big'); var ov = V.over; b.style.opacity = demo || ov >= 0 ? 1 : 0; if (!demo && ov >= 0) b.innerHTML = nm(ov) + ' wins!<div style="font-size:.4em;color:#fff">tap your phone to play again</div>';
     requestAnimationFrame(loop);

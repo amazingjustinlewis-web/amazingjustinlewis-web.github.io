@@ -6,7 +6,7 @@
   function Sim() { this.p = { x: .5, y: .6, vx: 0, vy: 0 }; this.m = [{ x: .5, y: .15, vx: 0, vy: 0, tx: .5, ty: .15 }, { x: .5, y: 1.85, vx: 0, vy: 0, tx: .5, ty: 1.85 }]; this.sc = [0, 0]; this.ev = null; this.over = -1; this.wait = .8; this.ai = [false, false]; }
   Sim.prototype.input = function (seat, x, y) { var m = this.m[seat]; if (seat === 0) { m.tx = x; m.ty = y; } else { m.tx = 1 - x; m.ty = 2 - y; } };
   Sim.prototype.reset = function () { this.sc = [0, 0]; this.over = -1; this.serve(Math.random() < .5 ? 0 : 1); };
-  Sim.prototype.serve = function (to) { this.p = { x: .5, y: to === 0 ? .62 : 1.38, vx: 0, vy: 0 }; this.wait = 1; };
+  Sim.prototype.serve = function (to) { this.p = { x: .5, y: to === 0 ? .62 : 1.38, vx: 0, vy: 0 }; this.wait = 1; this.drop = .7; };
   Sim.prototype.aiThink = function (s) {
     var p = this.p, m = this.m[s], home = s === 0 ? .14 : 1.86, mine = s === 0 ? p.y < 1 : p.y > 1, toward = s === 0 ? p.vy < .2 : p.vy > -.2;
     if (mine && toward) { m.tx = p.x + (p.x - .5) * .15; m.ty = p.y + (s === 0 ? -.07 : .07); }
@@ -15,6 +15,8 @@
   Sim.prototype.step = function (dt) {
     var self = this, p = this.p; this.ev = null;
     if (this.over >= 0) return;
+    if (this.drop > 0) this.drop -= dt;
+    if (this.cel > 0) { this.cel -= dt; if (this.cel <= 0) this.serve(1 - this.cw); return; }   // goal celebration: everything waits
     for (var s = 0; s < 2; s++) { if (this.ai[s]) this.aiThink(s); var m = this.m[s], sp = this.ai[s] ? C.AISPD : C.MSPD;
       var y0 = s === 0 ? C.MR : 1 + C.MR, y1 = s === 0 ? 1 - C.MR : C.L - C.MR, tx = Math.max(C.MR, Math.min(1 - C.MR, m.tx)), ty = Math.max(y0, Math.min(y1, m.ty));
       var dx = tx - m.x, dy = ty - m.y, d = Math.hypot(dx, dy), mv = Math.min(d, sp * dt), ox = m.x, oy = m.y; if (d > 1e-6) { m.x += dx / d * mv; m.y += dy / d * mv; }
@@ -30,7 +32,7 @@
       var rvx = p.vx - m.vx, rvy = p.vy - m.vy, vn = rvx * nx + rvy * ny; if (vn < 0) { p.vx -= 1.9 * vn * nx; p.vy -= 1.9 * vn * ny; self.hits = (self.hits || 0) + 1; } self.ev = 'hit'; });
     var v = Math.hypot(p.vx, p.vy); if (v > C.MAXV) { p.vx *= C.MAXV / v; p.vy *= C.MAXV / v; }
   };
-  Sim.prototype.goal = function (who) { this.sc[who]++; this.ev = 'goal' + who; if (this.sc[who] >= C.WIN) { this.over = who; this.p = { x: .5, y: 1, vx: 0, vy: 0 }; } else this.serve(1 - who); };
-  Sim.prototype.snap = function () { var p = this.p; return { t: 's', p: [p.x, p.y, p.vx, p.vy], m: this.m.map(function (m) { return [m.x, m.y]; }), sc: this.sc, hits: this.hits || 0, ev: this.ev, over: this.over }; };
+  Sim.prototype.goal = function (who) { this.sc[who]++; this.ev = 'goal' + who; if (this.sc[who] >= C.WIN) { this.over = who; this.p = { x: .5, y: 1, vx: 0, vy: 0 }; } else { this.cel = 2.6; this.cw = who; this.p = { x: .5, y: who === 0 ? 2.3 : -.3, vx: 0, vy: 0 }; } };
+  Sim.prototype.snap = function () { var p = this.p; return { t: 's', p: [p.x, p.y, p.vx, p.vy], m: this.m.map(function (m) { return [m.x, m.y]; }), sc: this.sc, hits: this.hits || 0, ev: this.ev, over: this.over, cel: Math.max(0, this.cel || 0), cw: this.cw == null ? -1 : this.cw, drop: Math.max(0, this.drop || 0) }; };
   root.Puck = { C: C, Sim: Sim };
 })(window);

@@ -80,6 +80,6 @@
         var nx = dx / d, ny = dy / d, vn = this.v[0] * nx + this.v[1] * ny; this.p = [Q[0] + nx * (R + PR), Q[1] + ny * (R + PR)]; if (vn < 0) { this.v[0] -= 1.7 * vn * nx; this.v[1] -= 1.7 * vn * ny; this.v[0] *= .8; this.v[1] *= .8; } this.ev = TR[i].k === 'G' ? 'save' : 'bump'; } }
   };
   Sim.prototype.goal = function (t) { this.sc[t]++; this.ev = 'goal' + t; if (this.sc[t] >= WIN || this.time <= 0) { this.over = t; this.msg = ''; return; } this.faceoff(); this.msg = 'GOAL!'; this.pause = 1.8; this.lastGoal = t; };
-  Sim.prototype.snap = function () { function r(x) { return Math.round(x * 1000) / 1000; } return { t: 's', u: this.u.map(r), p: this.p.map(r), c: this.c, sd: r(this.side), sc: this.sc, tm: Math.ceil(this.time), ov: this.over, msg: this.msg, g: this.grab.slice(), ev: this.ev }; };
+  Sim.prototype.snap = function () { function r(x) { return Math.round(x * 1000) / 1000; } return { t: 's', u: this.u.map(r), p: this.p.map(r), c: this.c, sd: r(this.side), sc: this.sc, tm: Math.ceil(this.time), ov: this.over, msg: this.msg, pz: r(Math.max(0, this.pause)), g: this.grab.slice(), ev: this.ev }; };
   root.Bubble = { Sim: Sim, TR: TR, L: L, PR: PR, R: R, GW: GW, GY: GY, pos: pos };
 })(window);

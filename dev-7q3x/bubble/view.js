@@ -3,33 +3,65 @@
   'use strict';
   var B = root.Bubble, COL = ['#ff5a6e', '#3aa8ff'];
   function View() { this.team = 0; this.s = 1; this.ox = 0; this.oy = 0; this.fit(innerWidth, innerHeight, 0); }
-  View.prototype.fit = function (W, H, top) { top = top || 0; this.s = Math.min(W * .94, (H - top) * .94 / B.L); this.ox = W / 2 - this.s / 2; this.oy = top + (H - top) / 2 - this.s * B.L / 2; };
+  View.prototype.fit = function (W, H, top) { top = top || 0; this.s = Math.min(W * .78, (H - top) * .84 / B.L); this.ox = W / 2 - this.s / 2; this.oy = top + (H - top) / 2 - this.s * B.L / 2; };
   View.prototype.w2s = function (x, y) { if (this.team) { x = 1 - x; y = B.L - y; } return [this.ox + x * this.s, this.oy + y * this.s]; };
   View.prototype.s2w = function (X, Y) { var x = (X - this.ox) / this.s, y = (Y - this.oy) / this.s; return this.team ? [1 - x, B.L - y] : [x, y]; };
+  // v0.1.1: classic bubble hockey cabinet. Wood-ish cabinet, rink boards with yellow kickplate, metal-rimmed player slots,
+  // rod knobs on the side rails, a glass dome over the whole rink, and a tiny metal serve slot at centre ice.
   View.prototype.draw = function (c, st, o) {
-    o = o || {}; var me = this, s = this.s, L = B.L, P = function (x, y) { return me.w2s(x, y); };
-    var a = P(0, 0), b = P(1, L), x0 = Math.min(a[0], b[0]), y0 = Math.min(a[1], b[1]);
-    c.fillStyle = '#16203a'; rr(c, x0 - s * .03, y0 - s * .03, s * 1.06, s * (L + .06), s * .12); c.fill();
-    c.fillStyle = '#eef4fb'; rr(c, x0, y0, s, s * L, s * .1); c.fill();
-    c.lineWidth = Math.max(2, s * .006); c.strokeStyle = '#ff5a6e66'; line(c, P(0, L / 2), P(1, L / 2)); c.strokeStyle = '#3aa8ff55'; line(c, P(0, .62), P(1, .62)); line(c, P(0, L - .62), P(1, L - .62));
-    c.strokeStyle = '#ff5a6e44'; line(c, P(0, B.GY), P(1, B.GY)); line(c, P(0, L - B.GY), P(1, L - B.GY));
-    var m = P(.5, L / 2); c.beginPath(); c.arc(m[0], m[1], s * .1, 0, 7); c.stroke();
-    // nets
-    [[B.GY, -1], [L - B.GY, 1]].forEach(function (g) { var p1 = P(.5 - B.GW, g[0]), p2 = P(.5 + B.GW, g[0] + g[1] * .045); c.fillStyle = '#c9d4e3'; c.fillRect(Math.min(p1[0], p2[0]), Math.min(p1[1], p2[1]), Math.abs(p2[0] - p1[0]), Math.abs(p2[1] - p1[1])); c.strokeStyle = '#ff5a6e'; c.strokeRect(Math.min(p1[0], p2[0]), Math.min(p1[1], p2[1]), Math.abs(p2[0] - p1[0]), Math.abs(p2[1] - p1[1])); });
-    // tracks (slots in the table)
-    c.lineCap = 'round'; B.TR.forEach(function (tr) { c.strokeStyle = '#0b12241f'; c.lineWidth = s * .016; line(c, P(tr.a[0], tr.a[1]), P(tr.b[0], tr.b[1])); });
-    // players
-    for (var i = 0; i < 12; i++) { var tr = B.TR[i], q = B.pos(tr, st.u[i]), Q = P(q[0], q[1]), t = tr.t, fy = (t ? 1 : -1) * (this.team ? -1 : 1), r = B.R * s;
-      c.fillStyle = '#0002'; c.beginPath(); c.ellipse(Q[0] + r * .15, Q[1] + r * .2, r, r, 0, 0, 7); c.fill();
-      c.strokeStyle = '#2a2f3a'; c.lineWidth = r * .22; line(c, [Q[0] + r * .5, Q[1] + fy * r * .3], [Q[0] + r * .35, Q[1] + fy * r * 1.25]);
-      c.fillStyle = COL[t]; c.beginPath(); c.arc(Q[0], Q[1], r, 0, 7); c.fill(); c.fillStyle = '#fff8'; c.beginPath(); c.arc(Q[0], Q[1] - r * .1, r * .45, 0, 7); c.fill();
-      if (tr.k === 'G') { c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.arc(Q[0], Q[1], r * .75, 0, 7); c.stroke(); }
-      if (st.g && st.g[t] === i) { c.strokeStyle = '#ffd23f'; c.lineWidth = 3; c.beginPath(); c.arc(Q[0], Q[1], r * 1.35, 0, 7); c.stroke(); }
-      if (st.c === i) { c.strokeStyle = COL[t]; c.globalAlpha = .45 + .25 * Math.sin(performance.now() / 120); c.lineWidth = 3; c.beginPath(); c.arc(Q[0], Q[1], r * 1.7, 0, 7); c.stroke(); c.globalAlpha = 1; } }
-    // the bubble dome over centre ice
-    c.strokeStyle = '#ffffff22'; c.lineWidth = s * .01; c.beginPath(); c.arc(m[0], m[1], s * .14, 0, 7); c.stroke();
-    var pk = P(st.p[0], st.p[1]); c.fillStyle = '#111'; c.beginPath(); c.arc(pk[0], pk[1], B.PR * s, 0, 7); c.fill();
-    if (o.trail) { c.strokeStyle = '#11111133'; c.lineWidth = B.PR * s; o.trail.forEach(function (tp, k) { if (k) line(c, P(o.trail[k - 1][0], o.trail[k - 1][1]), P(tp[0], tp[1])); }); }
+    o = o || {}; var me = this, s = this.s, L = B.L, P = function (x, y) { return me.w2s(x, y); }, now = performance.now() / 1000;
+    var a = P(0, 0), b = P(1, L), x0 = Math.min(a[0], b[0]), y0 = Math.min(a[1], b[1]), w = s, h = s * L;
+    // cabinet + side rails with rod knobs
+    var cg = c.createLinearGradient(x0 - s * .12, 0, x0 + w + s * .12, 0); cg.addColorStop(0, '#1d2a52'); cg.addColorStop(.5, '#2c3d74'); cg.addColorStop(1, '#1d2a52');
+    c.fillStyle = cg; rr(c, x0 - s * .1, y0 - s * .1, w + s * .2, h + s * .2, s * .16); c.fill();
+    c.strokeStyle = '#ffffff22'; c.lineWidth = 2; rr(c, x0 - s * .1, y0 - s * .1, w + s * .2, h + s * .2, s * .16); c.stroke();
+    for (var i = 0; i < 12; i++) { var tr = B.TR[i], mid = B.pos(tr, .5), Q = P(mid[0], mid[1]), left = (tr.t === 0) !== !!this.team; var kx = left ? x0 - s * .075 : x0 + w + s * .075;
+      var kg = c.createLinearGradient(kx - s * .02, 0, kx + s * .02, 0); kg.addColorStop(0, '#8d97a6'); kg.addColorStop(.5, '#eef2f7'); kg.addColorStop(1, '#6f7886');
+      c.fillStyle = kg; c.fillRect(kx - s * .022, Q[1] - s * .012, s * .044, s * .024); c.fillStyle = COL[tr.t]; c.beginPath(); c.arc(left ? kx - s * .03 : kx + s * .03, Q[1], s * .018, 0, 7); c.fill(); }
+    // boards: white with a yellow kickplate, then the ice
+    c.fillStyle = '#f6f8fb'; rr(c, x0 - s * .035, y0 - s * .035, w + s * .07, h + s * .07, s * .15); c.fill();
+    c.strokeStyle = '#f2c230'; c.lineWidth = s * .014; rr(c, x0 - s * .02, y0 - s * .02, w + s * .04, h + s * .04, s * .13); c.stroke();
+    var ig = c.createLinearGradient(0, y0, 0, y0 + h); ig.addColorStop(0, '#e6eef8'); ig.addColorStop(.5, '#f4f8fc'); ig.addColorStop(1, '#e6eef8');
+    c.fillStyle = ig; rr(c, x0, y0, w, h, s * .11); c.fill();
+    c.save(); rr(c, x0, y0, w, h, s * .11); c.clip();
+    // lines: red centre, blue lines, red goal lines, faceoff circles
+    c.lineWidth = Math.max(3, s * .012); c.strokeStyle = '#d8344ccc'; line(c, P(0, L / 2), P(1, L / 2));
+    c.lineWidth = Math.max(3, s * .016); c.strokeStyle = '#2f6fd1cc'; line(c, P(0, .62), P(1, .62)); line(c, P(0, L - .62), P(1, L - .62));
+    c.lineWidth = Math.max(2, s * .005); c.strokeStyle = '#d8344c99'; line(c, P(0, B.GY), P(1, B.GY)); line(c, P(0, L - B.GY), P(1, L - B.GY));
+    var m = P(.5, L / 2); c.strokeStyle = '#2f6fd1aa'; c.beginPath(); c.arc(m[0], m[1], s * .1, 0, 7); c.stroke();
+    [[.25, .34], [.75, .34], [.25, L - .34], [.75, L - .34]].forEach(function (f) { var q = P(f[0], f[1]); c.strokeStyle = '#d8344c66'; c.beginPath(); c.arc(q[0], q[1], s * .075, 0, 7); c.stroke(); c.fillStyle = '#d8344c99'; c.beginPath(); c.arc(q[0], q[1], s * .008, 0, 7); c.fill(); });
+    // creases + nets
+    [[B.GY, 1], [L - B.GY, -1]].forEach(function (g) { var q = P(.5, g[0]); c.fillStyle = '#5aa0ff33'; c.beginPath(); c.arc(q[0], q[1], s * B.GW * 1.15, 0, 7); c.fill(); });
+    [[B.GY, -1], [L - B.GY, 1]].forEach(function (g) { var p1 = P(.5 - B.GW, g[0]), p2 = P(.5 + B.GW, g[0] + g[1] * .05), X = Math.min(p1[0], p2[0]), Y = Math.min(p1[1], p2[1]), Wd = Math.abs(p2[0] - p1[0]), Hd = Math.abs(p2[1] - p1[1]);
+      c.fillStyle = '#dfe6ee'; c.fillRect(X, Y, Wd, Hd); c.strokeStyle = '#9aa6b5'; c.lineWidth = 1; for (var k = 1; k < 8; k++) line(c, [X + Wd * k / 8, Y], [X + Wd * k / 8, Y + Hd]); c.strokeStyle = '#d8344c'; c.lineWidth = Math.max(2, s * .008); c.strokeRect(X, Y, Wd, Hd); });
+    // player slots: metal rim + dark groove (the rods run underneath)
+    c.lineCap = 'round'; B.TR.forEach(function (tr) { var A = P(tr.a[0], tr.a[1]), Bq = P(tr.b[0], tr.b[1]); c.strokeStyle = '#a9b3c0'; c.lineWidth = s * .03; line(c, A, Bq); c.strokeStyle = '#1a2130'; c.lineWidth = s * .018; line(c, A, Bq); c.strokeStyle = '#ffffff55'; c.lineWidth = 1; line(c, [A[0] - 1, A[1] - s * .012], [Bq[0] - 1, Bq[1] - s * .012]); });
+    // centre-ice serve slot (tiny metal rectangle). The puck blasts up out of it at every face-off.
+    var sw = s * .075, sh = s * .022, mg = c.createLinearGradient(m[0] - sw / 2, m[1] - sh, m[0] + sw / 2, m[1] + sh); mg.addColorStop(0, '#f1f4f8'); mg.addColorStop(.5, '#8b95a3'); mg.addColorStop(1, '#d7dde5');
+    c.fillStyle = mg; c.fillRect(m[0] - sw / 2 - 2, m[1] - sh / 2 - 2, sw + 4, sh + 4); c.fillStyle = '#05070c'; c.fillRect(m[0] - sw / 2 + 2, m[1] - sh / 2 + 2, sw - 4, sh - 4);
+    // players: shadow, stick, jersey, helmet
+    for (i = 0; i < 12; i++) { var tr2 = B.TR[i], q = B.pos(tr2, st.u[i]), Qp = P(q[0], q[1]), t = tr2.t, fy = (t ? 1 : -1) * (this.team ? -1 : 1), r = B.R * s;
+      c.fillStyle = '#0003'; c.beginPath(); c.ellipse(Qp[0] + r * .18, Qp[1] + r * .25, r * 1.02, r * 1.02, 0, 0, 7); c.fill();
+      c.strokeStyle = '#3b2a1a'; c.lineWidth = r * .24; line(c, [Qp[0] + r * .5, Qp[1] + fy * r * .2], [Qp[0] + r * .3, Qp[1] + fy * r * 1.3]); c.strokeStyle = '#111'; line(c, [Qp[0] + r * .3, Qp[1] + fy * r * 1.3], [Qp[0] - r * .1, Qp[1] + fy * r * 1.4]);
+      var jg = c.createRadialGradient(Qp[0] - r * .3, Qp[1] - r * .3, r * .1, Qp[0], Qp[1], r); jg.addColorStop(0, '#fff8'); jg.addColorStop(.35, COL[t]); jg.addColorStop(1, t ? '#1d5fae' : '#b02a40'); c.fillStyle = jg; c.beginPath(); c.arc(Qp[0], Qp[1], r, 0, 7); c.fill();
+      c.fillStyle = tr2.k === 'G' ? '#f6f8fb' : '#20242e'; c.beginPath(); c.arc(Qp[0], Qp[1] - fy * r * .15, r * .48, 0, 7); c.fill();
+      if (st.g && st.g[t] === i) { c.strokeStyle = '#ffd23f'; c.lineWidth = 3; c.beginPath(); c.arc(Qp[0], Qp[1], r * 1.35, 0, 7); c.stroke(); }
+      if (st.c === i) { c.strokeStyle = COL[t]; c.globalAlpha = .45 + .25 * Math.sin(now * 8); c.lineWidth = 3; c.beginPath(); c.arc(Qp[0], Qp[1], r * 1.7, 0, 7); c.stroke(); c.globalAlpha = 1; } }
+    // puck: during a face-off it waits in the slot, then blasts up and drops onto the ice
+    var pk = P(st.p[0], st.p[1]), pz = st.pz || 0, POP = .55;
+    if (pz > POP) { /* still in the slot */ }
+    else { var hgt = 0; if (pz > 0) { var u = 1 - pz / POP; hgt = Math.sin(u * Math.PI) * (1 - u * .3); pk = [m[0], m[1]]; if (u < .25) { c.fillStyle = 'rgba(255,255,255,' + (1 - u * 4) * .8 + ')'; c.beginPath(); c.ellipse(m[0], m[1], sw * (.6 + u * 3), sh * (1 + u * 4), 0, 0, 7); c.fill(); } }
+      var pr = B.PR * s * (1 + hgt * 1.3); c.fillStyle = 'rgba(0,0,0,' + (.3 - hgt * .15) + ')'; c.beginPath(); c.ellipse(pk[0] + hgt * s * .03, pk[1] + hgt * s * .05, B.PR * s, B.PR * s * .8, 0, 0, 7); c.fill();
+      c.fillStyle = '#111'; c.beginPath(); c.arc(pk[0], pk[1] - hgt * s * .09, pr, 0, 7); c.fill(); c.strokeStyle = '#444'; c.lineWidth = 1; c.stroke();
+      if (o.trail && !pz) { c.strokeStyle = '#11111133'; c.lineWidth = B.PR * s; o.trail.forEach(function (tp, k) { if (k) line(c, P(o.trail[k - 1][0], o.trail[k - 1][1]), P(tp[0], tp[1])); }); } }
+    c.restore();
+    // glass dome over the rink: tint, rim, and specular streaks
+    var dg = c.createRadialGradient(x0 + w * .35, y0 + h * .3, s * .1, x0 + w / 2, y0 + h / 2, h * .62); dg.addColorStop(0, '#ffffff10'); dg.addColorStop(.8, '#bfe0ff12'); dg.addColorStop(1, '#bfe0ff40');
+    c.fillStyle = dg; rr(c, x0 - s * .035, y0 - s * .035, w + s * .07, h + s * .07, s * .15); c.fill();
+    c.strokeStyle = '#d8ecff66'; c.lineWidth = Math.max(2, s * .012); rr(c, x0 - s * .04, y0 - s * .04, w + s * .08, h + s * .08, s * .16); c.stroke();
+    c.strokeStyle = '#ffffff40'; c.lineWidth = s * .025; c.beginPath(); c.ellipse(x0 + w * .5, y0 + h * .5, w * .46, h * .46, 0, Math.PI * 1.08, Math.PI * 1.32); c.stroke();
+    c.strokeStyle = '#ffffff22'; c.lineWidth = s * .012; c.beginPath(); c.ellipse(x0 + w * .5, y0 + h * .5, w * .4, h * .4, 0, Math.PI * 1.12, Math.PI * 1.25); c.stroke();
+    c.strokeStyle = '#ffffff18'; c.lineWidth = s * .03; c.beginPath(); c.ellipse(x0 + w * .5, y0 + h * .5, w * .44, h * .46, 0, Math.PI * .1, Math.PI * .22); c.stroke();
   };
   function line(c, a, b) { c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.stroke(); }
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
