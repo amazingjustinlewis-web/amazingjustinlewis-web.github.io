@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="robots" content="noindex, nofollow">
 <title>Demolition Derby (dev)</title>
 <style>
 @font-face{font-family:Fredoka;src:url(../../games/walker/assets/fredoka-latin-var.woff2) format('woff2');font-weight:300 700}
@@ -31,13 +31,20 @@ h1{font-size:9vh;margin:0;color:#ffd23f;letter-spacing:.04em;text-shadow:0 .6vh 
 .step{width:16vw;text-align:center;font-size:2.6vh;font-weight:600}.step .blk{border-radius:1.5vh 1.5vh 0 0;display:flex;align-items:flex-start;justify-content:center;font-size:7vh;padding-top:1vh;color:#0008}
 table{border-collapse:collapse;font-size:2.1vh;margin:0 auto}td,th{padding:.5vh 1.4vw;text-align:center}th{color:#e8c9a8;font-weight:500}
 #pbar{width:40vw;height:.8vh;background:#fff2;border-radius:1vh;margin:3vh auto 0;overflow:hidden}#pbar i{display:block;height:100%;background:#ffd23f}
+#tbar{display:flex;flex-wrap:wrap;gap:1vh;margin:0 0 2vh}#tbar button,#tView{font:inherit;font-size:2.2vh;border:0;border-radius:1.2vh;padding:1vh 1.6vw;background:#3a2a1e;color:#fff;pointer-events:auto}
+#tbar .tp{display:none}body.touchplay #tbar .tp{display:inline-block}body.touchplay #tPlay{display:none}#tStart{background:#7ed957!important;color:#122!important;font-weight:700}
+#tView{position:fixed;right:1.5vw;bottom:2vh;display:none;z-index:5;background:#000a}body.touchplay #tView{display:block}body.touchplay #cornerqr{bottom:9vh}
+#tj{touch-action:none;z-index:4}body.touchplay{touch-action:none}
+@media (max-aspect-ratio:1/1){.lb{flex-direction:column;gap:2vh}h1{font-size:6vh}#qr{width:22vh;height:22vh}#cards .pc{font-size:1.6vh;min-width:0}}
 </style></head><body>
 <canvas id="gl"></canvas>
 <div class="ov" id="tags"></div>
 <div id="cards"></div><div id="feed"></div><div id="banner"></div>
+<canvas id="tj" class="ov"></canvas><button id="tView">View: dynamic</button>
 <div id="cornerqr"><div id="cq"></div>Join: <b id="cqcode"></b></div>
 <div id="lobby"><div class="lb">
-  <div><h1>DEMOLITION DERBY</h1><div class="sub">Pick a car on your phone. Last car rolling wins the round.</div>
+  <div><h1 id="h1">DEMOLITION DERBY</h1><div class="sub"><b id="modeTag" style="background:#ffd23f;color:#3a2000;padding:0 .8vw;border-radius:.8vh;margin-right:.6vw">DERBY</b><span id="sub">Pick a car on your phone. Last car rolling wins the round.</span></div>
+    <div id="tbar"><button id="tPlay">&#x1F4F1; Play on this screen</button><button id="tCar" class="tp">Car</button><button id="tBoost" class="tp">Boost</button><button id="tMode">Mode: Derby</button><button id="tStart" class="tp">START</button></div>
     <div id="plist"></div><div id="hint"></div><div id="netStatus">Connecting to the room server&hellip;</div></div>
   <div style="text-align:center"><div id="qr"></div><div id="code">&mdash;</div><div id="joinUrl"></div></div>
 </div></div>
@@ -48,6 +55,7 @@ table{border-collapse:collapse;font-size:2.1vh;margin:0 auto}td,th{padding:.5vh 
 <script src="js/vendor/three.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/net.js"></script>
+<script src="js/track.js"></script>
 <script src="js/sim.js"></script>
 <script src="../../assets/js/ztp-pad-settings.js"></script>
 <script src="js/sedan.js"></script>

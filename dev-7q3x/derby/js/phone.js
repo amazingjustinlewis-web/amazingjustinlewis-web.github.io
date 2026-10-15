@@ -31,6 +31,7 @@
   $('readyBtn').onclick = function () { ready = !ready; sendSetup(); drawGarage(); };
   $('startBtn').onclick = function () { ready = true; sendSetup(); net.send({ t: 'start' }); };
   $('botsBtn').onclick = function () { net.send({ t: 'bots' }); };
+  $('modeBtn').onclick = function () { net.send({ t: 'mode' }); };
   $('againBtn').onclick = function () { net.send({ t: 'start' }); };
   // ---------------------------------------------------------------- driving
   var jz = $('joy'), jid = null, jx0 = 0, jy0 = 0, jv = [0, 0];
@@ -74,13 +75,13 @@
   }
   function paint() {
     var ph = S.phase;
-    if (ph === 'lobby') { show('garage'); $('leadBox').style.display = S.leader ? '' : 'none'; $('botsBtn').textContent = 'AI fill: ' + (S.bots ? 'ON' : 'OFF'); $('gNote').textContent = S.leader ? 'You are the leader: start when everyone is ready.' : 'Waiting for the leader to start.'; }
+    if (ph === 'lobby') { show('garage'); $('leadBox').style.display = S.leader ? '' : 'none'; $('botsBtn').textContent = 'AI fill: ' + (S.bots ? 'ON' : 'OFF'); $('modeBtn').textContent = 'Mode: ' + (S.mode === 'race' ? 'RACE (tap for Derby)' : 'DERBY (tap for Race)'); $('gNote').textContent = S.leader ? 'You are the leader: start when everyone is ready.' : 'Waiting for the leader to start.'; }
     else if (ph === 'over') { show('over'); $('oTitle').textContent = S.place === 1 ? 'YOU WON THE DERBY!' : 'You placed #' + S.place + ' of ' + S.of;
       var t = S.tot || {}; $('oTab').innerHTML = [['Points', S.score], ['Round wins', t.wins], ['Wrecks dealt', t.kos], ['Ring-outs', t.ringouts], ['Crushes', t.crushes], ['Damage dealt', Math.round(t.dmg || 0)], ['Air time', (t.air || 0).toFixed(1) + 's']].map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>'; }).join('');
       $('againBtn').style.display = S.leader ? '' : 'none'; }
     else { show('drive');
       var f = S.maxhp ? S.hp / S.maxhp : 0; $('hp').firstChild.style.width = (f * 100) + '%'; $('hp').firstChild.style.background = f > 0.5 ? '#7ed957' : f > 0.25 ? '#ffd23f' : '#ff4b55';
-      $('lives').textContent = S.cs === 'out' ? 'OUT' : '\u2665'.repeat(Math.max(0, S.lives || 0));
+      $('lives').textContent = S.mode === 'race' && S.pos ? (S.done ? 'FINISHED' : 'P' + S.pos + ' \u00b7 Lap ' + S.lap + '/' + S.laps) : S.cs === 'out' ? 'OUT' : '\u2665'.repeat(Math.max(0, S.lives || 0));
       $('boost').classList.toggle('cd', (S.boost || 0) < 0.99 && setup.boost !== 'sustain'); $('boost').querySelector('s').style.width = ((S.boost || 0) * 100) + '%';
       var info = ph === 'countdown' ? 'Get ready\u2026' : ph === 'roundover' ? 'Round over' : S.cs === 'wait' ? 'Wrecked! Wait at the gate\u2026' : S.cs === 'enter' ? 'Rolling in!' : S.cs === 'out' ? 'Out this round. Watch the TV!' : S.cs === undefined ? 'You join next round' : '';
       if (!msgT || info) $('msg').textContent = info; }

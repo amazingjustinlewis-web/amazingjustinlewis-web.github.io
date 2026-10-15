@@ -1,7 +1,11 @@
 /* DEMOLITION DERBY v0.2 - every tunable number. TV and phones read this file. */
 (function (root) {
   root.DD_CONFIG = {
-    version: '0.3.2',
+    version: '0.4-dev',
+    hpMul: 2,   // v0.4: cars last ~2x longer (damage still builds up hit by hit)
+    wreck: { sec: 3.6, fadeTo: 0.3, flashSec: 0.8, respawnSec: 1.2 },
+    race: { laps: 2, rounds: 1, grav: 24, airSteer: 1.4, rampRoll: 1.8, roofSec: 2.2, finishWaitSec: 25 },
+    touch: { R: 0.16, swipeFrac: 0.42, swipeMs: 260, swipeSpeed: 2.4 },
     maxPlayers: 8,
     colors: ['#ff4b55', '#3aa8ff', '#45e07a', '#ffd23f', '#ff8a2a', '#c16bff', '#3fe0d0', '#ff6bc1'],
     rounds: 3, lives: 2, countdownSec: 3, roundOverSec: 4, podiumSec: 60,

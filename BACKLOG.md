@@ -53,6 +53,8 @@ Done in menu2 for reference: the launching phone is the game's host (it can end 
 ## Demolition Derby, future (Oct 15, 2026)
 - [ ] More modes on the same bustable car physics: full-contact racing, and a stunt / trick scoring mode.
 - [ ] Hand-modelled "hero wreck" variants for each car (wrapped around a pole, nose-planted, folded in half), swapped in for big slow-motion crash moments.
+- [ ] Roof crush: cars that land or slide on their roof get the roof/pillars crushed (v0.4 has flips + roof slides, no crush yet).
+- [ ] Phone controller (controller.html): same touch-anywhere floating joystick + green throttle bars + swipe boost as phone-screen play.
 
 ## Coffee-shop mini games (Oct 15, 2026) - v0.1s on the dev page
 Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/), Swish Flick, Splash Clown, Glide Puck, Stack Attack, Balloon Buddy. Shared kit: dev-7q3x/minikit/.
@@ -64,3 +66,13 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - [ ] Once Dangerous Waters is approved, fold its TV board + 10x10 Classic into the café Battleship.
 - [ ] Café shared screen: multiple groups on one café screen playing different phone-native games; when none needs the full screen, the screen shows split views, highlights and scoreboards from active games.
 - [ ] Stack Attack: real 3D physics (blocks with depth that can sit in front of / behind each other). v0.2 is a 2D physics slab drawn in 3D.
+
+## Iron Stride split (Oct 15, 2026)
+- [ ] Two games now: Iron Stride Squad (3/4 top-down arcade brawler, all inputs) and Iron Stride: Cockpit (first-person open world). "Cockpit" is a placeholder; the name is Justin's call.
+- [ ] Missions and RKD-style versions of both, later.
+
+## Red Deer Rescue, future (Oct 15, 2026)
+- [ ] Picking powers and stacking them, with layered strategies.
+- [ ] Throwing cars; light building damage.
+- [ ] Cats stuck up trees to rescue.
+- [ ] A long list of arcade-style bits to add over time (collect ideas here). For now the proxies sliding around is fine.
