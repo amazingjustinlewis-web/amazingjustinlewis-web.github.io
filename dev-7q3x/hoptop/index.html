@@ -1,0 +1,25 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><meta name="robots" content="noindex, nofollow">
+<title>Hop Top (dev)</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>#bar{position:fixed;left:0;right:0;bottom:14px;display:flex;justify-content:center;gap:10px;z-index:5}#msg{position:fixed;left:0;right:0;top:12px;text-align:center;font-size:clamp(17px,3.2vh,30px);color:#ffe7a0;z-index:4;pointer-events:none}
+#title{position:fixed;left:14px;top:10px;font-weight:700;color:#ffe7a0;font-size:clamp(16px,3vh,28px);z-index:4}body.ph #title{display:none}body.ph #join{display:none}body.ph #msg{top:16px}</style></head><body>
+<canvas id="cv" class="full"></canvas><div id="title">HOP TOP</div><div id="msg"></div>
+<div id="bar"><button class="btn" id="undo">&#8630; Undo</button><button class="btn" id="hint">&#128161; Hint</button><button class="btn go" id="new">New board</button></div>
+<div id="join"></div><div class="big" id="big" style="opacity:0"></div>
+<script>window.MINI = 'hoptop';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script><script src="game.js"></script>
+<script>
+(function () {
+  var cv = document.getElementById('cv'), ctx = cv.getContext('2d'), g = HopTop.New(), P = [], host = null, dpr = 1;
+  if (Kit.isPhone && !Kit.Q.get('tv')) document.body.classList.add('ph');
+  else { host = Kit.host({ max: 6, onJoin: function () { push(); }, onMsg: function (p, m) { act(m); } }); host.qr(document.getElementById('join')); }
+  function push() { if (host) host.all({ t: 'st', g: g }); document.getElementById('msg').textContent = g.msg;
+    var b = document.getElementById('big'); if (g.rate) { b.innerHTML = g.rate.title + '<div style="font-size:.4em;color:#fff">' + g.rate.sub + '</div>'; b.style.opacity = 1; } else b.style.opacity = 0;
+    if (g.phase !== 'pick') Kit.phase('play'); }
+  function act(m) { if (m.t === 'tap') HopTop.tap(g, m.i); else if (m.t === 'undo') HopTop.undo(g); else if (m.t === 'hint') HopTop.hint(g); else if (m.t === 'new') g = HopTop.New(); push(); }
+  function size() { dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; } addEventListener('resize', size); size();
+  cv.addEventListener('pointerdown', function (e) { var i = HopTop.hit(P, e.clientX, e.clientY); act({ t: 'tap', i: i }); });
+  ['undo', 'hint', 'new'].forEach(function (k) { document.getElementById(k).onclick = function () { act({ t: k }); }; });
+  (function loop(t) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); P = HopTop.draw(ctx, innerWidth, innerHeight - 70, g, t / 1000); requestAnimationFrame(loop); })(0);
+  window.HT = { get g() { return g; }, act: act, P: function () { return P; } }; push();
+  Kit.over(function () { return g.phase === 'done'; }, 40000);
+})();
+</script></body></html>

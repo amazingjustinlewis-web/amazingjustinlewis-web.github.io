@@ -1,0 +1,25 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><meta name="robots" content="noindex, nofollow">
+<title>Balloon Buddy (dev)</title><link rel="stylesheet" href="../minikit/kit.css"><link rel="stylesheet" href="buddy.css">
+<style>body{display:flex;flex-direction:column}#sc{position:relative;flex:1;min-height:0}#cv{position:absolute;inset:0;width:100%;height:100%}#words{position:absolute;left:0;right:0;bottom:3%;z-index:2}
+#pl{position:absolute;left:10px;top:10px;font-size:clamp(13px,2.2vh,20px);z-index:3}#pl div{background:#0008;border-radius:10px;padding:2px 10px;margin-bottom:4px;border-left:5px solid}#log{position:absolute;top:10px;left:0;right:0;text-align:center;color:#24304f;font-size:clamp(15px,3vh,30px);font-weight:600;z-index:2}
+#ui{display:none;background:#1b2440}body.ph #ui{display:block}body.ph #sc{flex:0 0 46vh}body.ph #join{width:84px;top:8px;bottom:auto}body.ph #join .kcode{font-size:13px}</style></head><body>
+<div id="sc"><canvas id="cv"></canvas><div id="log"></div><div id="pl"></div><div id="words"><div id="word"></div><div id="wrong"></div></div></div><div id="ui"></div>
+<div id="join"></div><div class="big" id="big" style="opacity:0"></div>
+<script>window.MINI = 'buddy';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script><script src="game.js"></script><script src="ui.js"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), ctx = cv.getContext('2d'), dpr = 1, pub = null, phone = Kit.isPhone && !Kit.Q.get('tv');
+  var G = new Buddy.Game(function (to, m) { if (to === -1) { pub = m; paint(); } else host.send(to, m); });
+  var host = Kit.host({ max: 8, onJoin: function (p) { G.add(p); }, onLeave: function () { G.push(); }, onMsg: function (p, m) { G.msg(p, m); } });
+  host.qr($('join'));
+  if (phone) { document.body.classList.add('ph'); var draw = BuddyUI($('ui'), function (m) { G.msg(me, m); }); var me = host.addLocal('You', function (m) { if (m.t === 'st') draw(m.s); }); G.add(me); }
+  function paint() { $('word').textContent = pub.phase === 'lobby' ? 'BALLOON BUDDY' : pub.phase === 'set' ? '? ? ?' : pub.mask; $('wrong').textContent = pub.wrong.length ? 'Nope: ' + pub.wrong.join(' ') : '';
+    $('log').textContent = pub.phase === 'lobby' ? (phone ? 'Friends scan the code to join. Tap START to play.' : 'Scan to join! One player hides a word, everyone else saves Buddy.') : pub.log;
+    $('pl').innerHTML = pub.pl.map(function (p) { return '<div style="border-color:' + p.color + '">' + p.name + (p.seat === pub.setter ? ' \u270F\uFE0F' : '') + ' <b>' + p.pts + '</b></div>'; }).join('');
+    if (pub.phase !== 'lobby') Kit.phase('play'); }
+  function size() { dpr = devicePixelRatio || 1; cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; } addEventListener('resize', size); size();
+  (function loop(t) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); Buddy.scene(ctx, cv.clientWidth, cv.clientHeight, pub, t / 1000); requestAnimationFrame(loop); })(0);
+  G.push(); window.BB = { G: G };
+  Kit.over(function () { return G.phase === 'won' || G.phase === 'lost'; }, 60000);
+})();
+</script></body></html>

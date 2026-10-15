@@ -1,0 +1,90 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><meta name="robots" content="noindex, nofollow">
+<title>Splash Clown (dev)</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>#board{position:fixed;left:12px;top:12px;font-size:clamp(14px,2.4vh,22px);z-index:4}#board div{background:#0009;border-radius:10px;padding:3px 10px;margin-bottom:5px;border-left:5px solid}body.ph #join{display:none}</style></head><body>
+<canvas id="cv" class="full"></canvas><div id="board"></div><div id="join"></div><div class="big" id="big" style="top:8%"></div>
+<script>window.MINI = 'dunk';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script><script src="../minikit/throw3d.js"></script>
+<script>
+(function () {
+  var BALLS = 6, TGT = [.35, 1.45, 3.9], TR = .22, CAGE = 4.5, WATER = .95, SEAT = 1.95, START = [0, 1.3, .3];
+  var TAUNTS = ['Is that all you got?', 'My grandma throws harder!', 'Nice try, noodle arms!', 'Warm water please!', 'I\u2019m bone dry over here!', 'You missed by a mile!', 'Honk honk!', 'Butter fingers!'];
+  var cv = document.getElementById('cv'), ctx = cv.getContext('2d'), dpr = 1, $ = function (i) { return document.getElementById(i); };
+  var S = { phase: 'ready', overAt: 0 }, PL = [], fx = [], drops = [], phone = Kit.isPhone && !Kit.Q.get('tv'), host = null, me = null;
+  var clown = { st: 'sit', y: SEAT, vy: 0, t: 0, say: 'Step right up! Dunk me if you can!', sayT: 4, tgt: 0 };
+  function mkP(p) { if (p.g) return p.g; p.g = { name: p.name, color: p.color, dunks: 0, left: BALLS, ball: new T3.Ball(START, .1) }; PL.push(p); return p.g; }
+  if (phone) document.body.classList.add('ph');
+  else { host = Kit.host({ max: 6, onJoin: function (p) { mkP(p).name = p.name; board(); }, onMsg: function (p, m) { if (m.t === 'flick') shoot(p, m); } }); host.qr($('join')); }
+  function localP() { if (!me) { me = { name: phone ? 'You' : 'Mouse', color: '#ffc93f' }; mkP(me); } return me; }
+  Kit.flick(cv, function (f) { shoot(localP(), f); });
+  function reset() { S.phase = 'play'; PL.forEach(function (q) { q.g.dunks = 0; q.g.left = BALLS; }); Kit.phase('play'); }
+  function shoot(p, f) {
+    var g = mkP(p), b = g.ball; if (b.live || -f.dy < 200) return;
+    if (S.phase === 'ready' || (S.phase === 'over' && performance.now() - S.overAt > 4000)) reset();
+    if (S.phase !== 'play' || g.left <= 0) return;
+    var L = T3.launch(f, { v: 8.1, k: 2.6, exp: .55, angle: 20, side: 2.2 }); g.left--;
+    b.p = START.slice(); b.v = L.v; b.spin = L.spin * .5; b.side = L.side; b.t = 0; b.live = true; b.hit = false;
+  }
+  function say(s) { clown.say = s; clown.sayT = 2.6; }
+  function step(dt) {
+    PL.forEach(function (p) { var g = p.g, b = g.ball; if (!b.live) return;
+      for (var k = 0; k < 4; k++) { var pz = b.p[2]; b.step(dt / 4);
+        if (!b.hit && pz < TGT[2] && b.p[2] >= TGT[2]) { var d = Math.hypot(b.p[0] - TGT[0], b.p[1] - TGT[1]);
+          if (d < TR + b.r * .6) { b.hit = true; b.v[2] = -b.v[2] * .4; clown.tgt = 1; if (clown.st === 'sit') { clown.st = 'fall'; clown.vy = 0; g.dunks++; fx.push({ t: 0, txt: 'SPLASH! ' + g.name, c: g.color }); } else fx.push({ t: 0, txt: 'DING!', c: g.color }); }
+          else if (d < TR + .09) { b.v[2] = -b.v[2] * .4; b.hit = true; } }
+        b.hitWall(CAGE, -1.1, 1.1, WATER, 3.3, .35);
+      }
+      if (b.t > 2.4) { if (!b.hit && clown.st === 'sit' && Math.random() < .7) say(TAUNTS[(Math.random() * TAUNTS.length) | 0]); b.live = false; b.p = START.slice(); }
+    });
+    clown.t += dt; clown.sayT -= dt; clown.tgt = Math.max(0, clown.tgt - dt * 1.5);
+    if (clown.st === 'fall') { clown.vy -= 9.8 * dt; clown.y += clown.vy * dt; if (clown.y < WATER - .35) { clown.st = 'wet'; clown.t = 0; for (var i = 0; i < 40; i++) drops.push({ x: (Math.random() - .5) * 1.2, y: WATER, z: 5.0, vx: (Math.random() - .5) * 2, vy: 2 + Math.random() * 3, l: 1 }); say(['Bleh! Cold!', 'You got me!', 'Not the hair!', 'Glub glub!'][(Math.random() * 4) | 0]); } }
+    else if (clown.st === 'wet') { clown.y = WATER - .35 + Math.sin(clown.t * 3) * .04; if (clown.t > 2.2) { clown.st = 'climb'; clown.t = 0; } }
+    else if (clown.st === 'climb') { clown.y = Math.min(SEAT, clown.y + dt * 1.4); if (clown.y >= SEAT) { clown.st = 'sit'; say('Ha! Still dry-ish!'); } }
+    drops = drops.filter(function (d) { d.vy -= 9.8 * dt; d.x += d.vx * dt; d.y += d.vy * dt; return d.y > WATER - .2; });
+    if (S.phase === 'play' && PL.length && PL.every(function (p) { return p.g.left <= 0 && !p.g.ball.live; })) { S.phase = 'over'; S.overAt = performance.now(); }
+  }
+  function quad(P, pts, col) { ctx.fillStyle = col; ctx.beginPath(); pts.forEach(function (q, i) { var s = P(q[0], q[1], q[2]); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); }); ctx.closePath(); ctx.fill(); }
+  function drawClown(P) {
+    var c = P(-.15, clown.y + .25, 5.0), u = c[2] * 1.6; ctx.save(); ctx.translate(c[0], c[1]); var wob = Math.sin(clown.t * (clown.st === 'sit' ? 2 : 6)) * .05; ctx.rotate(wob);
+    ctx.fillStyle = '#3aa8ff'; ctx.beginPath(); ctx.ellipse(0, .15 * u, .3 * u, .4 * u, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffc93f'; [[-.12, .05], [.1, .2], [-.05, .35], [.15, -.05]].forEach(function (d) { ctx.beginPath(); ctx.arc(d[0] * u, d[1] * u, .05 * u, 0, 7); ctx.fill(); });
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-.25 * u, -.2 * u); ctx.lineTo(.25 * u, -.2 * u); ctx.lineTo(0, -.08 * u); ctx.fill();
+    ['#ff5a6e', '#5fdc7a', '#c77dff'].forEach(function (col, i) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc((i - 1) * .22 * u, -.48 * u - Math.abs(i - 1) * -.04 * u, .13 * u, 0, 7); ctx.fill(); });
+    ctx.fillStyle = '#fff3e6'; ctx.beginPath(); ctx.arc(0, -.4 * u, .19 * u, 0, 7); ctx.fill();
+    var wet = clown.st !== 'sit' && clown.st !== 'climb';
+    ctx.fillStyle = '#222'; [-1, 1].forEach(function (s) { if (wet) { ctx.fillRect(s * .07 * u - .04 * u, -.45 * u, .08 * u, .015 * u); } else { ctx.beginPath(); ctx.arc(s * .07 * u, -.45 * u, .025 * u, 0, 7); ctx.fill(); } });
+    ctx.fillStyle = '#ff2a3a'; ctx.beginPath(); ctx.arc(0, -.38 * u, .05 * u, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#d0203a'; ctx.lineWidth = .02 * u; ctx.beginPath(); if (wet) ctx.ellipse(0, -.3 * u, .05 * u, .035 * u, 0, 0, 7); else ctx.arc(0, -.35 * u, .1 * u, .2, Math.PI - .2); ctx.stroke();
+    ctx.restore();
+    if (clown.sayT > 0) { ctx.font = '600 ' + Math.round(innerHeight * .032) + 'px Fredoka,sans-serif'; var w = ctx.measureText(clown.say).width + 24, bx = c[0] + .35 * u, by = P(0, 3.3, 5)[1]; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(bx, by, w, innerHeight * .06, 14); ctx.fill(); ctx.fillStyle = '#222'; ctx.textAlign = 'left'; ctx.fillText(clown.say, bx + 12, by + innerHeight * .042); }
+  }
+  function draw(t) {
+    var W = innerWidth, H = innerHeight, P = T3.cam(W, H, { x: .1, y: 1.7, z: .4, hy: .6, f: .6 });
+    var bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#2a5a8a'); bg.addColorStop(.55, '#9ad0f0'); bg.addColorStop(.56, '#4a8a3a'); bg.addColorStop(1, '#2a5a20'); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    for (var i = 0; i < 8; i++) { ctx.fillStyle = i % 2 ? '#ff5a6e' : '#fff'; var a = P(-6 + i * 1.5, 4.6, 8), b = P(-6 + i * 1.5 + 1.5, 4.6, 8); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo((a[0] + b[0]) / 2, a[1] + H * .06); ctx.fill(); }
+    quad(P, [[-1.2, 0, 4.6], [1.2, 0, 4.6], [1.2, 0, 5.8], [-1.2, 0, 5.8]], '#555');
+    quad(P, [[-1.2, 0, 5.8], [1.2, 0, 5.8], [1.2, 3.4, 5.8], [-1.2, 3.4, 5.8]], '#c8443a');
+    quad(P, [[-1.1, SEAT - .25, 4.7], [-.1, SEAT - .25, 4.7], [-.1, SEAT - .2, 5.3], [-1.1, SEAT - .2, 5.3]], clown.st === 'sit' ? '#8a5a2e' : '#8a5a2e00');
+    if (clown.st !== 'sit') { var hp = P(-.1, SEAT - .25, 4.9), ep = P(-.1, SEAT - 1, 4.9); ctx.strokeStyle = '#8a5a2e'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(hp[0], hp[1]); ctx.lineTo(ep[0] - 10, ep[1]); ctx.stroke(); }
+    drawClown(P);
+    quad(P, [[-1.2, 0, 4.6], [1.2, 0, 4.6], [1.2, WATER, 4.6], [-1.2, WATER, 4.6]], '#3aa8ffb0');
+    var wl = P(-1.2, WATER, 4.6), wr = P(1.2, WATER, 4.6); ctx.strokeStyle = '#d0f0ff'; ctx.lineWidth = 3; ctx.beginPath(); for (var x = 0; x <= 20; x++) { var X = wl[0] + (wr[0] - wl[0]) * x / 20; ctx.lineTo(X, wl[1] + Math.sin(t * 3 + x) * 3); } ctx.stroke();
+    ctx.fillStyle = '#d0f0ff'; drops.forEach(function (d) { var s = P(d.x, d.y, d.z); ctx.beginPath(); ctx.arc(s[0], s[1], s[2] * .03, 0, 7); ctx.fill(); });
+    ctx.strokeStyle = '#ddd8'; ctx.lineWidth = 2; for (var gx = -1.1; gx <= 1.11; gx += .2) { var a1 = P(gx, WATER, CAGE), a2 = P(gx, 3.3, CAGE); ctx.beginPath(); ctx.moveTo(a1[0], a1[1]); ctx.lineTo(a2[0], a2[1]); ctx.stroke(); }
+    for (var gy = WATER; gy <= 3.31; gy += .2) { var c1 = P(-1.1, gy, CAGE), c2 = P(1.1, gy, CAGE); ctx.beginPath(); ctx.moveTo(c1[0], c1[1]); ctx.lineTo(c2[0], c2[1]); ctx.stroke(); }
+    var pb = P(TGT[0], 0, TGT[2]), pt = P(TGT[0], TGT[1], TGT[2]); ctx.strokeStyle = '#666'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(pb[0], pb[1]); ctx.lineTo(pt[0], pt[1]); ctx.stroke();
+    var tr = TR * pt[2] * (1 + clown.tgt * .3); ['#ff2a3a', '#fff', '#ff2a3a', '#fff'].forEach(function (col, i) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(pt[0], pt[1], tr * (1 - i * .25), 0, 7); ctx.fill(); });
+    PL.map(function (p) { return p.g; }).sort(function (a, b) { return b.ball.p[2] - a.ball.p[2]; }).forEach(function (g) { if (g.ball.live && g.ball.p[2] > 1.1) T3.drawBall(ctx, P, g.ball, g.color); });
+    fx = fx.filter(function (f) { f.t += 1 / 60; return f.t < 1.4; }); fx.forEach(function (f) { ctx.globalAlpha = 1 - f.t / 1.4; ctx.fillStyle = f.c; ctx.font = '700 ' + Math.round(H * .08) + 'px Fredoka,sans-serif'; ctx.textAlign = 'center'; ctx.fillText(f.txt, W / 2, H * (.25 - f.t * .08)); ctx.globalAlpha = 1; });
+  }
+  function board() {
+    $('board').innerHTML = PL.map(function (p) { return '<div style="border-color:' + p.g.color + '">' + p.g.name + ' \uD83D\uDCA6 <b>' + p.g.dunks + '</b> <small>' + '\u25CF'.repeat(p.g.left) + '</small></div>'; }).join('');
+    var big = $('big'); big.style.opacity = S.phase === 'play' ? 0 : 1;
+    if (S.phase === 'ready') big.innerHTML = 'SPLASH CLOWN<div style="font-size:.4em;color:#fff">' + (phone ? 'flick the ball at the red target' : 'scan to join, then flick on your phone') + ' \u00b7 ' + BALLS + ' balls each</div>';
+    else if (S.phase === 'over') { var w = PL.slice().sort(function (a, b) { return b.g.dunks - a.g.dunks; })[0]; big.innerHTML = 'GAME OVER<div style="font-size:.45em;color:#fff">' + (w ? w.g.name + ' dunked him ' + w.g.dunks + 'x' : '') + '<br><span style="font-size:.7em">flick to play again</span></div>'; }
+    if (host) host.players.forEach(function (p) { if (p.g) host.send(p, { t: 'st', dunks: p.g.dunks, left: p.g.left, phase: S.phase, live: p.g.ball.live }); });
+  }
+  function size() { dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; } addEventListener('resize', size); size();
+  var last = 0, acc = 0; (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; step(dt); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); draw(t / 1000); acc += dt; if (acc > .25) { acc = 0; board(); } requestAnimationFrame(loop); })(0);
+  window.DK = { S: S, PL: PL, shoot: shoot, localP: localP, step: step, clown: clown, TGT: TGT };
+  Kit.over(function () { return S.phase === 'over'; }, 40000);
+})();
+</script></body></html>

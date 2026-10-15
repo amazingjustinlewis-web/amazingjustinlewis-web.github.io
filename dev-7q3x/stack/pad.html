@@ -1,0 +1,19 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><meta name="robots" content="noindex, nofollow">
+<title>Stack Attack pad</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>#rot{position:fixed;right:12px;bottom:14px;z-index:6;font-size:20px;padding:12px 16px}#go{position:fixed;left:12px;bottom:14px;z-index:6;display:none}</style></head><body>
+<canvas id="cv" class="full"></canvas><div class="hud"><div id="ph">Connecting&hellip;</div><div id="tm"></div></div><button class="btn" id="rot">&#10227; Rotate</button><button class="btn go" id="go">Next round &#9654;</button><div class="st" id="st"></div>
+<script>window.MINI = 'stack';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="draw.js"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), ctx = cv.getContext('2d'), dpr = 1, st = null, pts = {};
+  var c = Kit.pad({ onMsg: function (m) { if (m.t === 's') st = m.s; }, onStatus: function (s) { $('st').textContent = s; } });
+  Kit.joinCard('STACK ATTACK', c, '<p>Drag blocks onto the stand together before the disaster hits. Tap with a second finger (or Rotate) to turn the one you hold.</p>');
+  function W(e) { return StackDraw.toWorld(innerWidth, innerHeight, e.clientX, e.clientY); }
+  cv.addEventListener('pointerdown', function (e) { if (Object.keys(pts).length) { c.send({ t: 'rot' }); return; } pts[e.pointerId] = 1; var w = W(e); c.send({ t: 'pd', x: w[0], y: w[1] }); });
+  cv.addEventListener('pointermove', function (e) { if (!pts[e.pointerId]) return; var w = W(e); c.send({ t: 'pm', x: w[0], y: w[1] }); });
+  function up(e) { if (pts[e.pointerId]) { delete pts[e.pointerId]; c.send({ t: 'pu' }); } } cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  $('rot').onclick = function () { c.send({ t: 'rot' }); }; $('go').onclick = function () { c.send({ t: 'next' }); };
+  function size() { dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; } addEventListener('resize', size); size();
+  (function loop(t) { if (st) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); StackDraw.draw(ctx, innerWidth, innerHeight, st, t / 1000); $('ph').textContent = st.phase === 'build' ? 'BUILD!' : st.phase === 'score' ? st.h.toFixed(1) + ' m standing' : st.name; $('tm').textContent = st.phase === 'score' ? 'best ' + st.best.toFixed(1) + 'm' : st.t + 's'; $('go').style.display = st.phase === 'score' ? 'block' : 'none'; } requestAnimationFrame(loop); })(0);
+})();
+</script></body></html>

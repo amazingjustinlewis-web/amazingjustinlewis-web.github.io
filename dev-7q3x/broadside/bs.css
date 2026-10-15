@@ -1,0 +1,8 @@
+body{background:radial-gradient(ellipse at 50% 30%,#14425e,#081a2a 75%)}
+.grid{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;background:#0a2a40;padding:4px;border-radius:10px;aspect-ratio:1}
+.grid i{background:#1e6a8f;border-radius:3px;position:relative;display:block}
+.grid i.ship{background:#9aa9b5}.grid i.m::after{content:'';position:absolute;inset:32%;border-radius:50%;background:#cfe8ff}
+.grid i.h{background:#ff8a3d}.grid i.ship.h{background:#ff5a2e}.grid i.s{background:#5a1a10}.grid i.s::after{content:'\2716';position:absolute;inset:0;display:grid;place-items:center;color:#ffb08a;font-size:70%}
+.grid i.new{animation:pop .6s}@keyframes pop{0%{transform:scale(1.8);filter:brightness(2)}}
+.grid.aim i:not(.m):not(.h):not(.s){cursor:crosshair}.grid.aim i:not(.m):not(.h):not(.s):active{background:#ffe7a0}
+.grid.aim{box-shadow:0 0 0 3px #ffe7a0}

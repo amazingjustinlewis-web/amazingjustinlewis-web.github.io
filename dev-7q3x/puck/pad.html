@@ -1,0 +1,44 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="robots" content="noindex, nofollow">
+<title>Glide Puck</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>#cam{position:fixed;right:10px;top:10px;z-index:6;padding:7px 11px;font-size:15px;background:#000a}#score{position:fixed;left:10px;top:12px;z-index:5;font-size:22px;font-weight:700;background:#000a;border-radius:12px;padding:4px 12px}
+#hostq{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:220px;background:#000c;border-radius:16px;padding:12px;text-align:center;z-index:7;display:none}#hostq .kcode{font-size:24px}</style></head><body>
+<canvas id="cv" class="full"></canvas><div id="score"></div><button class="btn" id="cam"></button><div id="hostq"><div id="hq"></div><p style="margin:6px 0 0;font-size:14px">Friend scans to join.<br>Computer plays until they do.</p></div>
+<div class="big" id="big" style="opacity:0"></div><div class="st" id="st"></div>
+<script>window.MINI = 'puck';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="sim.js"></script><script src="view.js"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), ctx = cv.getContext('2d'), dpr = 1, V = new PuckView(cv);
+  var seat = 0, st = null, sim = null, host = null, c = null, colors = ['#ff5a6e', '#3aa8ff'], names = ['You', 'Computer'], finger = null;
+  var MODES = { radar: '\uD83D\uDCE1 Radar', auto: '\uD83D\uDD0D Auto zoom', follow: '\uD83C\uDFA5 Follow' }, ORDER = ['auto', 'radar', 'follow'];
+  function camBtn() { $('cam').textContent = MODES[V.mode]; } camBtn();
+  $('cam').onclick = function () { V.mode = ORDER[(ORDER.indexOf(V.mode) + 1) % 3]; localStorage.setItem('gp-cam', V.mode); camBtn(); };
+  function local(withHost) {   // this phone runs the game
+    var k = $('kjoin'); if (k) k.remove(); sim = new Puck.Sim(); sim.ai[1] = true; sim.reset(); seat = 0;
+    if (withHost) { host = Kit.host({ max: 1, onJoin: function (p) { sim.ai[1] = false; names[1] = p.name; sim.reset(); $('hostq').style.display = 'none'; },
+      onLeave: function () { sim.ai[1] = true; names[1] = 'Computer'; }, onMsg: function (p, m) { if (m.t === 'in') sim.input(1, m.x, m.y); else if (m.t === 'again' && sim.over >= 0) sim.reset(); } });
+      host.qr($('hq')); $('hostq').style.display = 'block'; setTimeout(function () { $('hostq').style.display = 'none'; }, 15000); $('hostq').onclick = function () { this.style.display = 'none'; }; }
+  }
+  c = Kit.pad({ onMsg: function (m) { if (m.t === 'you') seat = m.seat; else if (m.t === 's') st = m; else if (m.t === 'names') { names = m.names; colors = m.colors || colors; } }, onStatus: function (s) { $('st').textContent = s; } });
+  Kit.joinCard('GLIDE PUCK', c, c.room ? '' : '<button class="btn" id="vsai" style="width:100%;margin-top:10px">\uD83E\uDD16 Play the computer</button><button class="btn" id="host2" style="width:100%;margin-top:8px">\uD83D\uDCF1\uD83D\uDCF1 Host a match for 2 phones</button><p>Drag your paddle with your finger. First to 7.</p>');
+  if ($('vsai')) { $('vsai').onclick = function () { local(false); }; $('host2').onclick = function () { local(true); }; }
+  if (Kit.Q.get('solo') === '1') local(false); if (Kit.Q.get('host') === '1') local(true);
+  function pt(e) { finger = [e.clientX, e.clientY]; }
+  cv.addEventListener('pointerdown', function (e) { pt(e); if ((st && st.over >= 0) || (sim && sim.over >= 0)) { if (sim) sim.reset(); else c.send({ t: 'again' }); } });
+  cv.addEventListener('pointermove', function (e) { if (finger) pt(e); }); cv.addEventListener('pointerup', function () { finger = null; });
+  function size() { dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; } addEventListener('resize', size); size();
+  var last = 0, acc = 0, sendT = 0;
+  (function loop(t) {
+    var dt = Math.min(.05, (t - last) / 1000 || 0); last = t;
+    if (sim) { acc += dt; while (acc > 1 / 120) { sim.step(1 / 120); acc -= 1 / 120; if (sim.ev && sim.ev.indexOf('goal') === 0 && navigator.vibrate) navigator.vibrate(80); } st = sim.snap(); if (host && host.players[0]) { sendT += dt; if (sendT > 1 / 30) { sendT = 0; host.send(host.players[0], st); host.send(host.players[0], { t: 'names', names: [names[1], names[0]].reverse(), colors: colors }); } } }
+    if (st) {
+      V.update(st, seat, dt);
+      if (finger) { var q = V.toTable(finger[0], finger[1] - 30); if (sim) sim.input(seat, q[0], q[1]); else if (t - (loop.ls || 0) > 30) { loop.ls = t; c.send({ t: 'in', x: q[0], y: q[1] }); } }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); V.draw(ctx, st, seat, colors, t / 1000);
+      $('score').innerHTML = '<span style="color:' + colors[seat] + '">' + st.sc[seat] + '</span> : <span style="color:' + colors[1 - seat] + '">' + st.sc[1 - seat] + '</span>';
+      var b = $('big'); if (st.over >= 0) { b.innerHTML = (st.over === seat ? 'YOU WIN!' : names[1 - seat] + ' wins') + '<div style="font-size:.4em;color:#fff">tap to play again</div>'; b.style.opacity = 1; } else b.style.opacity = 0;
+    }
+    requestAnimationFrame(loop);
+  })(0);
+  window.GP = { V: V, get sim() { return sim; }, get st() { return st; }, local: local, get seat() { return seat; } };
+})();
+</script></body></html>

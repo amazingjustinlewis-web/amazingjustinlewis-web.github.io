@@ -1,0 +1,39 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><meta name="robots" content="noindex, nofollow">
+<title>Broadside</title><link rel="stylesheet" href="../minikit/kit.css"><link rel="stylesheet" href="bs.css">
+<style>body{overflow-y:auto;touch-action:manipulation}#app{padding:12px;max-width:480px;margin:0 auto}h3{margin:6px 0;color:#ffe7a0}#stat{min-height:44px;font-size:17px;text-align:center;margin:6px 0}
+#small{width:46%;margin:8px auto 0}#small .grid{gap:1px;padding:2px}.row{display:flex;gap:8px;margin-top:10px}.row .btn{flex:1}.note{font-size:13px;color:#9cc8e8;text-align:center}</style></head><body>
+<div id="app"><h3 id="hd">BROADSIDE</h3><div id="stat">Connecting&hellip;</div><div class="grid" id="big"></div><div class="row" id="prow"><button class="btn" id="shuf">&#127922; Shuffle</button><button class="btn go" id="ready">Ready!</button></div>
+<div id="small"><div class="grid" id="mine"></div><div class="note">your fleet</div></div><div class="row"><button class="btn go" id="start" style="display:none">START</button></div></div>
+<div class="st" id="st"></div>
+<script>window.MINI = 'broadside';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script>
+<script src="../../cafe/js/games.js"></script><script src="rules.js"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, S = null, solo = null, c;
+  function send(m) { if (solo) solo.msg(0, m); else c.send(m); }
+  function recv(m) {
+    if (m.t === 'lobby') { $('stat').textContent = m.n < 2 ? 'Waiting for a second captain\u2026 or start now to play the computer.' : 'Both captains aboard!'; $('start').style.display = m.lead ? '' : 'none'; $('start').textContent = m.n < 2 ? 'START vs COMPUTER' : 'START'; }
+    if (m.t !== 'bs' || m.phase === 'lobby') return; S = m; $('start').style.display = 'none'; draw();
+  }
+  function draw() {
+    var place = S.phase === 'place', over = S.phase === 'over';
+    $('prow').style.display = place && !S.ready ? '' : 'none'; $('small').style.display = place ? 'none' : '';
+    $('hd').textContent = place ? 'YOUR FLEET' : (S.foe + '\u2019s waters');
+    var mine = function (c) { return (S.mine.grid[c] >= 0 ? 'ship ' : '') + (S.mine.shots[c] || '') + (S.last && S.last.by !== S.seat && S.last.c === c ? ' new' : ''); };
+    var foe = function (c) { return (S.view[c] || '') + (S.last && S.last.by === S.seat && S.last.c === c ? ' new' : ''); };
+    $('big').innerHTML = Broadside.gridHtml(10, place ? mine : foe); $('mine').innerHTML = Broadside.gridHtml(10, mine);
+    $('big').classList.toggle('aim', S.phase === 'battle' && S.turn);
+    $('stat').textContent = place ? (S.ready ? 'Hidden! Waiting for ' + (S.foe || 'the other captain') + '\u2026' : 'Shuffle until you like it, then Ready') : over ? (S.win ? '\uD83C\uDFC6 You win! ' : '\uD83C\uDF0A Sunk! ') + S.log : (S.turn ? '\uD83C\uDFAF Your turn: tap their waters' : S.foe + ' is aiming\u2026') + ' \u00b7 ' + S.sunk + '/5 sunk';
+    if (over) { $('start').style.display = ''; $('start').textContent = 'PLAY AGAIN'; }
+    if (S.last && S.last.by !== S.seat && navigator.vibrate) navigator.vibrate(S.last.r === 'miss' ? 10 : 60);
+  }
+  $('big').addEventListener('click', function (e) { var d = e.target.closest('[data-c]'); if (d && S && S.phase === 'battle' && S.turn) send({ t: 'fire', c: +d.dataset.c }); });
+  $('shuf').onclick = function () { send({ t: 'shuffle' }); }; $('ready').onclick = function () { send({ t: 'ready' }); };
+  $('start').onclick = function () { if (solo) { solo.start(); return; } send({ t: S && S.phase === 'over' ? 'again' : 'start' }); };
+  function goSolo() { solo = new Broadside.Match(function (i, m) { if (i === 0) recv(m); }); solo.seat(c.name || 'You'); solo.start(); var k = document.getElementById('kjoin'); if (k) k.remove(); }
+  c = Kit.pad({ onMsg: recv, onStatus: function (s) { $('st').textContent = solo ? 'vs computer' : s; } });
+  var card = Kit.joinCard('BROADSIDE', c, '<button class="btn" id="solo" style="width:100%;margin-top:10px">&#129302; Play the computer on this phone</button><p>Classic mode. Space Broadside is coming.</p>');
+  $('solo').onclick = goSolo; if (Kit.Q.get('solo') === '1') goSolo();
+  window.BSP = { get S() { return S; }, send: send };
+})();
+</script></body></html>

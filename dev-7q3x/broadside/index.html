@@ -1,0 +1,44 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<title>Broadside (dev)</title><link rel="stylesheet" href="../minikit/kit.css"><link rel="stylesheet" href="bs.css">
+<style>
+#tv{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:5vw;padding-top:6vh}
+.side{width:38vh;text-align:center}.side h2{margin:0 0 1vh;font-size:3.4vh}.side .sub{color:#9cc8e8;font-size:2.2vh;margin-top:1vh}
+.side.turn h2{color:#ffe7a0}.side.turn h2::before{content:'\25B6  '}
+#log{position:fixed;top:3vh;left:0;right:0;text-align:center;font-size:3.6vh;color:#ffe7a0}
+.modes{display:flex;gap:12px;justify-content:center;margin:14px 0}.modes .btn{min-width:180px}.modes .btn.sel{box-shadow:0 0 0 3px #ffe7a0}
+#plist span{display:inline-block;margin:4px;padding:5px 12px;border-radius:10px;background:#fff2}
+#lobQr{width:200px;margin:12px auto}
+</style></head><body>
+<div id="tv"><div class="side" id="s0"><h2>&mdash;</h2><div class="grid" id="g0"></div><div class="sub"></div></div><div class="side" id="s1"><h2>&mdash;</h2><div class="grid" id="g1"></div><div class="sub"></div></div></div>
+<div id="log"></div>
+<div class="card" id="lobby"><div><h1>BROADSIDE</h1><p>Hide your fleet on your phone. Take turns firing on the big screen. One phone plays the computer.</p>
+  <div class="modes"><button class="btn sel">&#9875; Classic</button><button class="btn" disabled title="coming soon">&#128640; Space (coming)</button></div>
+  <div id="lobQr"></div><div id="plist"></div><p id="lh">Scan to join. The first captain taps Start.</p></div></div>
+<div class="big" id="big" style="opacity:0"></div>
+<script>window.MINI = 'broadside';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script>
+<script src="../../cafe/js/games.js"></script><script src="rules.js"></script>
+<script>
+(function () {
+  var M, host, $ = function (i) { return document.getElementById(i); }, seats = {};
+  function emit(i, m) { if (i < 0) return tv(m); var p = seats[i]; if (p) host.send(p, m); }
+  M = new Broadside.Match(emit);
+  host = Kit.host({ max: 2, canJoin: function () { return M.phase === 'lobby'; },
+    onJoin: function (p) { if (seats[p.seat] !== p) { seats[p.seat] = p; M.seat(p.name); } else M.s[p.seat].name = p.name; lobby(); M.push(); host.send(p, { t: 'lobby', lead: p.seat === 0, n: host.players.length }); },
+    onMsg: function (p, m) { if (m.t === 'start' && M.phase === 'lobby' || m.t === 'again' && M.phase === 'over') { $('lobby').style.display = 'none'; M.start(); Kit.phase('play'); } else M.msg(p.seat, m); } });
+  host.qr($('lobQr'));
+  function lobby() { $('plist').innerHTML = host.players.map(function (p) { return '<span style="border-left:4px solid ' + p.color + '">' + p.name + '</span>'; }).join(''); host.players.forEach(function (p) { host.send(p, { t: 'lobby', lead: p.seat === 0, n: host.players.length }); }); }
+  function tv(st) {
+    window.BSTV = st; $('log').textContent = st.phase === 'lobby' ? '' : st.log;
+    [0, 1].forEach(function (i) { var p = st.s[i], foe = st.s[1 - i], el = $('s' + i); if (!p) return;
+      el.querySelector('h2').textContent = p.name + '\u2019s waters' + (p.ai ? ' \uD83E\uDD16' : '');
+      el.classList.toggle('turn', st.phase === 'battle' && st.turn === (1 - i));
+      var v = foe ? foe.view : {}, last = st.last && st.last.by === 1 - i ? st.last.c : -1;
+      $('g' + i).innerHTML = Broadside.gridHtml(10, function (c) { return (v[c] || '') + (c === last ? ' new' : ''); });
+      el.querySelector('.sub').textContent = st.phase === 'place' ? (p.ready ? 'Fleet hidden \u2714' : 'Placing ships\u2026') : (foe ? foe.sunk : 0) + '/5 of their ships sunk';
+    });
+    var b = $('big'); if (st.phase === 'over') { b.textContent = st.s[st.winner].name + ' wins!'; b.style.opacity = 1; } else b.style.opacity = 0;
+  }
+  Kit.over(function () { return M.phase === 'over'; }, 40000);
+  window.BSM = M;
+})();
+</script></body></html>

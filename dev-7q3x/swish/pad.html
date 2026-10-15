@@ -1,0 +1,15 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><meta name="robots" content="noindex, nofollow">
+<title>Swish Flick pad</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>body{background:radial-gradient(ellipse at 50% 80%,#5a1a80,#140a26 70%)}#zone{position:fixed;inset:0}#ball{position:fixed;left:50%;bottom:16%;width:150px;height:150px;margin-left:-75px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffd7a8,#f07a22 40%,#6a2a06);box-shadow:0 10px 30px #0008;transition:transform .25s,opacity .25s;pointer-events:none}
+#ball.gone{transform:translateY(-70vh) scale(.3);opacity:0}#hud{position:fixed;top:16px;left:0;right:0;text-align:center;font-size:22px}#hud b{font-size:44px;display:block;color:#ffe7a0}#tip{position:fixed;bottom:6%;left:0;right:0;text-align:center;color:#d9cdf0}</style></head><body>
+<div id="zone"></div><div id="hud"><b id="sc">0</b><span id="tm">Flick up to shoot</span></div><div id="ball"></div><div id="tip">&uarr; flick up on the ball &uarr;<br><small>harder = farther, sideways = aim</small></div><div class="st" id="st"></div>
+<script>window.MINI = 'swish';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); };
+  var c = Kit.pad({ onMsg: function (m) { if (m.t !== 'st') return; $('sc').textContent = m.score; $('tm').textContent = m.phase === 'play' ? m.time + 's' + (m.streak >= 3 ? ' \uD83D\uDD25 on fire' : '') : m.phase === 'over' ? 'Time! Flick to play again' : 'Flick up to shoot'; $('ball').classList.toggle('gone', !!m.live); },
+    onStatus: function (s) { $('st').textContent = s; } });
+  Kit.joinCard('SWISH FLICK', c, '<p>Flick up on your phone to shoot at the TV hoop.</p>');
+  Kit.flick($('zone'), function (f) { if (-f.dy < 200) return; c.send({ t: 'flick', dx: f.dx, dy: f.dy, curve: f.curve, w: f.w, h: f.h }); $('ball').classList.add('gone'); if (navigator.vibrate) navigator.vibrate(15); });
+})();
+</script></body></html>
