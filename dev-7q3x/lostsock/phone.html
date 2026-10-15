@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#1b2440"><title>Lost Sock · on your phone (dev)</title>
+<style>
+@font-face{font-family:Fredoka;src:url(../../games/walker/assets/fredoka-latin-var.woff2) format('woff2');font-weight:300 700}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;overflow:hidden;background:#1b2440;color:#fff;font-family:Fredoka,system-ui,sans-serif;overscroll-behavior:none}
+:root{--bar:96px;--safe:env(safe-area-inset-bottom,0px)}
+canvas#cv{position:fixed;left:0;top:0;width:100%;height:calc(100% - var(--bar) - var(--safe));display:block;touch-action:none}
+#ptop{position:fixed;left:6px;right:52px;top:6px;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:13px;background:#0009;border-radius:12px;padding:5px 9px;pointer-events:none}
+#tog{position:fixed;right:6px;top:6px;width:40px;height:40px;border-radius:12px;border:0;background:#0009;color:#fff;font-size:20px;z-index:5}
+#banner{position:fixed;left:0;right:0;top:16%;text-align:center;font-size:30px;font-weight:700;color:#ffe7a0;text-shadow:0 3px 0 #6a3a8a,0 0 14px #000;pointer-events:none;transition:opacity .4s;opacity:0}
+#pbar{position:fixed;left:0;right:0;bottom:0;height:calc(var(--bar) + var(--safe));padding:8px 8px calc(8px + var(--safe));background:#141a30;display:flex;gap:6px;align-items:stretch;box-shadow:0 -4px 16px #0008}
+#pbar button{font:inherit;border:0;border-radius:14px;background:#33406a;color:#fff;font-size:24px;touch-action:none}
+#pbar .mv{width:52px}#pbar .aim{display:flex;flex-direction:column;gap:4px;width:44px}#pbar .aim button{flex:1;font-size:16px}
+#wbtn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px!important;line-height:1.1;padding:2px}#wbtn .i{font-size:24px}
+#fbtn{width:96px;font-weight:700;font-size:20px!important;background:linear-gradient(to top,#ffb23f var(--c,0%),#ff5a6e var(--c,0%))!important;box-shadow:0 4px 0 #8a1a2a}
+#bj{width:40px;font-size:16px!important}
+#pbar.dim button:not(#wbtn){opacity:.35}#pbar.mine{background:#20284a}
+#wmenu{position:fixed;right:110px;bottom:calc(var(--bar) + var(--safe) + 6px);width:min(260px,70vw);max-height:65vh;overflow:auto;display:flex;flex-direction:column-reverse;gap:4px;background:#141a30ee;border-radius:14px;padding:6px;z-index:6}
+#wmenu button{font:inherit;font-size:15px;text-align:left;border:0;border-radius:10px;padding:9px 10px;background:#33406a;color:#fff}#wmenu .sel{background:#ffe7a0;color:#3a2a00}#wmenu .out{opacity:.4}#wmenu .i{font-size:20px}
+.card{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#141a30e8;padding:18px;z-index:4}
+.card .in{width:100%;max-width:380px;text-align:center}.card h1{color:#ffe7a0;margin:0 0 8px;font-size:34px}
+.card button{font:inherit;width:100%;border:0;border-radius:14px;padding:14px;font-size:20px;font-weight:700;margin-top:10px;background:#5fdc7a;color:#122}
+.card button.alt{background:#33406a;color:#fff;font-weight:500;font-size:16px}
+#plist{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0}#plist span{padding:5px 10px;border-radius:10px;color:#111;font-weight:600}
+.note{color:#bbd;font-size:14px}
+#qrb{position:fixed;left:6px;top:56px;background:#fff;border-radius:8px;padding:3px;z-index:7;color:#111;font-size:10px;text-align:center;transform-origin:top left;transition:transform .3s}
+#qrb .q{width:64px;height:64px}#qrb .q svg{width:100%;height:100%}#qrb.big{transform:scale(3.4)}
+#pmsg{position:fixed;left:0;right:0;bottom:calc(var(--bar) + var(--safe) + 4px);text-align:center;font-size:12px;color:#ccd;pointer-events:none}
+</style></head><body>
+<canvas id="cv"></canvas>
+<div id="ptop" hidden></div><button id="tog" hidden title="Controller only, watch the TV">&#128250;</button>
+<div id="banner"></div>
+<div id="qrb" hidden><div class="q"></div>Friends: <b class="c"></b></div>
+<div id="pbar" hidden>
+  <button class="mv" id="bl">&#9664;</button><button class="mv" id="br">&#9654;</button>
+  <div class="aim"><button id="bu">&#9650;</button><button id="bd">&#9660;</button></div>
+  <button id="bj" title="Jump">&#10514;</button>
+  <button id="wbtn"></button>
+  <button id="fbtn">FIRE</button>
+</div>
+<div id="wmenu" hidden></div>
+<div class="card" id="plobby" hidden><div class="in"><h1>LOST SOCK</h1><p class="note">Playing on your phone. Pinch and drag the map any time; it drifts back to the action. &#9664; &#9654; walk, &#9650; &#9660; aim, hold FIRE to charge.</p>
+  <div id="plist"></div><p class="note" id="pwait"></p><button id="pstart" hidden>START GAME</button><button class="alt" id="pbots" hidden>AI fill: ON</button></div></div>
+<div class="card" id="pover" hidden><div class="in"><h1 id="potitle"></h1><p class="note" id="postats"></p><button id="pagain" hidden>BACK TO LOBBY</button><p class="note">Made by Zero to Phi.</p></div></div>
+<div id="pmsg"></div>
+<script>window.LS_PHONE = true;</script>
+<script src="js/vendor/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/config.js"></script>
+<script src="js/net.js"></script>
+<script src="js/tv.js"></script>
+</body></html>

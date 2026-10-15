@@ -2,9 +2,9 @@
 (function () {
   'use strict';
   var C = window.LS_CONFIG, Q = new URLSearchParams(location.search), $ = function (id) { return document.getElementById(id); };
-  var token = localStorage.getItem('ls-token') || Math.random().toString(36).slice(2); localStorage.setItem('ls-token', token);
-  var net = null, S = {}, cur = 'join', weapon = localStorage.getItem('ls-w') || 'bazooka';
-  function show(id) { if (cur === id) return; cur = id; ['join', 'lobby', 'play', 'over'].forEach(function (s) { $(s).classList.toggle('on', s === id); }); }
+  var token = Q.get('tok') || localStorage.getItem('ls-token') || Math.random().toString(36).slice(2); if (!Q.get('tok')) localStorage.setItem('ls-token', token);
+  var net = null, S = {}, cur = 'choose', weapon = localStorage.getItem('ls-w') || 'bazooka';
+  function show(id) { if (cur === id) return; cur = id; ['choose', 'join', 'lobby', 'play', 'over'].forEach(function (s) { $(s).classList.toggle('on', s === id); }); }
   $('room').value = (Q.get('room') || '').toUpperCase(); $('name').value = Q.get('name') || localStorage.getItem('ls-name') || '';
   function join() {
     var room = $('room').value.toUpperCase().replace(/[^A-Z]/g, ''); if (room.length !== 4) { $('st').textContent = 'Enter the 4-letter code on the TV'; return; }
@@ -14,7 +14,14 @@
     net = Q.get('local') === '1' ? new window.LSNet.LocalClient(o) : new window.LSNet.Client(o);
     $('joinBtn').disabled = true; $('joinBtn').textContent = 'Joining\u2026';
   }
-  $('joinBtn').onclick = join; if (Q.get('room') && (Q.get('auto') === '1' || Q.get('name') || localStorage.getItem('ls-name'))) join();
+  function phoneUrl() { var room = ($('room').value || Q.get('room') || '').toUpperCase(), n = $('cname').value.trim() || $('name').value.trim() || 'Sock boss'; localStorage.setItem('ls-name', n);
+    return 'phone.html?room=' + room + '&name=' + encodeURIComponent(n) + (Q.get('local') === '1' ? '&local=1' : '') + (Q.get('tok') ? '&tok=' + Q.get('tok') : ''); }
+  function goTop(u) { try { if (window.top !== window && window.top.location.host === location.host) { window.top.location.href = new URL(u, location.href).href; return; } } catch (e) {} location.href = u; }
+  $('cname').value = $('name').value;
+  $('chPh').onclick = function () { goTop(phoneUrl()); };
+  $('chTv').onclick = function () { if ($('cname').value.trim()) $('name').value = $('cname').value.trim(); show('join'); if (Q.get('room')) join(); };
+  $('togPh').onclick = function () { goTop(phoneUrl()); };
+  $('joinBtn').onclick = join; if (Q.get('mode') === 'tv') { show('join'); if (Q.get('room') && (Q.get('auto') === '1' || Q.get('name') || localStorage.getItem('ls-name'))) join(); }
   $('startBtn').onclick = function () { net.send({ t: 'start' }); }; $('botsBtn').onclick = function () { net.send({ t: 'bots' }); }; $('againBtn').onclick = function () { net.send({ t: 'start' }); };
   // weapons
   function drawW() { var used = S.used || {};
@@ -40,6 +47,7 @@
   // messages
   function onMsg(m) {
     if (m.t === 'reject') $('st').textContent = m.reason;
+    if (m.t === 'welcome' && m.tv === false) { $('st').textContent = 'No TV in this game: opening it on your phone\u2026'; setTimeout(function () { goTop(phoneUrl()); }, 600); }
     if (m.t === 'st') { var was = S.my; S = m; paint(); if (m.my && !was && navigator.vibrate) navigator.vibrate([80, 60, 80]); }
   }
   var wKey = '';

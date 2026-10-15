@@ -1,7 +1,7 @@
 /* LOST SOCK v0.1 - every tunable number. TV and phones read this file. */
 (function (root) {
   root.LS_CONFIG = {
-    version: '0.2',
+    version: '0.3',
     maxTeams: 4, socksPerTeam: 3, hp: 100,
     teamColors: ['#ff5a6e', '#3aa8ff', '#5fdc7a', '#ffc93f'],
     teamNames: ['Left Feet', 'Odd Ones', 'Holey Rollers', 'Dryer Escapees'],

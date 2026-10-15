@@ -14,7 +14,7 @@ button.go{background:#ffe7a0;color:#3a2a00;font-weight:700;width:100%;font-size:
 .note{font-size:14px;color:#bbd;margin:6px 0}
 #st{position:fixed;left:0;right:0;bottom:0;font-size:12px;color:#889;text-align:center;padding:4px;pointer-events:none}
 #play{padding:8px;touch-action:none;overflow:hidden}
-#info{display:flex;justify-content:space-between;align-items:center;font-size:14px;gap:6px}
+#info{padding-right:48px;display:flex;justify-content:space-between;align-items:center;font-size:14px;gap:6px}
 #socks{display:flex;gap:6px;margin:4px 0;font-size:13px}#socks span{background:#0005;border-radius:8px;padding:2px 7px}
 #turn{font-size:17px;font-weight:600;text-align:center;padding:4px;border-radius:10px;margin:2px 0}
 #joy{position:absolute;left:8px;bottom:12px;width:52%;top:150px;background:#ffffff0a;border-radius:16px}
@@ -28,7 +28,12 @@ button.go{background:#ffe7a0;color:#3a2a00;font-weight:700;width:100%;font-size:
 .dim #fire,.dim #jump{opacity:.35}
 table{width:100%;font-size:17px}td{padding:4px}td:last-child{text-align:right;font-weight:600}
 </style></head><body>
-<div class="scr on" id="join"><h2>LOST SOCK</h2>
+<div class="scr on" id="choose"><h2>LOST SOCK</h2>
+  <p class="note">Your name</p><input id="cname" maxlength="12" placeholder="Sock boss">
+  <button class="go" id="chTv" style="margin-top:16px">&#128250; Play on the TV<br><small style="font-weight:500;font-size:14px">phone as controller</small></button>
+  <button class="go" id="chPh" style="background:#5fdc7a">&#128241; Play on your phone<br><small style="font-weight:500;font-size:14px">the whole game on this screen</small></button>
+  <p class="note">If everyone picks their phone, the TV stays free. You can switch any time with the corner button.</p></div>
+<div class="scr" id="join"><h2>LOST SOCK</h2>
   <p class="note">Room</p><input id="room" maxlength="4" autocapitalize="characters" placeholder="ABCD">
   <p class="note">Your name</p><input id="name" maxlength="12" placeholder="Sock boss">
   <button class="go" id="joinBtn">JOIN</button></div>
@@ -36,7 +41,7 @@ table{width:100%;font-size:17px}td{padding:4px}td:last-child{text-align:right;fo
   <p class="note">No health bars: watch your socks on the TV. Tattered, then shredded and leaking stuffing\u2026</p>
   <div id="leadBox" style="display:none"><button class="go" id="startBtn" style="background:#5fdc7a">START GAME</button><button id="botsBtn" style="width:100%;margin-top:8px">AI fill: ON</button></div>
   <p class="note" id="lNote"></p></div>
-<div class="scr" id="play">
+<div class="scr" id="play"><button id="togPh" style="position:absolute;right:8px;top:6px;z-index:3;padding:6px 10px;font-size:18px" title="Game on my phone">&#128241;</button>
   <div id="info"><b id="team"></b><span id="wind"></span></div>
   <div id="socks"></div><div id="turn"></div>
   <div id="joy"><div style="position:absolute;left:0;right:0;top:40%;text-align:center;color:#fff4;font-size:15px">&larr; walk &rarr;<br>&uarr; aim &darr;</div><div id="base"></div><div id="knob"></div></div>

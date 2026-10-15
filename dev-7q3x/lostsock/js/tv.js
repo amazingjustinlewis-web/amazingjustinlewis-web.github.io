@@ -2,7 +2,13 @@
 (function () {
   'use strict';
   var C = window.LS_CONFIG, WD = C.world, W = WD.W, H = WD.H, Q = new URLSearchParams(location.search), $ = function (id) { return document.getElementById(id); };
-  var LOCAL = Q.get('local') === '1', NONET = Q.get('nonet') === '1', EMBED = window.parent !== window;
+  var LOCAL = Q.get('local') === '1', NONET = Q.get('nonet') === '1', EMBED = window.parent !== window && !window.LS_PHONE;
+  var PH = !!window.LS_PHONE, HOSTPH = PH && Q.get('host') === '1', VIEW = PH && !HOSTPH;   // phone-as-screen: HOSTPH runs the game on this phone, VIEW mirrors a host (TV or phone)
+  var evs = [];   // host event log streamed to phone screens: terrain ops + fx + bubbles
+  function ev(e) { if (!VIEW) evs.push(e); }
+  function rd(v) { return Math.round(v * 10) / 10; }
+  var srng = Math.random; function srnd(a, b) { return a + srng() * (b - a); }
+  function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   var WP = {}; C.weapons.forEach(function (w) { WP[w.id] = w; });
   var game = { phase: 'lobby', players: [], bots: Q.get('bots') !== '0', teams: [], socks: [], t: 0, phaseT: 0 };
   window.LS = { game: game };
@@ -18,17 +24,18 @@
   var mask = new Uint8Array(W * H), tcv = document.createElement('canvas'); tcv.width = W; tcv.height = H;
   var tcx = tcv.getContext('2d'), timg = null, PAL = null;
   function solid(x, y) { x |= 0; y |= 0; if (x < 0 || x >= W) return false; if (y < 0) return false; if (y >= H) return true; return mask[y * W + x] === 1; }
-  function genTerrain() {
-    mask.fill(0); var a = [], ph = [rnd(0, 6), rnd(0, 6), rnd(0, 6), rnd(0, 6)];
+  function genTerrain(seed) {
+    srng = mulberry(seed);
+    mask.fill(0); var a = [], ph = [srnd(0, 6), srnd(0, 6), srnd(0, 6), srnd(0, 6)];
     for (var x = 0; x < W; x++) { var u = x / W;
       var h = 640 + Math.sin(u * 6.3 + ph[0]) * 140 + Math.sin(u * 15 + ph[1]) * 60 + Math.sin(u * 37 + ph[2]) * 18 - Math.sin(u * Math.PI) * 120;
       if (u < 0.04 || u > 0.96) h += 400; a.push(h); }
     for (x = 0; x < W; x++) for (var y = Math.max(0, a[x] | 0); y < H; y++) mask[y * W + x] = 1;
-    for (var i = 0; i < 4; i++) { var cx = rnd(300, W - 300), cy = rnd(280, 470), rw = rnd(110, 220), rh = rnd(26, 50);   // floating cushions
+    for (var i = 0; i < 4; i++) { var cx = srnd(300, W - 300), cy = srnd(280, 470), rw = srnd(110, 220), rh = srnd(26, 50);   // floating cushions
       for (y = cy - rh; y < cy + rh; y++) for (x = cx - rw; x < cx + rw; x++) { var dx = (x - cx) / rw, dy = (y - cy) / rh; if (dx * dx + dy * dy < 1) mask[(y | 0) * W + (x | 0)] = 1; } }
-    for (i = 0; i < 5; i++) carve(rnd(250, W - 250), rnd(800, 1000), rnd(40, 80), true);   // caves
+    for (i = 0; i < 5; i++) carve(srnd(250, W - 250), srnd(800, 1000), srnd(40, 80), true);   // caves
     for (y = WD.water; y < H; y++) for (x = 0; x < W; x++) mask[y * W + x] = 0;           // rinse water eats the bottom
-    PAL = [rnd(0, 360)]; timg = tcx.createImageData(W, H); paintTerrain(0, 0, W, H);
+    PAL = [srnd(0, 360)]; timg = tcx.createImageData(W, H); paintTerrain(0, 0, W, H);
   }
   function paintTerrain(x0, y0, x1, y1) {
     x0 = Math.max(0, x0 | 0); y0 = Math.max(0, y0 | 0); x1 = Math.min(W, Math.ceil(x1)); y1 = Math.min(H, Math.ceil(y1)); if (x1 <= x0 || y1 <= y0) return;
@@ -45,10 +52,12 @@
     tcx.putImageData(timg, 0, 0, x0, y0, x1 - x0, y1 - y0);
   }
   function carve(cx, cy, r, quiet) {
+    if (!quiet) { cx = rd(cx); cy = rd(cy); r = rd(r); ev(['c', cx, cy, r]); }
     for (var y = Math.max(0, cy - r | 0); y < Math.min(WD.water, cy + r); y++) for (var x = Math.max(0, cx - r | 0); x < Math.min(W, cx + r); x++) { var dx = x - cx, dy = y - cy; if (dx * dx + dy * dy < r * r) mask[y * W + x] = 0; }
     if (!quiet) paintTerrain(cx - r - 8, cy - r - 8, cx + r + 8, cy + r + 8);
   }
   function stamp(cx, cy, r) {
+    cx = rd(cx); cy = rd(cy); r = rd(r); ev(['s', cx, cy, r]);
     for (var y = Math.max(0, cy - r | 0); y < Math.min(WD.water, cy + r); y++) for (var x = Math.max(0, cx - r | 0); x < Math.min(W, cx + r); x++) { var dx = x - cx, dy = y - cy; if (dx * dx + dy * dy < r * r) mask[y * W + x] = 1; }
     paintTerrain(cx - r - 8, cy - r - 8, cx + r + 8, cy + r + 8);
   }
@@ -56,10 +65,10 @@
   function los(x0, y0, x1, y1) { var n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4); for (var i = 1; i < n; i++) if (solid(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n)) return false; return true; }
   // ================================================================ entities
   var mines = [], cam = { x: 1200, y: 600, z: 1 }, rings = [], projs = [], parts = [], fires = [], washers = [], decoys = [], bubbles = [], pops = [], chunks = [], shake = 0, flashes = [];
-  function bubble(s, text, col) { bubbles = bubbles.filter(function (b) { return b.s !== s; }); bubbles.push({ s: s, x: s.x, y: s.y, text: text, t: 2.6, col: col || '#fff' }); }
-  function pop(x, y, text, col) { pops.push({ x: x, y: y, text: text, col: col || '#fff', t: 1.6 }); }
-  function feed(t) { (game.feed = game.feed || []).push({ t: t, at: performance.now() }); if (game.feed.length > 6) game.feed.shift(); }
-  function banner(t, sec) { game.banner = t; game.bannerT = sec || 2; }
+  function bubble(s, text, col) { ev(['b', game.socks.indexOf(s), text, col || '']); bubbles = bubbles.filter(function (b) { return b.s !== s; }); bubbles.push({ s: s, x: s.x, y: s.y, text: text, t: 2.6, col: col || '#fff' }); }
+  function pop(x, y, text, col) { ev(['p', rd(x), rd(y), text, col || '']); pops.push({ x: x, y: y, text: text, col: col || '#fff', t: 1.6 }); }
+  function feed(t) { ev(['f', t]); (game.feed = game.feed || []).push({ t: t, at: performance.now() }); if (game.feed.length > 6) game.feed.shift(); }
+  function banner(t, sec) { ev(['bn', t, sec || 2]); game.banner = t; game.bannerT = sec || 2; }
   function cond(s) { return !s.alive ? 'lost' : s.hp > 66 ? 'pristine' : s.hp > 33 ? 'tattered' : 'shredded'; }
   function makeSock(team, i, x) { return { team: team, name: C.sockNames[(team.idx * 3 + i) % C.sockNames.length], x: x, y: 0, vx: 0, vy: 0, hp: C.hp, alive: true, face: 1, aim: -0.6, ground: false, dizzy: 0, spin: 0, dying: null, wob: rnd(0, 6), stuffT: 0, maxVy: 0 }; }
   function dropSpot(x) { for (var y = 40; y < WD.water; y++) if (solid(x, y)) return y - 1; return -1; }
@@ -73,13 +82,17 @@
       feed(s.name + (s.dying.kind === 'dopey' ? ' unravelled' : ' blew into fuzz') + (why ? ' (' + why + ')' : ''));
     } else if (cond(s) !== before) { pop(s.x, s.y - 74, cond(s).toUpperCase() + '!', '#ffe7a0'); if (cond(s) === 'shredded') bubble(s, 'my stuffing!'); }
   }
-  function explode(x, y, r, dmg, src, why, soapy) {
-    carve(x, y, r); shake = Math.max(shake, r / 5); flashes.push({ x: x, y: y, r: r * 1.8, t: 0.45 }); rings.push({ x: x, y: y, R: r * 2.2, t: 0.45, max: 0.45 });
+  function fxBoom(x, y, r, soapy) { ev(['x', rd(x), rd(y), r, soapy ? 1 : 0]);
+    shake = Math.max(shake, r / 5); flashes.push({ x: x, y: y, r: r * 1.8, t: 0.45 }); rings.push({ x: x, y: y, R: r * 2.2, t: 0.45, max: 0.45 });
     for (var sm = 0; sm < r / 8; sm++) parts.push({ x: x + rnd(-r, r) * 0.4, y: y + rnd(-r, r) * 0.4, vx: rnd(-40, 40), vy: rnd(-90, -20), t: rnd(1, 2), k: 'smoke', s: rnd(r * 0.25, r * 0.5) });
-    mines.forEach(function (m) { if (Math.hypot(m.x - x, m.y - y) < r + 10 && !m.fuse) m.fuse = 0.15; });
     var n = Math.min(70, r | 0);
-    for (var i = 0; i < n; i++) { var a = rnd(0, 6.28), v = rnd(80, 420) * r / 60; parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, t: rnd(0.6, 1.6), k: soapy ? 'bub' : 'spark', s: rnd(4, 12) * (soapy ? 1.4 : 1) }); }
-    for (i = 0; i < Math.min(10, r / 10 | 0); i++) { var b = rnd(-2.6, -0.5); chunks.push({ x: x + rnd(-r, r) * 0.5, y: y - r * 0.3, vx: Math.cos(b) * rnd(100, 340), vy: Math.sin(b) * rnd(150, 420), r: rnd(5, 11), rest: 0 }); }
+    for (var i = 0; i < n; i++) { var a = rnd(0, 6.28), v = rnd(80, 420) * r / 60; parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, t: rnd(0.6, 1.6), k: soapy ? 'bub' : 'spark', s: rnd(4, 12) * (soapy ? 1.4 : 1) }); } }
+  function fuzzBurst(x, y, c) { ev(['fz', rd(x), rd(y), c]); for (var i = 0; i < 40; i++) { var a = rnd(0, 6.28), v = rnd(60, 380); parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 100, t: rnd(1, 2.2), k: 'fuzz', s: rnd(4, 10), c: c }); } }
+  function dryerRings(x, y) { ev(['rg', rd(x), rd(y)]); WP.dryer.rings.forEach(function (R, i) { rings.push({ x: x, y: y, R: R, t: 0.5 + i * 0.15, max: 0.5 + i * 0.15 }); }); }
+  function explode(x, y, r, dmg, src, why, soapy) {
+    carve(x, y, r); fxBoom(x, y, r, soapy);
+    mines.forEach(function (m) { if (Math.hypot(m.x - x, m.y - y) < r + 10 && !m.fuse) m.fuse = 0.15; });
+    for (var i = 0; i < Math.min(10, r / 10 | 0); i++) { var b = rnd(-2.6, -0.5); chunks.push({ x: x + rnd(-r, r) * 0.5, y: y - r * 0.3, vx: Math.cos(b) * rnd(100, 340), vy: Math.sin(b) * rnd(150, 420), r: rnd(5, 11), rest: 0 }); }
     game.socks.forEach(function (s) { if (!s.alive) return; var dx = s.x - x, dy = (s.y - 18) - y, d = Math.hypot(dx, dy), R = r * 1.35;
       if (d < R) { var f = 1 - d / R; hurt(s, dmg * (0.35 + 0.65 * f), src, why); s.vx += dx / (d || 1) * 420 * f * r / 60; s.vy += (dy / (d || 1) - 0.8) * 380 * f * r / 60; s.ground = false; } });
     washers.forEach(function (w) { if (Math.hypot(w.x - x, w.y - y) < r + 20) { w.vy -= 200; w.ground = false; } });
@@ -91,7 +104,7 @@
     var want = clamp(+Q.get('fill') || 2, 2, 4);
     if (game.bots) while (game.players.length < want) game.players.push({ id: 'ai' + game.players.length, ai: true, name: BOTN[game.players.length] });
     if (game.players.length < 2) { game.flash = 'Need at least 2 teams (turn AI fill on)'; game.flashAt = performance.now(); return; }
-    genTerrain(); mines = []; projs = []; parts = []; fires = []; washers = []; decoys = []; bubbles = []; pops = []; chunks = []; game.feed = [];
+    game.seed = (Math.random() * 1e9) | 0; evs = []; genTerrain(game.seed); game.players.forEach(function (p) { p.inited = false; }); mines = []; projs = []; parts = []; fires = []; washers = []; decoys = []; bubbles = []; pops = []; chunks = []; game.feed = [];
     game.teams = game.players.slice(0, C.maxTeams).map(function (p, i) { var t = { idx: i, p: p, name: p.ai ? p.name : (p.name + "'s " + C.teamNames[i]), color: C.teamColors[i], socks: [], cur: 0, used: {}, dmg: 0, kos: 0, taken: 0, lost: 0 }; p.team = t; return t; });
     game.socks = []; var spots = [];
     var n = game.teams.length * C.socksPerTeam;
@@ -178,7 +191,7 @@
       if (game.drill.t <= 0) { game.drill = null; s.vx = 0; s.vy = 0; } }
     game.socks.forEach(function (o) { if (o.alive && !(game.drill && o === s)) physSock(o, dt);
       if (o.dying) { o.dying.t += dt; var D = o.dying;
-        if (D.kind === 'boom' && !D.done) { D.done = true; for (var i = 0; i < 40; i++) { var a = rnd(0, 6.28), v = rnd(60, 380); parts.push({ x: o.x, y: o.y - 18, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 100, t: rnd(1, 2.2), k: 'fuzz', s: rnd(4, 10), c: o.team.color }); } o.dieAt = 0.3; explode(o.x, o.y - 10, 22, 8, null, 'chain'); }
+        if (D.kind === 'boom' && !D.done) { D.done = true; fuzzBurst(o.x, o.y - 18, o.team.color); o.dieAt = 0.3; explode(o.x, o.y - 10, 22, 8, null, 'chain'); }
         if (D.t > (D.kind === 'dopey' ? 2.2 : 0.3)) { o.alive = false; o.tomb = true; o.dying = null; o.team.lost++; } }
       if (o.alive && cond(o) === 'shredded') { o.stuffT -= dt; if (o.stuffT <= 0) { o.stuffT = rnd(0.25, 0.6); parts.push({ x: o.x - o.face * 6, y: o.y - 10, vx: rnd(-20, 20), vy: rnd(-30, 0), t: 1.4, k: 'stuff', s: rnd(3, 6) }); } } });
     projs = projs.filter(function (p) { var W0 = WP[p.k === 'blet' ? 'mortar' : p.k === 'iron' ? 'airstrike' : p.k] || {}; p.t += dt;
@@ -243,7 +256,7 @@
   }
   function bubbleAt() {}
   function dryerBlast(x, y, team) { var D = WP.dryer; explode(x, y, D.r, D.dmg, team, 'dryer bomb', true); banner('TUMBLE DRY!', 1.2);
-    D.rings.forEach(function (R, i) { rings.push({ x: x, y: y, R: R, t: 0.5 + i * 0.15, max: 0.5 + i * 0.15 }); });
+    dryerRings(x, y);
     game.socks.forEach(function (s) { if (!s.alive || s.dying) return; var dx = s.x - x, dy = s.y - 18 - y, d = Math.hypot(dx, dy) || 1, i = D.rings.findIndex(function (R) { return d < R; }); if (i < 0) return;
       s.vx += dx / d * D.push[i]; s.vy += (dy / d - 0.6) * D.push[i]; s.ground = false; if (i < 2) { s.size = Math.max(0.5, (s.size || 1) - (i ? 0.15 : 0.3)); bubble(s, 'I SHRANK!'); } }); }
   // ================================================================ AI
@@ -282,8 +295,9 @@
   // ================================================================ rendering
   var cv = $('cv'), cx = cv.getContext('2d'), scale = 1, offX = 0, offY = 0, clouds = [];
   for (var ci = 0; ci < 8; ci++) clouds.push({ x: rnd(0, W), y: rnd(60, 360), s: rnd(0.6, 1.4) });
-  function resize() { var d = window.devicePixelRatio || 1; cv.width = innerWidth * d; cv.height = innerHeight * d; }
+  function resize() { var d = window.devicePixelRatio || 1; cv.width = (cv.clientWidth || innerWidth) * d; cv.height = (cv.clientHeight || innerHeight) * d; }
   addEventListener('resize', resize); resize();
+  var lastCW = 0; function resizeMaybe() { if (cv.clientWidth !== lastCW || cv.clientHeight * (window.devicePixelRatio || 1) !== cv.height) { lastCW = cv.clientWidth; resize(); } }
   function drawSock(s, x, y, extra) {
     var c = cx, col = s.team.color, cd = s.alive ? cond(s) : 'pristine', D = s.dying, wob = Math.sin(game.t * 3 + s.wob);
     c.save(); c.translate(x, y);
@@ -333,10 +347,28 @@
     if (s.alive) { var v = aimVec(s); return { x: s.x + v[0] * 120 * (game.state === 'aim' ? 1 : 0), y: s.y - 50 + v[1] * 60, z: game.drill ? 2.4 : 2.3 }; }
     return full;
   }
-  function updateCam() { var now = performance.now(), dt = Math.min(0.1, (now - camLast) / 1000); camLast = now; var T = camTarget(), k = 1 - Math.exp(-dt * (T.z > cam.z ? 2.2 : 1.6));
-    cam.z += (T.z - cam.z) * k; cam.x += (T.x - cam.x) * Math.min(1, k * 1.6); cam.y += (T.y - cam.y) * Math.min(1, k * 1.6);
-    var S = scale * cam.z, hw = cv.width / 2 / S, hh = cv.height / 2 / S;
-    cam.x = hw * 2 >= W ? W / 2 : clamp(cam.x, hw, W - hw); cam.y = hh * 2 >= H ? H / 2 : clamp(cam.y, hh, H - hh); }
+  var ac = { x: W / 2, y: H / 2, z: 1 }, uc = null, uw = 0, lastTouch = 0, touching = 0;
+  function clampCam(c) { var S = scale * c.z, hw = cv.width / 2 / S, hh = cv.height / 2 / S; c.x = hw * 2 >= W ? W / 2 : clamp(c.x, hw, W - hw); c.y = hh * 2 >= H ? H / 2 : clamp(c.y, hh, H - hh); }
+  function updateCam() { var now = performance.now(), dt = Math.min(0.1, (now - camLast) / 1000); camLast = now; var T = camTarget(); if (PH && T.z > 1.05) T.z *= 1.5;
+    var k = 1 - Math.exp(-dt * (T.z > ac.z ? 2.2 : 1.6));
+    ac.z += (T.z - ac.z) * k; ac.x += (T.x - ac.x) * Math.min(1, k * 1.6); ac.y += (T.y - ac.y) * Math.min(1, k * 1.6); clampCam(ac);
+    if (uc) { if (!touching && now - lastTouch > 3500) uw = Math.max(0, uw - dt * 0.12); if (uw <= 0) uc = null; }   // very gradual hand-back to the auto camera
+    if (uc) { clampCam(uc); cam.x = ac.x + (uc.x - ac.x) * uw; cam.y = ac.y + (uc.y - ac.y) * uw; cam.z = ac.z + (uc.z - ac.z) * uw; } else { cam.x = ac.x; cam.y = ac.y; cam.z = ac.z; }
+    clampCam(cam); }
+  if (PH) (function () {   // pinch-zoom and pan, any time
+    var pts = {}, d0 = 0;
+    function list() { return Object.keys(pts).map(function (k) { return pts[k]; }); }
+    function grab() { if (!uc || uw < 1) uc = { x: cam.x, y: cam.y, z: cam.z }; uw = 1; }
+    cv.addEventListener('pointerdown', function (e) { pts[e.pointerId] = { x: e.clientX, y: e.clientY }; touching = list().length; grab(); var l = list(); if (l.length === 2) d0 = Math.hypot(l[0].x - l[1].x, l[0].y - l[1].y); try { cv.setPointerCapture(e.pointerId); } catch (x) {} });
+    cv.addEventListener('pointermove', function (e) { var p = pts[e.pointerId]; if (!p || !uc) return; var dpr = window.devicePixelRatio || 1, l = list();
+      if (l.length === 1) { uc.x -= (e.clientX - p.x) * dpr / (scale * uc.z); uc.y -= (e.clientY - p.y) * dpr / (scale * uc.z); }
+      p.x = e.clientX; p.y = e.clientY; l = list();
+      if (l.length === 2) { var d = Math.hypot(l[0].x - l[1].x, l[0].y - l[1].y); if (d0 > 0) uc.z = clamp(uc.z * d / d0, 0.9, 6); d0 = d; }
+      uw = 1; lastTouch = performance.now(); });
+    function up(e) { delete pts[e.pointerId]; touching = list().length; lastTouch = performance.now(); d0 = 0; var l = list(); if (l.length === 2) d0 = Math.hypot(l[0].x - l[1].x, l[0].y - l[1].y); }
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    cv.addEventListener('wheel', function (e) { grab(); uc.z = clamp(uc.z * (e.deltaY < 0 ? 1.1 : 0.9), 0.9, 6); lastTouch = performance.now(); e.preventDefault(); }, { passive: false });
+  })();
   function draw() {
     var d = window.devicePixelRatio || 1; scale = Math.min(cv.width / W, cv.height / H); offX = (cv.width - W * scale) / 2; offY = (cv.height - H * scale) / 2;
     var g = cx.createLinearGradient(0, 0, 0, cv.height); g.addColorStop(0, '#6e8fe0'); g.addColorStop(1, '#f7c6a8'); cx.fillStyle = g; cx.fillRect(0, 0, cv.width, cv.height);
@@ -412,8 +444,10 @@
   // ================================================================ DOM UI
   var uiKey = '';
   function ui() {
+    if (PH) return phoneUi();
     var ph = game.phase;
-    $('lobby').style.display = ph === 'lobby' ? 'flex' : 'none'; $('over').style.display = ph === 'over' ? 'flex' : 'none';
+    if (ph === 'moved' && !game.movedShown) { game.movedShown = true; $('lobby').innerHTML = '<div style="text-align:center"><h1>LOST SOCK</h1><div class="sub" style="margin:2vh auto">Everyone is playing on their phones. This screen is free!</div></div>'; }
+    $('lobby').style.display = ph === 'lobby' || ph === 'moved' ? 'flex' : 'none'; $('over').style.display = ph === 'over' ? 'flex' : 'none';
     $('teams').style.display = $('top').style.display = $('feed').style.display = ph === 'play' ? '' : 'none';
     $('cornerqr').style.display = ph === 'play' && net && net.status === 'online' ? '' : 'none';
     $('banner').style.opacity = game.bannerT > 0 && ph === 'play' ? 1 : 0; if (game.bannerT > 0) $('banner').textContent = game.banner;
@@ -430,6 +464,7 @@
     if (ph === 'over') { $('pbar').firstChild.style.width = Math.min(100, game.phaseT / C.winHoldSec * 100) + '%'; $('onext').textContent = EMBED ? '' : 'Back to the lobby in ' + Math.max(0, Math.ceil(C.winHoldSec + 2 - game.phaseT)) + 's'; }
   }
   function showOver() {
+    if (PH) return;
     var w = game.winner; $('otitle').textContent = w ? w.name.toUpperCase() + ' WIN!' : 'ALL SOCKS LOST'; $('otitle').style.color = w ? w.color : '';
     $('osub').textContent = w ? 'Survivors: ' + w.socks.filter(function (s) { return s.alive; }).map(function (s) { return s.name + ' (' + cond(s) + ')'; }).join(', ') : 'The dryer wins again.';
     var r = game.teams.slice().sort(function (a, b) { return (b === w) - (a === w) || b.dmg - a.dmg; });
@@ -438,9 +473,34 @@
   // ================================================================ phones
   function send(conn, m) { if (net && conn) net.send(conn, m); }
   var lastSend = 0;
+  var lastSnap = 0;
+  function sendSnaps(now) {
+    if (now - lastSnap < 66 || (game.phase !== 'play' && game.phase !== 'over') || !game.teams.length) return; lastSnap = now;
+    var base = null;
+    humans().forEach(function (p) { if (!p.screen || !p.conn || !p.connected || p.conn.local) return;
+      if (!p.inited) { p.inited = true; p.evp = evs.length; send(p.conn, { t: 'init', seed: game.seed, ops: evs.filter(function (e) { return e[0] === 'c' || e[0] === 's'; }), teams: game.teams.map(function (t) { return { name: t.name, color: t.color, socks: t.socks.map(function (s) { return s.name; }) }; }) }); }
+      base = base || snap(); base.e = evs.slice(p.evp); p.evp = evs.length; send(p.conn, base); base = Object.assign({}, base); });
+  }
+  function r0(v) { return Math.round(v); } function r2(v) { return Math.round(v * 100) / 100; }
+  function snap() { var S = game.socks;
+    return { t: 'snap', ph: game.phase, st: game.state, tt: game.turnTeam, tT: r2(game.turnT || 0), rT: r2(game.retreatT || 0), wind: r2(game.wind || 0), w: game.weapon, pow: r2(game.power || 0), a: S.indexOf(game.active), dz: game.dizzyNow ? 1 : 0, dr: game.drill ? 1 : 0,
+      socks: S.map(function (s) { return [r0(s.x), r0(s.y), s.hp, s.alive ? 1 : 0, s.face, r2(s.aim), s.dizzy || 0, r2(s.size || 1), s.dying ? (s.dying.kind === 'dopey' ? 1 : 2) : 0, s.dying ? r2(s.dying.t) : 0, s.tomb ? 1 : 0, r2(s.spin || 0), s.ground ? 1 : 0]; }),
+      pj: projs.map(function (q) { return [q.k, r0(q.x), r0(q.y), r0(q.vx), r0(q.vy), r2(q.fuse || 0), r2(q.spin || 0)]; }),
+      wa: washers.map(function (w) { return [r0(w.x), r0(w.y), r2(w.spin), w.team.idx]; }),
+      mi: mines.map(function (q) { return [r0(q.x), r0(q.y), r2(q.t), r2(q.fuse || 0), q.team.idx]; }),
+      dc: decoys.map(function (d) { return [r0(d.x), r0(d.y), d.dir, r2(d.built), d.color, d.lured ? S.indexOf(d.lured) : -1]; }),
+      fi: fires.map(function (f) { return [r0(f.x), r0(f.y)]; }), ch: chunks.map(function (c) { return [r0(c.x), r0(c.y), r0(c.r)]; }) }; }
+  function shouldMigrate() { if (PH || !(EMBED || Q.get('migrate') === '1')) return false; var h = humans().filter(function (p) { return p.connected; }); return h.length > 0 && h.every(function (p) { return p.screen; }); }
+  function migrate() {   // everyone picked "on my phone": the first phone hosts, the TV goes back to its default screen
+    var room = window.LSNet.makeCode(), L = leader(), roster = humans().map(function (p) { return { token: p.token, name: p.name }; });
+    humans().forEach(function (p) { if (p.conn && p.connected) send(p.conn, { t: 'migrate', room: room, host: p === L, roster: roster, bots: game.bots ? 1 : 0 }); });
+    setPhase('moved'); game.movedTo = room;
+    setTimeout(function () { if (EMBED) try { parent.postMessage({ ztp: 'end' }, '*'); } catch (e) {} }, 2500);
+  }
   function sendStates(now) {
+    sendSnaps(now);
     if (now - lastSend < 150) return; lastSend = now; var L = leader();
-    humans().forEach(function (p) { if (!p.conn || !p.connected) return; var t = p.team, m = { t: 'st', phase: game.phase, leader: L === p, bots: game.bots, n: humans().length };
+    humans().forEach(function (p) { if (!p.conn || !p.connected) return; var t = p.team, m = { t: 'st', phase: game.phase, leader: L === p, bots: game.bots, n: humans().length, tv: !PH, names: humans().map(function (q) { return [q.name, q.screen ? 1 : 0]; }) };
       if (game.phase === 'play' && t) { var my = game.turnTeam === t.idx && !isAi(t);
         m.team = t.name; m.color = t.color; m.socks = t.socks.map(function (s) { return [s.name, cond(s)]; }); m.my = my && (game.state === 'aim' || game.state === 'retreat'); m.aiming = my && game.state === 'aim';
         m.who = game.active ? game.active.name + ' (' + game.active.team.name + ')' : ''; m.timer = Math.ceil(game.state === 'aim' ? game.turnT : game.state === 'retreat' ? game.retreatT : 0); m.state = game.state; m.wind = Math.round(game.wind * 10) / 10;
@@ -457,10 +517,10 @@
         p = { id: 'p' + Math.random().toString(36).slice(2, 8), token: m.token, name: String(m.name || 'Player').slice(0, 12), weapon: 'bazooka', power: 0.6 };
         game.players.push(p); }
       else if (m.name) p.name = String(m.name).slice(0, 12);
-      p.conn = conn; p.connected = true; p.left = false; conn._p = p;
-      send(conn, { t: 'welcome', pid: p.id, room: net.code, spectator: game.phase === 'play' && !p.team }); return; }
+      p.conn = conn; p.connected = true; p.left = false; conn._p = p; p.screen = !!m.screen; p.inited = false;
+      send(conn, { t: 'welcome', pid: p.id, room: net ? net.code : '', tv: !PH, spectator: game.phase === 'play' && !p.team }); return; }
     if (!p) return;
-    if (m.t === 'start' && leader() === p) { if (game.phase === 'lobby') startMatch(); else if (game.phase === 'over') toLobby(); }
+    if (m.t === 'start' && leader() === p) { if (game.phase === 'lobby') { if (shouldMigrate()) migrate(); else startMatch(); } else if (game.phase === 'over') toLobby(); }
     if (m.t === 'bots' && leader() === p && game.phase === 'lobby') game.bots = !game.bots;
     if (m.t === 'wpn' && WP[m.w]) { p.weapon = m.w; if (myTurn(p) && game.state === 'aim') game.weapon = canUse(p.team, m.w) ? m.w : game.weapon; }
     if (m.t === 'pow') { p.power = clamp(+m.v || 0, 0.1, 1); if (myTurn(p)) game.power = p.power; }
@@ -474,6 +534,7 @@
   function controllerUrl(code) { var base = location.protocol === 'file:' ? C.liveControllerUrl : location.href.replace(/[^/]*([?#].*)?$/, '') + 'controller.html'; return base + '?room=' + code + (LOCAL ? '&local=1' : ''); }
   function qrSvg(text) { var q = window.qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); }
   function setNetUi(st, code, detail) {
+    if (PH) { phoneNet(st, code); return; }
     if (st === 'online') { var url = window.ZTP_QR || controllerUrl(code); $('code').textContent = code; $('cqcode').textContent = code; $('joinUrl').textContent = url.replace(/^https?:\/\//, ''); $('qr').innerHTML = qrSvg(url); $('cq').innerHTML = qrSvg(url); $('netStatus').textContent = ''; }
     else $('netStatus').textContent = st === 'offline' ? 'Room server offline (' + (detail || '') + ')' : 'Connecting to the room server\u2026';
   }
@@ -492,20 +553,132 @@
   var last = performance.now(), kbUsed = false, SPEED = clamp(+Q.get('speed') || 1, 1, 8) | 0;
   function tick(now) {
     var dt = Math.min(0.05, (now - last) / 1000); last = now; game.phaseT += dt;
+    if (VIEW) { viewStep(dt); resizeMaybe(); draw(); ui(); requestAnimationFrame(tick); return; }
     if (game.phase === 'play') {
-      if (!game.ai && (keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown)) { kbUsed = true; game.inp = { mx: (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0), ay: (keys.ArrowDown ? 1 : 0) - (keys.ArrowUp ? 1 : 0) }; }
+      if (!game.ai && !PH && (keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown)) { kbUsed = true; game.inp = { mx: (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0), ay: (keys.ArrowDown ? 1 : 0) - (keys.ArrowUp ? 1 : 0) }; }
       else if (kbUsed) { kbUsed = false; game.inp = { mx: 0, ay: 0 }; }
       if (charging) game.power = Math.min(1, game.power + dt * 0.8);
       for (var sp = 0; sp < SPEED; sp++) sim(dt);
     }
     if (game.phase === 'over' && !EMBED && game.phaseT > C.winHoldSec + 2) toLobby();
+    if (PH) resizeMaybe();
     draw(); ui(); sendStates(now); requestAnimationFrame(tick);
   }
-  var roomQ = (Q.get('room') || Q.get('code') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4) || null;
-  if (LOCAL) net = new window.LSNet.LocalHost({ code: roomQ || 'TEST', onStatus: setNetUi, onMessage: onPhoneMessage, onClose: onPhoneClose });
-  else if (!NONET) net = new window.LSNet.Host({ code: roomQ, fixedCode: !!roomQ, onStatus: setNetUi, onMessage: onPhoneMessage, onClose: onPhoneClose });
+  // ================================================================ phone-as-screen
+  var PS = {}, client = null, localConn = null, myToken = Q.get('tok') || localStorage.getItem('ls-token') || Math.random().toString(36).slice(2), myName = Q.get('name') || localStorage.getItem('ls-name') || 'Player';
+  if (!Q.get('tok')) localStorage.setItem('ls-token', myToken);
+  var TOKQ = Q.get('tok') ? '&tok=' + Q.get('tok') : '';   // tests: several phones in one browser
+  function sendIn(m) { if (HOSTPH) onPhoneMessage(localConn, m); else if (client) client.send(m); }
+  function goUrl(u) { try { if (window.top !== window && window.top.location.host === location.host) { window.top.location.href = u; return; } } catch (e) {} location.href = u; }
+  function base() { return location.href.replace(/[^/]*([?#].*)?$/, ''); }
+  function phoneRecv(m) {
+    if (!m) return;
+    if (m.t === 'welcome') { PS.tv = m.tv; if (!HOSTPH) PS.room = m.room || PS.room; }
+    if (m.t === 'reject') { PS.msg = m.reason; }
+    if (m.t === 'st') { var was = PS.st && PS.st.my; PS.st = m; if (m.my && !was && navigator.vibrate) navigator.vibrate([80, 60, 80]); if (VIEW) { game.phase = m.phase; } }
+    if (m.t === 'init' && VIEW) applyInit(m);
+    if (m.t === 'snap' && VIEW && game.teams.length) applySnap(m);
+    if (m.t === 'migrate') { var u = base() + 'phone.html?room=' + m.room + '&name=' + encodeURIComponent(myName) + (m.host ? '&host=1&bots=' + m.bots + '&roster=' + encodeURIComponent(JSON.stringify(m.roster)) : '') + (LOCAL ? '&local=1' : '') + TOKQ; PS.msg = 'Moving the game onto your phones\u2026'; setTimeout(function () { goUrl(u); }, 400); }
+  }
+  function applyEv(e) { var k = e[0];
+    if (k === 'c') carve(e[1], e[2], e[3]); else if (k === 's') stamp(e[1], e[2], e[3]); else if (k === 'x') fxBoom(e[1], e[2], e[3], e[4]); else if (k === 'fz') fuzzBurst(e[1], e[2], e[3]); else if (k === 'rg') dryerRings(e[1], e[2]);
+    else if (k === 'b') { var so = game.socks[e[1]]; if (so) bubble(so, e[2], e[3] || undefined); } else if (k === 'p') pop(e[1], e[2], e[3], e[4] || undefined); else if (k === 'f') feed(e[1]); else if (k === 'bn') banner(e[1], e[2]); }
+  function applyInit(m) {
+    game.seed = m.seed; genTerrain(m.seed); m.ops.forEach(applyEv); projs = []; parts = []; fires = []; washers = []; mines = []; decoys = []; bubbles = []; pops = []; chunks = []; game.feed = [];
+    game.teams = m.teams.map(function (t, i) { return { idx: i, name: t.name, color: t.color, socks: [], used: {}, p: {} }; }); game.socks = [];
+    game.teams.forEach(function (t, i) { m.teams[i].socks.forEach(function (n, k) { var so = makeSock(t, k, 0); so.name = n; t.socks.push(so); game.socks.push(so); }); });
+  }
+  function applySnap(m) { var S = game.socks;
+    game.phase = m.ph; game.state = m.st; game.turnTeam = m.tt; game.turnT = m.tT; game.retreatT = m.rT; game.wind = m.wind; game.weapon = m.w; game.power = m.pow; game.active = S[m.a] || null; game.dizzyNow = !!m.dz; game.drill = m.dr ? {} : null;
+    m.socks.forEach(function (a, i) { var so = S[i]; if (!so) return; so.x = a[0]; so.y = a[1]; so.hp = a[2]; so.alive = !!a[3]; so.face = a[4]; so.aim = a[5]; so.dizzy = a[6]; so.size = a[7];
+      if (a[8]) { var kind = a[8] === 1 ? 'dopey' : 'boom'; if (!so.dying || so.dying.kind !== kind) so.dying = { kind: kind, t: 0 }; so.dying.t = a[9]; } else so.dying = null; so.tomb = !!a[10]; so.spin = a[11]; so.ground = !!a[12]; });
+    projs = m.pj.map(function (a) { return { k: a[0], x: a[1], y: a[2], vx: a[3], vy: a[4], fuse: a[5], spin: a[6] }; });
+    washers = m.wa.map(function (a) { return { x: a[0], y: a[1], spin: a[2], team: game.teams[a[3]] }; });
+    mines = m.mi.map(function (a) { return { x: a[0], y: a[1], t: a[2], fuse: a[3], team: game.teams[a[4]] }; });
+    decoys = m.dc.map(function (a) { return { x: a[0], y: a[1], dir: a[2], built: a[3], color: a[4], lured: S[a[5]] || null }; });
+    fires = m.fi.map(function (a) { return { x: a[0], y: a[1] }; }); chunks = m.ch.map(function (a) { return { x: a[0], y: a[1], r: a[2] }; });
+    (m.e || []).forEach(applyEv);
+  }
+  function viewStep(dt) {   // cosmetic-only update on a mirroring phone
+    game.t += dt; if (game.bannerT > 0) game.bannerT -= dt;
+    game.socks.forEach(function (o) { if (o.alive && !o.dying && cond(o) === 'shredded') { o.stuffT -= dt; if (o.stuffT <= 0) { o.stuffT = rnd(0.25, 0.6); parts.push({ x: o.x - o.face * 6, y: o.y - 10, vx: rnd(-20, 20), vy: rnd(-30, 0), t: 1.4, k: 'stuff', s: rnd(3, 6) }); } } });
+    projs.forEach(function (q) { if (q.k === 'bazooka' && Math.random() < 0.6) parts.push({ x: q.x, y: q.y, vx: rnd(-20, 20), vy: rnd(-20, 20), t: 0.7, k: 'bub', s: rnd(3, 7) }); });
+    fires.forEach(function (f) { f.life = 1; });
+    parts.forEach(function (q) { q.t -= dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vy += (q.k === 'bub' ? -40 : q.k === 'smoke' ? -30 : q.k === 'paint' ? 300 : q.k === 'fuzz' || q.k === 'stuff' ? 160 : 500) * dt; q.vx *= 0.98; if ((q.k === 'fuzz' || q.k === 'stuff') && solid(q.x, q.y)) { q.vx = 0; q.vy = 0; } });
+    parts = parts.filter(function (q) { return q.t > 0; });
+    bubbles.forEach(function (b) { b.t -= dt; }); bubbles = bubbles.filter(function (b) { return b.t > 0; });
+    pops.forEach(function (b) { b.t -= dt; b.y -= 30 * dt; }); pops = pops.filter(function (b) { return b.t > 0; });
+    rings.forEach(function (r) { r.t -= dt; }); rings = rings.filter(function (r) { return r.t > 0; });
+    flashes.forEach(function (f) { f.t -= dt; }); flashes = flashes.filter(function (f) { return f.t > 0; });
+  }
+  // ---- phone UI (bottom bar, weapon menu, lobby, over)
+  var held = { mx: 0, ay: 0 }, charge = 0, charging2 = false, wsel = localStorage.getItem('ls-w') || 'bazooka', phKey = '';
+  function phoneNet(st, code) { if (st === 'online' && HOSTPH) { PS.room = code; drawQr(); } }
+  function friendUrl() { return base() + 'controller.html?room=' + PS.room + (LOCAL ? '&local=1' : ''); }
+  function drawQr() { var el = $('qrb'); if (!el || !PS.room) return; var q = window.qrcode(0, 'L'); q.addData(friendUrl()); q.make(); el.querySelector('.q').innerHTML = q.createSvgTag({ cellSize: 3, margin: 1, scalable: true }); el.querySelector('.c').textContent = PS.room; }
+  function wDef(id) { return WP[id] || WP.bazooka; }
+  function phoneUi() {
+    var st = PS.st || {}, ph = HOSTPH ? game.phase : (st.phase || game.phase);
+    $('plobby').hidden = ph !== 'lobby'; $('pover').hidden = ph !== 'over'; $('pbar').hidden = ph !== 'play'; $('ptop').hidden = ph !== 'play';
+    $('tog').hidden = !PS.tv; $('qrb').hidden = !(HOSTPH && PS.room) || ph === 'play' && !$('qrb').classList.contains('big') && false;
+    $('pmsg').textContent = PS.msg || '';
+    $('banner').style.opacity = game.bannerT > 0 && ph === 'play' ? 1 : 0; if (game.bannerT > 0) $('banner').textContent = game.banner;
+    if (ph === 'lobby') { var k = JSON.stringify([st.names, st.leader, st.bots]); if (k !== phKey) { phKey = k;
+      $('plist').innerHTML = (st.names || []).map(function (n, i) { return '<span style="background:' + C.teamColors[i % 4] + '">' + esc(n[0]) + (n[1] ? ' \uD83D\uDCF1' : ' \uD83D\uDCFA') + '</span>'; }).join('') || '<span>Connecting\u2026</span>';
+      $('pstart').hidden = !st.leader; $('pbots').hidden = !st.leader; $('pbots').textContent = 'AI fill: ' + (st.bots ? 'ON' : 'OFF'); $('pwait').textContent = st.leader ? 'You start the game.' : 'Waiting for the leader to start\u2026'; } }
+    if (ph === 'over') { $('potitle').textContent = st.won ? 'YOUR SOCKS WON!' : (st.winner || 'Nobody') + ' won'; $('postats').innerHTML = 'Damage dealt <b>' + (st.dmg || 0) + '</b> \u00b7 KOs <b>' + (st.kos || 0) + '</b> \u00b7 Lost <b>' + (st.lost || 0) + '</b>'; $('pagain').hidden = !st.leader; }
+    if (ph === 'play') {
+      var wa = Math.round(Math.abs(st.wind || 0) * 5);
+      $('ptop').innerHTML = '<b style="color:' + (st.color || '#fff') + '">' + esc(st.team || 'Watching') + '</b> ' + (st.socks || []).map(function (q) { return { pristine: '\uD83E\uDDE6', tattered: '\uD83E\uDE79', shredded: '\uD83E\uDDF5', lost: '\u271D' }[q[1]]; }).join('') +
+        '<span>' + (st.aiming ? 'YOUR TURN ' + st.timer + 's' : st.my ? 'RUN! ' + st.timer + 's' : 'Up: ' + esc((st.who || '').split(' (')[0])) + '</span><span>Wind ' + (wa ? (st.wind < 0 ? '\u25C0'.repeat(wa) : '\u25B6'.repeat(wa)) : 'calm') + '</span>';
+      $('pbar').classList.toggle('dim', !st.aiming && !st.my); $('pbar').classList.toggle('mine', !!st.aiming);
+      var used = st.used || {}, W0 = wDef(wsel); $('wbtn').innerHTML = '<span class="i">' + W0.icon + '</span><span class="n">' + W0.name + '</span>';
+      $('fbtn').style.setProperty('--c', (charge * 100) + '%');
+    }
+  }
+  function buildWmenu() { var used = (PS.st && PS.st.used) || {};
+    $('wmenu').innerHTML = C.weapons.map(function (w) { var out = w.limit && (used[w.id] || 0) >= w.limit; return '<button data-w="' + w.id + '" class="' + (w.id === wsel ? 'sel' : '') + (out ? ' out' : '') + '"><span class="i">' + w.icon + '</span> ' + w.name + (out ? ' <small>(used)</small>' : '') + '</button>'; }).join(''); }
+  function phoneBoot() {
+    function hold(id, f) { var el = $(id); function on(e) { f(true); e.preventDefault(); } function off(e) { f(false); e.preventDefault(); }
+      el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off); }
+    hold('bl', function (d) { held.mx = d ? -1 : (held.mx === -1 ? 0 : held.mx); }); hold('br', function (d) { held.mx = d ? 1 : (held.mx === 1 ? 0 : held.mx); });
+    hold('bu', function (d) { held.ay = d ? -1 : (held.ay === -1 ? 0 : held.ay); }); hold('bd', function (d) { held.ay = d ? 1 : (held.ay === 1 ? 0 : held.ay); });
+    $('bj').onclick = function () { sendIn({ t: 'jump' }); };
+    var fb = $('fbtn');
+    fb.addEventListener('pointerdown', function (e) { e.preventDefault(); if (!(PS.st && PS.st.aiming)) return; charging2 = true; charge = 0.1; });
+    function rel(e) { e.preventDefault(); if (!charging2) return; charging2 = false; sendIn({ t: 'pow', v: Math.max(0.1, charge) }); sendIn({ t: 'fire' }); if (navigator.vibrate) navigator.vibrate(40); setTimeout(function () { charge = 0; }, 300); }
+    fb.addEventListener('pointerup', rel); fb.addEventListener('pointercancel', rel);
+    $('wbtn').onclick = function () { var m = $('wmenu'); if (m.hidden) { buildWmenu(); m.hidden = false; } else m.hidden = true; };
+    $('wmenu').addEventListener('click', function (e) { var b = e.target.closest('[data-w]'); if (!b) return; wsel = b.dataset.w; localStorage.setItem('ls-w', wsel); sendIn({ t: 'wpn', w: wsel }); $('wmenu').hidden = true; });
+    $('pstart').onclick = function () { sendIn({ t: 'start' }); }; $('pbots').onclick = function () { sendIn({ t: 'bots' }); }; $('pagain').onclick = function () { sendIn({ t: 'start' }); };
+    $('tog').onclick = function () { goUrl(base() + 'controller.html?room=' + PS.room + '&mode=tv&auto=1&name=' + encodeURIComponent(myName) + (LOCAL ? '&local=1' : '') + TOKQ); };
+    $('qrb').onclick = function () { this.classList.toggle('big'); };
+    setInterval(function () { if (charging2) charge = Math.min(1, charge + 0.06 * 0.8); if (PS.st && PS.st.my) sendIn({ t: 'in', mx: held.mx, ay: held.ay }); }, 60);
+    function hello() { return { t: 'hello', token: myToken, name: myName, screen: true }; }
+    if (HOSTPH) {
+      var roomP = (Q.get('room') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4) || window.LSNet.makeCode(); PS.room = roomP;
+      localConn = { open: true, local: true, connectionId: 'local', send: function (m) { phoneRecv(m); } };
+      onPhoneMessage(localConn, hello()); onPhoneMessage(localConn, { t: 'wpn', w: wsel });
+      var roster = []; try { roster = JSON.parse(Q.get('roster') || '[]'); } catch (e) {}
+      roster.forEach(function (r) { if (r.token === myToken || humans().length >= C.maxTeams) return; game.players.push({ id: 'p' + Math.random().toString(36).slice(2, 8), token: r.token, name: String(r.name).slice(0, 12), weapon: 'bazooka', power: 0.6, connected: false, goneAt: performance.now(), screen: true }); });
+      if (Q.get('bots') === '0') game.bots = false;
+      if (LOCAL) net = new window.LSNet.LocalHost({ code: roomP, onStatus: setNetUi, onMessage: onPhoneMessage, onClose: onPhoneClose });
+      else if (!NONET) net = new window.LSNet.Host({ code: roomP, fixedCode: true, onStatus: setNetUi, onMessage: onPhoneMessage, onClose: onPhoneClose });
+      drawQr(); if (roster.length) setTimeout(startMatch, 1500);
+    } else {
+      PS.room = (Q.get('room') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
+      var o = { code: PS.room, onStatus: function (st) { PS.msg = st === 'online' ? '' : st === 'noroom' ? 'Looking for room ' + PS.room + '\u2026' : st + '\u2026'; }, onOpen: function () { client.send(hello()); client.send({ t: 'wpn', w: wsel }); }, onMessage: phoneRecv };
+      client = LOCAL ? new window.LSNet.LocalClient(o) : new window.LSNet.Client(o);
+    }
+  }
+  if (PH) { resize(); phoneBoot(); }
+  else {
+    var roomQ = (Q.get('room') || Q.get('code') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4) || null;
+    if (LOCAL) net = new window.LSNet.LocalHost({ code: roomQ || 'TEST', onStatus: setNetUi, onMessage: onPhoneMessage, onClose: onPhoneClose });
+    else if (!NONET) net = new window.LSNet.Host({ code: roomQ, fixedCode: !!roomQ, onStatus: setNetUi, onMessage: onPhoneMessage, onClose: onPhoneClose });
+  }
   setPhase('lobby');
   if (Q.get('autostart') === '1') setTimeout(startMatch, 300);
-  window.LS.debug = { startMatch: startMatch, toLobby: toLobby, game: game, fire: fire, explode: explode };
+  window.LS.debug = { PS: PS, snap: function () { return snap(); }, startMatch: startMatch, toLobby: toLobby, game: game, fire: fire, explode: explode };
   requestAnimationFrame(tick);
 })();

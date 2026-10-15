@@ -6,7 +6,7 @@ window.DEV_GAMES = [
   { id: 'zeroqr', name: 'Zero QR test', ver: 'v0.1', url: 'zero-qr/index.html', img: 'zero-qr/shot.png', tag: 'Hidden QR \u00b7 5 contrast presets', mode: 'tab' },
   { id: 'zero', name: 'Zero front page (draft)', ver: 'v0.1', url: 'zero/index.html', img: 'zero/shot.png', tag: 'New 0\u2011Phi home \u00b7 draft', mode: 'tab' },
   { id: 'rdrphone', name: 'Red Deer Rich \u00b7 phone mode', ver: 'v0.9-dev', url: 'rdr-phone/phone.html', img: 'rdr-phone/shot.png', tag: 'Play on one phone \u00b7 friends join \u00b7 Move to TV', mode: 'tab' },
-  { id: 'lostsock', name: 'Lost Sock', ver: 'v0.2', url: 'lostsock/index.html', img: 'lostsock/shot.png', tag: 'Sock artillery \u00b7 phones \u00b7 WIP' },
+  { id: 'lostsock', name: 'Lost Sock', ver: 'v0.3', url: 'lostsock/index.html', img: 'lostsock/shot.png', tag: 'Sock artillery \u00b7 phones \u00b7 WIP' },
   { id: 'derby', name: 'Demolition Derby', ver: 'v0.3.2', url: 'derby/index.html', img: 'derby/shot.png', tag: 'Car smash \u00b7 phones \u00b7 WIP' },
   { id: 'mechsquad', name: 'Iron Stride Squad', ver: 'v0.5-dev', url: 'mech-squad/index.html', img: 'mech-squad/shot.png', tag: 'Controllers = small Striders \u00b7 phones = giant Titans' },
   { id: 'mechopen', name: 'Iron Stride \u00b7 open world', ver: 'v0.5-dev', url: 'mech-open/index.html', img: 'mech-open/shot.png', tag: 'FPS canopy look \u00b7 mountains & ruins \u00b7 phones = Titans' },
