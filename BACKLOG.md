@@ -40,3 +40,6 @@ Done in menu2 for reference: the launching phone is the game's host (it can end 
 - [ ] Laundry arsenal, next (dryer bomb is in v0.1 as a proxy): bleach bomb (fades the team colour), clothespin sniper, static cling grenade (sticks socks together), lint roller steamroller. (Mortar, airstrike and hamper mine shipped in v0.2.)
 - [ ] Mismatched Pair polish (in v0.1 as a basic version): fabric + paint build animation, smarter pathing toward the enemy.
 - [ ] Private table mode, sock customisation, camera zoom/follow on bigger maps, sound.
+
+## Demolition Derby (Oct 14, 2026)
+- [ ] Car picker: several models (sedan v02 is the first), with paint / texture / look options. Every model fully bustable (separate hood, doors, trunk, glass, wheels with pivots, same as sedan_v02).

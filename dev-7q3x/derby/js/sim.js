@@ -36,7 +36,7 @@
     this.cars.forEach(function (c, i) {
       var ang = (i / n) * Math.PI * 2 + 0.3, r = A.R * 0.62;
       c.x = Math.sin(ang) * r; c.y = Math.cos(ang) * r; c.z = 0; c.vx = c.vy = c.vz = 0; c.a = ang + Math.PI;
-      c.hp = c.maxhp; c.alive = true; c.state = 'drive'; c.lives = C.lives; c.boost = 1; c.cd = 0; c.boostT = 0; c.fall = 0; c.lastHit = null; c.air = false; c.placeT = 0;
+      c.hp = c.maxhp; c.pull = 0; c.wheelMul = 1; c.alive = true; c.state = 'drive'; c.lives = C.lives; c.boost = 1; c.cd = 0; c.boostT = 0; c.fall = 0; c.lastHit = null; c.air = false; c.placeT = 0;
     });
     this.out = []; this.t = 0; this.R = A.R; this.stage = 0; this.n0 = n; this.shr = null; this.stageT = 0;
   };
@@ -80,7 +80,7 @@
     if (g.open > 0) { g.open -= dt; }
     else if (g.queue.length) { g.timer -= dt; if (g.timer <= 0) { g.open = A.gateOpenSec; g.timer = A.gateEverySec; this.ev({ k: 'gate' }); g.entering = g.queue.splice(0, 3); g.entering.forEach(function (id, j) {
       var c = self.byId(id), ga = A.gateAt * D2R, r = self.R + 4 + j * 6; c.x = Math.sin(ga) * r; c.y = Math.cos(ga) * r; c.z = 0; c.a = ga + Math.PI; c.vx = -Math.sin(ga) * 14; c.vy = -Math.cos(ga) * 14; c.vz = 0;
-      c.hp = c.maxhp; c.state = 'enter'; c.air = false; c.lastUp = 0; c.alive = true; c.boost = 1; c.fall = 0; }); } }
+      c.hp = c.maxhp; c.pull = 0; c.wheelMul = 1; c.fresh = true; c.state = 'enter'; c.air = false; c.lastUp = 0; c.alive = true; c.boost = 1; c.fall = 0; }); } }
     cars.forEach(function (c) {
       if (c.state === 'enter') {     // rolls in through the gate on rails
         c.x += c.vx * dt; c.y += c.vy * dt; if (Math.sqrt(c.x * c.x + c.y * c.y) < self.R - 5) { c.state = 'drive'; c.spawnSafe = 1.5; self.ev({ k: 'enter', id: c.id }); } return;
@@ -91,7 +91,7 @@
       var T = c.T, B = C.boosts[c.boostType], inp = c.inp;
       var fx = Math.sin(c.a), fy = Math.cos(c.a), fwd = c.vx * fx + c.vy * fy;
       // absolute (joystick) input -> steer + throttle
-      var steer = inp.steer, thr = inp.thr;
+      var steer = clamp(inp.steer + (c.pull || 0), -1, 1), thr = inp.thr;   // v0.3: a missing wheel pulls the car toward it
       if (inp.abs) { var m = Math.min(1, Math.hypot(inp.abs[0], inp.abs[1])); if (m > 0.15) { var ta = Math.atan2(inp.abs[0], inp.abs[1]), d = wrap(ta - c.a);
         if (Math.abs(d) > 2.4 && fwd < 4) { thr = -m; steer = clamp(-wrap(ta + Math.PI - c.a) * 2.5, -1, 1); } else { thr = m * (Math.abs(d) > 1.6 ? 0.4 : 1); steer = clamp(d * 2.5, -1, 1); } } else { thr = 0; steer = 0; } }
       // boost
@@ -102,7 +102,7 @@
         if (inp.boost && c.cd <= 0) { c.cd = B.cd; if (c.boostType === 'dash') { c.vx += fx * B.kick; c.vy += fy * B.kick; c.boostT = 0.35; if (!c.air) { c.air = true; c.airStart = self.t; c.vz = B.hop; c.z += 0.05; } } else c.boostT = B.dur; self.ev({ k: 'boost', id: c.id, b: c.boostType }); inp.boost = false; }
         if (c.boostT > 0) { c.boostT -= dt; if (c.boostType === 'ram') { mul = B.mul; thr = 1; } }
       }
-      var top = T.speed * c.spdMul * (mul > 1 ? 1 + (mul - 1) * 0.5 : 1);
+      var top = T.speed * c.spdMul * (c.wheelMul || 1) * (mul > 1 ? 1 + (mul - 1) * 0.5 : 1);
       if (!c.air) {
         c.thrS = c.thrS || 0; if (thr > c.thrS) c.thrS = Math.min(thr, c.thrS + dt / A.thrRampSec); else c.thrS = thr;   // v0.2.1: gas ramps in gradually
         var thrE = thr > 0 ? c.thrS : thr, acc = T.accel * mul * thrE * (thr > 0 ? 0.55 + 0.45 * clamp(1 - fwd / Math.max(1, top), 0, 1) : 1); if (thr < 0) acc *= 0.6;

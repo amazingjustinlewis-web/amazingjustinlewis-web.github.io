@@ -70,6 +70,9 @@
     var p;
     if (e.k === 'hit') { p = byId(e.id); if (p && p.conn) send(p.conn, { t: 'buzz', s: Math.min(1, e.amt / 30) }); if (e.amt > 6) sparks(e.x, e.y, e.z + 0.8, Math.min(30, 4 + e.amt * 0.6), 0xffc040); }
     if (e.k === 'crush') { sparks(e.x, e.y, 1.5, 60, 0xff7020); debris(e.x, e.y, 1.5, 14, byId(e.id) && byId(e.id).color); shake(1.4); crunch(1.3, 'metal'); hitStop(0.09); feed(nm(e.by) + ' CRUSHED ' + nm(e.id) + '!'); p = byId(e.id); if (p && p.conn) send(p.conn, { t: 'buzz', s: 1 }); }
+    if (e.k === 'smash' && game.sim) { var ca = game.sim.byId(e.a), cb = game.sim.byId(e.b); if (ca && cb) { var dx = cb.x - ca.x, dy = cb.y - ca.y, dl = Math.hypot(dx, dy) || 1, amt = Math.max(0, e.s - 4) * (e.ram ? 1.5 : 1); partHit(ca, dx / dl, dy / dl, amt); partHit(cb, -dx / dl, -dy / dl, amt); } }
+    if (e.k === 'wall' && game.sim && e.s > 6) { var cw = game.sim.byId(e.id), wr = Math.hypot(e.x, e.y) || 1; if (cw) partHit(cw, e.x / wr, e.y / wr, (e.s - 6) * 0.8); }
+    if (e.k === 'crush' && game.sim) { var cc = game.sim.byId(e.id); if (cc) partHit(cc, 0, 0, 30, true); }
     if (e.k === 'smash') { var f = Math.min(1, e.s / 30);
       shake(0.15 + f * (e.ram ? 1.3 : 0.9)); crunch(f, e.spk ? 'spike' : e.pl ? 'plate' : 'metal');
       sparks(e.x, e.y, 0.9, Math.round(8 + f * 34), e.spk ? 0xfff0a0 : e.pl ? 0xbfd8ff : 0xffc040);
@@ -151,7 +154,15 @@
     var cab = new R3.Mesh(new R3.BoxGeometry(s[0] * 0.8, s[2] * 0.45, s[1] * (T.id === 'pickup' ? 0.35 : T.id === 'van' || T.id === 'bus' ? 0.85 : 0.5)), new R3.MeshLambertMaterial({ color: col.clone().multiplyScalar(0.6) }));
     cab.position.set(0, s[2] * 0.95, T.id === 'pickup' ? s[1] * 0.12 : T.id === 'van' || T.id === 'bus' ? 0 : -s[1] * 0.05); g.add(cab);
     var tm = new R3.MeshLambertMaterial({ color: 0x1a1a1a });
-    [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(function (w) { var wh = new R3.Mesh(new R3.CylinderGeometry(0.45, 0.45, 0.4, 10), tm); wh.rotation.z = Math.PI / 2; wh.position.set(w[0] * s[0] / 2, 0.45, w[1] * s[1] * 0.32); g.add(wh); });
+    var boxW = []; [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(function (w) { var wh = new R3.Mesh(new R3.CylinderGeometry(0.45, 0.45, 0.4, 10), tm); boxW.push(wh); wh.rotation.z = Math.PI / 2; wh.position.set(w[0] * s[0] / 2, 0.45, w[1] * s[1] * 0.32); g.add(wh); });
+    var sed = null, paint = body.material;
+    if (window.DDSedan.ready()) {   // v0.3: Justin's sedan for every car, tinted per player; box body kept as the fallback
+      body.visible = cab.visible = false; boxW.forEach(function (w) { w.visible = false; });
+      paint = new R3.MeshLambertMaterial({ color: col }); var b = window.DDSedan.build(paint, SED_M.glass, SED_M.trim, SED_M.tyre);
+      var mdl = new R3.Group(), sc = [s[0] / 2.0, (s[2] + 0.5) / 1.55, s[1] / 4.87]; mdl.scale.set(sc[0], sc[1], sc[2]); mdl.add(b.wrap); g.add(mdl);
+      sed = { parts: b.parts, sc: sc, lost: 0 };
+      for (var pn in b.parts) { var P = b.parts[pn]; P.x = P.cx * sc[0]; P.z = P.cz * sc[2]; var L = Math.hypot(P.x, P.z) || 1; P.dx = P.x / L; P.dz = P.z / L; P.ph = Math.random() * 6; }
+    }
     var pm = new R3.MeshLambertMaterial({ color: 0x9aa0aa }), km = new R3.MeshLambertMaterial({ color: 0xdddddd });
     function armour(kind, place) {
       if (kind === 'none') return;
@@ -167,10 +178,66 @@
     var sh = new R3.Mesh(new R3.CircleGeometry(s[1] * 0.42, 16), new R3.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.35, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.renderOrder = 1;
     g.scale.setScalar(1.25); sh.scale.setScalar(1.25); scene.add(sh); scene.add(g);
     var tag = document.createElement('div'); tag.className = 'tag'; tag.innerHTML = '<span></span><div class="hb"><i></i></div>'; tag.style.color = c.color; $('tags').appendChild(tag);
-    return { g: g, sh: sh, tag: tag, body: body, smoke: 0 };
+    return { g: g, sh: sh, tag: tag, body: { material: paint }, crumple: body, smoke: 0, sed: sed };
   }
+  var SED_M = null;
+  function sedMats() { SED_M = { glass: new R3.MeshLambertMaterial({ color: 0x9fd0e8, transparent: true, opacity: 0.45, side: 2, depthWrite: false }), trim: new R3.MeshLambertMaterial({ color: 0x18181c, side: 2 }), tyre: new R3.MeshLambertMaterial({ color: 0x111111 }) }; }
+  window.DDSedan.onReady(function () { if (!SED_M) sedMats(); if (game.sim) buildCars(); });
+  // ---------------------------------------------------------------- v0.3 per-part damage
+  // impact direction (world, sim coords) -> car-local, then every part facing that way takes a share: works from any angle (front, sides, rear, corners)
+  function partHit(c, wx, wy, amt, roof) {
+    var m = carMeshes[c.id]; if (!m || !m.sed || amt <= 0) return; var a = c.a, lz = wx * Math.sin(a) + wy * Math.cos(a), lx = wx * Math.cos(a) - wy * Math.sin(a), L = Math.hypot(lx, lz) || 1; lx /= L; lz /= L;
+    var P = m.sed.parts; for (var k in P) { var p = P[k]; if (p.st >= 9) continue; var w = roof ? (p.kind === 'wheel' ? 0.1 : 0.7) : Math.pow(Math.max(0, p.dx * lx + p.dz * lz), 2);
+      if (w < 0.05) continue; p.dmg += amt * w * (p.kind === 'glass' ? 2 : 1.3); partState(c, m, p); }
+  }
+  var LIM = { hood: [10, 22, 42], door: [18, 0, 40], trunk: [16, 0, 36], glass: [7], wheel: [80] };
+  function partState(c, m, p) {
+    var L = LIM[p.kind], d = p.dmg;
+    if (p.kind === 'glass') { if (d > L[0]) { var w = worldOf(p.node); sparks(w.x, w.z, w.y, 14, 0xc8ecff); p.node.visible = false; p.st = 9; } return; }
+    if (p.kind === 'wheel') { if (d > L[0] && m.sed.lost < 2) { m.sed.lost++; detach(c, p); c.wheelMul = (c.wheelMul || 1) * 0.82; c.pull = (c.pull || 0) + (p.x > 0 ? 0.22 : -0.22); feed(c.name + ' lost a wheel!'); } return; }
+    if (d > L[2]) { detach(c, p); return; }
+    if (p.kind === 'hood') { if (d > L[1]) p.st = 2; else if (d > L[0] && p.st < 1) { p.st = 1; var ms = p.node.userData.mesh; if (ms) { ms.scale.set(0.96, 0.6, 0.93); ms.rotation.z = (Math.random() - 0.5) * 0.12; } } }
+    else if (d > L[0]) p.st = 2;
+  }
+  var V3 = null; function worldOf(o) { if (!V3) V3 = new R3.Vector3(); o.updateWorldMatrix(true, false); return o.getWorldPosition(V3.clone()); }
+  var debrisParts = [];
+  function detach(c, p) {
+    var o = p.node; o.updateWorldMatrix(true, true); var d = o.clone(true); o.visible = false; p.st = 9;
+    o.matrixWorld.decompose(d.position, d.quaternion, d.scale); scene.add(d);
+    var ang = Math.random() * 6.28; d.userData.v = [c.vx * 0.5 + Math.sin(ang) * 3, 5 + Math.random() * 4, c.vy * 0.5 + Math.cos(ang) * 3]; d.userData.spin = [(Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8]; d.userData.life = 14; d.userData.r = p.kind === 'wheel' ? 0.5 : 0.9;
+    debrisParts.push(d); if (debrisParts.length > 32) { var old = debrisParts.shift(); scene.remove(old); }
+    sparks(d.position.x, d.position.z, d.position.y, 10, 0xffc040);
+  }
+  var EUL = null;
+  function stepParts(dt, t) {
+    var S = game.sim; if (!EUL) EUL = new R3.Euler();
+    for (var i = debrisParts.length - 1; i >= 0; i--) { var d = debrisParts[i], u = d.userData, v = u.v, rr = Math.hypot(d.position.x, d.position.z), floorY = S && rr < S.R ? u.r * 0.4 : -99;
+      u.life -= dt; v[1] -= 28 * dt; d.position.x += v[0] * dt; d.position.y += v[1] * dt; d.position.z += v[2] * dt;
+      if (d.position.y < floorY) { d.position.y = floorY; v[1] = Math.abs(v[1]) > 3 ? -v[1] * 0.3 : 0; v[0] *= Math.pow(0.05, dt); v[2] *= Math.pow(0.05, dt); u.spin[0] *= 0.9; u.spin[1] *= 0.9; u.spin[2] *= 0.9; }
+      EUL.set(u.spin[0] * dt, u.spin[1] * dt, u.spin[2] * dt); d.quaternion.multiply(new R3.Quaternion().setFromEuler(EUL));
+      if (S) S.cars.forEach(function (c) { if (c.state !== 'drive') return; var dx = d.position.x - c.x, dz = d.position.z - c.y, dd = Math.hypot(dx, dz), sp = Math.hypot(c.vx, c.vy);   // cars knock debris around
+        if (dd < 2.6 && sp > 2) { v[0] = c.vx * 1.1 + dx / dd * 3; v[2] = c.vy * 1.1 + dz / dd * 3; v[1] = Math.max(v[1], 2 + sp * 0.15); u.spin = [(Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10]; } });
+      if (u.life < 2 && !u.fading) { u.fading = true; d.traverse(function (o) { if (o.material) { o.material = o.material.clone(); o.material.transparent = true; } }); }
+      if (u.fading) d.traverse(function (o) { if (o.material) o.material.opacity = Math.max(0, u.life / 2) * (o.material.opacity > 0.5 ? 1 : 0.45); });
+      if (u.life <= 0 || d.position.y < -25) { scene.remove(d); debrisParts.splice(i, 1); }
+    }
+    if (!S) return;
+    S.cars.forEach(function (c) { var m = carMeshes[c.id]; if (!m || !m.sed) return;
+      if (c.fresh) { c.fresh = false; scene.remove(m.g); scene.remove(m.sh); m.tag.remove(); carMeshes[c.id] = carMesh(c); return; }   // back through the gate: a fresh car
+      var sp = Math.hypot(c.vx, c.vy), P = m.sed.parts;
+      for (var k in P) { var p = P[k]; if (p.st !== 2) continue; var n = p.node, f = Math.min(1, sp / 9);
+        if (p.kind === 'hood') n.rotation.x = 0.08 + (0.25 + 0.6 * Math.abs(Math.sin(t * (4 + sp * 0.4) + p.ph))) * f;   // flaps open/closed while driving
+        else if (p.kind === 'trunk') n.rotation.x = -(0.25 + 0.55 * Math.abs(Math.sin(t * 3.2 + p.ph)) * (0.3 + f));
+        else n.rotation.y = (p.x > 0 ? 1 : -1) * (0.35 + 0.65 * Math.abs(Math.sin(t * 2.6 + p.ph)) * (0.3 + f));     // doors swing on their hinges
+      }
+      // engine: smoke past half damage, fire under the hood when it's nearly gone
+      var hpf = c.hp / c.maxhp; if (c.state === 'drive' && hpf < 0.5) { var fx = c.x + Math.sin(c.a) * c.T.size[1] * 0.45, fy = c.y + Math.cos(c.a) * c.T.size[1] * 0.45;
+        if (Math.random() < dt * 8) puff(fx, fy, c.z + 1.4, hpf < 0.25 ? 0x2a2a2a : 0x777777); if (hpf < 0.25 && Math.random() < dt * 24) puff(fx, fy, c.z + 1.2, Math.random() < 0.5 ? 0xff6a10 : 0xffc030, 1); }
+    });
+  }
+  function puff(x, y, z, col, fire) { var s = sparkPool.find(function (q) { return q.life <= 0; }); if (!s) return; s.life = fire ? 0.35 + Math.random() * 0.25 : 0.9 + Math.random() * 0.6; s.up = true; s.m.visible = true; s.m.material.color.setHex(col); s.m.position.set(x, z, y); s.m.scale.setScalar(fire ? 1.1 : 1.3); s.v = [(Math.random() - 0.5) * 1.5, fire ? 3 : 2.2, (Math.random() - 0.5) * 1.5]; }
   function buildCars() { clearCars(); $('tags').innerHTML = ''; game.sim.cars.forEach(function (c) { carMeshes[c.id] = carMesh(c); }); }
-  function sparks(x, y, z, n, col) { for (var i = 0; i < n; i++) { var s = sparkPool.find(function (q) { return q.life <= 0; }); if (!s) return; s.life = 0.4 + Math.random() * 0.5; s.m.visible = true; s.m.material.color.setHex(col); s.m.position.set(x, z, y); s.v = [(Math.random() - 0.5) * 18, Math.random() * 12 + 2, (Math.random() - 0.5) * 18]; } }
+  function sparks(x, y, z, n, col) { for (var i = 0; i < n; i++) { var s = sparkPool.find(function (q) { return q.life <= 0; }); if (!s) return; s.life = 0.4 + Math.random() * 0.5; s.up = false; s.m.scale.setScalar(1); s.m.visible = true; s.m.material.color.setHex(col); s.m.position.set(x, z, y); s.v = [(Math.random() - 0.5) * 18, Math.random() * 12 + 2, (Math.random() - 0.5) * 18]; } }
   var debrisPool = [], flashes = [], trails = [];
   function initFx() {
     var geo = new R3.BoxGeometry(0.5, 0.18, 0.4);
@@ -194,10 +261,13 @@
   function render(dt) {
     var S = game.sim, t = performance.now() / 1000;
     var tilt = game.phase === 'lobby' ? t * 0.08 : 0;
-    var camR = 86, camH = 84; shakeAmt *= Math.pow(0.015, dt); stepFx(dt); var sk = shakeAmt * 2.2;
+    var camR = 76, camH = 74;   // v0.3: ~12% closer
+    stepParts(dt, performance.now() / 1000);
+    shakeAmt *= Math.pow(0.015, dt); stepFx(dt); var sk = shakeAmt * 2.2;
     cam.position.set(Math.sin(tilt) * camR * 0.0 + Math.sin(tilt) * 0 + (Math.random() - 0.5) * sk, camH + (Math.random() - 0.5) * sk, camR * 0.56 + (Math.random() - 0.5) * sk);
     if (game.phase === 'lobby') cam.position.set(Math.sin(tilt) * 70, 55, Math.cos(tilt) * 70);
     cam.lookAt(0, 0, game.phase === 'lobby' ? 0 : 4);
+    var fo = window.DD.camFollow && S && S.byId(window.DD.camFollow); if (fo) { cam.position.set(fo.x + 9, 7, fo.y + 9); cam.lookAt(fo.x, 0.8, fo.y); }   // debug close-up (tests)
     if (S) {
       // shrinking edge: barricades + gate ride inward with the edge; the doomed ring pulses red, then sinks and fades dark
       var kR = S.R / A.R; wallSegs.forEach(function (w) { w.m.position.x = Math.sin(w.a) * (S.R + 0.2); w.m.position.z = Math.cos(w.a) * (S.R + 0.2); w.m.scale.x = kR; });
@@ -215,7 +285,7 @@
         var pitch = 0; if (c.air) pitch = -Math.max(-0.5, Math.min(0.5, c.vz * 0.04)); else { var r = Math.hypot(c.x, c.y); if (r < A.moundR) { var fx = Math.sin(c.a), fy = Math.cos(c.a), rad = (c.x * fx + c.y * fy) / Math.max(0.01, r); pitch = rad * Math.atan(A.moundH / A.moundR); } }
         m.g.rotation.x = c.state === 'fall' ? (A.R - Math.hypot(c.x, c.y)) * 0.08 : pitch;
         m.sh.position.set(c.x, window.DDSim.ground(c.x, c.y) + 0.05, c.y);
-        var hpf = c.hp / c.maxhp; m.body.scale.set(1, 1 - (1 - hpf) * 0.25, 1 - (1 - hpf) * 0.12); if (c.boostT > 0 && Math.random() < dt * 30) sparks(c.x - Math.sin(c.a) * 2, c.y - Math.cos(c.a) * 2, c.z + 0.5, 1, c.boostType === 'ram' ? 0xff4020 : c.boostType === 'dash' ? 0x40e0ff : 0xffd23f); m.body.material.color.set(c.color).lerp(new R3.Color(0x222222), (1 - hpf) * 0.6);
+        var hpf = c.hp / c.maxhp; if (!m.sed) m.crumple.scale.set(1, 1 - (1 - hpf) * 0.25, 1 - (1 - hpf) * 0.12); if (c.boostT > 0 && Math.random() < dt * 30) sparks(c.x - Math.sin(c.a) * 2, c.y - Math.cos(c.a) * 2, c.z + 0.5, 1, c.boostType === 'ram' ? 0xff4020 : c.boostType === 'dash' ? 0x40e0ff : 0xffd23f); m.body.material.color.set(c.color).lerp(new R3.Color(0x222222), (1 - hpf) * 0.6);
         if (vis && hpf < 0.35 && Math.random() < dt * 12) sparks(c.x, c.y, c.z + 1.4, 1, 0x444444);
         V.set(c.x, c.z + c.T.size[2] + 1.2, c.y).project(cam);
         if (vis && c.state !== 'fall' && V.z < 1) { m.tag.style.display = ''; m.tag.style.left = ((V.x + 1) / 2 * innerWidth) + 'px'; m.tag.style.top = ((1 - V.y) / 2 * innerHeight) + 'px';
@@ -223,7 +293,7 @@
         else m.tag.style.display = 'none';
       });
     }
-    sparkPool.forEach(function (s) { if (s.life <= 0) return; s.life -= dt; s.v[1] -= 30 * dt; s.m.position.x += s.v[0] * dt; s.m.position.y += s.v[1] * dt; s.m.position.z += s.v[2] * dt; if (s.m.position.y < 0.1) { s.m.position.y = 0.1; s.v[1] *= -0.4; } if (s.life <= 0) s.m.visible = false; });
+    sparkPool.forEach(function (s) { if (s.life <= 0) return; s.life -= dt; if (s.up) { s.v[1] += 1.5 * dt; s.m.scale.multiplyScalar(1 + dt * 0.5); } else s.v[1] -= 30 * dt; s.m.position.x += s.v[0] * dt; s.m.position.y += s.v[1] * dt; s.m.position.z += s.v[2] * dt; if (s.m.position.y < 0.1) { s.m.position.y = 0.1; s.v[1] *= -0.4; } if (s.life <= 0) s.m.visible = false; });
     renderer.render(scene, cam);
   }
   // ---------------------------------------------------------------- DOM UI
