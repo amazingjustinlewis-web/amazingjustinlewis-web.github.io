@@ -14,7 +14,22 @@
     var W = this.cv.clientWidth, H = this.cv.clientHeight, F = this.frame(st, seat), sOut = Math.min(W / 1.06, H / 2.12), sIn = Math.max(sOut, Math.min(H / 1.1, W / .62)), k = 1 - Math.exp(-dt * 5);
     var home = F.pv[1] < -.05 || F.p[1] < 1, ts, tcx, tcy;
     if (this.mode === 'radar') { ts = W / 1.06; tcx = .5; tcy = H / 2 / ts - .03; }   // own goal line just above the bottom edge
-    else if (this.mode === 'auto') { var z = home ? 1 : 0; this.zoom += (z - this.zoom) * (1 - Math.exp(-dt * (home ? 4 : 2))); ts = sOut + (sIn - sOut) * this.zoom; tcy = (1 - this.zoom) * 1 + this.zoom * (H / 2 / ts - .02); tcx = .5 + (F.p[0] - .5) * this.zoom * .6; }
+    else if (this.mode === 'auto') {
+      // 1) precise framing. In: your half (bottom just below your goal). Out: far top edge of the board in view, reached
+      //    half by zooming out and half by shifting up.
+      var vIn = H / sIn, bIn = -.02, need = (2.03 - (bIn + vIn)) / 2, vOut = vIn + need, bOut = bIn + need;
+      // 2) openness = how far the puck is into their half; leaky integrator: fills gently, drains faster, settles at equilibrium
+      var o = Math.max(0, Math.min(1, (F.p[1] - .85) / .4)); if (F.pv[1] < -.4) o *= .4;
+      this.lvl = this.lvl == null ? o : this.lvl; this.lvl += (o - this.lvl) * (o > this.lvl ? 1.4 : 4) * dt;
+      var v = vIn + (vOut - vIn) * this.lvl, b = bIn + (bOut - bIn) * this.lvl;
+      // average puck + paddle sideways so the frame never jerks
+      this.ax = this.ax == null ? .5 : this.ax + ((F.p[0] + F.me[0]) / 2 - this.ax) * (1 - Math.exp(-dt * 2.5));
+      ts = H / v; tcy = b + v / 2; tcx = this.ax;
+      // 3) soft critically damped spring on top
+      var K = 30, D = 2 * Math.sqrt(K), sp = this.sp || (this.sp = { s: [ts, 0], x: [tcx, 0], y: [tcy, 0] });
+      [['s', ts], ['x', tcx], ['y', tcy]].forEach(function (q) { var a = sp[q[0]]; a[1] += (K * (q[1] - a[0]) - D * a[1]) * dt; a[0] += a[1] * dt; });
+      this.s = sp.s[0]; this.cx = sp.x[0]; this.cy = sp.y[0]; this.clampX(W); this.F = F; return;
+    }
     else { ts = sIn; var hv = H / 2 / ts, homeCy = hv - .02; tcx = F.p[0]; tcy = home ? homeCy : Math.max(homeCy, F.p[1]); var sk = home ? 1 - Math.exp(-dt * 14) : 1 - Math.exp(-dt * 3);
       this.s = ts; this.cy += (tcy - this.cy) * sk; if (home) this.cy = Math.min(this.cy, homeCy + Math.max(0, F.p[1] - .8)); this.cx += (tcx - this.cx) * (1 - Math.exp(-dt * 6)); this.clampX(W); this.F = F; return; }
     this.s = this.s ? this.s + (ts - this.s) * k : ts; this.cx += (tcx - this.cx) * k; this.cy += (tcy - this.cy) * k; this.clampX(W); this.F = F;
@@ -43,5 +58,28 @@
         ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = F.pv[1] < 0 ? '#ff5a6e' : '#5fdc7a'; ctx.fill(); }
     }
   };
+  // effects: subtle hit ring, flames when ahead by 3 (fully on fire at 6), fireworks on goals. map(x, y) -> screen in table coords
+  function FX() { this.parts = []; this.hits = null; this.sc = null; this.banner = 0; this.who = -1; }
+  FX.prototype.run = function (ctx, st, map, s, W, H, colors, dt) {
+    var P = this.parts, self = this;
+    if (this.hits != null && st.hits > this.hits) { var q = map(st.p[0], st.p[1]); P.push({ ring: 1, x: q[0], y: q[1], r: s * .05, l: 1 }); }
+    this.hits = st.hits;
+    if (this.sc && (st.sc[0] > this.sc[0] || st.sc[1] > this.sc[1])) { this.who = st.sc[0] > this.sc[0] ? 0 : 1; this.banner = 2.2;
+      for (var b = 0; b < 5; b++) { var cx = W * (.15 + Math.random() * .7), cy = H * (.15 + Math.random() * .5), col = b % 2 ? '#ffe7a0' : colors[this.who]; for (var i = 0; i < 40; i++) { var a = Math.random() * 7, v = 80 + Math.random() * 260; P.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, l: 1 + Math.random() * .6, c: col, d: b * .18 }); } } }
+    this.sc = st.sc.slice();
+    var lead = st.sc[0] - st.sc[1];
+    [0, 1].forEach(function (i) { var up = i === 0 ? lead : -lead; if (up < 3) return; var full = up >= 6, q = map(st.m[i][0], st.m[i][1]), r = .07 * s;
+      for (var k = 0; k < (full ? 6 : 2); k++) { var a = Math.random() * 7; P.push({ fl: 1, x: q[0] + Math.cos(a) * r * (full ? 1 : .8), y: q[1] + Math.sin(a) * r * (full ? 1 : .8), vx: (Math.random() - .5) * 30, vy: -40 - Math.random() * (full ? 120 : 50), l: full ? .7 : .45, sz: r * (full ? .5 : .28) }); }
+      if (full) { var g = ctx.createRadialGradient(q[0], q[1], r * .5, q[0], q[1], r * 2.2); g.addColorStop(0, '#ff8a0088'); g.addColorStop(1, '#ff8a0000'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(q[0], q[1], r * 2.2, 0, 7); ctx.fill(); } });
+    this.parts = P.filter(function (p) {
+      if (p.d > 0) { p.d -= dt; return true; } p.l -= dt * (p.ring ? 3 : p.fl ? 1.6 : .7); if (p.l <= 0) return false;
+      if (p.ring) { ctx.strokeStyle = 'rgba(255,255,255,' + (p.l * .5) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (2 - p.l), 0, 7); ctx.stroke(); return true; }
+      p.x += p.vx * dt; p.y += p.vy * dt; if (!p.fl) p.vy += 120 * dt;
+      if (p.fl) { ctx.globalAlpha = Math.min(1, p.l * 2); ctx.fillStyle = p.l > .3 ? '#ffd23f' : '#ff5a1a'; ctx.beginPath(); ctx.arc(p.x, p.y, p.sz * (.5 + p.l), 0, 7); ctx.fill(); }
+      else { ctx.globalAlpha = Math.min(1, p.l); ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, 4, 4); }
+      ctx.globalAlpha = 1; return true; });
+    if (this.banner > 0) { this.banner -= dt; var k = Math.min(1, this.banner), z = 1 + Math.max(0, this.banner - 1.8) * 2; ctx.globalAlpha = k; ctx.font = '700 ' + Math.round(Math.min(W, H) * .16 * z) + 'px Fredoka,sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 8; ctx.strokeStyle = '#000a'; ctx.strokeText('GOAL!', W / 2, H * .42); ctx.fillStyle = colors[this.who]; ctx.fillText('GOAL!', W / 2, H * .42); ctx.globalAlpha = 1; ctx.textAlign = 'left'; }
+  };
+  root.PuckFX = FX;
   root.PuckView = View;
 })(window);

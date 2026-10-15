@@ -24,13 +24,14 @@
     if (navigator.vibrate) navigator.vibrate(15); });
   $('zi').onclick = function () { zoom = Math.min(6, zoom * 1.35); }; $('zo').onclick = function () { zoom = Math.max(0.8, zoom / 1.35); };
   $('bSiege').onclick = function () { send({ t: 'fire', w: 'siege' }); }; $('bBarrage').onclick = function () { send({ t: 'fire', w: 'barrage' }); if (navigator.vibrate) navigator.vibrate([20, 30, 20]); };
+  $('bJump').onclick = function () { send({ t: 'jump' }); if (navigator.vibrate) navigator.vibrate(40); };
   $('bStomp').onclick = function () { send({ t: 'fire', w: 'stomp' }); if (navigator.vibrate) navigator.vibrate(60); };
   $('bAuto').onclick = function () { send({ t: 'auto', on: !(st && st.me && st.me.auto) }); }; $('bHold').onclick = function () { send({ t: 'stop' }); }; $('bClear').onclick = function () { send({ t: 'target', id: null }); };
   $('start').onclick = function () { send({ t: 'start' }); };
-  function hud() { var me = st.me; $('start').style.display = st.phase === 'lobby' ? 'block' : 'none'; $('sc').textContent = 'Score ' + st.score;
+  function hud() { var me = st.me; $('start').style.display = st.phase === 'lobby' ? 'block' : 'none'; $('sc').textContent = 'Hero ' + st.score + ' \u00b7 city dmg ' + (st.collat || 0);
     if (!me) { $('info').innerHTML = '<span>Waiting for the TV to start</span>'; return; }
     $('hp').firstChild.style.width = Math.max(0, me.hp / me.max * 100) + '%';
-    ['siege', 'barrage', 'stomp'].forEach(function (k) { var b = $('b' + k[0].toUpperCase() + k.slice(1)); b.classList.toggle('cd', me.cd[k] > 0); b.querySelector('s').style.width = (me.cd[k] * 100) + '%'; });
+    ['siege', 'barrage', 'jump', 'stomp'].forEach(function (k) { var b = $('b' + k[0].toUpperCase() + k.slice(1)); b.classList.toggle('cd', me.cd[k] > 0); b.querySelector('s').style.width = (me.cd[k] * 100) + '%'; });
     $('bAuto').textContent = 'Auto-fire ' + (me.auto ? 'ON' : 'OFF'); $('bAuto').classList.toggle('on', me.auto);
     $('info').innerHTML = me.dead ? '<span>Titan down \u00b7 rebuilding in ' + me.resp + 's</span>' : me.tgt ? (me.sees === me.tgt ? '<span style="color:#7dff6a">Locked \u00b7 clear shot</span>' : '<span style="color:#ffb02e">Locked \u00b7 no line of sight: a building is in the way</span>') : me.path ? '<span>Walking\u2026</span>' : '<span>Tap the map to walk \u00b7 tap a red enemy to lock</span>'; }
   function draw() {

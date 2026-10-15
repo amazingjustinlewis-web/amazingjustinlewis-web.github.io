@@ -2,32 +2,40 @@
 <title>Glide Puck (dev)</title><link rel="stylesheet" href="../minikit/kit.css">
 <style>#sc{position:fixed;top:2vh;left:0;right:0;text-align:center;font-size:7vh;font-weight:700;z-index:4}#names{position:fixed;bottom:3vh;left:4vw;right:4vw;display:flex;justify-content:space-between;font-size:3vh;z-index:4}</style></head><body>
 <canvas id="cv" class="full"></canvas><div id="sc"></div><div id="names"></div><div id="join"></div><div class="big" id="big"></div>
-<script>window.MINI = 'puck';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script><script src="sim.js"></script>
+<script>window.MINI = 'puck';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script><script src="sim.js"></script><script src="view.js"></script>
 <script>
 (function () {
   var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), ctx = cv.getContext('2d'), dpr = 1, sim = new Puck.Sim(), C = Puck.C, seats = [null, null], colors = ['#ff5a6e', '#3aa8ff'];
   sim.ai = [true, true]; sim.reset(); var demo = true;
-  var host = Kit.host({ max: 2, onJoin: function (p) { seats[p.seat] = p; sim.ai[p.seat] = false; if (demo) { demo = false; sim.reset(); Kit.phase('play'); } names(); },
-    onLeave: function (p) { sim.ai[p.seat] = true; names(); }, onMsg: function (p, m) { if (m.t === 'in') sim.input(p.seat, m.x, m.y); else if (m.t === 'again' && sim.over >= 0) sim.reset(); } });
+  var mir = null, mirAt = 0, FXo = new PuckFX();
+  var host = Kit.host({ max: 8, onJoin: function () {},
+    onLeave: function (p) { if (p.ts != null) { sim.ai[p.ts] = true; seats[p.ts] = null; p.ts = null; names(); } },
+    onMsg: function (p, m) {
+      if (m.t === 'mirror') { mir = m; mirAt = performance.now(); if (demo) { demo = false; Kit.phase('play'); } return; }
+      if (m.t === 'sit' && p.ts == null) { var i = seats[0] ? (seats[1] ? -1 : 1) : 0; if (i < 0) return; seats[i] = p; p.ts = i; sim.ai[i] = false; host.send(p, { t: 'seat', seat: i }); if (demo) { demo = false; sim.reset(); Kit.phase('play'); } names(); return; }
+      if (p.ts == null) return;
+      if (m.t === 'in') sim.input(p.ts, m.x, m.y); else if (m.t === 'again' && sim.over >= 0) sim.reset(); } });
   host.qr($('join'));
-  function nm(i) { return seats[i] && !sim.ai[i] ? seats[i].name : 'Computer'; }
-  function names() { $('join').style.display = sim.ai[0] || sim.ai[1] ? '' : 'none'; $('names').innerHTML = '<span style="color:' + colors[0] + '">\u25C0 ' + nm(0) + '</span><span style="color:' + colors[1] + '">' + nm(1) + ' \u25B6</span>'; host.all({ t: 'names', names: [nm(0), nm(1)], colors: colors }); }
-  names(); $('big').innerHTML = 'GLIDE PUCK<div style="font-size:.4em;color:#fff">scan to play \u00b7 1 phone = vs computer, 2 phones = head to head</div>';
+  function nm(i) { if (mirroring()) return mir.names[i]; return seats[i] && !sim.ai[i] ? seats[i].name : 'Computer'; }
+  function mirroring() { return mir && performance.now() - mirAt < 3000; }
+  function names() { $('join').style.display = !mirroring() && (sim.ai[0] || sim.ai[1]) ? '' : 'none'; $('names').innerHTML = '<span style="color:' + colors[0] + '">\u25C0 ' + nm(0) + '</span><span style="color:' + colors[1] + '">' + nm(1) + ' \u25B6</span>'; host.all({ t: 'names', names: [nm(0), nm(1)], colors: colors }); }
+  names(); $('big').innerHTML = 'GLIDE PUCK<div style="font-size:.4em;color:#fff">scan to play on your phone \u00b7 tick \u2018Also show on screen\u2019 to watch here</div>';
   function size() { dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; } addEventListener('resize', size); size();
   var last = 0, acc = 0, sendT = 0;
   (function loop(t) {
     var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; acc += dt;
     while (acc > 1 / 120) { sim.step(1 / 120); acc -= 1 / 120; if (demo && sim.over >= 0) sim.reset(); }
-    sendT += dt; if (sendT > 1 / 30) { sendT = 0; host.all(sim.snap()); }
+    sendT += dt; if (sendT > 1 / 30) { sendT = 0; var sn = sim.snap(); host.players.forEach(function (p) { if (p.ts != null) host.send(p, sn); }); }
+    var V = mirroring() ? mir.s : sim.snap(), cols = mirroring() ? mir.colors : colors; names.k = (names.k || 0) + dt; if (names.k > 1) { names.k = 0; names(); }
     var W = innerWidth, H = innerHeight, s = Math.min((W * .9) / 2, (H * .78) / 1), ox = W / 2 - s, oy = H / 2 - s / 2 + H * .03, P = function (x, y) { return [ox + y * s, oy + x * s]; };
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#0c1226'; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#2b3a6e'; ctx.fillRect(ox - .04 * s, oy - .04 * s, 2.08 * s, 1.08 * s); ctx.fillStyle = '#e8f2ff'; ctx.fillRect(ox, oy, 2 * s, s);
     ctx.strokeStyle = '#ff5a6e88'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(ox + s, oy); ctx.lineTo(ox + s, oy + s); ctx.stroke(); ctx.beginPath(); ctx.arc(ox + s, oy + s / 2, .16 * s, 0, 7); ctx.stroke();
     ctx.fillStyle = '#111'; ctx.fillRect(ox - .03 * s, oy + (.5 - C.GOAL / 2) * s, .03 * s, C.GOAL * s); ctx.fillRect(ox + 2 * s, oy + (.5 - C.GOAL / 2) * s, .03 * s, C.GOAL * s);
     function disc(x, y, r, col, ring) { var q = P(x, y); ctx.beginPath(); ctx.arc(q[0], q[1] + r * s * .12, r * s, 0, 7); ctx.fillStyle = '#0003'; ctx.fill(); ctx.beginPath(); ctx.arc(q[0], q[1], r * s, 0, 7); ctx.fillStyle = col; ctx.fill(); if (ring) { ctx.beginPath(); ctx.arc(q[0], q[1], r * s * .45, 0, 7); ctx.fillStyle = '#fff6'; ctx.fill(); } }
-    sim.m.forEach(function (m, i) { disc(m.x, m.y, C.MR, colors[i], true); }); disc(sim.p.x, sim.p.y, C.PR, '#1b1b2a');
-    $('sc').innerHTML = '<span style="color:' + colors[0] + '">' + sim.sc[0] + '</span> : <span style="color:' + colors[1] + '">' + sim.sc[1] + '</span>';
-    var b = $('big'); b.style.opacity = demo || sim.over >= 0 ? 1 : 0; if (!demo && sim.over >= 0) b.innerHTML = nm(sim.over) + ' wins!<div style="font-size:.4em;color:#fff">tap your phone to play again</div>';
+    V.m.forEach(function (m, i) { disc(m[0], m[1], C.MR, cols[i], true); }); disc(V.p[0], V.p[1], C.PR, '#1b1b2a'); FXo.run(ctx, V, P, s, W, H, cols, dt);
+    $('sc').innerHTML = '<span style="color:' + cols[0] + '">' + V.sc[0] + '</span> : <span style="color:' + cols[1] + '">' + V.sc[1] + '</span>';
+    var b = $('big'); var ov = V.over; b.style.opacity = demo || ov >= 0 ? 1 : 0; if (!demo && ov >= 0) b.innerHTML = nm(ov) + ' wins!<div style="font-size:.4em;color:#fff">tap your phone to play again</div>';
     requestAnimationFrame(loop);
   })(0);
   window.GPT = { sim: sim };

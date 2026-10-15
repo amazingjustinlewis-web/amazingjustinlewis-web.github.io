@@ -63,11 +63,11 @@
     var sc = sun.shadow.camera; sc.left = sc.bottom = -160; sc.right = sc.top = 160; sc.near = 10; sc.far = 900; sun.shadow.bias = -0.0008;
     scene.add(sun); scene.add(sun.target);
     labelsEl = $('labels');
-    buildEnv(); buildGround(); buildGraph(); buildRoads(); buildWater(); buildBuildings(); buildTrees(); buildStatues(); buildCars(); buildBeacon();
+    buildEnv(); buildGround(); buildGraph(); buildRoads(); buildWater(); buildBuildings(); buildTrees(); buildStatues(); buildCars(); buildBeacon(); buildFrancis();
     spawnHeroes(); newVoteRound(); setupNet();
     var c0 = centroid(heroes); camTarget.set(c0[0], 0, c0[1]);
     addEventListener('resize', function () { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
-    addEventListener('keydown', function (e) { if (e.key === 'o') S.overview = !S.overview; if (e.key === 'n') S.tod = (S.tod + 0.25) % 1; });
+    addEventListener('keydown', function (e) { if (e.key === 'o') S.overview = !S.overview; if (e.key === 'n') S.tod = (S.tod + 0.25) % 1; if (e.key === 'f') { FR.at = 0; if (FR.state === 'sleep') FR.t = 999; wakeFrancis(); } });
     $('loading').remove();
     if (Q.get('q')) setQuality(+Q.get('q'), true);
     var last = performance.now();
@@ -387,7 +387,7 @@
     var g = new THREE.Group(), body = new THREE.Mesh(heroGeo, new THREE.MeshLambertMaterial({ color: color, emissive: color, emissiveIntensity: 0.15 }));
     body.castShadow = true; g.add(body); var vis = new THREE.Mesh(visorGeo, new THREE.MeshBasicMaterial({ color: 0xffffff })); g.add(vis);
     var ring = new THREE.Mesh(new THREE.RingGeometry(2.6, 3.2, 20), new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.3; g.add(ring);
-    g.rotation.order = 'YXZ'; g.position.set(x, 0, z); scene.add(g);
+    g.rotation.order = 'YXZ'; g.position.set(x, 0, z); g.scale.setScalar(0.5); scene.add(g);   // v0.2: heroes at half size
     var h = { i: heroes.length, name: def.name + (extra ? ' ' + (i + 1) : ''), role: def.role, color: '#' + color.getHexString(), g: g, body: body, x: x, z: z, y: 0, vx: 0, vz: 0, yaw: 0, roll: 0, pitch: 0,
       hp: 100, dead: false, node: -1, fid: null, lane: (rnd() - 0.5) * 7, atkT: 0, lean: 0, ko: 0, stars: 0, player: null, wander: [0, 0], wT: 0, label: mkLabel(''), bub: null, bubT: 0, rag: null, extra: extra };
     heroes.push(h); return h;
@@ -401,11 +401,13 @@
       if (h.dead) { stepRagdoll(h, dt); return; }
       alive++;
       var tx = h.x, tz = h.z, speed = 11, enemy = nearestBunny(h.x, h.z, huddle ? 12 : 32), attacking = false;
+      var fr = FR.state === 'rampage' && Math.hypot(FR.x - h.x, FR.z - h.z) < 110 ? FR : null;
+      if (fr && (!enemy || Math.hypot(enemy.x - h.x, enemy.z - h.z) > 8)) enemy = fr;
       if (enemy) {
-        var d = Math.hypot(enemy.x - h.x, enemy.z - h.z);
-        if (d > 4.5) { tx = enemy.x; tz = enemy.z; speed = 13; } else { tx = h.x; tz = h.z; attacking = true; }
+        var d = Math.hypot(enemy.x - h.x, enemy.z - h.z) - (enemy === FR ? FR.r : 0);
+        if (d > 3) { tx = enemy.x; tz = enemy.z; speed = 13; } else { tx = h.x; tz = h.z; attacking = true; }
         h.yawT = Math.atan2(enemy.x - h.x, enemy.z - h.z); h.node = -1;
-        h.atkT -= dt; if (attacking && h.atkT <= 0) { h.atkT = 0.55; h.lean = 1; hitBunny(enemy, 9 + rnd() * 6, h); }
+        h.atkT -= dt; if (attacking && h.atkT <= 0) { h.atkT = 0.55; h.lean = 1; if (enemy === FR) hitFrancis(9 + rnd() * 6, h); else hitBunny(enemy, 9 + rnd() * 6, h); }
       } else if (huddle) {
         var a = idx / heroes.length * 6.283; tx = cen[0] + Math.cos(a) * 7; tz = cen[1] + Math.sin(a) * 7; speed = 8; h.yawT = Math.atan2(cen[0] - h.x, cen[1] - h.z);
       } else if (f) {
@@ -422,7 +424,7 @@
       }
       if (h.arr) nArr++;
       // separation
-      heroes.forEach(function (o) { if (o === h || o.dead) return; var dx = h.x - o.x, dz = h.z - o.z, d2 = dx * dx + dz * dz; if (d2 < 16 && d2 > 0.01) { var d = Math.sqrt(d2); tx += dx / d * 3; tz += dz / d * 3; } });
+      heroes.forEach(function (o) { if (o === h || o.dead) return; var dx = h.x - o.x, dz = h.z - o.z, d2 = dx * dx + dz * dz; if (d2 < 6 && d2 > 0.01) { var d = Math.sqrt(d2); tx += dx / d * 2; tz += dz / d * 2; } });
       var dx2 = tx - h.x, dz2 = tz - h.z, dist = Math.hypot(dx2, dz2), want = dist > 0.6 ? Math.min(speed, dist * 2) : 0;
       var dvx = (dist ? dx2 / dist : 0) * want, dvz = (dist ? dz2 / dist : 0) * want;
       var ax = (dvx - h.vx) * Math.min(1, dt * 4), az = (dvz - h.vz) * Math.min(1, dt * 4);
@@ -459,8 +461,8 @@
     if (h.y < gy) { h.y = gy; r.vy = Math.abs(r.vy) * 0.3; r.vx *= 0.6; r.vz *= 0.6; r.wp *= 0.5; r.wr *= 0.4; if (h.pitch < -1.45) { h.pitch = -1.5; r.wp = 0; } }
     h.pitch = Math.max(h.pitch, -1.57);
     h.g.position.set(h.x, h.y + (h.pitch < -1 ? 0.55 : 0), h.z); h.g.rotation.set(h.pitch, h.yaw, h.roll);
-    if (r.t > 7) {   // back in at the team
-      var cen = centroid(heroes); h.dead = false; h.hp = 100; h.x = cen[0] + rnd() * 6 - 3; h.z = cen[1] + rnd() * 6 - 3; h.y = 12; h.pitch = h.roll = 0; h.node = -1; h.rag = null;
+    if (r.t > 7) {   // v0.2: back in somewhere in the city
+      var rn = cityNode(); h.dead = false; h.hp = 100; h.x = rn.x + rnd() * 6 - 3; h.z = rn.z + rnd() * 6 - 3; if (h.player) toast('\u2728 ' + h.name + ' is back in the city'); h.y = 12; h.pitch = h.roll = 0; h.node = -1; h.rag = null;
     }
   }
 
@@ -484,7 +486,7 @@
       if (b.dead) { b.dt += dt; var s = Math.max(0.01, 1 - b.dt * 2); b.g.scale.set(1 + b.dt * 3, s, 1 + b.dt * 3); if (b.dt > 0.6) { scene.remove(b.g); b.gone = true; } return; }
       var tgt = null, td = 70; heroes.forEach(function (h) { if (h.dead) return; var d = Math.hypot(h.x - b.x, h.z - b.z); if (d < td) { td = d; tgt = h; } });
       var tx, tz, sp = 9;
-      if (tgt) { tx = tgt.x; tz = tgt.z; if (td < 3.5) { sp = 0; tgt.hp -= dt * 7; if (tgt.hp <= 0) killHero(tgt, b); } }
+      if (tgt) { tx = tgt.x; tz = tgt.z; if (td < 2.6) { sp = 0; tgt.hp -= dt * 7; if (tgt.hp <= 0) killHero(tgt, b); } }
       else { b.wT -= dt; if (b.wT < 0) { b.wT = 2 + rnd() * 3; b.wx = b.x + (rnd() - 0.5) * 30; b.wz = b.z + (rnd() - 0.5) * 30; } tx = b.wx; tz = b.wz; sp = 4; }
       var dx = tx - b.x, dz = tz - b.z, L = Math.hypot(dx, dz) || 1;
       if (sp) { b.x += dx / L * sp * dt; b.z += dz / L * sp * dt; b.yaw = Math.atan2(dx, dz); }
@@ -506,6 +508,66 @@
     bunnies.push({ x: x, z: z, g: g, mat: mat, hp: 25, ph: rnd() * 6, yaw: 0, wT: 0, wx: x, wz: z, hit: 0, dead: false, dt: 0 });
   }
   function hitBunny(b, dmg, h) { b.hp -= dmg; b.hit = 0.25; if (b.hp <= 0 && !b.dead) { b.dead = true; b.dt = 0; S.ko++; h.ko++; if (h.player) h.player.ko++; } }
+
+
+  // ---------------------------------------------------------------- v0.2 monster: Francis the bronze pig, struck by lightning
+  var FR = { state: 'statue', x: 0, z: 0, hx: 0, hz: 0, hp: 0, max: 900, r: 3, sc: 1, t: 0, g: null, yaw: 0, at: +(Q.get('francis') || 140), cd: 0, ph: 0, lbl: null, bolt: null };
+  function cityNode() { var c = field('cityhall').lm.p; for (var k = 0; k < 30; k++) { var n = nodes[Math.floor(rnd() * nodes.length)]; if (n && Math.hypot(n.x - c[0], n.z - c[1]) < 420 && !inWater(n.x, n.z)) return n; } return { x: c[0], z: c[1] }; }
+  function buildFrancis() {
+    var src = M.statues.filter(function (s) { return s.n === 'Francis the Pig'; })[0] || { p: [933, 116] };
+    FR.x = FR.hx = src.p[0]; FR.z = FR.hz = src.p[1];
+    var br = new THREE.MeshStandardMaterial({ color: 0xa8743c, metalness: 0.85, roughness: 0.3, envMap: envTex, emissive: 0x401800, emissiveIntensity: 0 }), g = new THREE.Group(), inner = new THREE.Group(); g.add(inner);
+    var body = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), br); body.scale.set(1.1, 0.95, 1.7); body.position.y = 1.5; inner.add(body);
+    var head = new THREE.Mesh(new THREE.SphereGeometry(0.75, 12, 9), br); head.position.set(0, 1.85, 1.75); inner.add(head);
+    var snout = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.42, 0.4, 12), br); snout.rotation.x = Math.PI / 2; snout.position.set(0, 1.7, 2.5); inner.add(snout);
+    [-1, 1].forEach(function (s) { var e = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.6, 6), br); e.position.set(s * 0.45, 2.55, 1.6); e.rotation.z = -s * 0.4; inner.add(e); });
+    var legs = []; [[-0.6, 1], [0.6, 1], [-0.6, -1], [0.6, -1]].forEach(function (q) { var l = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.24, 1.0, 8), br); l.position.set(q[0], 0.5, q[1]); inner.add(l); legs.push(l); });
+    var eyes = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.1), new THREE.MeshBasicMaterial({ color: 0xff3010 })); eyes.position.set(0, 2.05, 2.42); eyes.visible = false; inner.add(eyes);
+    var ped = new THREE.Mesh(new THREE.BoxGeometry(3, 0.8, 4.4), new THREE.MeshLambertMaterial({ color: 0x8a8a86 })); ped.position.set(FR.x, 0.4, FR.z); scene.add(ped);
+    inner.position.y = 0.8; g.position.set(FR.x, 0, FR.z); g.rotation.y = 2.2; scene.add(g); body.castShadow = true;
+    FR.g = g; FR.inner = inner; FR.legs = legs; FR.mat = br; FR.eyes = eyes; FR.ped = ped; FR.lbl = mkLabel('bub'); FR.tag = mkLabel('');
+    var bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(3 * 14), 3));
+    FR.bolt = new THREE.Line(bg, new THREE.LineBasicMaterial({ color: 0xe8f4ff, transparent: true, opacity: 0 })); FR.bolt.frustumCulled = false; scene.add(FR.bolt);
+  }
+  function lightning() {
+    var p = FR.bolt.geometry.attributes.position; for (var i = 0; i < 14; i++) { var u = i / 13; p.setXYZ(i, FR.x + (i && i < 13 ? (rnd() - 0.5) * 14 : 0), 260 * (1 - u) + 2, FR.z + (i && i < 13 ? (rnd() - 0.5) * 14 : 0)); }
+    p.needsUpdate = true; FR.bolt.material.opacity = 1; FR.flash = 0.5;
+  }
+  function wakeFrancis() {
+    if (FR.state !== 'statue' && FR.state !== 'sleep') return; FR.state = 'grow'; FR.t = 0; FR.hp = FR.max; lightning(); FR.ped.visible = false;
+    toast('\u26A1 Lightning struck Francis the Pig!');
+  }
+  function hitFrancis(dmg, h) { if (FR.state !== 'rampage') return; FR.hp -= dmg; FR.hit = 0.2;
+    if (FR.hp <= 0) { FR.state = 'shrink'; FR.t = 0; S.stars += 3; if (h) { h.stars += 3; if (h.player) h.player.stars += 3; } toast('\uD83D\uDC37 Francis is bronze again! +3 \u2B50'); } }
+  function stepFrancis(dt) {
+    if (!FR.g) return; FR.t += dt; FR.cd -= dt;
+    if (FR.flash > 0) { FR.flash -= dt; FR.bolt.material.opacity = Math.max(0, FR.flash * 2) * (rnd() < 0.7 ? 1 : 0.2); hemi.intensity += FR.flash * 3; }
+    var cen = centroid(heroes);
+    if (FR.state === 'statue' && (S.t > FR.at || Math.hypot(cen[0] - FR.x, cen[1] - FR.z) < 160)) wakeFrancis();
+    if (FR.state === 'sleep' && FR.t > 150) wakeFrancis();
+    if (FR.state === 'grow') { FR.sc = 1 + 9 * Math.min(1, FR.t / 2.5); FR.mat.emissiveIntensity = 1.5 * (1 - FR.t / 3); FR.eyes.visible = true;
+      if (FR.t > 2.5) { FR.state = 'rampage'; FR.t = 0; FR.say = 5; FR.r = 3 * FR.sc * 0.8; toast('\uD83D\uDC37 FRANCIS IS RAMPAGING!'); } }
+    if (FR.state === 'rampage') {
+      var tgt = null, td = 1e9; heroes.forEach(function (h) { if (h.dead) return; var d = Math.hypot(h.x - FR.x, h.z - FR.z); if (d < td) { td = d; tgt = h; } });
+      var tx = tgt ? tgt.x : FR.hx, tz = tgt ? tgt.z : FR.hz, dx = tx - FR.x, dz = tz - FR.z, L = Math.hypot(dx, dz) || 1, want = Math.atan2(dx, dz);
+      FR.charge = (FR.charge || 0) - dt; if (FR.charge < -4 && L < 70 && L > 20) FR.charge = 1.2;
+      var sp = FR.charge > 0 ? 26 : 9; if (L > FR.r * 0.7) { FR.x += dx / L * sp * dt; FR.z += dz / L * sp * dt; }
+      FR.yaw += (((want - FR.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI) * Math.min(1, dt * 3); FR.ph += dt * sp * 0.6;
+      heroes.forEach(function (h) { if (h.dead) return; var d = Math.hypot(h.x - FR.x, h.z - FR.z); if (d < FR.r + 1.5) { h.hp -= dt * (FR.charge > 0 ? 90 : 22); if (h.hp <= 0) killHero(h, FR); } });
+      if (FR.cd <= 0 && L < FR.r + 6) { FR.cd = 2.5; heroes.forEach(function (h) { if (!h.dead && Math.hypot(h.x - FR.x, h.z - FR.z) < FR.r + 9) { h.hp -= 30; if (h.hp <= 0) killHero(h, FR); } }); FR.stomp = 0.35; }
+      if (FR.say > 0) FR.say -= dt; if (rnd() < dt / 25) FR.say = 4;
+    }
+    if (FR.state === 'shrink') { FR.sc = Math.max(1, 10 - 9 * FR.t / 2); FR.eyes.visible = FR.t < 1.5; if (FR.t > 2) { FR.state = 'sleep'; FR.t = 0; FR.x = FR.hx; FR.z = FR.hz; FR.ped.visible = true; FR.yaw = 2.2; } }
+    if (FR.stomp > 0) FR.stomp -= dt;
+    var bob = FR.state === 'rampage' ? Math.abs(Math.sin(FR.ph)) * 0.25 : 0;
+    FR.g.position.set(FR.x, groundY(FR.x, FR.z) + bob * FR.sc, FR.z); FR.g.rotation.y = FR.state === 'rampage' ? FR.yaw : FR.g.rotation.y; FR.g.scale.setScalar(FR.sc * (FR.stomp > 0 ? 1 + FR.stomp * 0.15 : 1));
+    FR.inner.position.y = FR.state === 'statue' || FR.state === 'sleep' ? 0.8 : 0;
+    FR.legs.forEach(function (l, i) { l.rotation.x = FR.state === 'rampage' ? Math.sin(FR.ph + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI : 0)) * 0.5 : 0; });
+    FR.mat.emissive.setHex(FR.hit > 0 ? 0xffffff : 0x401800); if (FR.hit > 0) { FR.hit -= dt; FR.mat.emissiveIntensity = 0.6; } else if (FR.state === 'rampage') FR.mat.emissiveIntensity = 0.25 + Math.sin(S.t * 5) * 0.1;
+    var top = 4 * FR.sc + 2;
+    if (FR.state === 'rampage' && FR.say > 0) place(FR.lbl, FR.x, top + 4, FR.z, '\uD83D\uDC37 <b>FRANCIS:</b> If you thought I was rough on the city before, just wait.'); else FR.lbl.style.display = 'none';
+    if (FR.state === 'rampage') place(FR.tag, FR.x, top, FR.z, '<span style="color:#e8a860">FRANCIS</span> <span style="display:inline-block;width:8vh;height:.8vh;background:#0006;vertical-align:middle"><i style="display:block;height:100%;width:' + Math.max(0, FR.hp / FR.max * 100) + '%;background:#ff7a30"></i></span>'); else FR.tag.style.display = 'none';
+  }
 
   // ---------------------------------------------------------------- votes + huddle
   function players() { return Object.keys(S.players).map(function (k) { return S.players[k]; }).filter(function (p) { return p.online; }); }
@@ -561,11 +623,12 @@
   function byConn(conn) { for (var k in S.players) if (S.players[k].conn === conn) return S.players[k]; return null; }
   function onMsg(conn, m) {
     if (!m || !m.t) return;
+    if (m.t === 'list') { host.send(conn, { t: 'roster', list: rosterList(String(m.id || '')) }); return; }
     if (m.t === 'hello') {
       var id = String(m.id || conn.connectionId).slice(0, 40), p = S.players[id];
       if (!p) p = S.players[id] = { id: id, ko: 0, stars: 0 };
       p.conn = conn; p.online = true; p.name = String(m.name || '???').slice(0, 12).toUpperCase(); p.vote = null; p.huddle = false;
-      if (!p.hero || p.hero.dead && p.hero.extra) claimHero(p);
+      var want = m.hero != null ? heroes[+m.hero] : null; if (want && (!want.player || want.player === p)) { if (p.hero && p.hero !== want) p.hero.player = null; want.player = p; p.hero = want; } else if (!p.hero || p.hero.dead && p.hero.extra) claimHero(p); else p.hero.player = p;
       host.send(conn, { t: 'welcome', hero: { name: p.hero.name, color: p.hero.color, role: p.hero.role } });
       toast('\uD83D\uDCF1 ' + p.name + ' joined as ' + p.hero.name); return;
     }
@@ -579,6 +642,7 @@
     if (!free) { var c = centroid(heroes); free = addHero(heroes.length, c[0], c[1]); }
     free.player = p; p.hero = free;
   }
+  function rosterList(id) { var me = S.players[id]; return heroes.map(function (h) { return { i: h.i, n: h.name, r: h.role, c: h.color, use: !!(h.player && h.player.online && h.player !== me), by: h.player && h.player.online && h.player !== me ? h.player.name : '', dead: h.dead, mine: !!(me && me.hero === h) }; }); }
   function releaseHero(p) { if (p.hero) { p.hero.player = null; } }
   function broadcast() {
     var t = S.tally || tally(), H = S.huddle;
@@ -598,9 +662,9 @@
     toastT -= dt; if (toastT < 0) $('toast').style.opacity = 0;
     heroes.forEach(function (h) {
       var tag = (h.player ? '<span style="color:' + h.color + '">' + esc(h.player.name) + '</span> ' : '') + '<small style="opacity:.8">' + h.name + '</small>';
-      place(h.label, h.x, h.y + 9, h.z, h.dead ? '\uD83D\uDCA4 ' + tag : tag);
+      place(h.label, h.x, h.y + 5, h.z, h.dead ? '\uD83D\uDCA4 ' + tag : tag);
       h.bubT -= dt;
-      if (h.bubT > 0) { if (!h.bubEl) h.bubEl = mkLabel('bub'); place(h.bubEl, h.x, h.y + 11, h.z, esc(h.bub)); } else if (h.bubEl) h.bubEl.style.display = 'none';
+      if (h.bubT > 0) { if (!h.bubEl) h.bubEl = mkLabel('bub'); place(h.bubEl, h.x, h.y + 6.5, h.z, esc(h.bub)); } else if (h.bubEl) h.bubEl.style.display = 'none';
     });
     var far = camDist > 520;
     statues.forEach(function (s) { if (far) s.label.style.display = 'none'; else place(s.label, s.x, 8.5, s.z, (s.found ? '\u2B50 ' : '\uD83D\uDC7B ') + esc(s.n)); });
@@ -672,11 +736,12 @@
 
   function step(dt) {
     S.t += dt;
-    stepVotes(dt); stepHeroes(dt); stepBunnies(dt); stepCars(dt); stepCamera(dt); stepSky(dt); hud(dt);
+    stepVotes(dt); stepHeroes(dt); stepBunnies(dt); stepCars(dt); stepCamera(dt); stepSky(dt); stepFrancis(dt); hud(dt);
     if (!S.dest && S.t > 2 && !players().length && !S.winT) {}
   }
 
   window.RESCUE = { S: S, heroes: heroes, bunnies: bunnies, statues: statues, layout: LAYOUT, nodes: nodes, setDest: setDest, toast: toast,
     setQuality: setQuality, spawnBunny: function (x, z) { addBunny(x, z); }, killHero: function (i) { killHero(heroes[i], { x: heroes[i].x + 1, z: heroes[i].z }); },
+    francis: FR, wakeFrancis: function () { FR.at = 0; wakeFrancis(); }, hitFrancis: hitFrancis,
     field: field, groundY: groundY, landmarks: function () { return M.landmarks; } };
 })();

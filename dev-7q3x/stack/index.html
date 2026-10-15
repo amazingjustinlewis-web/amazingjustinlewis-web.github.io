@@ -1,64 +1,31 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><meta name="robots" content="noindex, nofollow">
-<title>Stack Attack (dev)</title><link rel="stylesheet" href="../minikit/kit.css">
-<style>#rot{position:fixed;right:14px;bottom:14px;z-index:6;font-size:20px;padding:12px 16px}body:not(.ph) #rot{right:150px}body.ph #join{display:none}#go{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:7;display:none}</style></head><body>
-<canvas id="cv" class="full"></canvas><div class="hud"><div id="ph">BUILD</div><div id="tm"></div><div id="ht"></div></div><button class="btn" id="rot">&#10227; Rotate</button><button class="btn go" id="go">Next round &#9654;</button>
-<div id="join"></div><div class="big" id="big"></div>
-<script>window.MINI = 'stack';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script><script src="../minikit/matter.min.js"></script><script src="draw.js"></script>
+<title>Stack Attack (dev)</title><link rel="stylesheet" href="../minikit/kit.css"><link rel="stylesheet" href="stack.css">
+<style>body:not(.ph) #rot{right:150px}body.ph #join{display:none}</style></head><body>
+<canvas id="cv" class="full"></canvas><div class="hud"><div id="ph">BUILD</div><div id="tm"></div><div id="ht"></div></div><div id="tray"></div><button class="btn" id="rot">&#10227; Rotate</button><button class="btn go" id="go">Next round &#9654;</button>
+<div id="res"></div><div id="join"></div><div class="big" id="big"></div>
+<script>window.MINI = 'stack';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script><script src="../minikit/matter.min.js"></script><script src="draw.js"></script><script src="game.js"></script><script src="input.js"></script>
 <script>
 (function () {
-  var M = Matter, E = M.Engine.create(), Wd = E.world, B = M.Bodies, Bd = M.Body, $ = function (i) { return document.getElementById(i); };
-  var BUILD = 40, DIS = 8, SETTLE = 3, GY = 1000, DZ = [['quake', 'EARTHQUAKE!'], ['tornado', 'TORNADO!'], ['monster', 'BIG LIZARD!']];
-  var PIECES = [['rect', 240, 50, '#ff5a6e'], ['rect', 100, 100, '#3aa8ff'], ['rect', 50, 200, '#5fdc7a'], ['rect', 320, 34, '#ffc93f'], ['tri', 150, 120, '#c77dff'], ['rect', 160, 80, '#ff9f43']];
-  var DOCKS = [[95, 440], [95, 780], [WWc(), 610]]; function WWc() { return StackDraw.WW - 95; }
-  var cv = $('cv'), ctx = cv.getContext('2d'), dpr = 1, phone = Kit.isPhone && !Kit.Q.get('tv'), host = null;
-  var S = { phase: 'build', t: BUILD, round: 0, best: 0, h: 0 }, pieces = [], holds = {}, ground, monster = null, tw = null, lastTouched = null, nid = 1;
-  function ground0() { ground = B.rectangle(500, GY, 450, 40, { isStatic: true, friction: 1 }); M.Composite.add(Wd, ground); }
-  function spawn(d) { var k = PIECES[(Math.random() * PIECES.length) | 0], o = { friction: .9, restitution: .05, density: .002 }, b = k[0] === 'tri' ? B.polygon(d[0], d[1] - k[2] / 2, 3, k[1] / 1.7, o) : B.rectangle(d[0], d[1] - k[2] / 2 - 8, k[1], k[2], o);
-    if (k[0] === 'tri') Bd.setAngle(b, -Math.PI / 2); b.k = k; b.dock = d; b.nid = nid++; Bd.setStatic(b, true); pieces.push(b); M.Composite.add(Wd, b); return b; }
-  function newRound() { pieces.forEach(function (b) { M.Composite.remove(Wd, b); }); pieces = []; holds = {}; if (ground) M.Composite.remove(Wd, ground); ground0(); DOCKS.forEach(spawn); S.phase = 'build'; S.t = BUILD; S.dz = DZ[S.round % 3]; S.round++; monster = null; tw = null; $('go').style.display = 'none'; }
-  newRound();
-  function grab(who, x, y) { if (S.phase !== 'build') return; var hit = M.Query.point(pieces, { x: x, y: y })[0]; if (!hit) { var best = null, bd = 70; pieces.forEach(function (b) { var d = Math.hypot(b.position.x - x, b.position.y - y); if (d < bd) { bd = d; best = b; } }); hit = best; } if (!hit) return;
-    if (hit.isStatic) { Bd.setStatic(hit, false); if (hit.dock) { var d = hit.dock; hit.dock = null; if (pieces.length < 26) setTimeout(function () { spawn(d); }, 400); } }
-    holds[who] = { b: hit, x: x, y: y, ox: hit.position.x - x, oy: hit.position.y - y }; lastTouched = hit; Kit.phase('play'); }
-  function move(who, x, y) { var h = holds[who]; if (h) { h.x = x; h.y = y; } }
-  function drop(who) { delete holds[who]; }
-  function rotate(who) { var h = holds[who], b = h ? h.b : lastTouched; if (b && !b.isStatic && S.phase === 'build') Bd.setAngle(b, b.angle + Math.PI / 4); }
+  var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), ctx = cv.getContext('2d'), dpr = 1, phone = Kit.isPhone && !Kit.Q.get('tv'), host = null;
+  var G = new StackGame(), cam = new StackDraw.Cam(), P = null, st = G.snap();
   if (phone) document.body.classList.add('ph');
-  else { host = Kit.host({ max: 6, onMsg: function (p, m) { if (m.t === 'pd') grab(p.id, m.x, m.y); else if (m.t === 'pm') move(p.id, m.x, m.y); else if (m.t === 'pu') drop(p.id); else if (m.t === 'rot') rotate(p.id); else if (m.t === 'next' && S.phase === 'score') newRound(); }, onLeave: function (p) { drop(p.id); } }); host.qr($('join')); }
-  var pts = {};
-  cv.addEventListener('pointerdown', function (e) { var w = StackDraw.toWorld(innerWidth, innerHeight, e.clientX, e.clientY); if (Object.keys(pts).length && holds.me) { rotate('me'); return; } pts[e.pointerId] = 1; grab('me', w[0], w[1]); });
-  cv.addEventListener('pointermove', function (e) { if (!pts[e.pointerId]) return; var w = StackDraw.toWorld(innerWidth, innerHeight, e.clientX, e.clientY); move('me', w[0], w[1]); });
-  function up(e) { if (pts[e.pointerId]) { delete pts[e.pointerId]; drop('me'); } } cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-  $('rot').onclick = function () { rotate('me'); }; $('go').onclick = function () { newRound(); };
-  function height() { var top = 1e9; pieces.forEach(function (b) { if (b.isStatic || b.dock) return; if (b.position.y > GY + 30 || Math.abs(b.position.x - ground.position.x) > 300) return; if (Math.hypot(b.velocity.x, b.velocity.y) > 3) return; top = Math.min(top, b.bounds.min.y); }); return top > 1e8 ? 0 : Math.max(0, (GY - 20 - top) / 100); }
-  function step(dt) {
-    S.t -= dt; S.shake = 0;
-    Object.keys(holds).forEach(function (k) { var h = holds[k], b = h.b; Bd.setVelocity(b, { x: (h.x + h.ox - b.position.x) * .35, y: (h.y + h.oy - b.position.y) * .35 }); Bd.setAngularVelocity(b, b.angularVelocity * .5); });
-    if (S.phase === 'build' && S.t <= 0) { S.phase = 'disaster'; S.t = DIS; holds = {}; pieces.forEach(function (b) { if (b.dock) { M.Composite.remove(Wd, b); b.gone = 1; } }); pieces = pieces.filter(function (b) { return !b.gone; }); S.pre = height(); if (S.dz[0] === 'monster') monster = { x: 1150, y: 700 }; if (S.dz[0] === 'tornado') tw = -150; }
-    else if (S.phase === 'disaster') {
-      var k = 1 - S.t / DIS, z = S.dz[0];
-      if (z === 'quake') { var amp = 22 * Math.sin(Math.PI * k), nx = 500 + Math.sin(S.t * 22) * amp; Bd.setPosition(ground, { x: nx, y: GY }, true); S.shake = amp / 22; }
-      if (z === 'tornado') { tw += dt * 150; pieces.forEach(function (b) { var dx = b.position.x - tw; if (Math.abs(dx) < 170) { var f = (1 - Math.abs(dx) / 170) * b.mass * .0007; Bd.applyForce(b, b.position, { x: -Math.sign(dx) * f * .3 + f * .9, y: -f * .75 }); } }); }
-      if (z === 'monster') { var mx = k < .45 ? 1150 - k / .45 * 520 : k < .65 ? 630 + Math.sin(k * 60) * 12 : 630 + (k - .65) / .35 * 600, my = 760 + Math.sin(k * 30) * 40, m2 = { x: mx, y: my };
-        if (!monster.body) { monster.body = B.circle(mx, my, 85, { isStatic: true }); M.Composite.add(Wd, monster.body); } Bd.setPosition(monster.body, m2, true); monster.x = mx - 90; monster.y = my; }
-      if (S.t <= 0) { S.phase = 'settle'; S.t = SETTLE; Bd.setPosition(ground, { x: 500, y: GY }); if (monster && monster.body) M.Composite.remove(Wd, monster.body); monster = null; tw = null; }
-    } else if (S.phase === 'settle' && S.t <= 0) { S.phase = 'score'; S.h = height(); S.best = Math.max(S.best, S.h); $('go').style.display = phone ? 'block' : 'none'; }
-    pieces = pieces.filter(function (b) { if (b.position.y > 1500) { M.Composite.remove(Wd, b); return false; } return true; });
-    M.Engine.update(E, dt * 1000);
-  }
-  function snap() { return { b: pieces.map(function (b) { var held = Object.keys(holds).some(function (k) { return holds[k].b === b; }); return [b.k[0], Math.round(b.position.x), Math.round(b.position.y), +(b.angle + (b.k[0] === 'tri' ? Math.PI / 2 : 0)).toFixed(3), b.k[1], b.k[2], b.k[3], held ? 1 : 0]; }), g: [Math.round(ground.position.x), GY], phase: S.phase, dz: S.dz[0], shake: S.shake, tw: tw, mz: monster ? [monster.x, monster.y] : null, best: S.best, t: Math.max(0, Math.ceil(S.t)), h: S.h, pre: S.pre, name: S.dz[1] }; }
+  else { host = Kit.host({ max: 6, onMsg: function (p, m) { var id = p.id; if (m.t === 'spawn') G.spawn(id, m.k, m.x, m.y); else if (m.t === 'pd') G.grab(id, m.x, m.y); else if (m.t === 'pm') G.move(id, m.x, m.y); else if (m.t === 'pu') G.drop(id); else if (m.t === 'rot') G.rotate(id); else if (m.t === 'next' && G.S.phase === 'score') G.newRound(); }, onLeave: function (p) { G.drop(p.id); } }); host.qr($('join')); }
+  StackInput(cv, $('tray'), cam, function () { return P; }, { spawn: function (k, x, y) { G.spawn('me', k, x, y); Kit.phase('play'); }, grab: function (x, y) { return G.grab('me', x, y); }, move: function (x, y) { G.move('me', x, y); }, drop: function () { G.drop('me'); }, rotate: function () { G.rotate('me'); } });
+  $('rot').onclick = function () { G.rotate('me'); }; $('go').onclick = function () { G.newRound(); };
   function hud(st) {
-    $('ph').textContent = st.phase === 'build' ? 'BUILD! next: ' + S.dz[1].replace('!', '') : st.phase === 'disaster' ? S.dz[1] : st.phase === 'settle' ? 'Settling\u2026' : 'Tower: ' + st.h.toFixed(1) + 'm';
-    $('tm').textContent = st.phase === 'score' ? 'best ' + st.best.toFixed(1) + 'm' : st.t + 's'; $('ht').textContent = st.phase === 'build' ? 'drag blocks onto the stand' : '';
-    var b = $('big'); b.style.opacity = st.phase === 'disaster' && S.t > DIS - 1.6 || st.phase === 'score' ? 1 : 0;
-    b.innerHTML = st.phase === 'score' ? (st.h.toFixed(1) + ' m left standing!<div style="font-size:.4em;color:#fff">' + (st.pre ? 'built ' + st.pre.toFixed(1) + ' m before the ' + st.name.toLowerCase().replace('!', '') : '') + (phone ? '' : '<br>tap Next on your phone') + '</div>') : S.dz[1];
+    $('ph').textContent = st.phase === 'build' ? 'BUILD! next: ' + G.S.dz[1].replace('!', '') : st.phase === 'disaster' ? st.name : st.phase === 'settle' ? 'Settling\u2026' : 'Your tower: ' + st.h.toFixed(1) + 'm';
+    $('tm').textContent = st.phase === 'score' ? 'best ' + st.best.toFixed(1) + 'm' : st.t + 's'; $('ht').textContent = st.phase === 'build' ? 'drag a block in from the left \u00b7 drag empty space to look around' : '';
+    var b = $('big'); b.style.opacity = st.phase === 'disaster' && G.S.t > 6.4 ? 1 : 0; b.textContent = st.name;
+    $('res').style.display = st.phase === 'score' ? 'block' : 'none'; $('go').style.display = st.phase === 'score' && phone ? 'block' : 'none';
+    if (st.phase === 'score') $('res').innerHTML = st.res.slice().sort(function (a, b) { return b[1] - a[1]; }).map(function (r, i) { return (i ? '' : '\uD83C\uDFC6 ') + r[0] + ': <b>' + r[1].toFixed(1) + ' m</b>'; }).join('<br>') + (phone ? '' : '<br><small>tap Next on your phone</small>');
+    $('tray').style.display = st.phase === 'build' ? 'flex' : 'none';
   }
   function size() { dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; } addEventListener('resize', size); size();
   var last = 0, acc = 0, sendT = 0;
-  (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; acc += dt; while (acc > 1 / 60) { step(1 / 60); acc -= 1 / 60; }
-    var st = snap(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); StackDraw.draw(ctx, innerWidth, innerHeight, st, t / 1000); hud(st);
+  (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; acc += dt; while (acc > 1 / 60) { G.step(1 / 60); acc -= 1 / 60; }
+    st = G.snap(); cam.update(st, dt); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); P = StackDraw.draw(ctx, innerWidth, innerHeight, st, cam.c, t / 1000); hud(st);
     sendT += dt; if (host && sendT > .05) { sendT = 0; host.all({ t: 's', s: st }); } requestAnimationFrame(loop); })(0);
-  window.SA = { S: S, grab: grab, move: move, drop: drop, rotate: rotate, step: step, pieces: function () { return pieces; }, height: height, newRound: newRound, snap: snap };
-  Kit.over(function () { return S.phase === 'score' && S.round >= 3; }, 40000);
+  window.SA = { G: G, cam: cam, P: function () { return P; } };
+  Kit.over(function () { return G.S.phase === 'score' && G.S.round >= 3; }, 40000);
 })();
 </script></body></html>

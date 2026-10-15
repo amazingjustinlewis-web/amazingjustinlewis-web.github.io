@@ -16,12 +16,22 @@
   function start() {
     $('jmsg').textContent = 'Connecting\u2026';
     var o = { code: room, onStatus: function (s) { $('status').className = s === 'online' ? 'on' : ''; if (s === 'noroom') $('jmsg').textContent = 'No TV with code ' + room + ' yet\u2026 retrying'; },
-      onOpen: function () { net.send({ t: 'hello', id: pid, name: name }); },
+      onOpen: function () { if (Q.get('hero') != null) net.send({ t: 'hello', id: pid, name: name, hero: +Q.get('hero') }); else showPick(); },
       onMessage: onMsg };
     net = LOCAL ? new LRNet.LocalClient(o) : new LRNet.Client(o);
   }
+  // v0.2 join screen: every hero listed, the ones other phones are using marked 'in use', downed ones 'respawning shortly'
+  var pickT = 0;
+  function showPick() { $('join').classList.add('hide'); $('app').classList.add('hide'); $('pick').classList.remove('hide'); net.send({ t: 'list', id: pid }); clearInterval(pickT); pickT = setInterval(function () { net.send({ t: 'list', id: pid }); }, 1500); }
+  function drawPick(list) {
+    $('plist').innerHTML = list.map(function (h) { return '<button class="hero' + (h.use ? ' use' : '') + (h.dead ? ' dead' : '') + (h.mine ? ' mine' : '') + '" data-i="' + h.i + '"' + (h.use ? ' disabled' : '') + '><span class="c" style="background:' + h.c + '"></span><span><b>' + esc(h.n) + '</b><span class="s">' + esc(h.r) + '</span></span>' +
+      (h.use ? '<em>in use \u00b7 ' + esc(h.by) + '</em>' : h.dead ? '<em>respawning shortly</em>' : h.mine ? '<em>yours</em>' : '<em>free</em>') + '</button>'; }).join('');
+  }
+  $('plist').onclick = function (e) { var b = e.target.closest('.hero'); if (!b || b.disabled) return; clearInterval(pickT); net.send({ t: 'hello', id: pid, name: name, hero: +b.dataset.i }); };
+  $('swap').onclick = function () { showPick(); };
   function onMsg(m) {
-    if (m.t === 'welcome') { $('join').classList.add('hide'); $('app').classList.remove('hide'); $('hname').textContent = m.hero.name; $('chip').style.background = m.hero.color; $('role').textContent = m.hero.role; $('pname').textContent = '\u00b7 ' + name; return; }
+    if (m.t === 'roster') { drawPick(m.list); return; }
+    if (m.t === 'welcome') { clearInterval(pickT); $('pick').classList.add('hide'); $('join').classList.add('hide'); $('app').classList.remove('hide'); $('hname').textContent = m.hero.name; $('chip').style.background = m.hero.color; $('role').textContent = m.hero.role; $('pname').textContent = '\u00b7 ' + name; return; }
     if (m.t !== 'state') return; st = m; draw();
   }
   function send(m) { if (net) net.send(m); }

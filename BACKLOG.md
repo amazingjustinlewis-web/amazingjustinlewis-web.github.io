@@ -62,3 +62,5 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - [ ] Penny / coin arcade game: coin goes up a ramp and flips at the top (maybe a Penny Falls-style pusher). Confirm the details with Justin first.
 - [ ] Real-phone pass on all seven: flick power tuning (Swish Flick, Splash Clown), Glide Puck camera feel, Stack Attack drag over the network, sound.
 - [ ] Once Dangerous Waters is approved, fold its TV board + 10x10 Classic into the café Battleship.
+- [ ] Café shared screen: multiple groups on one café screen playing different phone-native games; when none needs the full screen, the screen shows split views, highlights and scoreboards from active games.
+- [ ] Stack Attack: real 3D physics (blocks with depth that can sit in front of / behind each other). v0.2 is a 2D physics slab drawn in 3D.

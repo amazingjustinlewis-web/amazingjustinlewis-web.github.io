@@ -16,7 +16,7 @@
     }
     return t0;
   }
-  function segWall(ax, ay, az, bx, by, bz) { var best = -1; for (var i = 0; i < W.buildings.length; i++) { var t = segBox(ax, ay, az, bx, by, bz, W.buildings[i]); if (t >= 0 && (best < 0 || t < best)) best = t; } return best; }
+  function segWall(ax, ay, az, bx, by, bz) { var best = -1; segWall.bi = -1; for (var i = 0; i < W.buildings.length; i++) { var t = segBox(ax, ay, az, bx, by, bz, W.buildings[i]); if (t >= 0 && (best < 0 || t < best)) { best = t; segWall.bi = i; } } return best; }
   // ---------------------------------------------------------------- path grid (A*), one per body size
   var G = 3, N = Math.ceil(W.half * 2 / G), grids = {};
   function grid(pad) { if (grids[pad]) return grids[pad]; var g = new Uint8Array(N * N);
@@ -47,27 +47,31 @@
   function clearLine(g, x0, z0, x1, z1) { var n = Math.ceil(Math.hypot(x1 - x0, z1 - z0) / 1.5); for (var i = 1; i <= n; i++) { var x = x0 + (x1 - x0) * i / n, z = z0 + (z1 - z0) * i / n; if (g[cell(x) * N + cell(z)]) return false; } return true; }
 
   // ---------------------------------------------------------------- world
-  function Squad() { this.mechs = []; this.enemies = []; this.shots = []; this.events = []; this.t = 0; this.spawnT = 3; this.score = 0; this.kills = 0; this.eid = 0; }
+  function Squad() { this.mechs = []; this.enemies = []; this.shots = []; this.events = []; this.t = 0; this.spawnT = 3; this.score = 0; this.kills = 0; this.eid = 0; this.collat = { hits: 0, n: 0, b: {} }; }
+  Squad.prototype.heroScore = function () { var K = Q.collateral; return Math.round(this.score - this.collat.n * K.perBuilding - this.collat.hits * K.perHit); };
+  Squad.prototype.hitBuilding = function (bi, dmg, by) { if (bi < 0) return; var c = this.collat, first = !c.b[bi]; c.b[bi] = (c.b[bi] || 0) + dmg; c.hits++; if (first) c.n++; if (by) by.stats.collat = (by.stats.collat || 0) + (first ? 1 : 0); this.ev({ k: 'bhit', bi: bi, first: first, dmg: c.b[bi] }); };
   Squad.prototype.ev = function (e) { this.events.push(e); };
   var SPAWNS = { light: [[-8, -6], [8, -6], [-8, 6], [8, 6], [0, -10], [0, 10], [-12, 0], [12, 0]], titan: [[0, -20], [-20, 0], [20, 0], [0, 20]] };
   Squad.prototype.addMech = function (o) {
     var D = Q[o.cls], n = this.mechs.filter(function (m) { return m.cls === o.cls; }).length, sp = SPAWNS[o.cls][n % SPAWNS[o.cls].length];
     var m = { mech: true, id: o.id, cls: o.cls, D: D, name: o.name, color: o.color, ai: !!o.ai, x: sp[0], z: sp[1], a: 0, aim: 0, vx: 0, vz: 0, hp: D.hp, dead: false, respawnT: 0,
-      cd: {}, inp: { mx: 0, mz: 0, ax: 0, az: 0, fire: false, dash: false }, order: { path: null, target: null, auto: true }, dashT: 0, stats: { kills: 0, dmg: 0 } };
+      cd: {}, inp: { mx: 0, mz: 0, ax: 0, az: 0, fire: false, dash: false, jump: false }, py: gy(sp[0], sp[1]), vy: 0, air: false, fuel: 1, thrust: false, order: { path: null, target: null, auto: true }, dashT: 0, stats: { kills: 0, dmg: 0 } };
     this.mechs.push(m); return m;
   };
   Squad.prototype.removeMech = function (id) { this.mechs = this.mechs.filter(function (m) { return m.id !== id; }); };
   Squad.prototype.byId = function (id) { for (var i = 0; i < this.mechs.length; i++) if (this.mechs[i].id === id) return this.mechs[i]; return null; };
   Squad.prototype.enemy = function (id) { for (var i = 0; i < this.enemies.length; i++) if (this.enemies[i].id === id) return this.enemies[i]; return null; };
   function gy(x, z) { return W.height(x, z); }
-  function centerY(e) { return e.mech ? gy(e.x, e.z) + e.D.h * 0.5 : gy(e.x, e.z) + e.D.alt; }
+  function feet(m) { return m.py != null ? m.py : gy(m.x, m.z); }
+  function floorAt(x, z, r) { var b = W.insideBuilding(x, z, r || 0); return b ? Math.max(b.top, gy(x, z)) : gy(x, z); }
+  function centerY(e) { return e.mech ? feet(e) + e.D.h * 0.5 : gy(e.x, e.z) + e.D.alt; }
   Squad.prototype.los = function (ax, ay, az, bx, by, bz) { return segWall(ax, ay, az, bx, by, bz) < 0; };
-  function pushOut(m, r) { var b = W.insideBuilding(m.x, m.z, r); if (!b) return; var dx = m.x - b.x, dz = m.z - b.z, ox = b.w / 2 + r - Math.abs(dx), oz = b.d / 2 + r - Math.abs(dz);
+  function pushOut(m, r) { var b = W.insideBuilding(m.x, m.z, r); if (!b || (m.py != null && m.py > b.top - 1.5)) return; var dx = m.x - b.x, dz = m.z - b.z, ox = b.w / 2 + r - Math.abs(dx), oz = b.d / 2 + r - Math.abs(dz);
     if (ox < oz) m.x += Math.sign(dx) * ox; else m.z += Math.sign(dz) * oz; var lim = W.city + 2; m.x = clamp(m.x, -lim, lim); m.z = clamp(m.z, -lim, lim); }
   Squad.prototype.order = function (m, x, z) { var p = path(m.D.colR + 0.8, m.x, m.z, x, z); m.order.path = p; m.order.goal = [x, z]; if (p) this.ev({ k: 'order', id: m.id }); return !!p; };
   Squad.prototype.fire = function (m, w, tx, ty, tz, tgt) {
     var D = m.D, Wp = D[w]; if (!Wp || m.dead || (m.cd[w] || 0) > 0) return false;
-    var mx = m.x + Math.sin(m.aim) * D.colR, mz = m.z + Math.cos(m.aim) * D.colR, my = gy(m.x, m.z) + D.muzzle, self = this;
+    var mx = m.x + Math.sin(m.aim) * D.colR, mz = m.z + Math.cos(m.aim) * D.colR, my = feet(m) + D.muzzle, self = this;
     if (w === 'stomp') { m.cd[w] = Wp.cd; this.ev({ k: 'stomp', id: m.id, x: m.x, z: m.z, r: Wp.r });
       this.enemies.slice().forEach(function (e) { var d = Math.hypot(e.x - m.x, e.z - m.z); if (d < Wp.r + e.D.r && (e.kind === 'tank' || e.alt < 20)) { self.hurtEnemy(e, Wp.dmg * (1 - 0.5 * d / Wp.r), m); var k = Wp.knock / Math.max(1, d); e.x += (e.x - m.x) * k * 0.1; e.z += (e.z - m.z) * k * 0.1; } }); return true; }
     if (w === 'barrage') { m.cd[w] = Wp.cd; for (var i = 0; i < Wp.n; i++) { var ang = m.aim + (i - Wp.n / 2) * 0.25;
@@ -90,7 +94,7 @@
     // ---- mechs
     this.mechs.forEach(function (m) {
       var D = m.D; for (var k in m.cd) if (m.cd[k] > 0) m.cd[k] -= dt;
-      if (m.dead) { m.respawnT -= dt; if (m.respawnT <= 0) { m.dead = false; m.hp = D.hp; var s = SPAWNS[m.cls][0]; m.x = s[0]; m.z = s[1]; m.order.path = null; self.ev({ k: 'respawn', id: m.id }); } return; }
+      if (m.dead) { m.respawnT -= dt; if (m.respawnT <= 0) { m.dead = false; m.hp = D.hp; var s = SPAWNS[m.cls][0]; m.x = s[0]; m.z = s[1]; m.py = gy(s[0], s[1]) + 30; m.vy = 0; m.air = true; m.fuel = 1; m.order.path = null; self.ev({ k: 'respawn', id: m.id }); } return; }
       if (m.cls === 'light') {
         var mag = Math.min(1, Math.hypot(m.inp.mx, m.inp.mz));
         var wx = m.inp.mx * D.speed, wz = m.inp.mz * D.speed;
@@ -100,7 +104,7 @@
         var k2 = 1 - Math.pow(0.0005, dt); m.vx += (wx - m.vx) * k2; m.vz += (wz - m.vz) * k2;
         m.x += m.vx * dt; m.z += m.vz * dt; if (mag > 0.15) m.a = m.a + clamp(wrap(Math.atan2(m.inp.mx, m.inp.mz) - m.a), -D.turn * dt, D.turn * dt);
         if (Math.hypot(m.inp.ax, m.inp.az) > 0.3) m.aim = Math.atan2(m.inp.ax, m.inp.az); else if (mag > 0.15) m.aim = m.a;
-        if (m.inp.fire) { var tx = m.x + Math.sin(m.aim) * 60, tz = m.z + Math.cos(m.aim) * 60, ty = gy(m.x, m.z) + D.muzzle; var tg = self.autoTarget(m, 0.35); if (tg) { tx = tg.x; tz = tg.z; ty = centerY(tg); } self.fire(m, 'mg', tx, ty, tz); }
+        if (m.inp.fire) { var tx = m.x + Math.sin(m.aim) * 60, tz = m.z + Math.cos(m.aim) * 60, ty = feet(m) + D.muzzle; var tg = self.autoTarget(m, 0.35); if (tg) { tx = tg.x; tz = tg.z; ty = centerY(tg); } self.fire(m, 'mg', tx, ty, tz); }
         pushOut(m, D.colR);
       } else {
         // titan: walks its tactical path slowly, torso turns toward the target, guns fire when they can see it
@@ -113,13 +117,14 @@
         var t = m.order.target && self.enemy(m.order.target);
         if (!t && m.order.auto) t = self.autoTarget(m, Math.PI);
         if (t) { var wa = Math.atan2(t.x - m.x, t.z - m.z); m.aim += clamp(wrap(wa - m.aim), -1.4 * dt, 1.4 * dt);
-          var lined = Math.abs(wrap(wa - m.aim)) < 0.15, my = gy(m.x, m.z) + D.muzzle, dist = Math.hypot(t.x - m.x, t.z - m.z);
+          var lined = Math.abs(wrap(wa - m.aim)) < 0.15, my = feet(m) + D.muzzle, dist = Math.hypot(t.x - m.x, t.z - m.z);
           var sees = self.los(m.x + Math.sin(m.aim) * D.colR, my, m.z + Math.cos(m.aim) * D.colR, t.x, centerY(t), t.z);
           m.sees = sees ? t.id : null;
           if (lined && sees && dist < D.siege.range && (m.order.auto || m.inp.fire)) self.fire(m, 'siege', t.x + t.vx * dist / D.siege.speed, centerY(t), t.z + t.vz * dist / D.siege.speed, t);
         } else { m.sees = null; m.aim += clamp(wrap(m.a - m.aim), -dt, dt); }
         m.inp.fire = false;
       }
+      self.vertical(m, dt);
     });
     // ---- enemies
     var alive = this.mechs.filter(function (m) { return !m.dead; }), E = Q.enemies;
@@ -147,11 +152,11 @@
       else if (s.kind === 'siege' || s.kind === 'shell') s.vy -= 6 * dt;
       var x0 = s.x, y0 = s.y, z0 = s.z; s.x += s.vx * dt; s.y += s.vy * dt; s.z += s.vz * dt; s.life -= dt;
       var tw = segWall(x0, y0, z0, s.x, s.y, s.z), hit = null, hx, hy, hz;
-      if (tw >= 0) { s.x = x0 + (s.x - x0) * tw; s.y = y0 + (s.y - y0) * tw; s.z = z0 + (s.z - z0) * tw; }
+      if (tw >= 0) { s.x = x0 + (s.x - x0) * tw; s.y = y0 + (s.y - y0) * tw; s.z = z0 + (s.z - z0) * tw; if (s.team === 0) this.hitBuilding(segWall.bi, s.dmg, this.byId(s.owner)); }
       // entity hits along the (possibly shortened) segment
       var list = s.team === 0 ? this.enemies : alive;
       for (var j = 0; j < list.length && !hit; j++) { var e2 = list[j], cy = centerY(e2), r = e2.mech ? e2.D.hitR : e2.D.r + (s.kind === 'mg' ? 0.6 : 0);
-        if (e2.mech && e2.cls === 'titan') { cy = gy(e2.x, e2.z) + e2.D.h * 0.45; }
+        if (e2.mech && e2.cls === 'titan') { cy = feet(e2) + e2.D.h * 0.45; }
         var sx2 = s.x - x0, sy2 = s.y - y0, sz2 = s.z - z0, L2 = sx2 * sx2 + sy2 * sy2 + sz2 * sz2 || 1, u = clamp(((e2.x - x0) * sx2 + (cy - y0) * sy2 + (e2.z - z0) * sz2) / L2, 0, 1);
         var px = x0 + sx2 * u, py = y0 + sy2 * u, pz = z0 + sz2 * u, dd = e2.mech && e2.cls === 'titan' ? Math.max(Math.hypot(px - e2.x, pz - e2.z), Math.abs(py - cy) - e2.D.h * 0.45) : Math.hypot(px - e2.x, py - cy, pz - e2.z);
         if (dd < r) { hit = e2; hx = px; hy = py; hz = pz; } }
@@ -165,8 +170,27 @@
       }
     }
   };
+  // v0.6 booster jump / hover + ground slam. Rooftops count as floor, so you can land on them (and stomp them: collateral)
+  Squad.prototype.vertical = function (m, dt) {
+    var D = m.D, J = D.jump, G = Q.grav, fl = floorAt(m.x, m.z, 0), self = this; if (!J) return;
+    if (m.cd.jump == null) m.cd.jump = 0;
+    var want = m.inp.jump; m.thrust = false;
+    if (!m.air) { m.fuel = Math.min(1, m.fuel + dt * J.regen);
+      if (want && !m.jumpHeld && (m.cd.jump || 0) <= 0) { m.air = true; m.vy = J.v; m.py = Math.max(m.py, fl) + 0.05; if (J.cd) m.cd.jump = J.cd; this.ev({ k: 'jump', id: m.id }); }
+      else if (m.py > fl + 0.6) { m.air = true; m.vy = 0; }   // walked off a roof
+      else m.py = fl; }
+    else {
+      m.vy -= G * dt;
+      if (want && J.fuel && m.fuel > 0 && m.vy < 6) { m.vy += J.hover * dt; m.fuel = Math.max(0, m.fuel - dt / J.fuel); m.thrust = true; }
+      m.py += m.vy * dt;
+      if (m.py <= fl) { var hard = -m.vy; m.py = fl; m.air = false; m.vy = 0;
+        if (hard > J.slamV) { var f = Math.min(1.6, hard / (J.slamV * 1.6)); this.ev({ k: 'slam', id: m.id, x: m.x, y: fl, z: m.z, r: J.slamR * f, big: m.cls === 'titan' });
+          this.enemies.slice().forEach(function (e) { var d = Math.hypot(e.x - m.x, e.z - m.z); if (d < J.slamR * f + e.D.r && (e.kind === 'tank' || e.alt < 16)) { self.hurtEnemy(e, J.slamDmg * f * (1 - 0.5 * d / (J.slamR * f + e.D.r)), m); e.x += (e.x - m.x) / Math.max(1, d) * 6; e.z += (e.z - m.z) / Math.max(1, d) * 6; } });
+          W.buildings.forEach(function (b, bi) { var dx = Math.max(Math.abs(m.x - b.x) - b.w / 2, 0), dz = Math.max(Math.abs(m.z - b.z) - b.d / 2, 0); if (Math.hypot(dx, dz) < J.slamR * f * 0.5) self.hitBuilding(bi, J.slamDmg * f, m); }); } } }
+    m.jumpHeld = want; if (m.cls === 'titan') m.inp.jump = false;
+  };
   Squad.prototype.autoTarget = function (m, cone) {
-    var best = null, bs = 1e9, self = this, D = m.D, my = gy(m.x, m.z) + D.muzzle;
+    var best = null, bs = 1e9, self = this, D = m.D, my = feet(m) + D.muzzle;
     this.enemies.forEach(function (e) { var dx = e.x - m.x, dz = e.z - m.z, d = Math.hypot(dx, dz); if (d > (m.cls === 'light' ? D.mg.range : D.siege.range)) return;
       var da = Math.abs(wrap(Math.atan2(dx, dz) - m.aim)); if (da > cone) return;
       if (!self.los(m.x, my, m.z, e.x, centerY(e), e.z)) return; var s = d * (1 + da * 3); if (s < bs) { bs = s; best = e; } });
@@ -187,7 +211,8 @@
       m.thinkT = (m.thinkT || 0) - dt;
       if (near) { var vis = this.autoTarget(m, Math.PI); var aimAt = vis || near; m.inp.ax = Math.sin(Math.atan2(aimAt.x - m.x, aimAt.z - m.z)); m.inp.az = Math.cos(Math.atan2(aimAt.x - m.x, aimAt.z - m.z)); m.inp.fire = !!vis;
         if (m.thinkT <= 0) { m.thinkT = 1.2; var r = vis ? 22 : 6, ang = Math.atan2(m.x - near.x, m.z - near.z) + rnd(-0.8, 0.8); m.botPath = path(m.D.colR + 0.8, m.x, m.z, near.x + Math.sin(ang) * r, near.z + Math.cos(ang) * r); }
-        var p = m.botPath; if (p && p.length) { var dx = p[0][0] - m.x, dz = p[0][1] - m.z, d = Math.hypot(dx, dz); if (d < 2) p.shift(); m.inp.mx = dx / (d || 1); m.inp.mz = dz / (d || 1); if (Math.random() < dt * 0.4) m.inp.dash = true; } else { m.inp.mx = m.inp.mz = 0; } }
+        var p = m.botPath; if (p && p.length) { var dx = p[0][0] - m.x, dz = p[0][1] - m.z, d = Math.hypot(dx, dz); if (d < 2) p.shift(); m.inp.mx = dx / (d || 1); m.inp.mz = dz / (d || 1); if (Math.random() < dt * 0.4) m.inp.dash = true; } else { m.inp.mx = m.inp.mz = 0; }
+        m.jT = (m.jT || 0) - dt; if (m.jT <= 0) { m.jT = rnd(3, 7); m.jHold = rnd(0.2, 1.2); } m.inp.jump = m.jT < m.jHold; }
       else { m.inp.mx = m.inp.mz = 0; m.inp.fire = false; }
     } else {
       m.thinkT = (m.thinkT || 0) - dt;

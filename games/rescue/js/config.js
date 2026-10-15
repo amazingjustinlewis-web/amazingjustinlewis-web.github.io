@@ -1,7 +1,7 @@
 /* RED DEER RESCUE - shared config */
 (function (root) {
   root.RDR_CONFIG = {
-    TITLE: 'RED DEER RESCUE', version: '0.1',
+    TITLE: 'RED DEER RESCUE', version: '0.2',
     peerPrefix: 'ztp-rescue-v01-',
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }],
     heroes: [

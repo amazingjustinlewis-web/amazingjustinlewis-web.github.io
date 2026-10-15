@@ -27,10 +27,10 @@
     if (p.y < -C.PR) return this.goal(1); if (p.y > C.L + C.PR) return this.goal(0);
     this.m.forEach(function (m) { var dx = p.x - m.x, dy = p.y - m.y, d = Math.hypot(dx, dy), md = C.PR + C.MR; if (d >= md || d < 1e-6) return;
       var nx = dx / d, ny = dy / d; p.x = m.x + nx * md; p.y = m.y + ny * md;
-      var rvx = p.vx - m.vx, rvy = p.vy - m.vy, vn = rvx * nx + rvy * ny; if (vn < 0) { p.vx -= 1.9 * vn * nx; p.vy -= 1.9 * vn * ny; } self.ev = 'hit'; });
+      var rvx = p.vx - m.vx, rvy = p.vy - m.vy, vn = rvx * nx + rvy * ny; if (vn < 0) { p.vx -= 1.9 * vn * nx; p.vy -= 1.9 * vn * ny; self.hits = (self.hits || 0) + 1; } self.ev = 'hit'; });
     var v = Math.hypot(p.vx, p.vy); if (v > C.MAXV) { p.vx *= C.MAXV / v; p.vy *= C.MAXV / v; }
   };
   Sim.prototype.goal = function (who) { this.sc[who]++; this.ev = 'goal' + who; if (this.sc[who] >= C.WIN) { this.over = who; this.p = { x: .5, y: 1, vx: 0, vy: 0 }; } else this.serve(1 - who); };
-  Sim.prototype.snap = function () { var p = this.p; return { t: 's', p: [p.x, p.y, p.vx, p.vy], m: this.m.map(function (m) { return [m.x, m.y]; }), sc: this.sc, ev: this.ev, over: this.over }; };
+  Sim.prototype.snap = function () { var p = this.p; return { t: 's', p: [p.x, p.y, p.vx, p.vy], m: this.m.map(function (m) { return [m.x, m.y]; }), sc: this.sc, hits: this.hits || 0, ev: this.ev, over: this.over }; };
   root.Puck = { C: C, Sim: Sim };
 })(window);
