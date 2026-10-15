@@ -23,7 +23,7 @@
   function size() { dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; } addEventListener('resize', size); size();
   var last = 0, acc = 0, sendT = 0;
   (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; acc += dt; while (acc > 1 / 60) { G.step(1 / 60); acc -= 1 / 60; }
-    st = G.snap(); cam.update(st, dt); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); P = StackDraw.draw(ctx, innerWidth, innerHeight, st, cam.c, t / 1000); hud(st);
+    st = G.snap(); cam.update(st, dt, innerWidth, innerHeight); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); P = StackDraw.draw(ctx, innerWidth, innerHeight, st, cam.c, t / 1000); hud(st);
     sendT += dt; if (host && sendT > .05) { sendT = 0; host.all({ t: 's', s: st }); } requestAnimationFrame(loop); })(0);
   window.SA = { G: G, cam: cam, P: function () { return P; } };
   Kit.over(function () { return G.S.phase === 'score' && G.S.round >= 3; }, 40000);

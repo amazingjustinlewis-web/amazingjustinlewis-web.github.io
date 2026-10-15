@@ -12,7 +12,7 @@
     move: function (x, y) { c.send({ t: 'pm', x: x, y: y }); }, drop: function () { c.send({ t: 'pu' }); }, rotate: function () { c.send({ t: 'rot' }); } });
   $('rot').onclick = function () { c.send({ t: 'rot' }); }; $('go').onclick = function () { c.send({ t: 'next' }); };
   function size() { dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; } addEventListener('resize', size); size();
-  var last = 0; (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; if (st) { cam.update(st, dt); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); P = StackDraw.draw(ctx, innerWidth, innerHeight, st, cam.c, t / 1000);
+  var last = 0; (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; if (st) { cam.update(st, dt, innerWidth, innerHeight); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); P = StackDraw.draw(ctx, innerWidth, innerHeight, st, cam.c, t / 1000);
     $('ph').textContent = st.phase === 'build' ? 'BUILD!' : st.phase === 'score' ? st.h.toFixed(1) + ' m standing' : st.name; $('tm').textContent = st.phase === 'score' ? 'best ' + st.best.toFixed(1) + 'm' : st.t + 's'; $('go').style.display = st.phase === 'score' ? 'block' : 'none'; $('tray').style.display = st.phase === 'build' ? 'flex' : 'none'; } requestAnimationFrame(loop); })(0);
 })();
 </script></body></html>

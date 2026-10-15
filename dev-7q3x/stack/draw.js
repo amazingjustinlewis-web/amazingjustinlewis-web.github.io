@@ -57,8 +57,8 @@
   function iconSvg(k) { var w = k[1], h = k[2], s = 40 / Math.max(w, h), W = w * s, Hh = h * s; return '<svg viewBox="-24 -24 48 48" width="48" height="48">' + (k[0] === 'tri' ? '<polygon points="' + (-W / 2) + ',' + (Hh / 2) + ' ' + (W / 2) + ',' + (Hh / 2) + ' 0,' + (-Hh / 2) + '" fill="' + k[3] + '" stroke="#0006" stroke-width="2"/>' : '<rect x="' + (-W / 2) + '" y="' + (-Hh / 2) + '" width="' + W + '" height="' + Hh + '" rx="3" fill="' + k[3] + '" stroke="#0006" stroke-width="2"/>') + '</svg>'; }
   // camera helper shared by screen and pads: build view on your tower, zoomed out during the disaster
   function Cam() { this.c = { tx: 500, ty: 300, yaw: 0, pitch: .21, dist: 1350 }; this.uyaw = 0; this.upitch = .21; }
-  Cam.prototype.update = function (S, dt) { var wide = S.phase === 'disaster' || S.phase === 'settle' || S.phase === 'score', k = 1 - Math.exp(-dt * (wide ? 1.6 : 2.5)), c = this.c;
-    var tdist = wide ? 4300 : 1350, tty = wide ? 350 : 300 + Math.max(0, (S.top || 0) - 250) * .6;
+  Cam.prototype.update = function (S, dt, W, H) { var asp = W && H ? W / H : 16 / 9; var wide = S.phase === 'disaster' || S.phase === 'settle' || S.phase === 'score', k = 1 - Math.exp(-dt * (wide ? 1.6 : 2.5)), c = this.c;
+    var tdist = wide ? Math.max(2300, 1900 * 1.1 / asp) : 1350, tty = wide ? 350 : 300 + Math.max(0, (S.top || 0) - 250) * .6;
     c.dist += (tdist - c.dist) * k; c.ty += (tty - c.ty) * k; c.tx += (500 - c.tx) * k; c.yaw += (this.uyaw - c.yaw) * (1 - Math.exp(-dt * 8)); c.pitch += (this.upitch - c.pitch) * (1 - Math.exp(-dt * 8)); };
   Cam.prototype.orbit = function (dx, dy) { this.uyaw = Math.max(-1, Math.min(1, this.uyaw + dx * .003)); this.upitch = Math.max(.04, Math.min(.6, this.upitch + dy * .002)); };
   root.StackDraw = { draw: draw, Proj: Proj, Cam: Cam, iconSvg: iconSvg, GY: GY, D: D };

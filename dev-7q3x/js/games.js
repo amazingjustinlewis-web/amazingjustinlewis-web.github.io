@@ -11,7 +11,7 @@ window.DEV_GAMES = [
   { id: 'swish', name: 'Swish Flick', ver: 'v0.1.1', url: 'swish/index.html', img: 'swish/shot.jpg', tag: 'Flick-to-shoot arcade hoops' },
   { id: 'dunk', name: 'Splash Clown', ver: 'v0.1.1', url: 'dunk/index.html', img: 'dunk/shot.jpg', tag: 'Flick at the target, dunk the clown' },
   { id: 'puck', name: 'Glide Puck', ver: 'v0.2', url: 'puck/index.html', img: 'puck/shot.jpg', tag: 'Phone air hockey \u00b7 optional TV mirror' },
-  { id: 'stack', name: 'Stack Attack', ver: 'v0.2', url: 'stack/index.html', img: 'stack/shot.jpg', tag: '3D tower build vs 2 bots, then disaster' },
+  { id: 'stack', name: 'Stack Attack', ver: 'v0.2.1', url: 'stack/index.html', img: 'stack/shot.jpg', tag: '3D tower build vs 2 bots, then disaster' },
   { id: 'buddy', name: 'Balloon Buddy', ver: 'v0.1.1', url: 'buddy/index.html', img: 'buddy/shot.jpg', tag: 'Silly word guessing \u00b7 pop the balloons' },
   { id: 'orbit', name: 'Orbit Brawl', ver: 'v0.1.1', url: 'orbit/index.html', img: 'orbit/shot.jpg', tag: 'Phone cockpit space dogfight \u00b7 2\u201320 pilots \u00b7 TV = live cinematic cam' },
   { id: 'bubble', name: 'Bubble Hockey', ver: 'v0.1', url: 'bubble/index.html', img: 'bubble/shot.jpg', tag: 'Table-top rod hockey \u00b7 drag, dangle, flick to pass' },
