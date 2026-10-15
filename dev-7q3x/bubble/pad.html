@@ -1,0 +1,33 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="robots" content="noindex, nofollow">
+<title>Bubble Hockey</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>body{background:#0c1226}#score{position:fixed;left:0;right:0;top:6px;text-align:center;z-index:5;font-size:20px;font-weight:700}#score span.t{font-weight:400;opacity:.7;font-size:15px;margin:0 10px}
+#hostq{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:210px;background:#000c;border-radius:16px;padding:12px;text-align:center;z-index:7;display:none}#hostq .kcode{font-size:24px}#kjoin .btn{width:100%;margin-top:8px}
+#tip{position:fixed;left:0;right:0;bottom:8px;text-align:center;font-size:12px;opacity:.6;z-index:4;pointer-events:none}</style></head><body>
+<canvas id="cv" class="full"></canvas><div id="score"></div><div class="big" id="big" style="opacity:0"></div><div id="tip">drag a player along his slot \u00b7 with the puck: slide to dangle \u00b7 flick to a teammate to pass \u00b7 tap to shoot</div>
+<div id="hostq"><div id="hq"></div><p style="margin:6px 0 0;font-size:14px">Friend scans to join.<br>The computer plays until they do.</p></div><div class="st" id="st"></div>
+<script>window.MINI = 'bubble';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="sim.js"></script><script src="view.js"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), ctx = cv.getContext('2d'), dpr = 1, V = new BubbleView(), sim = null, host = null, c = null, st = null, team = 0, names = ['You', 'Computer'], trail = [];
+  $('tip').textContent = 'drag a player along his slot \u00b7 with the puck: slide to dangle \u00b7 flick toward a teammate to pass \u00b7 tap to shoot';
+  function size() { dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; V.fit(innerWidth, innerHeight - 30, 34); } addEventListener('resize', size); size();
+  function local(withHost) { var k = $('kjoin'); if (k) k.remove(); sim = new Bubble.Sim(); team = 0; V.team = 0; Kit.phase('play');
+    if (withHost) { host = Kit.host({ max: 1, onJoin: function (p) { sim.ai[1] = false; names[1] = p.name; sim.reset(); $('hostq').style.display = 'none'; host.send(p, { t: 'team', team: 1 }); },
+      onLeave: function () { sim.ai[1] = true; names[1] = 'Computer'; }, onMsg: function (p, m) { sim.input(1, m); } });
+      host.qr($('hq')); $('hostq').style.display = 'block'; $('hostq').onclick = function () { this.style.display = 'none'; }; } }
+  c = Kit.pad({ onMsg: function (m) { if (m.t === 'team') { team = m.team; V.team = team; } else if (m.t === 's') { st = m; if (m.names) names = m.names; } }, onStatus: function (s) { $('st').textContent = s === 'online' ? '' : s; } });
+  Kit.joinCard('BUBBLE HOCKEY', c, c.room ? '' : '<button class="btn" id="vsai">\uD83E\uDD16 Play the computer</button><button class="btn" id="host2">\uD83D\uDCF1\uD83D\uDCF1 Host a match for 2 phones</button><p style="font-size:13px">First to 5 or 3 minutes. Your goal is at the bottom.</p>');
+  if ($('vsai')) { $('vsai').onclick = function () { local(false); }; $('host2').onclick = function () { local(true); }; }
+  if (Kit.Q.get('solo') === '1') local(false); else if (Kit.Q.get('host') === '1') local(true);
+  BubbleGestures(cv, V, function () { return st; }, function (m) { if (sim) sim.input(team, m); else c.send(m); });
+  var last = 0, sendT = 0;
+  (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t;
+    if (sim) { sim.step(dt); st = sim.snap(); if (st.ev.indexOf('goal') === 0 && navigator.vibrate) navigator.vibrate(120); if (host && host.players[0]) { sendT += dt; if (sendT > 1 / 30) { sendT = 0; st.names = [names[0], names[1]]; host.send(host.players[0], st); } } }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#0c1226'; ctx.fillRect(0, 0, innerWidth, innerHeight);
+    if (st) { trail.push(st.p.slice()); if (trail.length > 6) trail.shift(); V.draw(ctx, st, { trail: st.c < 0 ? trail : null });
+      var o = 1 - team, C = BubbleCOL; $('score').innerHTML = '<span style="color:' + C[team] + '">' + names[team === 0 ? 0 : 1].replace(/</g, '') + ' ' + st.sc[team] + '</span><span class="t">' + Math.floor(st.tm / 60) + ':' + ('0' + st.tm % 60).slice(-2) + '</span><span style="color:' + C[o] + '">' + st.sc[o] + ' ' + names[o].replace(/</g, '') + '</span>';
+      var b = $('big'); if (st.ov >= 0) { b.innerHTML = (st.ov === team ? 'YOU WIN!' : 'They win') + '<div style="font-size:.4em;color:#fff">tap to play again</div>'; b.style.opacity = 1; } else if (st.msg) { b.textContent = st.msg; b.style.opacity = 1; } else b.style.opacity = 0; }
+    requestAnimationFrame(loop); })(0);
+  window.BHP = { get sim() { return sim; }, V: V, get st() { return st; } };
+})();
+</script></body></html>

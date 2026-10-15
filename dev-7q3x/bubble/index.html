@@ -1,0 +1,25 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<title>Bubble Hockey (dev)</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>body{background:#0c1226}#sc{position:fixed;left:2vw;top:40%;z-index:4;font-size:4vh;font-weight:700;line-height:1.5}#join{width:140px}</style></head><body>
+<canvas id="cv" class="full"></canvas><div id="sc"></div><div id="join"></div><div class="big" id="big"></div>
+<script>if (Math.min(screen.width, screen.height) < 600 && new URLSearchParams(location.search).get('tv') !== '1') location.replace('pad.html' + location.search);</script>
+<script>window.MINI = 'bubble';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script><script src="sim.js"></script><script src="view.js"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), ctx = cv.getContext('2d'), dpr = 1, V = new BubbleView(), sim = new Bubble.Sim(), seats = [null, null], demo = true, trail = [];
+  sim.ai = [true, true];
+  function nm(i) { return seats[i] && !sim.ai[i] ? seats[i].name : 'Computer'; }
+  var host = Kit.host({ max: 2, onJoin: function (p) { seats[p.seat] = p; sim.ai[p.seat] = false; host.send(p, { t: 'team', team: p.seat }); if (demo) { demo = false; sim.reset(); Kit.phase('play'); } },
+    onLeave: function (p) { sim.ai[p.seat] = true; }, onMsg: function (p, m) { sim.input(p.seat, m); } });
+  host.qr($('join')); $('big').innerHTML = 'BUBBLE HOCKEY<div style="font-size:.4em;color:#fff">scan to play \u00b7 1 phone = vs computer, 2 phones = head to head</div>';
+  function size() { dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; V.fit(innerWidth, innerHeight); } addEventListener('resize', size); size();
+  var last = 0, sendT = 0;
+  (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; sim.step(dt); if (demo && sim.over >= 0) sim.reset();
+    var st = sim.snap(); sendT += dt; if (sendT > 1 / 30) { sendT = 0; st.names = [nm(0), nm(1)]; host.all(st); }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#0c1226'; ctx.fillRect(0, 0, innerWidth, innerHeight); trail.push(st.p.slice()); if (trail.length > 6) trail.shift(); V.draw(ctx, st, { trail: st.c < 0 ? trail : null });
+    $('sc').innerHTML = '<div style="color:' + BubbleCOL[1] + '">' + nm(1) + ' ' + sim.sc[1] + '</div><div style="opacity:.7">' + Math.floor(st.tm / 60) + ':' + ('0' + st.tm % 60).slice(-2) + '</div><div style="color:' + BubbleCOL[0] + '">' + nm(0) + ' ' + sim.sc[0] + '</div>';
+    var b = $('big'); if (demo) b.style.opacity = 1; else if (sim.over >= 0) { b.innerHTML = nm(sim.over) + ' wins!<div style="font-size:.4em;color:#fff">tap a phone to play again</div>'; b.style.opacity = 1; } else if (st.msg) { b.textContent = st.msg; b.style.opacity = 1; } else b.style.opacity = 0;
+    requestAnimationFrame(loop); })(0);
+  Kit.over(function () { return !demo && sim.over >= 0; }, 40000); window.BHT = { sim: sim, host: host };
+})();
+</script></body></html>
