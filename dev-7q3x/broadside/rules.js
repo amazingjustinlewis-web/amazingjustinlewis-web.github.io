@@ -1,4 +1,4 @@
-/* BROADSIDE - match logic on top of the café Battleship rules (cafe/js/games.js: BS.place / BS.fire / BS.AI).
+/* DANGEROUS WATERS (folder: broadside/) - match logic on top of the café Battleship rules (cafe/js/games.js: BS.place / BS.fire / BS.AI).
    Classic = 10x10, five ships. Used by the TV screen and by a phone playing the computer on its own. */
 (function (root) {
   var BS = root.CafeGames.BS;

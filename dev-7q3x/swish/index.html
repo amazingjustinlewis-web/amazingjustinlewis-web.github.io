@@ -19,8 +19,11 @@
     var g = mkP(p), b = g.ball; if (b.live || -f.dy < 200) return;
     if (S.phase === 'ready' || (S.phase === 'over' && performance.now() - S.overAt > 4000)) { S.phase = 'play'; S.t = ROUND; PL.forEach(function (q) { q.g.score = 0; q.g.made = 0; q.g.streak = 0; }); Kit.phase('play'); }
     if (S.phase !== 'play') return;
-    var L = T3.launch(f, { v: 6.6 * Math.pow(3.9 / 3.4, 1), k: 2.6, exp: .55, angle: 56 }); b.p = [g.x, START[1], START[2]]; b.v = L.v; b.v[0] -= g.x * .45; b.spin = L.spin; b.side = L.side; b.t = 0; b.live = true; b.touched = false; b.scored = false; g.shots = (g.shots || 0) + 1;
+    var L = arc(f); b.p = [g.x, START[1], START[2]]; b.v = L.v; b.v[0] -= g.x * .45; b.spin = L.spin; b.side = L.side; b.t = 0; b.live = true; b.touched = false; b.scored = false; g.shots = (g.shots || 0) + 1;
   }
+  // up-and-over arc: flick SPEED sets the height of the arc, flick LENGTH (short snap vs long sweep) sets the distance
+  function arc(f) { var s = Math.max(.3, -f.dy / f.h), len = Math.max(.08, Math.min(1, f.len == null ? .45 : f.len)), vy = Math.max(3, Math.min(10, 7.2 * Math.pow(s / 2.6, .5))), vz = Math.max(1, Math.min(5.5, 2.72 * Math.pow(len / .45, .6)));
+    return { v: [Math.max(-2, Math.min(2, f.dx / f.w * .9)), vy, vz], spin: vy * 2.2, side: (f.curve || 0) * 3 }; }
   function step(dt) {
     if (S.phase === 'play') { S.t -= dt; if (S.t <= 0) { S.t = 0; S.phase = 'over'; S.overAt = performance.now(); } }
     PL.forEach(function (p) { var g = p.g, b = g.ball; if (!b.live) return;
@@ -31,7 +34,7 @@
     });
   }
   function draw(t) {
-    var W = innerWidth, H = innerHeight, P = T3.cam(W, H, { x: 0, y: 1.7, z: -1.4, hy: .56, f: .62 });
+    var W = innerWidth, H = innerHeight, P = T3.cam(W, H, { x: 0, y: 1.9, z: -1.4, hy: .64, f: .58 });
     var bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#1a0f3a'); bg.addColorStop(.6, '#3a1260'); bg.addColorStop(1, '#120a20'); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
     for (var i = 0; i < 14; i++) { var lx = W * (i + .5) / 14, on = (Math.floor(t * 3) + i) % 3 === 0; ctx.fillStyle = on ? '#ffe36a' : '#ff3a8a55'; ctx.beginPath(); ctx.arc(lx, H * .06, 6, 0, 7); ctx.fill(); }
     // lane: floor, side rails, net cage

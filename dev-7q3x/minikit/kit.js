@@ -79,7 +79,7 @@
       if (rec.length < 2) rec = pts.slice(-3); if (rec.length < 2) return;
       var a = rec[0], b = rec[rec.length - 1], dt = Math.max(16, b[2] - a[2]) / 1000, mid = rec[(rec.length / 2) | 0];
       var curve = ((mid[0] - a[0]) - (b[0] - a[0]) / 2) / Math.max(1, Math.hypot(b[0] - a[0], b[1] - a[1]));
-      cb({ dx: (b[0] - a[0]) / dt, dy: (b[1] - a[1]) / dt, curve: curve, x0: pts[0][0], y0: pts[0][1], w: el.clientWidth, h: el.clientHeight });
+      cb({ dx: (b[0] - a[0]) / dt, dy: (b[1] - a[1]) / dt, curve: curve, len: (pts[0][1] - b[1]) / Math.max(1, el.clientHeight), x0: pts[0][0], y0: pts[0][1], w: el.clientWidth, h: el.clientHeight });
     }
     el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
   };

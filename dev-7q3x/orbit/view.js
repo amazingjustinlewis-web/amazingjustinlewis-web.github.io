@@ -27,6 +27,8 @@
     var can = new T.Mesh(new T.SphereGeometry(.3, 10, 6, 0, 6.3, 0, 1.4), new T.MeshStandardMaterial({ color: 0x9fe6ff, roughness: .1, metalness: .6, emissive: 0x113344 })); can.position.set(0, .2, -.2); can.scale.set(1, .8, 1.4); g.add(can);
     [-1, 1].forEach(function (sd) { var w = new T.Mesh(new T.BoxGeometry(.55, .05, .35), dark); w.position.set(sd * .5, -.05, .2); w.rotation.z = sd * -.25; g.add(w);
       var e = new T.Mesh(new T.CylinderGeometry(.12, .15, .4, 8), dark); e.rotation.x = Math.PI / 2; e.position.set(sd * .32, -.05, .5); g.add(e);
+      var fl = new T.Mesh(new T.ConeGeometry(.1, .55, 8), new T.MeshBasicMaterial({ color: 0x6fd0ff, transparent: true, opacity: .7, blending: T.AdditiveBlending, depthWrite: false })); fl.rotation.x = -Math.PI / 2; fl.position.set(sd * .32, -.05, .98); fl.userData.flame = 1; g.add(fl);
+      var rim = new T.Mesh(new T.TorusGeometry(.13, .025, 6, 12), new T.MeshStandardMaterial({ color: 0xffffff, emissive: col, emissiveIntensity: .6 })); rim.position.set(sd * .32, -.05, .7); g.add(rim);
       var gl = new T.Mesh(new T.CircleGeometry(.1, 8), new T.MeshBasicMaterial({ color: 0x7fd8ff })); gl.position.set(sd * .32, -.05, .71); g.add(gl); });
     g.scale.setScalar(POD / 1.15); return g;
   }
@@ -72,7 +74,7 @@
         sh.bub = new T.Mesh(new T.SphereGeometry(POD * .75, 16, 10), new T.MeshBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false })); sh.g.add(sh.bub); sh.bub.scale.setScalar(1 / sh.g.scale.x);
         S.add(sh.g); }
       seen[s.id] = 1; sh.g.visible = s.alive && s.id !== opt.hide; sh.g.position.copy(s.p); sh.g.quaternion.copy(s.q);
-      var hit = s.hit && s.sh > 0 ? 1 : 0; sh.bub.material.opacity += ((hit ? .45 : 0) - sh.bub.material.opacity) * .3; });
+      var hit = s.hit && s.sh > 0 ? 1 : 0; if (!sh.fl) { sh.fl = []; sh.g.traverse(function (m) { if (m.userData.flame) sh.fl.push(m); }); } var fk = .8 + Math.random() * .4; sh.fl.forEach(function (m) { m.scale.set(1, fk, 1); }); sh.bub.material.opacity += ((hit ? .45 : 0) - sh.bub.material.opacity) * .3; });
     Object.keys(this.ships).forEach(function (k) { if (!seen[k]) { S.remove(self.ships[k].g); delete self.ships[k]; } });
     var bp = this.bpos, n = Math.min(st.bul.length, 600), d = st.dtx || 0; for (var i = 0; i < n; i++) { var b = st.bul[i], x = b[0] + b[3] * d, y = b[1] + b[4] * d, z = b[2] + b[5] * d; bp[i * 6] = x; bp[i * 6 + 1] = y; bp[i * 6 + 2] = z; bp[i * 6 + 3] = x - b[3] * .035; bp[i * 6 + 4] = y - b[4] * .035; bp[i * 6 + 5] = z - b[5] * .035; }
     this.tracers.geometry.setDrawRange(0, n * 2); this.tracers.geometry.attributes.position.needsUpdate = true;

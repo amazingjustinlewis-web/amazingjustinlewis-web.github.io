@@ -55,10 +55,10 @@ Done in menu2 for reference: the launching phone is the game's host (it can end 
 - [ ] Hand-modelled "hero wreck" variants for each car (wrapped around a pole, nose-planted, folded in half), swapped in for big slow-motion crash moments.
 
 ## Coffee-shop mini games (Oct 15, 2026) - v0.1s on the dev page
-Hop Top (peg triangle), Broadside (classic battleships), Swish Flick, Splash Clown, Glide Puck, Stack Attack, Balloon Buddy. Shared kit: dev-7q3x/minikit/.
-- [ ] Space Broadside: bigger board on opposite sides of a nebula; pick spaceships with different abilities; ships can move a little each turn; collect resources from asteroids; send probes and get reports; weapons with different shockwave radii. (Slot already in Broadside's mode picker as "Space (coming)".)
+Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/), Swish Flick, Splash Clown, Glide Puck, Stack Attack, Balloon Buddy. Shared kit: dev-7q3x/minikit/.
+- [ ] Dangerous Space Waters: bigger board on opposite sides of a nebula; pick spaceships with different abilities; ships can move a little each turn; collect resources from asteroids; send probes and get reports; weapons with different shockwave radii. (Slot already in the mode picker as "Dangerous Space Waters (coming)".)
 - [ ] Plinko.
 - [ ] Price is Right-style show, after optional sign-in and simple characters (Justin can animate simple CG guys; slide them around as a first pass).
 - [ ] Penny / coin arcade game: coin goes up a ramp and flips at the top (maybe a Penny Falls-style pusher). Confirm the details with Justin first.
 - [ ] Real-phone pass on all seven: flick power tuning (Swish Flick, Splash Clown), Glide Puck camera feel, Stack Attack drag over the network, sound.
-- [ ] Once Broadside is approved, fold its TV board + 10x10 Classic into the café Battleship.
+- [ ] Once Dangerous Waters is approved, fold its TV board + 10x10 Classic into the café Battleship.

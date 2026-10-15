@@ -1,8 +1,8 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><meta name="robots" content="noindex, nofollow">
-<title>Broadside</title><link rel="stylesheet" href="../minikit/kit.css"><link rel="stylesheet" href="bs.css">
+<title>Dangerous Waters</title><link rel="stylesheet" href="../minikit/kit.css"><link rel="stylesheet" href="bs.css">
 <style>body{overflow-y:auto;touch-action:manipulation}#app{padding:12px;max-width:480px;margin:0 auto}h3{margin:6px 0;color:#ffe7a0}#stat{min-height:44px;font-size:17px;text-align:center;margin:6px 0}
 #small{width:46%;margin:8px auto 0}#small .grid{gap:1px;padding:2px}.row{display:flex;gap:8px;margin-top:10px}.row .btn{flex:1}.note{font-size:13px;color:#9cc8e8;text-align:center}</style></head><body>
-<div id="app"><h3 id="hd">BROADSIDE</h3><div id="stat">Connecting&hellip;</div><div class="grid" id="big"></div><div class="row" id="prow"><button class="btn" id="shuf">&#127922; Shuffle</button><button class="btn go" id="ready">Ready!</button></div>
+<div id="app"><h3 id="hd">DANGEROUS WATERS</h3><div id="stat">Connecting&hellip;</div><div class="grid" id="big"></div><div class="row" id="prow"><button class="btn" id="shuf">&#127922; Shuffle</button><button class="btn go" id="ready">Ready!</button></div>
 <div id="small"><div class="grid" id="mine"></div><div class="note">your fleet</div></div><div class="row"><button class="btn go" id="start" style="display:none">START</button></div></div>
 <div class="st" id="st"></div>
 <script>window.MINI = 'broadside';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script>
@@ -32,7 +32,7 @@
   $('start').onclick = function () { if (solo) { solo.start(); return; } send({ t: S && S.phase === 'over' ? 'again' : 'start' }); };
   function goSolo() { solo = new Broadside.Match(function (i, m) { if (i === 0) recv(m); }); solo.seat(c.name || 'You'); solo.start(); var k = document.getElementById('kjoin'); if (k) k.remove(); }
   c = Kit.pad({ onMsg: recv, onStatus: function (s) { $('st').textContent = solo ? 'vs computer' : s; } });
-  var card = Kit.joinCard('BROADSIDE', c, '<button class="btn" id="solo" style="width:100%;margin-top:10px">&#129302; Play the computer on this phone</button><p>Classic mode. Space Broadside is coming.</p>');
+  var card = Kit.joinCard('DANGEROUS WATERS', c, '<button class="btn" id="solo" style="width:100%;margin-top:10px">&#129302; Play the computer on this phone</button><p>Classic mode. Dangerous Space Waters is coming.</p>');
   $('solo').onclick = goSolo; if (Kit.Q.get('solo') === '1') goSolo();
   window.BSP = { get S() { return S; }, send: send };
 })();

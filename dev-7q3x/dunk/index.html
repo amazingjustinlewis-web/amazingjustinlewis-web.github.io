@@ -5,41 +5,43 @@
 <script>window.MINI = 'dunk';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script><script src="../minikit/throw3d.js"></script>
 <script>
 (function () {
-  var BALLS = 6, TGT = [.35, 1.45, 3.9], TR = .22, CAGE = 4.5, WATER = .95, SEAT = 1.95, START = [0, 1.3, .3];
+  var BALLS = 6, TGT = [0, 1.25, 3.9], TR = .22, CAGE = 4.5, WATER = .95, SEAT = 1.95, START = [0, 1.3, .3];
   var TAUNTS = ['Is that all you got?', 'My grandma throws harder!', 'Nice try, noodle arms!', 'Warm water please!', 'I\u2019m bone dry over here!', 'You missed by a mile!', 'Honk honk!', 'Butter fingers!'];
   var cv = document.getElementById('cv'), ctx = cv.getContext('2d'), dpr = 1, $ = function (i) { return document.getElementById(i); };
   var S = { phase: 'ready', overAt: 0 }, PL = [], fx = [], drops = [], phone = Kit.isPhone && !Kit.Q.get('tv'), host = null, me = null;
   var clown = { st: 'sit', y: SEAT, vy: 0, t: 0, say: 'Step right up! Dunk me if you can!', sayT: 4, tgt: 0 };
-  function mkP(p) { if (p.g) return p.g; p.g = { name: p.name, color: p.color, dunks: 0, left: BALLS, ball: new T3.Ball(START, .1) }; PL.push(p); return p.g; }
+  function mkP(p) { if (p.g) return p.g; p.g = { name: p.name, color: p.color, dunks: 0, left: BALLS, balls: [] }; PL.push(p); return p.g; }
   if (phone) document.body.classList.add('ph');
   else { host = Kit.host({ max: 6, onJoin: function (p) { mkP(p).name = p.name; board(); }, onMsg: function (p, m) { if (m.t === 'flick') shoot(p, m); } }); host.qr($('join')); }
   function localP() { if (!me) { me = { name: phone ? 'You' : 'Mouse', color: '#ffc93f' }; mkP(me); } return me; }
   Kit.flick(cv, function (f) { shoot(localP(), f); });
   function reset() { S.phase = 'play'; PL.forEach(function (q) { q.g.dunks = 0; q.g.left = BALLS; }); Kit.phase('play'); }
   function shoot(p, f) {
-    var g = mkP(p), b = g.ball; if (b.live || -f.dy < 200) return;
+    var g = mkP(p); if (-f.dy < 200) return;
     if (S.phase === 'ready' || (S.phase === 'over' && performance.now() - S.overAt > 4000)) reset();
     if (S.phase !== 'play' || g.left <= 0) return;
-    var L = T3.launch(f, { v: 8.1, k: 2.6, exp: .55, angle: 20, side: 2.2 }); g.left--;
+    var L = T3.launch(f, { v: 8.1, k: 2.6, exp: .55, angle: 20, side: 2.2 }); g.left--; var b = new T3.Ball(START, .1); g.balls.push(b);
     b.p = START.slice(); b.v = L.v; b.spin = L.spin * .5; b.side = L.side; b.t = 0; b.live = true; b.hit = false;
   }
   function say(s) { clown.say = s; clown.sayT = 2.6; }
   function step(dt) {
-    PL.forEach(function (p) { var g = p.g, b = g.ball; if (!b.live) return;
+    var LOOP = [[-.45, 1.05], [.45, 1.05], [.45, 1.5], [-.45, 1.5]], per = 2 * (.9 + .45), ds = (S.lt = (S.lt || 0) + dt * .3) % per;
+    for (var q = 0; q < 4; q++) { var A = LOOP[q], Bq = LOOP[(q + 1) % 4], sl = Math.hypot(Bq[0] - A[0], Bq[1] - A[1]); if (ds <= sl) { TGT[0] = A[0] + (Bq[0] - A[0]) * ds / sl; TGT[1] = A[1] + (Bq[1] - A[1]) * ds / sl; break; } ds -= sl; }
+    PL.forEach(function (p) { var g = p.g; g.balls.forEach(function (b) { if (!b.live) return;
       for (var k = 0; k < 4; k++) { var pz = b.p[2]; b.step(dt / 4);
         if (!b.hit && pz < TGT[2] && b.p[2] >= TGT[2]) { var d = Math.hypot(b.p[0] - TGT[0], b.p[1] - TGT[1]);
           if (d < TR + b.r * .6) { b.hit = true; b.v[2] = -b.v[2] * .4; clown.tgt = 1; if (clown.st === 'sit') { clown.st = 'fall'; clown.vy = 0; g.dunks++; fx.push({ t: 0, txt: 'SPLASH! ' + g.name, c: g.color }); } else fx.push({ t: 0, txt: 'DING!', c: g.color }); }
           else if (d < TR + .09) { b.v[2] = -b.v[2] * .4; b.hit = true; } }
         b.hitWall(CAGE, -1.1, 1.1, WATER, 3.3, .35);
       }
-      if (b.t > 2.4) { if (!b.hit && clown.st === 'sit' && Math.random() < .7) say(TAUNTS[(Math.random() * TAUNTS.length) | 0]); b.live = false; b.p = START.slice(); }
+      if (b.t > 2.4) { if (!b.hit && clown.st === 'sit' && Math.random() < .7) say(TAUNTS[(Math.random() * TAUNTS.length) | 0]); b.live = false; } }); g.balls = g.balls.filter(function (b) { return b.live; });
     });
     clown.t += dt; clown.sayT -= dt; clown.tgt = Math.max(0, clown.tgt - dt * 1.5);
     if (clown.st === 'fall') { clown.vy -= 9.8 * dt; clown.y += clown.vy * dt; if (clown.y < WATER - .35) { clown.st = 'wet'; clown.t = 0; for (var i = 0; i < 40; i++) drops.push({ x: (Math.random() - .5) * 1.2, y: WATER, z: 5.0, vx: (Math.random() - .5) * 2, vy: 2 + Math.random() * 3, l: 1 }); say(['Bleh! Cold!', 'You got me!', 'Not the hair!', 'Glub glub!'][(Math.random() * 4) | 0]); } }
     else if (clown.st === 'wet') { clown.y = WATER - .35 + Math.sin(clown.t * 3) * .04; if (clown.t > 2.2) { clown.st = 'climb'; clown.t = 0; } }
     else if (clown.st === 'climb') { clown.y = Math.min(SEAT, clown.y + dt * 1.4); if (clown.y >= SEAT) { clown.st = 'sit'; say('Ha! Still dry-ish!'); } }
     drops = drops.filter(function (d) { d.vy -= 9.8 * dt; d.x += d.vx * dt; d.y += d.vy * dt; return d.y > WATER - .2; });
-    if (S.phase === 'play' && PL.length && PL.every(function (p) { return p.g.left <= 0 && !p.g.ball.live; })) { S.phase = 'over'; S.overAt = performance.now(); }
+    if (S.phase === 'play' && PL.length && PL.every(function (p) { return p.g.left <= 0 && !p.g.balls.length; })) { S.phase = 'over'; S.overAt = performance.now(); }
   }
   function quad(P, pts, col) { ctx.fillStyle = col; ctx.beginPath(); pts.forEach(function (q, i) { var s = P(q[0], q[1], q[2]); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); }); ctx.closePath(); ctx.fill(); }
   function drawClown(P) {
@@ -70,9 +72,9 @@
     ctx.fillStyle = '#d0f0ff'; drops.forEach(function (d) { var s = P(d.x, d.y, d.z); ctx.beginPath(); ctx.arc(s[0], s[1], s[2] * .03, 0, 7); ctx.fill(); });
     ctx.strokeStyle = '#ddd8'; ctx.lineWidth = 2; for (var gx = -1.1; gx <= 1.11; gx += .2) { var a1 = P(gx, WATER, CAGE), a2 = P(gx, 3.3, CAGE); ctx.beginPath(); ctx.moveTo(a1[0], a1[1]); ctx.lineTo(a2[0], a2[1]); ctx.stroke(); }
     for (var gy = WATER; gy <= 3.31; gy += .2) { var c1 = P(-1.1, gy, CAGE), c2 = P(1.1, gy, CAGE); ctx.beginPath(); ctx.moveTo(c1[0], c1[1]); ctx.lineTo(c2[0], c2[1]); ctx.stroke(); }
-    var pb = P(TGT[0], 0, TGT[2]), pt = P(TGT[0], TGT[1], TGT[2]); ctx.strokeStyle = '#666'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(pb[0], pb[1]); ctx.lineTo(pt[0], pt[1]); ctx.stroke();
+    var pt = P(TGT[0], TGT[1], TGT[2]); ctx.strokeStyle = '#fff6'; ctx.lineWidth = 3; ctx.setLineDash([8, 8]); ctx.strokeRect(P(-.45, 1.5, TGT[2])[0], P(-.45, 1.5, TGT[2])[1], P(.45, 1.05, TGT[2])[0] - P(-.45, 1.5, TGT[2])[0], P(.45, 1.05, TGT[2])[1] - P(-.45, 1.5, TGT[2])[1]); ctx.setLineDash([]);
     var tr = TR * pt[2] * (1 + clown.tgt * .3); ['#ff2a3a', '#fff', '#ff2a3a', '#fff'].forEach(function (col, i) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(pt[0], pt[1], tr * (1 - i * .25), 0, 7); ctx.fill(); });
-    PL.map(function (p) { return p.g; }).sort(function (a, b) { return b.ball.p[2] - a.ball.p[2]; }).forEach(function (g) { if (g.ball.live && g.ball.p[2] > 1.1) T3.drawBall(ctx, P, g.ball, g.color); });
+    PL.reduce(function (a, p) { return a.concat(p.g.balls.map(function (b) { return [b, p.g.color]; })); }, []).sort(function (a, b) { return b[0].p[2] - a[0].p[2]; }).forEach(function (x) { if (x[0].p[2] > 1.1) T3.drawBall(ctx, P, x[0], x[1]); });
     fx = fx.filter(function (f) { f.t += 1 / 60; return f.t < 1.4; }); fx.forEach(function (f) { ctx.globalAlpha = 1 - f.t / 1.4; ctx.fillStyle = f.c; ctx.font = '700 ' + Math.round(H * .08) + 'px Fredoka,sans-serif'; ctx.textAlign = 'center'; ctx.fillText(f.txt, W / 2, H * (.25 - f.t * .08)); ctx.globalAlpha = 1; });
   }
   function board() {
@@ -80,7 +82,7 @@
     var big = $('big'); big.style.opacity = S.phase === 'play' ? 0 : 1;
     if (S.phase === 'ready') big.innerHTML = 'SPLASH CLOWN<div style="font-size:.4em;color:#fff">' + (phone ? 'flick the ball at the red target' : 'scan to join, then flick on your phone') + ' \u00b7 ' + BALLS + ' balls each</div>';
     else if (S.phase === 'over') { var w = PL.slice().sort(function (a, b) { return b.g.dunks - a.g.dunks; })[0]; big.innerHTML = 'GAME OVER<div style="font-size:.45em;color:#fff">' + (w ? w.g.name + ' dunked him ' + w.g.dunks + 'x' : '') + '<br><span style="font-size:.7em">flick to play again</span></div>'; }
-    if (host) host.players.forEach(function (p) { if (p.g) host.send(p, { t: 'st', dunks: p.g.dunks, left: p.g.left, phase: S.phase, live: p.g.ball.live }); });
+    if (host) host.players.forEach(function (p) { if (p.g) host.send(p, { t: 'st', dunks: p.g.dunks, left: p.g.left, phase: S.phase, live: false }); });
   }
   function size() { dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; } addEventListener('resize', size); size();
   var last = 0, acc = 0; (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; step(dt); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); draw(t / 1000); acc += dt; if (acc > .25) { acc = 0; board(); } requestAnimationFrame(loop); })(0);

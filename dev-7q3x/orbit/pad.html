@@ -12,14 +12,14 @@
 <canvas id="cv" class="full"></canvas><svg id="frame" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0 0 L18 0 L6 30 L0 34Z M100 0 L82 0 L94 30 L100 34Z M0 100 L0 80 L10 86 L22 100Z M100 100 L100 80 L90 86 L78 100Z" fill="#0b0f1ccc"/><path d="M18 0 L6 30 M82 0 L94 30" stroke="#4a7bff55" stroke-width=".4" fill="none"/></svg>
 <canvas id="hud"></canvas><div id="flash"></div>
 <div class="fb" id="gun">GUN</div><div class="fb" id="bomb"><i></i><span>HOLD<br>BOMB</span></div>
-<div id="over"></div><div id="rp"></div><button class="btn" id="skip">Skip &#9654;</button><div id="hostq"><div id="hq"></div><p style="margin:6px 0 0;font-size:13px">Friends scan to join this match.<br>Tap to hide.</p></div><div class="st" id="st"></div>
+<div id="over"></div><div id="rp"></div><button class="btn" id="vw" style="position:fixed;left:50%;transform:translateX(-50%);top:46px;z-index:5;font-size:12px;padding:4px 10px;background:#0007;opacity:.75"></button><button class="btn" id="skip">Skip &#9654;</button><div id="hostq"><div id="hq"></div><p style="margin:6px 0 0;font-size:13px">Friends scan to join this match.<br>Tap to hide.</p></div><div class="st" id="st"></div>
 <script>window.MINI = 'orbit';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script>
 <script src="../../assets/js/ztp-pad-settings.js"></script><script src="three.min.js"></script><script src="sim.js"></script><script src="view.js"></script><script src="game.js"></script><script src="replay.js"></script>
 <script>
 (function () {
   var $ = function (i) { return document.getElementById(i); }, T = THREE, V = new OrbitView($('cv'), { phone: true }), H = $('hud'), hx = H.getContext('2d');
   var G = null, c = null, snaps = new OrbitSnaps(), myId = 0, rec = null, replay = null;
-  var pad = ZTPPad.init({ game: 'orbit', sticks: { L: 'Fly: forward/back + strafe', R: 'Turn: pitch + yaw' }, invert: true, invertX: true, corner: 'tr', extra: [['roll', 'Turn stick left/right rolls (instead of yaw)']] });
+  var pad = ZTPPad.init({ game: 'orbit', sticks: { L: 'Fly: forward/back + strafe', R: 'Turn: pitch + yaw' }, invert: true, invertX: true, corner: 'tr', extra: [['third', 'Third-person view (chase cam)'], ['roll', 'Turn stick left/right rolls (instead of yaw)']] });
   function size() { V.size(); var d = Math.min(devicePixelRatio || 1, 2); H.width = innerWidth * d; H.height = innerHeight * d; hx.setTransform(d, 0, 0, d, 0, 0); } addEventListener('resize', size); size();
   // ---- twin virtual sticks (float where the thumb lands; left half / right half)
   var sticks = { L: { id: null, o: [0, 0], v: [0, 0] }, R: { id: null, o: [0, 0], v: [0, 0] } }, fire = false, charging = 0, chargeOn = false;
@@ -40,6 +40,8 @@
       gf = g.buttons[7] && g.buttons[7].value > .3; var lb = g.buttons[6] && g.buttons[6].value > .3; if (lb && !gpPrev.lb) { chargeOn = true; charging = 0; } if (!lb && gpPrev.lb && chargeOn) { chargeOn = false; throwBomb(Math.min(1, charging / Orbit.C.BOMB_MAX)); } gpPrev.lb = lb; break; }
     var ix = o.invX ? -1 : 1, iy = o.invY ? -1 : 1;
     return { tx: mv[0], tz: -mv[1], p: -tn[1] * iy, y: o.roll ? 0 : -tn[0] * ix, r: o.roll ? -tn[0] * ix : 0, fire: fire || gf }; }
+  function vwBtn() { $('vw').textContent = pad.opts.third ? '\uD83D\uDE80 3rd person' : '\uD83D\uDC41 1st person'; } vwBtn();
+  $('vw').onclick = function () { pad.opts.third = !pad.opts.third; try { localStorage.setItem('ztp-pad-orbit', JSON.stringify(pad.opts)); } catch (e) {} vwBtn(); };
   // ---- start
   function hideJoin() { var k = $('kjoin'); if (k) k.remove(); }
   function solo(withFriends) { hideJoin(); var name = (c && c.name) || localStorage.getItem('ztp-mini-name') || 'You';
@@ -52,8 +54,9 @@
   // ---- HUD
   var lastHull = 100, lastSh = 100, flashA = 0, flashC = '#7fd8ff', feedSeen = '', sendT = 0;
   function flash(col, a) { flashC = col; flashA = Math.max(flashA, a); }
-  function drawHud(st, me, t) { var W = innerWidth, Hh = innerHeight, cx = W / 2, cy = Hh / 2; hx.clearRect(0, 0, W, Hh); if (!me) return;
-    hx.lineWidth = 2; hx.strokeStyle = '#bff3ffcc'; hx.beginPath(); hx.arc(cx, cy, 14, 0, 7); hx.moveTo(cx - 26, cy); hx.lineTo(cx - 18, cy); hx.moveTo(cx + 18, cy); hx.lineTo(cx + 26, cy); hx.moveTo(cx, cy - 26); hx.lineTo(cx, cy - 18); hx.stroke();
+  function drawHud(st, me, t) { var W = innerWidth, Hh = innerHeight, cx = W / 2, cy = Hh / 2; hx.clearRect(0, 0, W, Hh); if (!me) return; var ax = cx, ay = cy;
+    if (pad.opts.third && me.alive) { var aq = V.project(me.p.clone().add(new THREE.Vector3(0, 0, -160).applyQuaternion(me.q))); if (!aq.behind) { ax = aq.x; ay = aq.y; } }
+    hx.lineWidth = 2; hx.strokeStyle = '#bff3ffcc'; hx.beginPath(); hx.arc(ax, ay, 14, 0, 7); hx.moveTo(ax - 26, ay); hx.lineTo(ax - 18, ay); hx.moveTo(ax + 18, ay); hx.lineTo(ax + 26, ay); hx.moveTo(ax, ay - 26); hx.lineTo(ax, ay - 18); hx.stroke();
     var foes = st.ships.filter(function (s) { return s.id !== me.id && s.alive; }).map(function (s) { return { s: s, d: s.p.distanceTo(me.p) }; }).sort(function (a, b) { return a.d - b.d; });
     foes.forEach(function (f, i) { var q = V.project(f.s.p), s = f.s; hx.strokeStyle = s.col; hx.fillStyle = s.col;
       if (!q.behind && q.x > 0 && q.x < W && q.y > 0 && q.y < Hh) { var r = Math.max(9, Math.min(40, 900 / f.d)); hx.beginPath(); hx.moveTo(q.x - r, q.y - r + 6); hx.lineTo(q.x - r, q.y - r); hx.lineTo(q.x - r + 6, q.y - r); hx.moveTo(q.x + r - 6, q.y + r); hx.lineTo(q.x + r, q.y + r); hx.lineTo(q.x + r, q.y + r - 6); hx.stroke();
@@ -85,18 +88,17 @@
   (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; var I = input();
     if (chargeOn) charging += dt; $('bomb').firstChild.style.height = Math.min(100, charging / Orbit.C.BOMB_MAX * 100) + '%';
     if (replay) { var lab = replay.step(dt); if (lab === null) { endReplay(); wasOver = false; } else $('rp').textContent = lab; hx.clearRect(0, 0, innerWidth, innerHeight); $('frame').style.display = 'none'; return requestAnimationFrame(loop); }
-    $('frame').style.display = '';
-    var st = null;
+        var st = null;
     if (G) { var mi = G.me.inp; mi.tx = I.tx; mi.tz = I.tz; mi.p = I.p; mi.y = I.y; mi.r = I.r; mi.fire = I.fire; G.step(dt); st = G.state(); if (rec) rec.frame(st, dt, G);
       if (st.over && !wasOver && rec && rec.clips.length) { wasOver = true; setTimeout(function () { if (G.sim.over && !replay) startReplays(); }, 1200); } if (!st.over) wasOver = false; }
     else { st = snaps.state(); sendT += dt; if (st && sendT > .05) { sendT = 0; c.send({ t: 'in', a: [I.tx, I.tz, I.p, I.y, I.r].map(function (x) { return Math.round(x * 100) / 100; }), f: I.fire ? 1 : 0 }); } }
     if (st) { var me = st.ships.filter(function (s) { return s.id === myId; })[0];
-      if (me) { if (me.alive) V.cockpit(me, dt); else V.chase(me, dt, 30, 10);
+      if (me) { vwBtn(); if (me.alive && pad.opts.third) V.chase(me, dt, 13, 3.6); else if (me.alive) V.cockpit(me, dt); else V.chase(me, dt, 30, 10);
         if (me.sh < lastSh - .5 && me.alive) { flash('#5fc8ff', .35); V.shake = Math.max(V.shake, .5); if (navigator.vibrate) navigator.vibrate(25); }
         if (me.hull < lastHull - .5 && me.alive) { flash('#ff4a2a', .5); V.shake = Math.max(V.shake, 1); if (navigator.vibrate) navigator.vibrate(60); }
         if (lastHull > 0 && !me.alive) { flash('#ffffff', .8); V.shake = 1.5; if (navigator.vibrate) navigator.vibrate([80, 40, 140]); }
         lastSh = me.sh; lastHull = me.alive ? me.hull : 0; }
-      V.draw(st, { hide: me && me.alive ? me.id : 0 }); drawHud(st, me, t); overScreen(st); }
+      V.draw(st, { hide: me && me.alive && !pad.opts.third ? me.id : 0 }); $('frame').style.display = pad.opts.third ? 'none' : ''; drawHud(st, me, t); overScreen(st); }
     flashA = Math.max(0, flashA - dt * 2); var f = $('flash'); f.style.background = 'radial-gradient(ellipse at center, transparent 35%, ' + flashC + ')'; f.style.opacity = flashA;
     requestAnimationFrame(loop); })(0);
   window.OBP = { get G() { return G; }, V: V, sticks: sticks, pad: pad, get rec() { return rec; }, setFire: function (v) { fire = v; }, bomb: throwBomb, startReplays: startReplays, snaps: snaps };

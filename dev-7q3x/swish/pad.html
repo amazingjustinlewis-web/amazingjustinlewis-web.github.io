@@ -10,6 +10,6 @@
   var c = Kit.pad({ onMsg: function (m) { if (m.t !== 'st') return; $('sc').textContent = m.score; $('tm').textContent = m.phase === 'play' ? m.time + 's' + (m.streak >= 3 ? ' \uD83D\uDD25 on fire' : '') : m.phase === 'over' ? 'Time! Flick to play again' : 'Flick up to shoot'; $('ball').classList.toggle('gone', !!m.live); },
     onStatus: function (s) { $('st').textContent = s; } });
   Kit.joinCard('SWISH FLICK', c, '<p>Flick up on your phone to shoot at the TV hoop.</p>');
-  Kit.flick($('zone'), function (f) { if (-f.dy < 200) return; c.send({ t: 'flick', dx: f.dx, dy: f.dy, curve: f.curve, w: f.w, h: f.h }); $('ball').classList.add('gone'); if (navigator.vibrate) navigator.vibrate(15); });
+  Kit.flick($('zone'), function (f) { if (-f.dy < 200) return; c.send({ t: 'flick', dx: f.dx, dy: f.dy, curve: f.curve, len: f.len, w: f.w, h: f.h }); $('ball').classList.add('gone'); if (navigator.vibrate) navigator.vibrate(15); });
 })();
 </script></body></html>
