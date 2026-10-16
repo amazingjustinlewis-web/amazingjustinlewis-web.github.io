@@ -1,7 +1,7 @@
 /* DEMOLITION DERBY v0.2 - every tunable number. TV and phones read this file. */
 (function (root) {
   root.DD_CONFIG = {
-    version: '0.4.1-dev',
+    version: '0.4.2-dev',
     hpMul: 2,   // v0.4: cars last ~2x longer (damage still builds up hit by hit)
     wreck: { sec: 3.6, fadeTo: 0.3, flashSec: 0.8, respawnSec: 1.2, raceGhostSec: 1.9, dropH: 2.2 },
     replay: { before: 2.4, after: 0.9, speed: 0.6 },

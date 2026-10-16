@@ -65,6 +65,7 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - [ ] Real-phone pass on all seven: flick power tuning (Swish Flick, Splash Clown), Glide Puck camera feel, Stack Attack drag over the network, sound.
 - [ ] Once Dangerous Waters is approved, fold its TV board + 10x10 Classic into the café Battleship.
 - [ ] Café shared screen: multiple groups on one café screen playing different phone-native games; when none needs the full screen, the screen shows split views, highlights and scoreboards from active games.
+  - Phone-native games (e.g. Hop Top peg game) stay entirely on the phone. The big screen only joins in when ~3+ people are playing one game; otherwise it just shows subtle ghosted names, small scores and achievements floating up the side of whatever's on screen (even over the logo or shop page). No 'N people playing' counter for now.
 - [ ] Stack Attack: real 3D physics (blocks with depth that can sit in front of / behind each other). v0.2 is a 2D physics slab drawn in 3D.
 
 ## Iron Stride split (Oct 15, 2026)

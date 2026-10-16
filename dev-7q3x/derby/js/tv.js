@@ -167,42 +167,7 @@
     arenaObjs.forEach(function (o) { o.visible = mode !== 'race'; }); if (trackG) trackG.visible = mode === 'race';
     scene.background.setHex(mode === 'race' ? 0x7d95a8 : 0x120c08); scene.fog.color.setHex(mode === 'race' ? 0x7d95a8 : 0x120c08); scene.fog.near = mode === 'race' ? 320 : 90; scene.fog.far = mode === 'race' ? 950 : 170;
   }
-  function buildTrack() {
-    var TR = window.DDTrack, g = trackG = new R3.Group(); scene.add(g);
-    var cols = [-13, -11, -9, -7, -5, -4, -3.95, -2, 0, 2, 3.95, 4, 5, 7, 9, 11, 13], NC = cols.length, pos = [], colr = [], idx = [], c = new R3.Color();
-    for (var i = 0; i <= TR.N; i++) { var sv = (i % TR.N) * TR.STEP, bump = TR.isBumpy(sv), la = TR.ledgeAt(sv);
-      for (var j = 0; j < NC; j++) { var u = cols[j], w = TR.at(sv, u), h = TR.height(sv, u); pos.push(w.x, h, w.y);
-        var onL = la && la.g.side * u >= TR.HALF - la.g.w, ramp = TR.ramps.some(function (r) { var d = TR.dS(sv, r.s); return d < r.len && (r.u0 == null || (u >= r.u0 && u <= r.u1)); });
-        if (i < 2) c.setHex(((j + i) % 2) ? 0xffffff : 0x111111);
-        else if (ramp) c.setHex((i % 2) ? 0xe8b830 : 0x2a2a2a);
-        else if (onL) c.setHex(Math.abs(u) > 12 || Math.abs(Math.abs(u) - 4) < 0.1 ? 0xd8c070 : 0x9a7a52);
-        else if (bump) c.setHex(0x8a7a62 + (((i * 7 + j * 3) % 5) * 0x030303));
-        else c.setHex(Math.abs(u) > 12.5 ? ((i >> 1) % 2 ? 0xd03028 : 0xeeeeee) : Math.abs(u) < 0.3 && (i >> 2) % 2 ? 0xbcb8a8 : 0x4e4a46 + ((i * 13 + j * 7) % 3) * 0x020202);
-        colr.push(c.r, c.g, c.b); } }
-    for (i = 0; i < TR.N; i++) for (j = 0; j < NC - 1; j++) { var a = i * NC + j, b = a + 1, d = a + NC, e = d + 1; idx.push(a, d, b, b, d, e); }
-    var geo = new R3.BufferGeometry(); geo.setAttribute('position', new R3.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new R3.Float32BufferAttribute(colr, 3)); geo.setIndex(idx); geo.computeVertexNormals();
-    g.add(new R3.Mesh(geo, new R3.MeshLambertMaterial({ vertexColors: true, side: 2 })));
-    // edge walls (red/white barriers)
-    var wp = [], wc = [], wi = [], k = 0;
-    [-1, 1].forEach(function (sg) { for (var i = 0; i <= TR.N; i++) { var sv = (i % TR.N) * TR.STEP, w = TR.at(sv, sg * (TR.HALF + 0.3)), h = TR.height(sv, sg * TR.HALF); wp.push(w.x, h - 0.2, w.y, w.x, h + TR.wallH, w.y); var cc = (i >> 1) % 2 ? [0.85, 0.2, 0.15] : [0.92, 0.92, 0.92]; wc.push.apply(wc, cc.concat(cc));
-      if (i < TR.N) { var b0 = k + i * 2; wi.push(b0, b0 + 2, b0 + 1, b0 + 1, b0 + 2, b0 + 3); } } k = wp.length / 3; });
-    var wg = new R3.BufferGeometry(); wg.setAttribute('position', new R3.Float32BufferAttribute(wp, 3)); wg.setAttribute('color', new R3.Float32BufferAttribute(wc, 3)); wg.setIndex(wi); wg.computeVertexNormals();
-    g.add(new R3.Mesh(wg, new R3.MeshLambertMaterial({ vertexColors: true, side: 2 })));
-    var gr = new R3.Mesh(new R3.PlaneGeometry(1200, 1200), new R3.MeshLambertMaterial({ color: 0x4a6a34 })); gr.rotation.x = -Math.PI / 2; gr.position.y = -1.6; g.add(gr);
-    var tyre = new R3.MeshLambertMaterial({ color: 0x1c1c1c }), conc = new R3.MeshLambertMaterial({ color: 0xc8c0a8 }), stripe = new R3.MeshLambertMaterial({ color: 0xe8b830 });
-    TR.obstacles.forEach(function (o) { var y0 = TR.height(o.s, o.u);
-      if (o.kind === 'tyres') for (var t = 0; t < 3; t++) { var m = new R3.Mesh(new R3.CylinderGeometry(o.r, o.r, 0.45, 14), t === 1 ? stripe : tyre); m.position.set(o.x, y0 + 0.25 + t * 0.47, o.y); g.add(m); }
-      else { var bl = new R3.Mesh(new R3.CylinderGeometry(o.r * 0.9, o.r, o.h, 8), conc); bl.position.set(o.x, y0 + o.h / 2, o.y); g.add(bl); var st = new R3.Mesh(new R3.CylinderGeometry(o.r * 0.92, o.r * 0.95, 0.3, 8), stripe); st.position.set(o.x, y0 + o.h * 0.7, o.y); g.add(st); } });
-    var pm = new R3.MeshLambertMaterial({ color: 0x3a78c8, transparent: true, opacity: 0.7, depthWrite: false });
-    TR.puddles.forEach(function (q) { var m = new R3.Mesh(new R3.CircleGeometry(q.r, 22), pm); m.rotation.x = -Math.PI / 2; m.scale.set(1, 0.75 + (q.r % 1) * 0.3, 1); m.position.set(q.x, TR.height(q.s, q.u) + 0.06, q.y); m.renderOrder = 1; g.add(m); });
-    // start gantry
-    var s0 = TR.at(0, 0), ga = Math.atan2(s0.tx, s0.ty), gm = new R3.MeshLambertMaterial({ color: 0x333840 });
-    [-1, 1].forEach(function (sg) { var w = TR.at(0, sg * (TR.HALF + 1)), post = new R3.Mesh(new R3.BoxGeometry(0.8, 9, 0.8), gm); post.position.set(w.x, 4.5 + TR.height(0, 0), w.y); g.add(post); });
-    var ban = new R3.Mesh(new R3.BoxGeometry(TR.W + 2, 1.6, 0.4), new R3.MeshLambertMaterial({ color: 0xffd23f })); ban.position.set(s0.x, 8.6 + TR.height(0, 0), s0.y); ban.rotation.y = ga + Math.PI / 2; g.add(ban);
-    // a few scattered stands + trees off the track for scale
-    var tm = new R3.MeshLambertMaterial({ color: 0x2e5a2a }), tc = new R3.ConeGeometry(2.2, 7, 7);
-    for (i = 0; i < 160; i++) { var sv2 = Math.random() * TR.L, side = Math.random() < 0.5 ? -1 : 1, w2 = TR.at(sv2, side * (TR.HALF + 6 + Math.random() * 40)), l2 = TR.locate(w2.x, w2.y, -1); if (Math.abs(l2.u) < TR.HALF + 4) continue; var tr = new R3.Mesh(tc, tm); tr.position.set(w2.x, 2, w2.y); g.add(tr); }
-  }
+  function buildTrack() { trackG = window.DDTrackMesh.build(R3); scene.add(trackG); }
   function resize() { renderer.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); }
   function clearCars() { for (var k in carMeshes) { scene.remove(carMeshes[k].g); if (carMeshes[k].aimR) { scene.remove(carMeshes[k].aimR); scene.remove(carMeshes[k].aimT); } } carMeshes = {}; }
   function carMesh(c) {
@@ -331,6 +296,7 @@
   function camMode() { return game.cam !== 'auto' ? game.cam : game.mode === 'race' || touchP ? 'dynamic' : 'wide'; }
   function camRig(S, dt, sk) {
     if (!camC) camC = new R3.Vector3(0, 0, 4); var mode = camMode(), race = S.mode === 'race';
+    if (race && !touchP && game.cam === 'auto') { director(S, dt); return; } if ($('shotLbl')) $('shotLbl').textContent = '';
     if (mode === 'wide' && !race) { camC.set(0, 0, 4); camHt = 74; return; }
     var me = touchP && S.byId(touchP.id), act = S.cars.filter(function (c) { return c.state === 'drive' || c.state === 'wreck' || c.state === 'enter'; }), focus = [];
     if (me && (me.state === 'drive' || me.state === 'wreck')) focus = [me]; else { focus = act.filter(function (c) { return !c.ai; }); if (!focus.length) focus = race ? S.order().filter(function (c) { return c.state === 'drive'; }).slice(0, 1) : act; }
@@ -383,6 +349,35 @@
     return true;
   }
   function respawnFlash() { var b = $('resp'); if (!b) return; var me = touchP && game.sim && game.sim.byId(touchP.id); b.textContent = me && me.lives <= 0 ? 'OUT \u00b7 SPECTATING' : 'RESPAWNING'; b.className = 'on'; setTimeout(function () { b.className = ''; }, 1900); }
+  // ---------------------------------------------------------------- v0.4.2 race broadcast director: calm held shots, hard cuts, prefers action. Players drive on their own phones.
+  var DIR = { shot: null, t: 0, hold: 0, n: 0, pos: null, look: null };
+  function actionAt(S, c) { var n = 0; S.cars.forEach(function (o) { if (o !== c && o.state === 'drive' && Math.hypot(o.x - c.x, o.y - c.y) < 22) n++; }); return n + (c.air ? 1.5 : 0) + (!c.ai ? 0.6 : 0); }
+  function pickCar(S, not) { var best = null, bs = -1; S.cars.forEach(function (c) { if (c.state !== 'drive' || c === not) return; var sc = actionAt(S, c) + Math.random() * 0.8; if (sc > bs) { bs = sc; best = c; } }); return best; }
+  function cutTo(S, kind) {
+    var TR = window.DDTrack, c = pickCar(S, kind === 'chase' && DIR.shot && DIR.shot.c), now = performance.now();
+    DIR.n++; DIR.t = 0; DIR.hold = 5 + Math.random() * 3;
+    if (kind === 'heli' || !c) { DIR.shot = { k: 'heli', ang: Math.random() * 6.28 }; DIR.hold = 7 + Math.random() * 2; return; }
+    if (kind === 'trackside') { var ahead = (c.s + Math.max(25, Math.hypot(c.vx, c.vy) * 2.6)) % TR.L, sd = Math.random() < 0.5 ? -1 : 1, w = TR.at(ahead, sd * (TR.HALF + 7)), lk = TR.at(ahead - 8, 0);
+      DIR.shot = { k: 'trackside', c: c, pos: new R3.Vector3(w.x, TR.height(ahead, sd * TR.HALF) + 3.5 + Math.random() * 3, w.y), look: new R3.Vector3(lk.x, TR.height(ahead - 8, 0) + 1, lk.y) }; DIR.hold = 4.5 + Math.random() * 2; return; }
+    DIR.shot = { k: 'chase', c: c, back: 13 + Math.random() * 5, up: 4.5 + Math.random() * 2.5, side: (Math.random() - 0.5) * 6 }; DIR.pos = null;
+  }
+  function director(S, dt) {
+    var now = performance.now(), cr = ACT.crash && now < ACT.crash.until ? S.byId(ACT.crash.id) : null; DIR.t += dt;
+    if (cr) { if (!DIR.shot || DIR.shot.k !== 'crash' || DIR.shot.c !== cr) { DIR.shot = { k: 'crash', c: cr, ang: Math.random() * 6.28 }; DIR.t = 0; DIR.hold = 2.6; } }
+    else if (!DIR.shot || DIR.t > DIR.hold || (DIR.shot.c && DIR.shot.c.state !== 'drive' && DIR.shot.k !== 'heli')) {
+      var prev = DIR.shot ? DIR.shot.k : 'heli', pack = S.cars.some(function (c) { return c.state === 'drive' && actionAt(S, c) >= 2; }), r = Math.random();
+      cutTo(S, prev === 'heli' ? (r < 0.65 ? 'chase' : 'trackside') : pack ? (r < 0.6 ? 'chase' : r < 0.85 ? 'trackside' : 'heli') : (r < 0.4 ? 'chase' : r < 0.65 ? 'trackside' : 'heli'));
+    }
+    var sh = DIR.shot, c = sh.c; cam.fov = 42;
+    if (sh.k === 'heli') { var a = sh.ang + DIR.t * 0.05, R = 520; cam.fov = 40; cam.position.set(Math.sin(a) * R, 330, Math.cos(a) * R); cam.lookAt(0, 0, 0); }
+    else if (sh.k === 'trackside') { cam.fov = 38; cam.position.copy(sh.pos); cam.lookAt(sh.look); }
+    else if (sh.k === 'crash') { var oa = sh.ang + DIR.t * 0.35; cam.position.set(c.x + Math.sin(oa) * 12, c.z + 6, c.y + Math.cos(oa) * 12); cam.lookAt(c.x, c.z + 0.8, c.y); }
+    else { var fx = Math.sin(c.a), fy = Math.cos(c.a), want = new R3.Vector3(c.x - fx * sh.back + fy * sh.side, c.z + sh.up, c.y - fy * sh.back - fx * sh.side);
+      if (!DIR.pos) DIR.pos = want.clone(); else DIR.pos.lerp(want, 1 - Math.pow(0.08, dt));   // soft chase, never a whip-pan
+      cam.position.copy(DIR.pos); cam.lookAt(c.x + fx * 6, c.z + 1, c.y + fy * 6); }
+    cam.updateProjectionMatrix();
+    var lb = $('shotLbl'); if (lb) lb.textContent = sh.k === 'heli' ? 'HELI CAM' : sh.k === 'trackside' ? 'TRACKSIDE' : sh.k === 'crash' ? 'CRASH CAM' : 'CHASE \u00b7 ' + nm(c.id);
+  }
   var V = null;
   function render(dt) {
     var S = game.sim, t = performance.now() / 1000;
@@ -474,9 +469,11 @@
   function send(conn, m) { if (net && conn) net.send(conn, m); }
   var lastSend = 0;
   function sendStates(now) {
-    if (now - lastSend < 100) return; lastSend = now;
+    if (now - lastSend < (game.sim && game.sim.mode === 'race' ? 66 : 100)) return; lastSend = now;
+    var W = game.sim && game.sim.mode === 'race' && game.phase !== 'lobby' ? game.sim.cars.map(function (c) { var ws = c.state === 'wait' && c.ghost && c.spawnS != null ? window.DDTrack.at(c.spawnS, 0) : null; return [c.id, +(ws ? ws.x : c.x).toFixed(2), +(ws ? ws.y : c.y).toFixed(2), +(ws ? window.DDTrack.height(c.spawnS, 0) + C.wreck.dropH : c.z).toFixed(2), +(ws ? Math.atan2(ws.tx, ws.ty) : c.a).toFixed(3), +(c.roll || 0).toFixed(2), c.state === 'drive' || c.state === 'enter' ? 0 : c.state === 'wreck' ? 1 : ws ? 3 : 2, c.color]; }) : null;
     var L = leader(), r = game.phase === 'over' ? ranking() : null;
     humans().forEach(function (p) { if (!p.conn || !p.connected) return; var c = game.sim && game.sim.byId(p.id), m = { t: 'st', phase: game.phase, leader: L === p, bots: game.bots, round: game.round, rounds: game.rounds, n: game.players.length, mode: game.mode };
+      if (W) m.w = W;
       if (c && game.sim.mode === 'race') { m.pos = game.sim.order().indexOf(c) + 1; m.lap = Math.min(game.sim.laps, c.lap + 1); m.laps = game.sim.laps; m.done = c.done; }
       if (c) { m.hp = Math.max(0, Math.round(c.hp)); m.maxhp = c.maxhp; m.lives = c.lives; m.cs = c.state; m.boost = Math.round(c.boost * 100) / 100; m.score = p.score; }
       if (r) { var i = r.indexOf(p); m.place = i + 1; m.tot = p.tot; m.score = p.score; m.of = r.length; }
@@ -594,6 +591,6 @@
   else if (!NONET) net = new window.DDNet.Host({ code: roomQ, fixedCode: !!roomQ, onStatus: setNetUi, onMessage: onPhoneMessage, onClose: onPhoneClose });
   initGL(); setPhase('lobby'); tjButtons(); if (Q.get('play') === '1') addTouch();
   if (Q.get('autostart') === '1') setTimeout(startMatch, 300);
-  window.DD.debug = { act: ACT, pip: function () { return PIP; }, camHt: function () { return camHt; }, startMatch: startMatch, toLobby: toLobby, game: game, setMode: setMode, addTouch: addTouch, cam: function (m) { game.cam = m; }, touchP: function () { return touchP; } };
+  window.DD.debug = { cut: function (k) { cutTo(game.sim, k); }, dir: DIR, act: ACT, pip: function () { return PIP; }, camHt: function () { return camHt; }, startMatch: startMatch, toLobby: toLobby, game: game, setMode: setMode, addTouch: addTouch, cam: function (m) { game.cam = m; }, touchP: function () { return touchP; } };
   requestAnimationFrame(tick);
 })();
