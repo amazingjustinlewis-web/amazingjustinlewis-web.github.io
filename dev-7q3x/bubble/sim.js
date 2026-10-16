@@ -2,7 +2,7 @@
    point-mirror (x -> 1-x, y -> 1.8-y). Every player rides a fixed track (u = 0..1). AI slides everyone you are not touching. */
 (function (root) {
   'use strict';
-  var L = 2.0, PR = .022, R = .034, GW = .07, GY = .128, BL = .66, REACH = .055, GOALP = 10.4, MAGR = .045, MAGK = .0007, WIN = 5, TIME = 180;
+  var L = 2.0, PR = .022, R = .034, GW = .07, GY = .128, BL = .66, REACH = .055, GOALP = 12.8, MAGR = .045, MAGK = .0007, WIN = 5, TIME = 180;
   // v0.3 tracks come from tracks.js (sketch pixels, Catmull-Rom). Team 0 = sketch green (guards y=L), team 1 = sketch blue (guards y=0).
   var TB = root.BUBBLE_TRACKS, SK = TB.sketch;
   function sk(q) { return [(q[1] - SK.y0) / (SK.y1 - SK.y0), (q[0] - SK.x0) / (SK.x1 - SK.x0) * L]; }
@@ -17,6 +17,7 @@
   var SNAG = { t: .45, spd: 4.2, free: .05 }, OT = { arm: 2.5, base: 2, press: 4, bounce: 3, max: 10, sp: 3.3 }, CHK = { min: .5, hard: 1.5, kb: .55, down: 1.5, cd: .4, maxO: .16 };
   var FO = { vz: 1.05, grabZ: .03 };   // faceoff: puck pops straight up out of the centre slot
   var POKEX = 1.3;   // tap stick-check reach vs normal poke reach
+  var NET = { post: .92, bar: .85, mesh: .12, give: .45 };   // net materials: metal post/crossbar restitution (hard, bouncy); soft mesh back/sides restitution + tangential give
   var HACK = { r: .14, max: Infinity, reach: .035, kick: 1.3, steal: .35 };   // slow-mo scramble: taps make your players near the puck jab at it (max = cap on players in the sphere)
   var AI = { goalieOut: .045, dMid: .22, dPress: .16, dStretch: .05, safeRe: .4, beat: .35, press: .055, rimP: .35, oneT: .4 };
   function cl(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -105,7 +106,7 @@
     var me = this, F; this.ev = ''; this.clk = (this.clk || 0) + dt;
     if (this.over >= 0) return;
     this.time -= dt; if (this.time <= 0) { this.time = 0; if (this.sc[0] !== this.sc[1]) { this.over = this.sc[0] > this.sc[1] ? 0 : 1; return; } this.msg = 'SUDDEN DEATH'; }
-    if (this.swing) this.swing[1] -= dt;
+    if (this.swing) this.swing[1] -= dt; if (this.mw > 0 && !this.pg) this.mw = Math.max(0, this.mw - dt * 1.5);
     if (this.pause > 0) { this.pause -= dt; if (this.pg && this.pause <= 1.1) { this.pg = false; var pl0 = this.pause; this.faceoff(); this.pause = Math.max(.02, pl0); this.uv = null; } if (this.pause <= 0) { this.msg = '';
       if (this.launch) { this.launch = false; this.p = [.5, L / 2]; this.v = [(Math.random() - .5) * .16, (Math.random() - .5) * .16]; this.z = .002; this.vz = FO.vz * (.92 + Math.random() * .16); this.air = true; this.ev = 'launch'; } } }
     // move players
@@ -154,14 +155,14 @@
       var x = this.p[0], y = this.p[1], NH = .045, ND = .05, sp0 = Math.hypot(this.v[0], this.v[1]);
       // goal only when the puck centre (50% of it) is past the goal line, under the crossbar, inside the posts
       for (var gs = 0; gs < 2; gs++) { var gl = gs ? L - GY : GY, dir = gs ? 1 : -1, past = (y - gl) * dir, inM = Math.abs(x - .5) < GW - PR * .3;
-        if (inM && past > 0 && past < ND) { if (this.z < NH) { this.goal(gs); return; } if (this.v[1] * dir > 0) { this.v[1] = -this.v[1] * .45; this.vz = Math.abs(this.vz) * .3 + .05; this.ev = 'net'; } }
+        if (inM && past > 0 && past < ND) { if (this.z < NH) { this.goal(gs); return; } if (this.v[1] * dir > 0) { this.v[1] = -this.v[1] * NET.bar; this.vz = Math.abs(this.vz) * .5 + .08; this.ev = 'bar'; } }
         // back/sides of the net cage: bounce off from outside
-        var bx = Math.abs(x - .5); if (this.z < NH && bx < GW + PR && past > ND - .004 && past < ND + PR) { this.p[1] = gl + dir * (ND + PR); this.v[1] = Math.abs(this.v[1]) * dir * .6; this.lift(sp0); this.ev = 'net'; }
-        if (this.z < NH && past > 0 && past < ND && bx > GW - PR * .3 && bx < GW + PR) { var sg = x > .5 ? 1 : -1; this.p[0] = .5 + sg * (GW + PR); this.v[0] = Math.abs(this.v[0]) * sg * .6; this.lift(sp0); this.ev = 'net'; } }
+        var bx = Math.abs(x - .5); if (this.z < NH && bx < GW + PR && past > ND - .004 && past < ND + PR) { this.p[1] = gl + dir * (ND + PR); this.v[1] = Math.abs(this.v[1]) * dir * NET.mesh; this.v[0] *= .5; this.ev = 'mesh'; this.mw = Math.min(1, sp0 * .6); }
+        if (this.z < NH && past > 0 && past < ND && bx > GW - PR * .3 && bx < GW + PR) { var sg = x > .5 ? 1 : -1; this.p[0] = .5 + sg * (GW + PR); this.v[0] = Math.abs(this.v[0]) * sg * NET.mesh; this.v[1] *= .5; this.ev = 'mesh'; this.mw = Math.min(1, sp0 * .6); } }
       if (x < PR) { this.p[0] = PR; this.v[0] = Math.abs(this.v[0]) * .8; this.lift(sp0); } if (x > 1 - PR) { this.p[0] = 1 - PR; this.v[0] = -Math.abs(this.v[0]) * .8; this.lift(sp0); }
       if (y < .05 + PR) { this.p[1] = .05 + PR; this.v[1] = Math.abs(this.v[1]) * .8; this.lift(sp0); } if (y > L - .05 - PR) { this.p[1] = L - .05 - PR; this.v[1] = -Math.abs(this.v[1]) * .8; this.lift(sp0); }
       // posts
-      [[.5 - GW, GY], [.5 + GW, GY], [.5 - GW, L - GY], [.5 + GW, L - GY]].forEach(function (po) { var dx = me.p[0] - po[0], dy = me.p[1] - po[1], d = Math.hypot(dx, dy); if (d < PR + .008) { var nx = dx / d, ny = dy / d, vn = me.v[0] * nx + me.v[1] * ny; me.p = [po[0] + nx * (PR + .008), po[1] + ny * (PR + .008)]; if (vn < 0) { me.v[0] -= 1.8 * vn * nx; me.v[1] -= 1.8 * vn * ny; } me.lift(sp0 * 1.3); me.ev = 'post'; } });
+      [[.5 - GW, GY], [.5 + GW, GY], [.5 - GW, L - GY], [.5 + GW, L - GY]].forEach(function (po) { var dx = me.p[0] - po[0], dy = me.p[1] - po[1], d = Math.hypot(dx, dy); if (d < PR + .008) { var nx = dx / d, ny = dy / d, vn = me.v[0] * nx + me.v[1] * ny; me.p = [po[0] + nx * (PR + .008), po[1] + ny * (PR + .008)]; if (vn < 0) { me.v[0] -= (1 + NET.post) * vn * nx; me.v[1] -= (1 + NET.post) * vn * ny; } me.lift(sp0 * 1.3); me.ev = 'post'; } });
       var off = Math.random() < .5 ? 0 : 6; for (var n = 0; n < 12; n++) { i = (n + off) % 12; if (this.air && this.vz < 0 && this.z < FO.grabZ) this.air = false; if (i === this.cool || this.z > .05 || this.air || this.dn[i] > 0) continue; var Pb = this.pp(i), Tp = this.tip(i), sx = Tp[0] - Pb[0], sy = Tp[1] - Pb[1], sl2 = sx * sx + sy * sy, ff = cl(((this.p[0] - Pb[0]) * sx + (this.p[1] - Pb[1]) * sy) / sl2, 0, 1), cx = Pb[0] + sx * ff, cy = Pb[1] + sy * ff, ddx = this.p[0] - cx, ddy = this.p[1] - cy, dd = Math.hypot(ddx, ddy);
         if (ff > .45 && dd < PR + (i === this.to ? .018 : .006) && this.z < .016) { var sp3 = Math.hypot(this.v[0], this.v[1]); if (sp3 < (i === this.to ? 9 : TR[i].k === 'G' ? 1.6 : 1.2)) { this.c = i; this.hold = 0; this.to = -1; this.aimA = null; if (TR[i].k === 'G') this.ev = 'save'; return; }
           var nx2 = ddx / (dd || 1), ny2 = ddy / (dd || 1), vn2 = this.v[0] * nx2 + this.v[1] * ny2; this.p = [cx + nx2 * (PR + .006), cy + ny2 * (PR + .006)]; if (vn2 < 0) { this.v[0] -= 1.7 * vn2 * nx2; this.v[1] -= 1.7 * vn2 * ny2; } this.ev = TR[i].k === 'G' ? 'save' : 'bump'; continue; }
@@ -190,14 +191,16 @@
     ids.sort(function (a, b) { return a[0] - b[0]; }); ids = ids.slice(0, HACK.max); var gy = goalOf(team);
     ids.forEach(function (e) { var i = e[1], P = me.pp(i); me.ang[i] = Math.atan2(me.p[1] - P[1], me.p[0] - P[0]) + (Math.random() - .5) * .5; me.ln[i] = .22; me.swing = [i, .15]; var T = me.tip(i), dd = Math.hypot(T[0] - me.p[0], T[1] - me.p[1]);
       if (dd < HACK.reach + PR && !me.air) { if (me.c >= 0 && Math.random() < HACK.steal) { me.c = i; me.hold = 0; me.ev = 'steal'; return; } if (me.c < 0) { var a = Math.atan2(gy - me.p[1], .5 - me.p[0]) + (Math.random() - .5) * 1.2; me.v[0] += Math.cos(a) * HACK.kick; me.v[1] += Math.sin(a) * HACK.kick; me.ev = 'jab'; } } }); };
-  Sim.prototype.puckPG = function (dt) { var h = dt / 3; for (var k = 0; k < 3; k++) { this.p[0] += this.v[0] * h; this.p[1] += this.v[1] * h; var f = Math.exp(-1.4 * h); this.v[0] *= f; this.v[1] *= f;
+  Sim.prototype.puckPG = function (dt) { if (this.mw > 0) this.mw = Math.max(0, this.mw - dt * 1.5); var h = dt / 3; for (var k = 0; k < 3; k++) { this.p[0] += this.v[0] * h; this.p[1] += this.v[1] * h; var f = Math.exp(-1.4 * h); this.v[0] *= f; this.v[1] *= f;
       if (this.z > 0 || this.vz > 0) { this.vz -= 3.5 * h; this.z += this.vz * h; if (this.z <= 0) { this.z = 0; this.vz = this.vz < -.15 ? -this.vz * .3 : 0; } }
       var bot = this.p[1] > L / 2, gl = bot ? L - GY : GY, dir = bot ? 1 : -1, past = (this.p[1] - gl) * dir, ND = .05, x = this.p[0];
-      if (past > -PR) { if (past < PR * .6) { this.p[1] = gl + dir * PR * .6; this.v[1] = Math.abs(this.v[1]) * dir * .3; } if (past > ND - PR) { this.p[1] = gl + dir * (ND - PR); this.v[1] = -Math.abs(this.v[1]) * dir * .35; this.v[0] += (Math.random() - .5) * .2; }
-        if (Math.abs(x - .5) > GW - PR) { var sg = x > .5 ? 1 : -1; this.p[0] = .5 + sg * (GW - PR); this.v[0] = -sg * Math.abs(this.v[0]) * .4; } }
+      if (past > -PR) { var sp = Math.hypot(this.v[0], this.v[1]);
+        if (past < PR * .6) { this.p[1] = gl + dir * PR * .6; this.v[1] = Math.abs(this.v[1]) * dir * NET.post; }   // mouth: back off the posts (hard)
+        if (past > ND - PR && this.v[1] * dir > 0) { this.p[1] = gl + dir * (ND - PR); this.v[1] = -this.v[1] * NET.mesh; this.v[0] *= NET.give; if (this.z > .004) this.vz = Math.min(this.vz, -.05); this.mw = Math.max(this.mw || 0, Math.min(1, sp * .7)); this.ev = 'mesh'; }   // soft back: catches it, drops it
+        if (Math.abs(x - .5) > GW - PR && (x - .5) * this.v[0] > 0) { var sg = x > .5 ? 1 : -1; this.p[0] = .5 + sg * (GW - PR); this.v[0] = -this.v[0] * NET.mesh; this.v[1] *= NET.give; this.mw = Math.max(this.mw || 0, Math.min(1, sp * .7)); this.ev = 'mesh'; } }
       if (this.p[1] < .05 + PR) { this.p[1] = .05 + PR; this.v[1] = Math.abs(this.v[1]) * .7; } if (this.p[1] > L - .05 - PR) { this.p[1] = L - .05 - PR; this.v[1] = -Math.abs(this.v[1]) * .7; } if (this.p[0] < PR) { this.p[0] = PR; this.v[0] = Math.abs(this.v[0]) * .7; } if (this.p[0] > 1 - PR) { this.p[0] = 1 - PR; this.v[0] = -Math.abs(this.v[0]) * .7; } } };
   Sim.prototype.lift = function (sp) { if (sp > 1.3 && Math.random() < .6) this.vz = Math.max(this.vz, Math.min(.4, (sp - 1.3) * .3 * Math.random())); };
   Sim.prototype.goal = function (t) { this.sc[t]++; this.ev = 'goal' + t; if (this.sc[t] >= WIN || this.time <= 0) { this.over = t; this.msg = ''; return; } this.pg = true; this.uv = (this.lu || this.u.map(function () { return 0; })).slice(); this.c = -1; this.to = -1; this.ot = [null, null]; this.ev = 'goal' + t; this.msg = 'GOAL!'; this.pause = GOALP; this.lastGoal = t; this.gIn = t; };
-  Sim.prototype.snap = function () { function r(x) { return Math.round(x * 1000) / 1000; } return { t: 's', u: this.u.map(r), o: this.o.map(function (q) { return [r(q[0]), r(q[1])]; }), p: this.p.map(r), c: this.c, sd: r(this.side), a: this.ang.map(r), sw: this.swing && this.swing[1] > 0 ? this.swing[0] : -1, sc: this.sc, tm: Math.ceil(this.time), ov: this.over, msg: this.msg, pz: r(Math.max(0, this.pause)), z: r(this.z || 0), dn: this.dn.map(function (x) { return x > 0 ? r(x) : 0; }), ln: this.ln.map(function (x) { return x > 0 ? r(x) : 0; }), ot: this.ot.map(function (x) { return x ? 1 : 0; }), g: this.grab.slice(), ev: this.ev, pg: this.pg ? 1 : 0 }; };
+  Sim.prototype.snap = function () { function r(x) { return Math.round(x * 1000) / 1000; } return { t: 's', u: this.u.map(r), o: this.o.map(function (q) { return [r(q[0]), r(q[1])]; }), p: this.p.map(r), c: this.c, sd: r(this.side), a: this.ang.map(r), sw: this.swing && this.swing[1] > 0 ? this.swing[0] : -1, sc: this.sc, tm: Math.ceil(this.time), ov: this.over, msg: this.msg, pz: r(Math.max(0, this.pause)), z: r(this.z || 0), dn: this.dn.map(function (x) { return x > 0 ? r(x) : 0; }), ln: this.ln.map(function (x) { return x > 0 ? r(x) : 0; }), ot: this.ot.map(function (x) { return x ? 1 : 0; }), g: this.grab.slice(), ev: this.ev, pg: this.pg ? 1 : 0, mw: Math.round((this.mw || 0) * 100) / 100 }; };
   root.Bubble = { Sim: Sim, TR: TR, L: L, BL: BL, GOALP: GOALP, PR: PR, R: R, GW: GW, GY: GY, pos: pos, proj: proj };
 })(window);

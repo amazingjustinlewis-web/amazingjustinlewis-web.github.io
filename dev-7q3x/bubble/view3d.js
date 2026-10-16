@@ -41,10 +41,12 @@
     var cab = new THREE.Mesh(new THREE.BoxGeometry(L + .5, .3, 1.5), mat(0x18244a)); cab.position.set(L / 2, -.16, .5); G.add(cab);
     // nets: red frame + translucent mesh box
     var self = this; this.nets = [];
-    [[B.GY, -1], [L - B.GY, 1]].forEach(function (gq) { var n = new THREE.Group(), red = mat(0xd8344c), d = .05 * gq[1], hh = .045;
-      [-B.GW, B.GW].forEach(function (z) { var post = new THREE.Mesh(new THREE.CylinderGeometry(.005, .005, hh, 8), red); post.position.set(0, hh / 2, z); n.add(post); });
-      var bar = new THREE.Mesh(new THREE.CylinderGeometry(.005, .005, B.GW * 2, 8), red); bar.rotation.x = Math.PI / 2; bar.position.set(0, hh, 0); n.add(bar);
-      var mesh = new THREE.Mesh(new THREE.BoxGeometry(Math.abs(d), hh, B.GW * 2), new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: .35, side: THREE.DoubleSide })); mesh.position.set(d / 2, hh / 2, 0); n.add(mesh);
+    // model hook: window.BubbleNetModel(side, dims) may return a Group with children named 'post_l', 'post_r', 'crossbar' (metal) and 'mesh' (soft, wobbles); origin on the goal line centre, +x into the net
+    [[B.GY, -1], [L - B.GY, 1]].forEach(function (gq, side) { var n = new THREE.Group(), red = mat(0xd8344c), d = .05 * gq[1], hh = .045, custom = root.BubbleNetModel ? root.BubbleNetModel(side, { depth: .05, height: hh, halfWidth: B.GW }) : null;
+      if (custom) { custom.scale.x *= gq[1]; n.add(custom); n.userData.mesh = custom.getObjectByName('mesh'); } else {
+      [-B.GW, B.GW].forEach(function (z, k) { var post = new THREE.Mesh(new THREE.CylinderGeometry(.005, .005, hh, 8), red); post.name = k ? 'post_r' : 'post_l'; post.position.set(0, hh / 2, z); n.add(post); });
+      var bar = new THREE.Mesh(new THREE.CylinderGeometry(.005, .005, B.GW * 2, 8), red); bar.name = 'crossbar'; bar.rotation.x = Math.PI / 2; bar.position.set(0, hh, 0); n.add(bar);
+      var mg = new THREE.BoxGeometry(Math.abs(d), hh, B.GW * 2); mg.translate(Math.abs(d) / 2, hh / 2, 0); var mesh = new THREE.Mesh(mg, new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: .35, side: THREE.DoubleSide })); mesh.name = 'mesh'; mesh.scale.x = gq[1]; n.add(mesh); n.userData.mesh = mesh; }
       var lt = new THREE.Group(), dome = new THREE.Mesh(new THREE.SphereGeometry(.009, 12, 8, 0, 7, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x551018 })), base = new THREE.Mesh(new THREE.CylinderGeometry(.008, .009, .004, 12), mat(0x222222));
       base.position.y = .002; dome.position.y = .004; lt.add(base); lt.add(dome); var spin = new THREE.Group(); spin.position.y = .008; lt.add(spin);
       [0, Math.PI].forEach(function (a) { var bm = new THREE.Mesh(new THREE.PlaneGeometry(.2, .07), new THREE.MeshBasicMaterial({ map: beamTex(), color: 0xff2a2a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.NormalBlending, side: THREE.DoubleSide })); var bh = new THREE.Group(); bh.rotation.y = a; bm.rotation.x = -Math.PI / 2 + .35; bm.position.set(.1, 0, 0); bh.add(bm); spin.add(bh); });
@@ -117,12 +119,13 @@
       o.type = 'sawtooth'; o.frequency.value = 196; o2.type = 'square'; o2.frequency.value = 203; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.18, t + .03); g.gain.setValueAtTime(.18, t + .42); g.gain.linearRampToValueAtTime(0, t + .5);
       o.connect(g); o2.connect(g); g.connect(AC.destination); o.start(t); o2.start(t); o.stop(t + .52); o2.stop(t + .52); } catch (e) {} }
   root.BubbleBuzz = buzz;
+  function ping() { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); var t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(2300, t); o.frequency.exponentialRampToValueAtTime(1800, t + .25); g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t + .3); o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + .32); } catch (e) {} }
   function lerp(a, b, k) { return a + (b - a) * k; }
   function frameAt(F, t) { var i = 1; while (i < F.length - 1 && F[i].t < t) i++; var a = F[i - 1], b = F[i], k = Math.max(0, Math.min(1, (t - a.t) / ((b.t - a.t) || 1)));
     return { p: [lerp(a.p[0], b.p[0], k), lerp(a.p[1], b.p[1], k)], u: a.u.map(function (v, j) { return lerp(v, b.u[j], k); }), o: a.o.map(function (v, j) { return [lerp(v[0], b.o[j][0], k), lerp(v[1], b.o[j][1], k)]; }),
       a: a.a.map(function (v, j) { return v + Math.atan2(Math.sin(b.a[j] - v), Math.cos(b.a[j] - v)) * k; }), c: k < .5 ? a.c : b.c, gc: (k < .5 ? a : b).gc, z: lerp(a.z || 0, b.z || 0, k), pz: 0 }; }
   var SPRING_W = 160;   // visual smoothing stiffness (rad/s); higher = tighter. ~6 ms time constant: lag ~2v/W, about .012 at a fast 1 rink-width/s
-  var REP_TAIL = .4;   // each replay angle holds ~0.4 s on its last frame
+  var REP_TAIL = 0, REP_POST = 1.2;   // each angle shows ~1.2 s (replay time) of live footage after the goal: puck bouncing in the net (was a 0.4 s freeze)
   R3.prototype.place = function (st) { this.spr = this.spr || [];
     for (var i = 0; i < 12; i++) { var tr = B.TR[i], q = B.pos(tr, st.u[i]), o = st.o ? st.o[i] : [0, 0], p = this.pl[i], an = st.a ? st.a[i] : 0;
       var tg = L3(q[0] + o[0], q[1] + o[1], 0), sp = this.spr[i], h = this._dt || 0;   // visual-only critically damped spring (sim keeps true positions)
@@ -157,7 +160,8 @@
     this.sc = tot; this.lastSc = st.sc.slice();
     if (this.phone) { var mtg = st.mo ? st.mo.c : 0; if (st.mo) this.pmoPt = st.mo.pt; if (this.rep) { mtg = 1; this.pmoPt = [.5, this.rep.gy]; } this.pzc = this.pzc || 0; this.pzc += (mtg - this.pzc) * (1 - Math.exp(-dt * PHONE_ZIP)); }   // fast in / fast out, slow tapers; tighter going in
     var cam = this.setTop(opt.action ? st : null, dt), show = st, MO = opt.moment && !this.rep ? opt.moment : null, R = this.rep, flash = this.d.querySelector('.b3flash'), ban = this.d.querySelector('.b3ban');
-    if (R) { R.t += dt; var T = R.t - R.wait;
+    if (R && st.pg) R.F.push({ t: this.clock, p: st.p.slice(), u: st.u.slice(), o: (st.o || st.u.map(function () { return [0, 0]; })).map(function (q) { return q.slice(); }), a: (st.a || st.u.map(function () { return 0; })).slice(), c: st.c, z: st.z || 0, gc: st.gc ? st.gc.slice() : null });
+    if (R) { R.t += (this.phone && R.t >= R.wait && (this.pzc || 0) < .97) ? 0 : dt; var T = R.t - R.wait;   // phones: hold the cut until the zip-zoom-in has landed
       if (R.t < R.wait) { var k = R.t / R.wait; flash.style.opacity = Math.max(0, .85 - k * 2.5) * (1 + Math.sin(R.t * 40) * .2); ban.style.opacity = Math.min(1, R.t * 5) * (k < .85 ? 1 : (1 - k) / .15); ban.style.transform = 'scale(' + (1 + Math.max(0, .25 - R.t) * 2) + ')';
         if (Math.random() < dt * 5) { var gy = R.team ? L - B.GY : B.GY; this.emit(.2 + Math.random() * .6, gy + (R.team ? -1 : 1) * (.1 + Math.random() * .4), .15 + Math.random() * .2, 70, R.team ? 0x9fd4ff : 0xffb3be, .5, 1.3, 1); }
         if (Math.random() < dt * 22) this.camFlash(); }
@@ -182,6 +186,8 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     for (var z = n; z < 900; z++) pos[z * 3 + 1] = -9; this.pts.geometry.attributes.position.needsUpdate = true; this.pts.geometry.attributes.color.needsUpdate = true;
     this.pts.material.size = cam === this.ortho ? Math.max(4, this.V.s * .018) * Math.min(2, devicePixelRatio || 1) : .012; this.pts.material.sizeAttenuation = true;
     this.markers(cam, cam === this.ortho && (this.az || 1) > 1.05);
+    var mwv = st.mw || 0, pyv = st.p[1], nowv = performance.now() / 1000; this.nets.forEach(function (n, k) { var ms = n.userData.mesh; if (ms) { var w = (k ? pyv > L / 2 : pyv < L / 2) ? mwv : 0, sx = ms.scale.x < 0 ? -1 : 1; ms.scale.set(sx * (1 + w * .12 * Math.sin(nowv * 38)), 1 + w * .05 * Math.sin(nowv * 31 + 1), 1 + w * .04 * Math.sin(nowv * 27)); } });
+    if ((st.ev === 'post' || st.ev === 'bar') && this.lastPing !== st) { this.lastPing = st; ping(); }
     var rep = !!this.rep; this.nets.forEach(function (n) { var l = n.userData.light; if (!l) return; if (l.t > 0) l.t -= dt; if (!rep) l.rep = false; l.on = l.t > 0 || l.rep;
       var k = l.on ? .75 + .25 * Math.sin(performance.now() / 90) : 0; l.dome.material.color.setHex(l.on ? 0xff3030 : 0x551018); l.spin.rotation.y += dt * 9; l.spin.children.forEach(function (b) { b.children[0].material.opacity = k * .8; }); l.halo.material.opacity = k * .9; });
     this.lastCam = cam; this.gl.render(this.scene, cam);
@@ -214,7 +220,7 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     var ban = this.d.querySelector('.b3ban'); ban.textContent = 'GOAL!'; ban.style.color = team ? '#3aa8ff' : '#ff5a6e';
     // angle 1: high 3/4 view 1.5x out, normal speed; angle 2: 1.2x out at 75%; angle 3: close net cam at 2/3 of the old slow-mo (.2)
     var a1 = this.phone ? 1.4 : 2.0, a2 = this.phone ? .8 : 1.2, a3 = this.phone ? .35 : .45;
-    var segs = [[Math.max(0, D - a1), D, 1, 'top'], [Math.max(0, D - a2), D, .75 / 1.1, 'side'], [Math.max(0, D - a3), D, .2 * 2 / 3 / 1.15, 'net']];
+    var r1 = 1, r2 = .75 / 1.1, r3 = .2 * 2 / 3 / 1.15, segs = [[Math.max(0, D - a1), D + REP_POST * r1, r1, 'top'], [Math.max(0, D - a2), D + REP_POST * r2, r2, 'side'], [Math.max(0, D - a3), D + REP_POST * r3, r3, 'net']];
     this.rep = { F: F, team: team, t: 0, wait: this.phone ? 1.2 : 1.5, segs: segs, gy: team ? L - B.GY : B.GY, dir: team ? 1 : -1 };
   };
   R3.prototype.shot = function (kind, fr, R, dt, cut) {   // replay cameras, all at ice level
