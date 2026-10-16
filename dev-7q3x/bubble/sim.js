@@ -49,6 +49,7 @@
   // input from a team (local or over the net): {t:'grab',i} {t:'drag',x,y} {t:'rel'} {t:'tap'} {t:'flick',dx,dy,sp}
   Sim.prototype.input = function (team, m) {
     if (this.over >= 0) { if (m.t === 'tap') this.reset(); return; }
+    if ((m.t === 'tap' || m.t === 'skip') && this.msg === 'GOAL!' && this.pause > 1.05) { this.pause = 1.05; return; }   // tap-to-skip the goal pause
     if (m.t === 'grab') { this.grab[team] = (m.i >= team * 6 && m.i < team * 6 + 6) ? m.i : -1; this.fing[team] = null; }
     else if (m.t === 'drag') this.fing[team] = [m.x, m.y];
     else if (m.t === 'rel') { this.grab[team] = -1; this.fing[team] = null; }

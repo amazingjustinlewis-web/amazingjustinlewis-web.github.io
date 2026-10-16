@@ -30,7 +30,7 @@
     [B.GY, L - B.GY].forEach(function (y, k) { var q = P(.5, y); c.fillStyle = '#5aa0ff44'; c.beginPath(); c.arc(q[0], q[1], S * B.GW * 1.2, k ? Math.PI / 2 : -Math.PI / 2, k ? Math.PI * 1.5 : Math.PI / 2); c.fill(); });
     c.lineCap = 'round'; c.lineJoin = 'round'; B.TR.forEach(function (tr) { function path(col, w) { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); tr.p.forEach(function (q, k) { var Q = P(q[0], q[1]); if (k) c.lineTo(Q[0], Q[1]); else c.moveTo(Q[0], Q[1]); }); c.stroke(); }
       path('#c3ccd6aa', S * .017); path('#3a4558aa', S * .008); });
-    var sw = S * .022, sl = S * .075; c.fillStyle = '#aab3bf'; c.fillRect(m[0] - sw / 2 - 3, m[1] - sl / 2 - 3, sw + 6, sl + 6); c.fillStyle = '#05070c'; c.fillRect(m[0] - sw / 2, m[1] - sl / 2, sw, sl);
+    var sw = S * .016, sl = S * .08; m = [Math.round(L / 2 / L * CW), Math.round(.5 * CH)]; c.fillStyle = '#aab3bf'; c.fillRect(m[0] - sw / 2 - 3, m[1] - sl / 2 - 3, sw + 6, sl + 6); c.fillStyle = '#05070c'; c.fillRect(m[0] - sw / 2, m[1] - sl / 2, sw, sl);
     var tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
     var ice = new THREE.Mesh(new THREE.PlaneGeometry(L, 1), new THREE.MeshLambertMaterial({ map: tex })); ice.rotation.x = -Math.PI / 2; ice.position.set(L / 2, 0, .5); G.add(ice);
     // boards (rounded rect ring) + yellow kickplate + cabinet
@@ -62,14 +62,24 @@
   R3.prototype.dom = function () {
     var d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:6;overflow:hidden';
     d.innerHTML = '<div class="b3flash" style="position:absolute;inset:0;opacity:0;background:radial-gradient(circle,#fff,#fff0 70%)"></div><div class="b3ban" style="position:absolute;left:0;right:0;top:38%;text-align:center;font:700 16vmin Fredoka,sans-serif;opacity:0;-webkit-text-stroke:3px #0008"></div>' +
-      '<div class="b3rep" style="position:absolute;left:3vw;top:3vh;font:700 3.6vmin Fredoka,sans-serif;color:#fff;background:#d8344c;padding:.3em .8em;border-radius:.4em;opacity:0">\u25CF REPLAY</div><div class="b3bars" style="position:absolute;inset:0;opacity:0;box-shadow:inset 0 9vh 0 #000,inset 0 -9vh 0 #000"></div>';
+      '<div class="b3rep" style="position:absolute;left:3vw;top:3vh;font:700 3.6vmin Fredoka,sans-serif;color:#fff;background:#d8344c;padding:.3em .8em;border-radius:.4em;opacity:0">\u25CF INSTANT REPLAY <span style="font-weight:400;opacity:.8;font-size:.7em">\u00b7 tap to skip</span></div><div class="b3bars" style="position:absolute;inset:0;opacity:0;box-shadow:inset 0 9vh 0 #000,inset 0 -9vh 0 #000"></div>';
     document.body.appendChild(d); this.d = d; this.flashes = [];
   };
-  R3.prototype.setTop = function () {   // orthographic camera that reproduces the 2D View mapping exactly
+  R3.prototype.setTop = function (st, dt) {   // orthographic camera that reproduces the 2D View mapping exactly
     var V = this.V, W = this.cv.clientWidth, H = this.cv.clientHeight, a = V.s2w(0, 0), bx = V.s2w(1, 0), by = V.s2w(0, -1), cam = this.ortho, G = this.G;
     var o = G.localToWorld(L3(a[0], a[1], 5)), right = G.localToWorld(L3(bx[0], bx[1], 5)).sub(o).normalize(), up = G.localToWorld(L3(by[0], by[1], 5)).sub(o).normalize();
-    cam.position.copy(o); cam.up.copy(up); cam.lookAt(o.clone().add(new THREE.Vector3(0, -1, 0))); cam.left = 0; cam.right = W / V.s; cam.top = 0; cam.bottom = -H / V.s; cam.updateProjectionMatrix(); return cam;
+    cam.position.copy(o); cam.up.copy(up); cam.lookAt(o.clone().add(new THREE.Vector3(0, -1, 0))); cam.left = 0; cam.right = W / V.s; cam.top = 0; cam.bottom = -H / V.s;
+    // action camera (TV): tighten slowly on a held puck, open back out quickly on release
+    var z = this.az || 1; if (st) { var held = st.c >= 0 && !(st.pz > 0) && !this.rep; z += held ? (1.45 - z) * (1 - Math.exp(-dt * .55)) : (1 - z) * (1 - Math.exp(-dt * 6));
+      if (held) { var fs = V.w2s(st.p[0], st.p[1]); this.af = this.af ? [this.af[0] + (fs[0] - this.af[0]) * Math.min(1, dt * 3), this.af[1] + (fs[1] - this.af[1]) * Math.min(1, dt * 3)] : fs; } }
+    else z = 1; this.az = z;
+    if (z > 1.001 && this.af) { var k = (z - 1) / .45 * .7, dx = (this.af[0] - W / 2) * k / V.s, dy = (this.af[1] - H / 2) * k / V.s; cam.position.addScaledVector(right, dx).addScaledVector(up, -dy); }
+    cam.zoom = z; cam.updateProjectionMatrix(); return cam;
   };
+  var AC = null; function buzz() { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); var t = AC.currentTime, o = AC.createOscillator(), o2 = AC.createOscillator(), g = AC.createGain();
+      o.type = 'sawtooth'; o.frequency.value = 196; o2.type = 'square'; o2.frequency.value = 203; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.18, t + .03); g.gain.setValueAtTime(.18, t + .42); g.gain.linearRampToValueAtTime(0, t + .5);
+      o.connect(g); o2.connect(g); g.connect(AC.destination); o.start(t); o2.start(t); o.stop(t + .52); o2.stop(t + .52); } catch (e) {} }
+  root.BubbleBuzz = buzz;
   function lerp(a, b, k) { return a + (b - a) * k; }
   function frameAt(F, t) { var i = 1; while (i < F.length - 1 && F[i].t < t) i++; var a = F[i - 1], b = F[i], k = Math.max(0, Math.min(1, (t - a.t) / ((b.t - a.t) || 1)));
     return { p: [lerp(a.p[0], b.p[0], k), lerp(a.p[1], b.p[1], k)], u: a.u.map(function (v, j) { return lerp(v, b.u[j], k); }), o: a.o.map(function (v, j) { return [lerp(v[0], b.o[j][0], k), lerp(v[1], b.o[j][1], k)]; }),
@@ -88,10 +98,14 @@
     // record history (skip while paused)
     if (!this.rep && !(st.pz > 0)) { this.hist.push({ t: this.clock, p: st.p.slice(), u: st.u.slice(), o: (st.o || st.u.map(function () { return [0, 0]; })).map(function (q) { return q.slice(); }), a: (st.a || st.u.map(function () { return 0; })).slice(), c: st.c });
       while (this.hist.length && this.hist[0].t < this.clock - 5) this.hist.shift(); }
+    // buzzer right before the puck is spat out (pz counts down; pop starts at .55)
+    if (st.pz > .55 && st.pz < 1.05 && !this.buzzed) { this.buzzed = true; buzz(); } if (!(st.pz > 0)) this.buzzed = false;
+    // tap-to-skip: the sim cut the pause short, so end the replay too
+    if (this.rep && st.pz > 0 && st.pz < 1.1) { this.rep = null; this.d.querySelector('.b3rep').style.opacity = 0; this.d.querySelector('.b3bars').style.opacity = 0; this.d.querySelector('.b3ban').style.opacity = 0; this.d.querySelector('.b3flash').style.opacity = 0; }
     // goal detection by score change (works on remote phones too)
     var tot = st.sc[0] + st.sc[1]; if (this.sc != null && tot > this.sc && this.hist.length > 10) this.goal(st.sc[0] > this.lastSc[0] ? 0 : 1);
     this.sc = tot; this.lastSc = st.sc.slice();
-    var cam = this.setTop(), show = st, R = this.rep, flash = this.d.querySelector('.b3flash'), ban = this.d.querySelector('.b3ban');
+    var cam = this.setTop(opt.action ? st : null, dt), show = st, R = this.rep, flash = this.d.querySelector('.b3flash'), ban = this.d.querySelector('.b3ban');
     if (R) { R.t += dt; var T = R.t - R.wait;
       if (R.t < R.wait) { var k = R.t / R.wait; flash.style.opacity = Math.max(0, .85 - k * 2.5) * (1 + Math.sin(R.t * 40) * .2); ban.style.opacity = Math.min(1, R.t * 5) * (k < .85 ? 1 : (1 - k) / .15); ban.style.transform = 'scale(' + (1 + Math.max(0, .25 - R.t) * 2) + ')';
         if (Math.random() < dt * 5) { var gy = R.team ? L - B.GY : B.GY; this.emit(.2 + Math.random() * .6, gy + (R.team ? -1 : 1) * (.1 + Math.random() * .4), .15 + Math.random() * .2, 70, R.team ? 0x9fd4ff : 0xffb3be, .5, 1.3, 1); }

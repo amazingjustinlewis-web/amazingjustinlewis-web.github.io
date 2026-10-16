@@ -86,3 +86,4 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Bubble Hockey: tune track positions/lengths and stick lengths after playtests (bubble/tracks.js).
 - Bubble Hockey: real player models (currently cylinders + box sticks).
 - Bubble Hockey: crossbar/post physics (puck is flat 2D; posts are simple circles).
+- Bubble Hockey: Justin will model a proper dome-hockey table in Blender. Hooks: swap the Bubble3D.build() scene for the GLB; add faded background crowd (cheering / freaking out) shown during replays; multiple broadcast-style cinematic cameras (extend Bubble3D.shot() kinds and the replay segment list in Bubble3D.goal()).
