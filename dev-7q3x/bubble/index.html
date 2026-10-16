@@ -38,6 +38,8 @@
   var gear = document.createElement('button'); gear.style.cssText = 'position:fixed;left:1.2vw;bottom:1.2vh;z-index:8;background:#0008;color:#fff;border:1px solid #fff4;border-radius:10px;font-size:15px;padding:6px 10px;cursor:pointer';
   function gearTxt() { gear.textContent = '\u2699 slow-mo moments: ' + (CM.on ? 'on' : 'off'); } gearTxt(); document.body.appendChild(gear);
   gear.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); gear.onclick = function () { CM.on = !CM.on; localStorage.setItem('bh-slowmo', CM.on ? '1' : '0'); gearTxt(); };
+  var wildOn = localStorage.getItem('bh-wild') !== '0', wg = document.createElement('button'); wg.style.cssText = gear.style.cssText; wg.style.bottom = '6.5vh'; function wgTxt() { wg.textContent = '\u2699 wild puck: ' + (wildOn ? 'on' : 'off'); } wgTxt(); document.body.appendChild(wg);
+  wg.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); wg.onclick = function () { wildOn = !wildOn; localStorage.setItem('bh-wild', wildOn ? '1' : '0'); wgTxt(); sim.wild = wildOn; }; sim.wild = wildOn;
   window.BHCM = CM;
   var last = 0, sendT = 0;
   (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; CM.update(dt); sim.mo = CM.c > .15; sim.step(dt * CM.ts); if (sim.ev === 'bigcheck' && sim.hit) CM.trigger(sim.pp(sim.hit.j), 'check'); if (demo && sim.over >= 0) sim.reset();
