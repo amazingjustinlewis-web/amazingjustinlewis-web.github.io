@@ -31,14 +31,17 @@
     c.lineCap = 'round'; c.lineJoin = 'round'; B.TR.forEach(function (tr) { function path(col, w) { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); tr.p.forEach(function (q, k) { var Q = P(q[0], q[1]); if (k) c.lineTo(Q[0], Q[1]); else c.moveTo(Q[0], Q[1]); }); c.stroke(); }
       path('#c3ccd6aa', S * .017); path('#3a4558aa', S * .008); });
     var sw = S * .016, sl = S * .08; m = [Math.round(L / 2 / L * CW), Math.round(.5 * CH)]; c.fillStyle = '#aab3bf'; c.fillRect(m[0] - sw / 2 - 3, m[1] - sl / 2 - 3, sw + 6, sl + 6); c.fillStyle = '#05070c'; c.fillRect(m[0] - sw / 2, m[1] - sl / 2, sw, sl);
+    // round the ice corners to the boards (r = .12 units) so nothing pokes past the arena model's corner boards
+    c.globalCompositeOperation = 'destination-in'; var rc = .12 * CH; c.beginPath(); c.moveTo(rc, 0); c.arcTo(CW, 0, CW, CH, rc); c.arcTo(CW, CH, 0, CH, rc); c.arcTo(0, CH, 0, 0, rc); c.arcTo(0, 0, CW, 0, rc); c.closePath(); c.fill(); c.globalCompositeOperation = 'source-over';
     var tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4;
-    var ice = new THREE.Mesh(new THREE.PlaneGeometry(L, 1), new THREE.MeshLambertMaterial({ map: tex })); ice.rotation.x = -Math.PI / 2; ice.position.set(L / 2, 0, .5); G.add(ice);
+    var ice = new THREE.Mesh(new THREE.PlaneGeometry(L, 1), new THREE.MeshLambertMaterial({ map: tex, alphaTest: .5 })); ice.rotation.x = -Math.PI / 2; ice.position.set(L / 2, 0, .5); G.add(ice);
     // boards (rounded rect ring) + yellow kickplate + cabinet
     function rr(w, h, r, x, y) { var s = new THREE.Shape(); s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r); s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h); s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r); s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y); return s; }
     function ring(pad, th, hgt, col, y0) { var o = rr(L + 2 * (pad + th), 1 + 2 * (pad + th), .14 + pad + th, -pad - th, -pad - th), hole = rr(L + 2 * pad, 1 + 2 * pad, .12 + pad, -pad, -pad); o.holes.push(hole);
       var geo = new THREE.ExtrudeGeometry(o, { depth: hgt, bevelEnabled: false }), me = new THREE.Mesh(geo, mat(col)); me.rotation.x = Math.PI / 2; me.position.y = y0 + hgt; G.add(me); return me; }
-    ring(0, .03, .07, 0xf6f8fb, 0); ring(-.004, .012, .018, 0xf2c230, 0); ring(.03, .1, .02, 0x24356a, -.0);
-    var cab = new THREE.Mesh(new THREE.BoxGeometry(L + .5, .3, 1.5), mat(0x18244a)); cab.position.set(L / 2, -.16, .5); G.add(cab);
+    var proc = [ring(0, .03, .07, 0xf6f8fb, 0), ring(-.004, .012, .018, 0xf2c230, 0), ring(.03, .1, .02, 0x24356a, -.0)];
+    var cab = new THREE.Mesh(new THREE.BoxGeometry(L + .5, .3, 1.5), mat(0x18244a)); cab.position.set(L / 2, -.16, .5); G.add(cab); proc.push(cab);
+    this.loadArena(proc);
     // nets: red frame + translucent mesh box
     var self = this; this.nets = [];
     // model hook: window.BubbleNetModel(side, dims) may return a Group with children named 'post_l', 'post_r', 'crossbar' (metal) and 'mesh' (soft, wobbles); origin on the goal line centre, +x into the net
@@ -219,6 +222,15 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     T.m.geometry.attributes.position.needsUpdate = true; T.m.geometry.attributes.color.needsUpdate = true; };
   R3.prototype.camFlash = function () { var f = document.createElement('div'), s = 4 + Math.random() * 10; f.style.cssText = 'position:absolute;width:' + s + 'px;height:' + s + 'px;border-radius:50%;background:#fff;box-shadow:0 0 14px 6px #fff;left:' + (Math.random() * 100) + '%;top:' + (Math.random() < .5 ? Math.random() * 14 : 86 + Math.random() * 14) + '%;transition:opacity .25s;opacity:1';
     this.d.appendChild(f); setTimeout(function () { f.style.opacity = 0; }, 60); setTimeout(function () { f.remove(); }, 400); };
+  // Justin's arena model (Blender, metres, rink centred at origin, long axis +Y, ice at z=0, 1 game unit = ARENA_UNIT m).
+  // TV only; the procedural boards/cabinet stay as the fallback until it loads. The game keeps its own ice markings, nets and lights.
+  var ARENA_URL = 'arena_classic.glb', ARENA_UNIT = .62, ARENA_HIDE = /^(rink_surface|post_[lr]_|crossbar_|net_mesh_|goal_light_|serve_slot)/;
+  R3.prototype.loadArena = function (proc) { var self = this; if (this.phone || !THREE.GLTFLoader || /noarena/.test(location.search)) return;
+    new THREE.GLTFLoader().load(ARENA_URL, function (g) { var A = g.scene; A.scale.setScalar(1 / ARENA_UNIT); A.rotation.y = -Math.PI / 2; A.position.set(L / 2, 0, .5);
+      A.traverse(function (o) { if (!o.isMesh) return; if (ARENA_HIDE.test(o.name)) { o.visible = false; return; }
+        if (/glass_dome/.test(o.name)) { o.material = new THREE.MeshPhongMaterial({ color: 0xdff0ff, transparent: true, opacity: .1, depthWrite: false, side: THREE.DoubleSide, shininess: 90, specular: 0x88aacc }); o.renderOrder = 3; }
+        else if (/boards/.test(o.name)) o.material.side = THREE.DoubleSide; });
+      self.G.add(A); self.arena = A; proc.forEach(function (m) { m.visible = false; }); }, undefined, function () { /* keep the procedural arena */ }); };
   R3.prototype.goal = function (team) { var nl = this.nets[team] && this.nets[team].userData.light; if (nl) { nl.t = 4.5; nl.rep = true; }
     var F = this.hist.slice(); while (F.length > 2 && Math.hypot(F[F.length - 1].p[0] - .5, F[F.length - 1].p[1] - L / 2) < .02) F.pop();   // drop the reset frame
     var D = this.phone ? 2.0 : 3.6, t1 = F[F.length - 1].t; F = F.filter(function (f) { return f.t >= t1 - D; }); if (F.length < 4) return; D = t1 - F[0].t;
