@@ -90,6 +90,9 @@
       if (n - t0 < 260 && moved < .035) { send({ t: 'tap', x: start[0], y: start[1] }); return; }
       if (rec.length < 2) rec = pts.slice(-3); if (rec.length >= 2) { var a = rec[0], b = rec[rec.length - 1], dt = Math.max(.016, (b[2] - a[2]) / 1000), dx = (b[0] - a[0]) / dt, dy = (b[1] - a[1]) / dt, sp = Math.hypot(dx, dy); if (sp > .9) send({ t: 'flick', dx: dx, dy: dy, sp: Math.min(3.4, Math.max(.8, sp * .5)) }); } }
     el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    // thumb point for the phone's held-player cue (visual only)
+    el.addEventListener('pointerdown', function (e) { if (e.pointerId === id) V.thumb = pick(e.clientX, e.clientY); }); el.addEventListener('pointermove', function (e) { if (e.pointerId === id) V.thumb = pick(e.clientX, e.clientY); });
+    function tclr(e) { if (id === null) V.thumb = null; } el.addEventListener('pointerup', tclr); el.addEventListener('pointercancel', tclr);
   }
   root.BubbleView = View; root.BubbleGestures = Gestures; root.BubbleCOL = COL;
 })(window);

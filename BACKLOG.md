@@ -121,6 +121,7 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - [ ] Bubble Hockey: tilt-shift / miniature depth-of-field on select cinematic and replay angles (TV), toggleable.
 - [x] Bubble Hockey v0.9: soft movement spring for thumb-held players (MOVE_SPRING) + flick keeps some carry whip (WHIP); goalie freeze (cover ~5 s or glove save -> whistle, coast, faceoff at the zone dot).
 - [x] Bubble Hockey v0.9.1: goalie depth (GD: out 1.5x / back 0.25x, AI cuts angles, settles on quiet play, further on breakaways, tight when wide/behind); goalie <-> skater body shoves (gBody); human strip forward/back sets depth (arrows); AI forwards mostly shoot, sometimes drive (AIF); Wild puck toggle (WILD, ⚙, default on).
+- [x] Bubble Hockey v0.9.2: phone held-player cue: thick feathered personal ring + soft glow under the thumb with a feathered tether to the player (view3d CUE constants: ringIn/ringOut/solid/feather/ringA/glowR/glowA/tetherW/tetherA); sparkles removed. TV rings unchanged.
 - [ ] Bubble Hockey: tune goalie depth vs scoring rate with real players; human goalie lunge/check animation polish; wild-puck bounce feel review.
 - [ ] Bubble Hockey: zone faceoffs - players line up around the zone dot (they currently coast to their usual slot spots); serve-slot pop visual at the zone dots.
 - [ ] Bubble Hockey: real glove-hand side per goalie model (current glove save is a proxy: hard shot to one side, ~30% chance).

@@ -82,6 +82,21 @@
     var arm = new THREE.Group(), ab = new THREE.Mesh(new THREE.BoxGeometry(r * .45, .022, r * .45), jer), gl = new THREE.Mesh(new THREE.SphereGeometry(r * .42, 8, 6), dark); ab.position.y = .011; gl.position.y = .024; arm.add(ab); arm.add(gl); arm.position.set(0, .042, -r * .95); arm.visible = false; p.add(arm); p.userData.arm = arm;
     return p; }
   function beamTex() { var c = document.createElement('canvas'); c.width = 128; c.height = 32; var x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 128, 0); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.beginPath(); x.moveTo(0, 14); x.lineTo(128, 0); x.lineTo(128, 32); x.lineTo(0, 18); x.fill(); return new THREE.CanvasTexture(c); }
+  // phone held-player cue: thick feathered ring + soft glow under the thumb + feathered tether between them
+  var CUE = { ringIn: .85, ringOut: 1.55, solid: .45, feather: .55, ringA: .9, glowR: .8, glowA: .45, tetherW: .5, tetherA: .3 };
+  function ringTex() { var c = document.createElement('canvas'); c.width = c.height = 128; var x = c.getContext('2d'), ri = CUE.ringIn / CUE.ringOut, rs = ri + (1 - ri) * CUE.solid, g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(Math.max(0, ri - .02), 'rgba(255,255,255,0)'); g.addColorStop(ri, 'rgba(255,255,255,1)'); g.addColorStop(rs, 'rgba(255,255,255,1)'); g.addColorStop(Math.min(1, rs + (1 - rs) * (1 - CUE.feather) * .5), 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); }
+  function tetherTex() { var c = document.createElement('canvas'); c.width = 64; c.height = 64; var x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 64); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); }
+  R3.prototype.thumbCue = function (held, dt) { var G = this.puck.parent, c = this.cue;
+    if (!c) { function m(t) { return new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0, depthWrite: false }); } function pl(t) { var q = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), m(t)); q.rotation.x = -Math.PI / 2; q.renderOrder = 3; G.add(q); return q; }
+      c = this.cue = { ring: pl(ringTex()), glow: pl(dotTex('rgba(255,255,255,1)')), teth: pl(tetherTex()), a: 0, last: -1 }; c.teth.rotation.order = 'YXZ'; }
+    var on = held >= 0 && this.pl[held]; if (on) c.last = held; c.a += ((on ? 1 : 0) - c.a) * Math.min(1, dt * (on ? 14 : 8)); var i = c.last, vis = c.a > .01 && i >= 0;
+    [c.ring, c.glow, c.teth].forEach(function (q) { q.visible = vis; }); if (!vis) return;
+    var p = this.pl[i], hp = p.position, rgm = p.userData.ring, col = rgm.material.color; if (on) rgm.visible = false;
+    var d = B.R * CUE.ringOut * 2; c.ring.scale.set(d, d, 1); c.ring.position.set(hp.x, .003, hp.z); c.ring.material.color.copy(col); c.ring.material.opacity = CUE.ringA * c.a;
+    var T = this.V.thumb; if (on && T) { c.tp = L3(T[0], T[1], 0); } if (!c.tp) { c.glow.visible = c.teth.visible = false; return; }
+    var gx = c.tp.x, gz = c.tp.z, g = B.R * CUE.glowR * 2; c.glow.scale.set(g, g, 1); c.glow.position.set(gx, .0035, gz); c.glow.material.color.copy(col); c.glow.material.opacity = CUE.glowA * c.a;
+    var dx = gx - hp.x, dz = gz - hp.z, len = Math.hypot(dx, dz); c.teth.visible = len > B.R * .3; c.teth.position.set((gx + hp.x) / 2, .0032, (gz + hp.z) / 2); c.teth.rotation.set(-Math.PI / 2, Math.atan2(-dz, dx), 0, 'YXZ'); c.teth.scale.set(len, B.R * CUE.tetherW * 2, 1); c.teth.material.color.copy(c.glow.material.color); c.teth.material.opacity = CUE.tetherA * c.a; };
   function dotTex(col) { var c = document.createElement('canvas'); c.width = c.height = 64; var x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, col); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); }
   R3.prototype.dom = function () {
     var d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:6;overflow:hidden';
@@ -188,7 +203,7 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     // comet thread: a thin gold ribbon behind the puck, tapering to nothing and fading fast; length/brightness scale mildly with speed
     this.fsp += (sp - this.fsp) * Math.min(1, dt * 8); this.ribbon(pp, this.puck.position.y, this.puck.visible, dt);
     // the player under your thumb sparkles (phone)
-    if (opt.held >= 0) { var hp = this.pl[opt.held].position; for (k = 0; k < 2; k++) { var a = Math.random() * 7, rr2 = B.R * (1.1 + Math.random() * .5); this.parts.push({ p: new THREE.Vector3(hp.x + Math.cos(a) * rr2, .055, hp.z + Math.sin(a) * rr2), v: new THREE.Vector3(Math.cos(a) * .08, .05, Math.sin(a) * .08), c: new THREE.Color(k % 2 ? 0xffb300 : 0xff5a00), l: .7, l0: .7, g: 0 }); } }
+    this.thumbCue(opt.held, dt);
     // particles
     var P = this.parts, n = 0, pos = this.pPos, col = this.pCol; this.parts = P.filter(function (p) { p.l -= dt; if (p.l <= 0) return false; p.v.y -= p.g * .9 * dt; p.p.addScaledVector(p.v, dt); return true; });
     this.parts.forEach(function (p) { if (n >= 900) return; var f = Math.min(1, p.l / p.l0 * 1.5); pos[n * 3] = p.p.x; pos[n * 3 + 1] = p.p.y; pos[n * 3 + 2] = p.p.z; col[n * 3] = lerp(1, p.c.r, f); col[n * 3 + 1] = lerp(1, p.c.g, f); col[n * 3 + 2] = lerp(1, p.c.b, f); n++; });
