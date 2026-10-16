@@ -25,7 +25,7 @@
   function face(t) { return t ? 1 : -1; }   // y direction a team attacks
   function goalOf(t) { return t ? L - GY : GY; } // the goal line team t shoots at
   function Sim() { this.ai = [false, true]; this.diff = .85; this.reset(); }
-  Sim.prototype.reset = function () { this.u = TR.map(function (tr) { return tr.k === 'G' || tr.k === 'D' ? .5 : .5; }); this.sc = [0, 0]; this.time = TIME; this.over = -1; this.grab = [-1, -1, -1, -1, -1, -1]; this.fing = [null, null, null, null, null, null]; this.side = 0; this.o = TR.map(function () { return [0, 0]; }); this.ko = TR.map(function () { return [0, 0]; }); this.dn = TR.map(function () { return 0; }); this.sn = TR.map(function () { return 0; }); this.ln = TR.map(function () { return 0; }); this.ot = [null, null]; this.lf = [-9, -9, -9, -9, -9, -9]; this.cd = {}; this.prevP = []; this.ang = TR.map(function (tr) { return tr.t ? Math.PI / 2 : -Math.PI / 2; }); this.faceoff(); };
+  Sim.prototype.reset = function () { this.u = TR.map(function (tr) { return tr.k === 'G' || tr.k === 'D' ? .5 : .5; }); this.sc = [0, 0]; this.time = TIME; this.over = -1; this.grab = []; this.fing = []; for (var h0 = 0; h0 < 10; h0++) { this.grab.push(-1); this.fing.push(null); } this.side = 0; this.o = TR.map(function () { return [0, 0]; }); this.ko = TR.map(function () { return [0, 0]; }); this.dn = TR.map(function () { return 0; }); this.sn = TR.map(function () { return 0; }); this.ln = TR.map(function () { return 0; }); this.ot = [null, null]; this.lf = [-9, -9, -9, -9, -9, -9, -9, -9, -9, -9]; this.cd = {}; this.prevP = []; this.ang = TR.map(function (tr) { return tr.t ? Math.PI / 2 : -Math.PI / 2; }); this.faceoff(); };
   Sim.prototype.faceoff = function () { this.p = [.5, L / 2]; this.z = 0; this.vz = 0; this.launch = true; this.air = false; this.v = [(Math.random() - .5) * .25, (Math.random() - .5) * .25]; this.c = -1; this.pause = 1.1; this.msg = 'FACE OFF'; this.to = -1; this.cool = -1; this.coolT = 0; this.hold = 0; this.ev = ''; };
   Sim.prototype.pp = function (i) { var q = pos(TR[i], this.u[i]), o = this.o ? this.o[i] : null; return o ? [q[0] + o[0], q[1] + o[1]] : q; };
   Sim.prototype.team = function (i) { return i < 6 ? 0 : 1; };
@@ -53,8 +53,8 @@
     var ang = exact + Math.sign(bd) * err, dist = Math.hypot(q2[0] - cp[0], q2[1] - cp[1]);
     this.release([Math.cos(ang), Math.sin(ang)], cl(sp, .8, 3.2), best); this.ev = 'pass'; return best; };
   // input from a team (local or over the net): {t:'grab',i} {t:'drag',x,y} {t:'rel'} {t:'tap'} {t:'flick',dx,dy,sp}
-  Sim.prototype.fg = function (i) { for (var h = 0; h < 6; h++) if (this.grab[h] === i && this.fing[h]) return this.fing[h]; return null; };
-  Sim.prototype.held = function (t) { for (var h = t; h < 6; h += 2) if (this.grab[h] >= 0) return true; return false; };
+  Sim.prototype.fg = function (i) { for (var h = 0; h < 10; h++) if (this.grab[h] === i && this.fing[h]) return this.fing[h]; return null; };
+  Sim.prototype.held = function (t) { for (var h = t; h < 10; h += 2) if (this.grab[h] >= 0) return true; return false; };
   // hand (default = team) lets several phones share a side; allow = list of player indexes that phone may grab
   Sim.prototype.input = function (team, m, hand, allow) { if (hand == null) hand = team;
     if (this.over >= 0) { if (m.t === 'tap') this.reset(); return; }

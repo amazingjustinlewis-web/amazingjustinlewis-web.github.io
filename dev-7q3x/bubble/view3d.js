@@ -51,7 +51,9 @@
       var len = B.R * .5 + tr.sl * .25, st = new THREE.Mesh(new THREE.BoxGeometry(len, .008, .009), mat(0x5a3a1c)); st.position.set(len / 2, .012, 0); p.add(st);
       var bl = new THREE.Mesh(new THREE.BoxGeometry(.012, .012, .03), mat(0x111111)); bl.position.set(len, .008, -.008); p.add(bl);
       var sh = new THREE.Mesh(new THREE.CircleGeometry(B.R * .62, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: .18 })); sh.rotation.x = -Math.PI / 2; sh.position.set(.006, .001, .006); p.add(sh);
-      p.userData.stick = st; p.userData.blade = bl; p.userData.len = len; G.add(p); return p; });
+      p.userData.stick = st; p.userData.blade = bl; p.userData.len = len;
+      // controller ring in the grabbing person's colour; the gap inside it (body edge to inner radius) is kept free for a future health ring
+      var rg = new THREE.Mesh(new THREE.RingGeometry(B.R * .85, B.R * 1.05, 28), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .95, depthWrite: false })); rg.rotation.x = -Math.PI / 2; rg.position.y = .0025; rg.visible = false; p.add(rg); p.userData.ring = rg; G.add(p); return p; });
     var pk = this.puck = new THREE.Mesh(new THREE.CylinderGeometry(B.PR, B.PR, .012, 20), mat(0x111111)); G.add(pk);
     var gm = new THREE.SpriteMaterial({ map: dotTex('rgba(150,220,255,1)'), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }); this.glow = new THREE.Sprite(gm); this.glow.scale.set(.09, .09, 1); G.add(this.glow);
     // trail + fireworks + held-player particles share one Points buffer
@@ -110,10 +112,14 @@
   function lerp(a, b, k) { return a + (b - a) * k; }
   function frameAt(F, t) { var i = 1; while (i < F.length - 1 && F[i].t < t) i++; var a = F[i - 1], b = F[i], k = Math.max(0, Math.min(1, (t - a.t) / ((b.t - a.t) || 1)));
     return { p: [lerp(a.p[0], b.p[0], k), lerp(a.p[1], b.p[1], k)], u: a.u.map(function (v, j) { return lerp(v, b.u[j], k); }), o: a.o.map(function (v, j) { return [lerp(v[0], b.o[j][0], k), lerp(v[1], b.o[j][1], k)]; }),
-      a: a.a.map(function (v, j) { return v + Math.atan2(Math.sin(b.a[j] - v), Math.cos(b.a[j] - v)) * k; }), c: k < .5 ? a.c : b.c, z: lerp(a.z || 0, b.z || 0, k), pz: 0 }; }
-  R3.prototype.place = function (st) {
+      a: a.a.map(function (v, j) { return v + Math.atan2(Math.sin(b.a[j] - v), Math.cos(b.a[j] - v)) * k; }), c: k < .5 ? a.c : b.c, gc: (k < .5 ? a : b).gc, z: lerp(a.z || 0, b.z || 0, k), pz: 0 }; }
+  var SPRING_W = 160;   // visual smoothing stiffness (rad/s); higher = tighter. ~6 ms time constant: lag ~2v/W, about .012 at a fast 1 rink-width/s
+  R3.prototype.place = function (st) { this.spr = this.spr || [];
     for (var i = 0; i < 12; i++) { var tr = B.TR[i], q = B.pos(tr, st.u[i]), o = st.o ? st.o[i] : [0, 0], p = this.pl[i], an = st.a ? st.a[i] : 0;
-      p.position.copy(L3(q[0] + o[0], q[1] + o[1], 0)); p.rotation.set(0, Math.atan2(-Math.cos(an), Math.sin(an)), 0); p.userData.stick.material.color.setHex(st.sw === i ? 0xffffff : 0x5a3a1c);
+      var tg = L3(q[0] + o[0], q[1] + o[1], 0), sp = this.spr[i], h = this._dt || 0;   // visual-only critically damped spring (sim keeps true positions)
+      if (!sp || h <= 0 || Math.hypot(sp.x - tg.x, sp.z - tg.z) > .15) sp = this.spr[i] = { x: tg.x, z: tg.z, vx: 0, vz: 0 };
+      else { var ex = Math.exp(-SPRING_W * h), e1 = sp.x - tg.x, j1 = sp.vx + SPRING_W * e1, e2 = sp.z - tg.z, j2 = sp.vz + SPRING_W * e2; sp.x = tg.x + (e1 + j1 * h) * ex; sp.vx = (sp.vx - j1 * SPRING_W * h) * ex; sp.z = tg.z + (e2 + j2 * h) * ex; sp.vz = (sp.vz - j2 * SPRING_W * h) * ex; }
+      p.position.set(sp.x, 0, sp.z); var rgc = st.gc && st.gc[i]; p.userData.ring.visible = !!rgc; if (rgc) p.userData.ring.material.color.set(rgc); p.rotation.set(0, Math.atan2(-Math.cos(an), Math.sin(an)), 0); p.userData.stick.material.color.setHex(st.sw === i ? 0xffffff : 0x5a3a1c);
       var lnv = st.ln ? st.ln[i] : 0, dnv = st.dn ? st.dn[i] : 0, sk = p.userData.stick, bl = p.userData.blade, ln0 = p.userData.len, ext = 1 + Math.min(1, lnv / .3) * 2.2;   // snag/check lunge: lean in, stick shoots out
       sk.scale.x = ext; sk.position.x = ln0 * ext / 2; bl.position.x = ln0 * ext; p.position.y = 0;
       if (dnv > 0) { var tt = 1.5 - dnv, lie = tt < .25 ? tt / .25 : dnv < .45 ? dnv / .45 : 1; p.userData.spin = (p.userData.spin || (Math.random() - .5) * 16); p.rotateY(p.userData.spin * Math.max(0, 1 - tt) * .05); p.rotateZ(lie * Math.PI / 2 * .92); p.position.y = lie * .01 + Math.abs(Math.sin(tt * 9)) * .006 * Math.max(0, 1 - tt * 2); }
@@ -131,7 +137,7 @@
   R3.prototype.render = function (st, dt, opt) {
     opt = opt || {}; this.clock += dt; var W = this.cv.clientWidth, H = this.cv.clientHeight; if (this.W !== W || this.H !== H) { this.W = W; this.H = H; this.gl.setSize(W, H, false); }
     // record history (skip while paused)
-    if (!this.rep && !(st.pz > 0)) { this.hist.push({ t: this.clock, p: st.p.slice(), u: st.u.slice(), o: (st.o || st.u.map(function () { return [0, 0]; })).map(function (q) { return q.slice(); }), a: (st.a || st.u.map(function () { return 0; })).slice(), c: st.c, z: st.z || 0 });
+    if (!this.rep && !(st.pz > 0)) { this.hist.push({ t: this.clock, p: st.p.slice(), u: st.u.slice(), o: (st.o || st.u.map(function () { return [0, 0]; })).map(function (q) { return q.slice(); }), a: (st.a || st.u.map(function () { return 0; })).slice(), c: st.c, z: st.z || 0, gc: st.gc ? st.gc.slice() : null });
       while (this.hist.length && this.hist[0].t < this.clock - 5) this.hist.shift(); }
     // buzzer right before the puck is spat out (pz counts down; pop starts at .55)
     if (st.pz > .02 && st.pz < .5 && !this.buzzed) { this.buzzed = true; buzz(); } if (!(st.pz > 0)) this.buzzed = false;
@@ -147,9 +153,9 @@
         if (Math.random() < dt * 22) this.camFlash(); }
       else { ban.style.opacity = 0; flash.style.opacity = 0; var seg = null, acc = 0; for (var si = 0; si < R.segs.length; si++) { var sg = R.segs[si], dur = (sg[1] - sg[0]) / sg[2]; if (T < acc + dur) { seg = sg; break; } acc += dur; }
         if (!seg) { this.rep = null; this.d.querySelector('.b3rep').style.opacity = 0; this.d.querySelector('.b3bars').style.opacity = 0; }
-        else { var ct = seg[0] + (T - acc) * seg[2], fr = frameAt(R.F, R.F[0].t + ct); show = { p: fr.p, u: fr.u, o: fr.o, a: fr.a, c: fr.c, z: fr.z, sc: st.sc, sw: -1 }; this.d.querySelector('.b3rep').style.opacity = 1; this.d.querySelector('.b3bars').style.opacity = this.phone ? 0 : 1;
+        else { var ct = seg[0] + (T - acc) * seg[2], fr = frameAt(R.F, R.F[0].t + ct); show = { p: fr.p, u: fr.u, o: fr.o, a: fr.a, c: fr.c, z: fr.z, gc: fr.gc, sc: st.sc, sw: -1 }; this.d.querySelector('.b3rep').style.opacity = 1; this.d.querySelector('.b3bars').style.opacity = this.phone ? 0 : 1;
           cam = this.persp; cam.aspect = W / H; cam.updateProjectionMatrix(); this.shot(seg[3], fr, R, dt, seg !== R.cur); R.cur = seg; } } }
-    var pp = this.place(show); this.refStep(show, dt);
+    this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     // puck trail + glow at speed (visual only)
     var lt = this.trail; lt.push([pp[0], pp[1]]); if (lt.length > 8) lt.shift(); var sp = lt.length > 1 ? Math.hypot(lt[lt.length - 1][0] - lt[lt.length - 2][0], lt[lt.length - 1][1] - lt[lt.length - 2][1]) / Math.max(dt, .001) : 0;
     this.glow.position.copy(this.puck.position); this.glow.material.opacity = Math.max(0, Math.min(.8, (sp - .6) * .5)) * (this.puck.visible ? 1 : 0);
