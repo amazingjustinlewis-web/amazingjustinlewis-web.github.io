@@ -3,7 +3,7 @@
   'use strict';
   var B = root.Bubble, COL = ['#ff5a6e', '#3aa8ff'];
   function View() { this.team = 0; this.s = 1; this.ox = 0; this.oy = 0; this.fit(innerWidth, innerHeight, 0); }
-  View.prototype.fit = function (W, H, top) { top = top || 0; this.s = Math.min(W * .78, (H - top) * .84 / B.L); this.ox = W / 2 - this.s / 2; this.oy = top + (H - top) / 2 - this.s * B.L / 2; };
+  View.prototype.fit = function (W, H, top) { top = top || 0; this.s = Math.min(W * .74, (H - top) * .84 / B.L); this.ox = W / 2 - this.s / 2; this.oy = top + (H - top) / 2 - this.s * B.L / 2; };
   View.prototype.w2s = function (x, y) { if (this.team) { x = 1 - x; y = B.L - y; } return [this.ox + x * this.s, this.oy + y * this.s]; };
   View.prototype.s2w = function (X, Y) { var x = (X - this.ox) / this.s, y = (Y - this.oy) / this.s; return this.team ? [1 - x, B.L - y] : [x, y]; };
   // v0.1.1: classic bubble hockey cabinet. Wood-ish cabinet, rink boards with yellow kickplate, metal-rimmed player slots,
@@ -35,16 +35,19 @@
     [[B.GY, -1], [L - B.GY, 1]].forEach(function (g) { var p1 = P(.5 - B.GW, g[0]), p2 = P(.5 + B.GW, g[0] + g[1] * .05), X = Math.min(p1[0], p2[0]), Y = Math.min(p1[1], p2[1]), Wd = Math.abs(p2[0] - p1[0]), Hd = Math.abs(p2[1] - p1[1]);
       c.fillStyle = '#dfe6ee'; c.fillRect(X, Y, Wd, Hd); c.strokeStyle = '#9aa6b5'; c.lineWidth = 1; for (var k = 1; k < 8; k++) line(c, [X + Wd * k / 8, Y], [X + Wd * k / 8, Y + Hd]); c.strokeStyle = '#d8344c'; c.lineWidth = Math.max(2, s * .008); c.strokeRect(X, Y, Wd, Hd); });
     // player slots: metal rim + dark groove (the rods run underneath)
-    c.lineCap = 'round'; B.TR.forEach(function (tr) { var A = P(tr.a[0], tr.a[1]), Bq = P(tr.b[0], tr.b[1]); c.strokeStyle = '#a9b3c0'; c.lineWidth = s * .03; line(c, A, Bq); c.strokeStyle = '#1a2130'; c.lineWidth = s * .018; line(c, A, Bq); c.strokeStyle = '#ffffff55'; c.lineWidth = 1; line(c, [A[0] - 1, A[1] - s * .012], [Bq[0] - 1, Bq[1] - s * .012]); });
+    c.lineCap = 'round'; c.lineJoin = 'round'; B.TR.forEach(function (tr) { function path() { c.beginPath(); tr.p.forEach(function (q, k) { var Q = P(q[0], q[1]); if (k) c.lineTo(Q[0], Q[1]); else c.moveTo(Q[0], Q[1]); }); c.stroke(); }
+      c.strokeStyle = '#c3ccd666'; c.lineWidth = s * .017; path(); c.strokeStyle = '#4a556a55'; c.lineWidth = s * .007; path(); });
     // centre-ice serve slot (tiny metal rectangle). The puck blasts up out of it at every face-off.
     var sw = s * .075, sh = s * .022, mg = c.createLinearGradient(m[0] - sw / 2, m[1] - sh, m[0] + sw / 2, m[1] + sh); mg.addColorStop(0, '#f1f4f8'); mg.addColorStop(.5, '#8b95a3'); mg.addColorStop(1, '#d7dde5');
     c.fillStyle = mg; c.fillRect(m[0] - sw / 2 - 2, m[1] - sh / 2 - 2, sw + 4, sh + 4); c.fillStyle = '#05070c'; c.fillRect(m[0] - sw / 2 + 2, m[1] - sh / 2 + 2, sw - 4, sh - 4);
     // players: shadow, stick, jersey, helmet
     for (i = 0; i < 12; i++) { var tr2 = B.TR[i], q = B.pos(tr2, st.u[i]), Qp = P(q[0], q[1]), t = tr2.t, fy = (t ? 1 : -1) * (this.team ? -1 : 1), r = B.R * s;
       c.fillStyle = '#0003'; c.beginPath(); c.ellipse(Qp[0] + r * .18, Qp[1] + r * .25, r * 1.02, r * 1.02, 0, 0, 7); c.fill();
-      c.strokeStyle = '#3b2a1a'; c.lineWidth = r * .24; line(c, [Qp[0] + r * .5, Qp[1] + fy * r * .2], [Qp[0] + r * .3, Qp[1] + fy * r * 1.3]); c.strokeStyle = '#111'; line(c, [Qp[0] + r * .3, Qp[1] + fy * r * 1.3], [Qp[0] - r * .1, Qp[1] + fy * r * 1.4]);
+      var an = st.a ? st.a[i] : (t ? -1.57 : 1.57), Tw = [q[0] + Math.cos(an) * (B.R + tr2.sl), q[1] + Math.sin(an) * (B.R + tr2.sl)], Tq = P(Tw[0], Tw[1]), Bw = P(q[0] + Math.cos(an) * B.R * .4, q[1] + Math.sin(an) * B.R * .4);
+      c.strokeStyle = '#0003'; c.lineWidth = r * .32; line(c, [Bw[0] + r * .15, Bw[1] + r * .2], [Tq[0] + r * .15, Tq[1] + r * .2]);
+      c.strokeStyle = st.sw === i ? '#fff' : '#3b2a1a'; c.lineWidth = r * .3; line(c, Bw, Tq); c.fillStyle = '#111'; c.beginPath(); c.arc(Tq[0], Tq[1], r * .26, 0, 7); c.fill();
       var jg = c.createRadialGradient(Qp[0] - r * .3, Qp[1] - r * .3, r * .1, Qp[0], Qp[1], r); jg.addColorStop(0, '#fff8'); jg.addColorStop(.35, COL[t]); jg.addColorStop(1, t ? '#1d5fae' : '#b02a40'); c.fillStyle = jg; c.beginPath(); c.arc(Qp[0], Qp[1], r, 0, 7); c.fill();
-      c.fillStyle = tr2.k === 'G' ? '#f6f8fb' : '#20242e'; c.beginPath(); c.arc(Qp[0], Qp[1] - fy * r * .15, r * .48, 0, 7); c.fill();
+      c.fillStyle = tr2.k === 'G' ? '#f6f8fb' : '#20242e'; c.beginPath(); c.arc(Qp[0], Qp[1], r * .42, 0, 7); c.fill(); var Hq = P(q[0] + Math.cos(an) * B.R * .55, q[1] + Math.sin(an) * B.R * .55); c.fillStyle = '#fff9'; c.beginPath(); c.arc(Hq[0], Hq[1], r * .14, 0, 7); c.fill();
       if (st.g && st.g[t] === i) { c.strokeStyle = '#ffd23f'; c.lineWidth = 3; c.beginPath(); c.arc(Qp[0], Qp[1], r * 1.35, 0, 7); c.stroke(); }
       if (st.c === i) { c.strokeStyle = COL[t]; c.globalAlpha = .45 + .25 * Math.sin(now * 8); c.lineWidth = 3; c.beginPath(); c.arc(Qp[0], Qp[1], r * 1.7, 0, 7); c.stroke(); c.globalAlpha = 1; } }
     // puck: during a face-off it waits in the slot, then blasts up and drops onto the ice

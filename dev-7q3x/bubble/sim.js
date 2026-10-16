@@ -2,24 +2,43 @@
    point-mirror (x -> 1-x, y -> 1.8-y). Every player rides a fixed track (u = 0..1). AI slides everyone you are not touching. */
 (function (root) {
   'use strict';
-  var L = 1.8, PR = .022, R = .036, GW = .085, GY = .095, WIN = 5, TIME = 180;
-  var T0 = [[.40, 1.62, .60, 1.62, 'G'], [.08, 1.36, .46, 1.36, 'D'], [.54, 1.36, .92, 1.36, 'D'], [.12, .42, .12, 1.14, 'W'], [.42, .58, .42, 1.18, 'C'], [.72, .42, .72, 1.14, 'W']];
-  var TR = []; [0, 1].forEach(function (t) { T0.forEach(function (k) { TR.push(t ? { a: [1 - k[0], L - k[1]], b: [1 - k[2], L - k[3]], k: k[4], t: 1 } : { a: [k[0], k[1]], b: [k[2], k[3]], k: k[4], t: 0 }); }); });
+  var L = 1.6, PR = .022, R = .034, GW = .085, GY = .09, WIN = 5, TIME = 180;
+  // v0.2 curved slots (Super Chexx style), authored as if defending y=0, then flipped so team 0 defends the bottom (y=L). Polylines; team 1 is the point mirror. Not left-right symmetric on purpose.
+  // stick lengths follow the Chexx rods: wingers long, centre medium, defence short.
+  var T0 = [
+    { k: 'G', sl: .04, p: [[.38, .135], [.44, .15], [.5, .155], [.56, .15], [.62, .135]] },
+    { k: 'D', sl: .05, p: [[.46, .34], [.30, .345], [.18, .32], [.11, .23], [.12, .11], [.20, .045], [.34, .035], [.44, .035]] },
+    { k: 'D', sl: .05, p: [[.55, .30], [.70, .31], [.83, .28], [.89, .19], [.87, .08], [.78, .04], [.64, .035], [.55, .035]] },
+    { k: 'W', sl: .08, p: [[.11, .44], [.09, .62], [.09, .86], [.12, 1.12]] },
+    { k: 'C', sl: .065, p: [[.47, 1.2], [.48, 1.06], [.48, .9], [.44, .79], [.35, .72], [.27, .70]] },
+    { k: 'W', sl: .08, p: [[.84, .46], [.85, .66], [.85, .9], [.82, 1.12]] }];
+  var TR = []; [0, 1].forEach(function (t) { T0.forEach(function (k) { var p = k.p.map(function (q) { return t ? [1 - q[0], q[1]] : [q[0], L - q[1]]; }), cum = [0];
+    for (var j = 1; j < p.length; j++) cum.push(cum[j - 1] + Math.hypot(p[j][0] - p[j - 1][0], p[j][1] - p[j - 1][1]));
+    TR.push({ p: p, cum: cum, len: cum[cum.length - 1], k: k.k, sl: k.sl, t: t, a: p[0], b: p[p.length - 1] }); }); });
   function cl(v, a, b) { return v < a ? a : v > b ? b : v; }
-  function proj(tr, x, y) { var dx = tr.b[0] - tr.a[0], dy = tr.b[1] - tr.a[1]; return cl(((x - tr.a[0]) * dx + (y - tr.a[1]) * dy) / (dx * dx + dy * dy), 0, 1); }
-  function pos(tr, u) { return [tr.a[0] + (tr.b[0] - tr.a[0]) * u, tr.a[1] + (tr.b[1] - tr.a[1]) * u]; }
+  function proj(tr, x, y) { var best = 0, bd = 9; for (var j = 1; j < tr.p.length; j++) { var a = tr.p[j - 1], b = tr.p[j], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy, f = cl(((x - a[0]) * dx + (y - a[1]) * dy) / l2, 0, 1), px = a[0] + dx * f - x, py = a[1] + dy * f - y, d = px * px + py * py;
+    if (d < bd) { bd = d; best = (tr.cum[j - 1] + Math.sqrt(l2) * f) / tr.len; } } return best; }
+  function pos(tr, u) { var s = cl(u, 0, 1) * tr.len; for (var j = 1; j < tr.p.length; j++) if (s <= tr.cum[j] || j === tr.p.length - 1) { var a = tr.p[j - 1], b = tr.p[j], f = (s - tr.cum[j - 1]) / ((tr.cum[j] - tr.cum[j - 1]) || 1); return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]; } }
+  function adiff(a, b) { return Math.atan2(Math.sin(a - b), Math.cos(a - b)); }
   function face(t) { return t ? 1 : -1; }   // y direction a team attacks
   function goalOf(t) { return t ? L - GY : GY; } // the goal line team t shoots at
   function Sim() { this.ai = [false, true]; this.diff = .85; this.reset(); }
-  Sim.prototype.reset = function () { this.u = TR.map(function (tr) { return tr.k === 'G' || tr.k === 'D' ? .5 : .5; }); this.sc = [0, 0]; this.time = TIME; this.over = -1; this.grab = [-1, -1]; this.fing = [null, null]; this.side = 0; this.faceoff(); };
+  Sim.prototype.reset = function () { this.u = TR.map(function (tr) { return tr.k === 'G' || tr.k === 'D' ? .5 : .5; }); this.sc = [0, 0]; this.time = TIME; this.over = -1; this.grab = [-1, -1]; this.fing = [null, null]; this.side = 0; this.ang = TR.map(function (tr) { return tr.t ? Math.PI / 2 : -Math.PI / 2; }); this.faceoff(); };
   Sim.prototype.faceoff = function () { this.p = [.5, L / 2]; this.v = [(Math.random() - .5) * .25, (Math.random() - .5) * .25]; this.c = -1; this.pause = 1.1; this.msg = 'FACE OFF'; this.to = -1; this.cool = -1; this.coolT = 0; this.hold = 0; this.ev = ''; };
   Sim.prototype.pp = function (i) { return pos(TR[i], this.u[i]); };
   Sim.prototype.team = function (i) { return i < 6 ? 0 : 1; };
-  Sim.prototype.carryPos = function () { var i = this.c, P = this.pp(i), t = this.team(i), sx = t ? -1 : 1; return [P[0] + this.side * .034 * sx, P[1] + face(t) * (R + PR + .004)]; };
-  Sim.prototype.release = function (dir, sp, to) { var i = this.c; if (i < 0) return; var m = Math.hypot(dir[0], dir[1]) || 1; this.p = this.carryPos(); this.v = [dir[0] / m * sp, dir[1] / m * sp]; this.cool = i; this.coolT = .25; this.to = to == null ? -1 : to; this.c = -1; this.hold = 0; this.side = 0; };
+  Sim.prototype.carryPos = function () { var i = this.c, P = this.pp(i), a = this.ang[i], d = R + TR[i].sl * .75 + PR * .6; return [P[0] + Math.cos(a) * d, P[1] + Math.sin(a) * d]; };
+  Sim.prototype.tip = function (i) { var P = this.pp(i), a = this.ang[i], d = R + TR[i].sl; return [P[0] + Math.cos(a) * d, P[1] + Math.sin(a) * d]; };
+  Sim.prototype.release = function (dir, sp, to, pt) { var i = this.c; if (i < 0) return; var m = Math.hypot(dir[0], dir[1]) || 1; this.ang[i] = Math.atan2(dir[1], dir[0]); this.swing = [i, .18]; this.p = this.carryPos(); if (pt) { dir = [pt[0] - this.p[0], pt[1] - this.p[1]]; m = Math.hypot(dir[0], dir[1]) || 1; } this.v = [dir[0] / m * sp, dir[1] / m * sp]; this.cool = i; this.coolT = .25; this.to = to == null ? -1 : to; this.c = -1; this.hold = 0; this.side = 0; };
   Sim.prototype.shoot = function (dir, sp) { var i = this.c; if (i < 0) return; var t = this.team(i), cp = this.carryPos(), gy = goalOf(t);
-    if (!dir) { var g = this.pp(t ? 0 : 6), aimX = .5 + (g[0] < .5 ? 1 : -1) * GW * .6 + (Math.random() - .5) * .05; dir = [aimX - cp[0], gy - cp[1]]; sp = 2.7; }
-    this.release(dir, cl(sp || 2.6, 1.6, 3.1)); this.ev = 'shot'; };
+    if (!dir) { var ln = this.lane(cp, t); dir = [ln[0], ln[1]]; var pt = [ln[3][0] + (Math.random() - .5) * .03, ln[3][1]]; sp = 2.8; }
+    this.release(dir, cl(sp || 2.6, 1.6, 3.1), null, pt); this.ev = 'shot'; };
+  // pick the most open lane to the net: sample aim points across the mouth, score by clearance from every body and stick blade on the way
+  Sim.prototype.lane = function (cp, t) { var gy = goalOf(t), best = .5, bc = -1, me = this;
+    for (var k = -4; k <= 4; k++) { var ax = .5 + k / 4 * GW * .45, dx = ax - cp[0], dy = gy - face(t) * .02 - cp[1], l2 = dx * dx + dy * dy, cmin = 9;
+      for (var i = 0; i < 12; i++) { if (i === this.c) continue; [this.pp(i), this.tip(i)].forEach(function (q) { var f = cl(((q[0] - cp[0]) * dx + (q[1] - cp[1]) * dy) / l2, 0, 1); if (f < .02) return; var d = Math.hypot(cp[0] + dx * f - q[0], cp[1] + dy * f - q[1]); if (d < cmin) cmin = d; }); }
+      cmin -= Math.abs(k) * .002; if (cmin > bc) { bc = cmin; best = ax; } }
+    return [best - cp[0], gy - cp[1], bc, [best, gy - face(t) * .02]]; };
   // pass: generous aim assist. Picks the teammate closest in angle (within 75 deg). Within 40% of that cone the pass is near-straight;
   // further off, the pass errs in proportion to how far off the flick was.
   Sim.prototype.pass = function (dir, sp) { var i = this.c; if (i < 0) return; var t = this.team(i), cp = this.carryPos(), fa = Math.atan2(dir[1], dir[0]), best = -1, bd = 9, me = this;
@@ -38,10 +57,10 @@
     else if (m.t === 'drag') this.fing[team] = [m.x, m.y];
     else if (m.t === 'rel') { this.grab[team] = -1; this.fing[team] = null; }
     else if (this.c >= 0 && this.team(this.c) === team && this.pause <= 0) { if (m.t === 'tap') this.shoot(); else if (m.t === 'flick') this.pass([m.dx, m.dy], m.sp); } };
-  Sim.prototype.aiCarrier = function (dt) { var i = this.c, t = this.team(i), P = this.pp(i), gy = goalOf(t); this.hold += dt;
-    this.side = Math.sin(this.hold * 7 + i) * .8;
+  Sim.prototype.aiCarrier = function (dt) { var i = this.c, t = this.team(i), P = this.pp(i), gy = goalOf(t); this.hold += dt; if (this.hold > 2.6 && TR[i].k === 'G') { this.release([0, face(t)], 1.6); this.ev = 'pass'; return; }
+    var P0 = this.pp(i); this.aimA = Math.atan2(gy - P0[1], .5 - P0[0]) + Math.sin(this.hold * 7 + i) * .7;
     if (this.hold < .55 + (1 - this.diff) * .8) return;
-    var dg = Math.abs(P[1] - gy); if (dg < .62 || (TR[i].k === 'C' && dg < .8)) { var g = this.pp(t ? 0 : 6), ax = .5 + (g[0] < .5 ? 1 : -1) * GW * .55 + (Math.random() - .5) * .07 * (1.4 - this.diff); this.release([ax - P[0], gy - P[1]], 2.5); this.ev = 'shot'; return; }
+    var dg = Math.abs(P[1] - gy); if (dg < .62 || (TR[i].k === 'C' && dg < .8)) { var ln = this.lane(this.carryPos(), t); if (ln[2] < PR + .01 && this.hold < 2.2 && dg > .3) return; ln[3][0] += (Math.random() - .5) * .06 * (1.4 - this.diff); this.release([ln[0], ln[1]], 2.5, null, ln[3]); this.ev = 'shot'; return; }
     var best = -1, by = 9; for (var j = t * 6; j < t * 6 + 6; j++) { if (j === i) continue; var q = this.pp(j), adv = Math.abs(q[1] - gy); if (adv < Math.abs(P[1] - gy) - .05 && adv < by) { by = adv; best = j; } }
     if (best < 0) best = t * 6 + 4; var cp = this.carryPos(), q2 = this.pp(best), dx = q2[0] - cp[0], dy = q2[1] - cp[1], e = (Math.random() - .5) * .3 * (1.2 - this.diff), a = Math.atan2(dy, dx) + e;
     this.release([Math.cos(a), Math.sin(a)], cl(Math.hypot(dx, dy) * 2.4 + .7, 1.1, 2.4), best); this.ev = 'pass'; };
@@ -49,22 +68,28 @@
     var me = this; this.ev = '';
     if (this.over >= 0) return;
     this.time -= dt; if (this.time <= 0) { this.time = 0; if (this.sc[0] !== this.sc[1]) { this.over = this.sc[0] > this.sc[1] ? 0 : 1; return; } this.msg = 'SUDDEN DEATH'; }
+    if (this.swing) this.swing[1] -= dt;
     if (this.pause > 0) { this.pause -= dt; if (this.pause <= 0) this.msg = ''; }
     // move players
     var tgt = this.c >= 0 ? this.carryPos() : [this.p[0] + this.v[0] * .18, this.p[1] + this.v[1] * .18], own = this.c >= 0 ? this.team(this.c) : -1;
     for (var i = 0; i < 12; i++) { var tr = TR[i], t = tr.t, want, spd;
       if (this.grab[t] === i && this.fing[t]) { want = proj(tr, this.fing[t][0], this.fing[t][1]); spd = 3.2;
-        if (i === this.c && (tr.k === 'W' || tr.k === 'C')) this.side = cl((this.fing[t][0] - this.pp(i)[0]) * (t ? -1 : 1) / .05, -1, 1); }
+        }
       else if (i === this.c && this.ai[t]) { want = t ? 0 : 0; want = proj(tr, .5, goalOf(t)); spd = .35; }
       else if (i === this.c) { want = this.u[i]; spd = 0; this.side *= Math.exp(-dt * 2); }
-      else { var lead = own === t && tr.k !== 'G' && tr.k !== 'D' ? -face(t) * -.12 : 0; want = proj(tr, tgt[0], tgt[1] + lead); spd = (this.ai[t] ? .75 + this.diff * .35 : 1.0) * (tr.k === 'G' ? 1.3 : 1); }
-      var du = want - this.u[i], len = Math.hypot(tr.b[0] - tr.a[0], tr.b[1] - tr.a[1]), mx = spd * dt / len; this.u[i] += cl(du, -mx, mx); }
+      else { var lead = own === t && tr.k !== 'G' && tr.k !== 'D' ? -face(t) * -.12 : 0; want = proj(tr, tgt[0], tgt[1] + lead); spd = (this.ai[t] ? .75 + this.diff * .35 : 1.0) * (tr.k === 'G' ? 1.6 : tr.k === 'D' && own >= 0 && own !== t ? .8 : 1); }
+      var du = want - this.u[i], mx = spd * dt / tr.len; this.u[i] += cl(du, -mx, mx);
+      var P = this.pp(i), ta;
+      if (this.grab[t] === i && this.fing[t] && Math.hypot(this.fing[t][0] - P[0], this.fing[t][1] - P[1]) > R * .8) ta = Math.atan2(this.fing[t][1] - P[1], this.fing[t][0] - P[0]);
+      else if (i === this.c) ta = this.aimA != null && this.ai[t] ? this.aimA : Math.atan2(goalOf(t) - P[1], .5 - P[0]);
+      else ta = Math.atan2(tgt[1] - P[1], tgt[0] - P[0]);
+      var rate = i === this.c ? 7 : 10; this.ang[i] += cl(adiff(ta, this.ang[i]), -rate * dt, rate * dt); }
     if (this.pause > 0) return;
     if (this.coolT > 0) { this.coolT -= dt; if (this.coolT <= 0) this.cool = -1; }
     if (this.c >= 0) { var ct = this.team(this.c);
       if (this.ai[ct] && this.grab[ct] < 0) this.aiCarrier(dt); else { this.hold += dt; if (this.hold > 6) { this.ev = 'auto'; this.pass([0, face(ct)], 1.6); } }
       if (this.c >= 0) { var cp = this.carryPos(); this.p = cp; this.v = [0, 0];
-        for (i = (1 - ct) * 6; i < (1 - ct) * 6 + 6; i++) { var q = this.pp(i); if (Math.hypot(q[0] - cp[0], q[1] - cp[1]) < R + PR + .006) { if (Math.random() < dt * 5) { this.c = i; this.hold = 0; this.side = 0; this.ev = 'steal'; } else if (Math.random() < dt * 4) { var n = [cp[0] - q[0], cp[1] - q[1]], m = Math.hypot(n[0], n[1]) || 1; this.cool = this.c; this.coolT = .3; this.c = -1; this.v = [n[0] / m * .7, n[1] / m * .7]; this.ev = 'poke'; } break; } } }
+        for (i = (1 - ct) * 6; i < (1 - ct) * 6 + 6; i++) { var q = this.tip(i); if (Math.hypot(q[0] - cp[0], q[1] - cp[1]) < PR + .02) { if (Math.random() < dt * 2.2) { this.c = i; this.hold = 0; this.side = 0; this.ev = 'steal'; } else if (Math.random() < dt * 2) { var n = [cp[0] - q[0], cp[1] - q[1]], m = Math.hypot(n[0], n[1]) || 1; this.cool = this.c; this.coolT = .3; this.c = -1; this.v = [n[0] / m * .7, n[1] / m * .7]; this.ev = 'poke'; } break; } } }
       if (this.c >= 0) return; }
     // loose puck
     var sub = 3; for (var k = 0; k < sub; k++) { var h = dt / sub; this.p[0] += this.v[0] * h; this.p[1] += this.v[1] * h; var f = Math.exp(-.55 * h); this.v[0] *= f; this.v[1] *= f;
@@ -74,12 +99,15 @@
       if (y < .05 + PR) { this.p[1] = .05 + PR; this.v[1] = Math.abs(this.v[1]) * .8; } if (y > L - .05 - PR) { this.p[1] = L - .05 - PR; this.v[1] = -Math.abs(this.v[1]) * .8; }
       // posts
       [[.5 - GW, GY], [.5 + GW, GY], [.5 - GW, L - GY], [.5 + GW, L - GY]].forEach(function (po) { var dx = me.p[0] - po[0], dy = me.p[1] - po[1], d = Math.hypot(dx, dy); if (d < PR + .008) { var nx = dx / d, ny = dy / d, vn = me.v[0] * nx + me.v[1] * ny; me.p = [po[0] + nx * (PR + .008), po[1] + ny * (PR + .008)]; if (vn < 0) { me.v[0] -= 1.8 * vn * nx; me.v[1] -= 1.8 * vn * ny; } me.ev = 'post'; } });
-      for (i = 0; i < 12; i++) { if (i === this.cool) continue; var Q = this.pp(i), dx = this.p[0] - Q[0], dy = this.p[1] - Q[1], d = Math.hypot(dx, dy); if (d >= R + PR) continue;
+      var off = Math.random() < .5 ? 0 : 6; for (var n = 0; n < 12; n++) { i = (n + off) % 12; if (i === this.cool) continue; var Pb = this.pp(i), Tp = this.tip(i), sx = Tp[0] - Pb[0], sy = Tp[1] - Pb[1], sl2 = sx * sx + sy * sy, ff = cl(((this.p[0] - Pb[0]) * sx + (this.p[1] - Pb[1]) * sy) / sl2, 0, 1), cx = Pb[0] + sx * ff, cy = Pb[1] + sy * ff, ddx = this.p[0] - cx, ddy = this.p[1] - cy, dd = Math.hypot(ddx, ddy);
+        if (ff > .45 && dd < PR + .006) { var sp3 = Math.hypot(this.v[0], this.v[1]); if (sp3 < (i === this.to ? 9 : TR[i].k === 'G' ? 1.6 : 1.2)) { this.c = i; this.hold = 0; this.to = -1; this.aimA = null; if (TR[i].k === 'G') this.ev = 'save'; return; }
+          var nx2 = ddx / (dd || 1), ny2 = ddy / (dd || 1), vn2 = this.v[0] * nx2 + this.v[1] * ny2; this.p = [cx + nx2 * (PR + .006), cy + ny2 * (PR + .006)]; if (vn2 < 0) { this.v[0] -= 1.7 * vn2 * nx2; this.v[1] -= 1.7 * vn2 * ny2; } this.ev = TR[i].k === 'G' ? 'save' : 'bump'; continue; }
+        var Q = this.pp(i), dx = this.p[0] - Q[0], dy = this.p[1] - Q[1], d = Math.hypot(dx, dy); if (d >= R + PR) continue;
         var spd2 = Math.hypot(this.v[0], this.v[1]), catchV = i === this.to ? 9 : TR[i].k === 'G' ? 1.7 : 1.25;
-        if (spd2 < catchV) { this.c = i; this.hold = 0; this.side = 0; this.to = -1; if (TR[i].k === 'G') this.ev = 'save'; return; }
+        if (spd2 < catchV) { this.c = i; this.hold = 0; this.side = 0; this.to = -1; this.aimA = null; if (TR[i].k === 'G') this.ev = 'save'; return; }
         var nx = dx / d, ny = dy / d, vn = this.v[0] * nx + this.v[1] * ny; this.p = [Q[0] + nx * (R + PR), Q[1] + ny * (R + PR)]; if (vn < 0) { this.v[0] -= 1.7 * vn * nx; this.v[1] -= 1.7 * vn * ny; this.v[0] *= .8; this.v[1] *= .8; } this.ev = TR[i].k === 'G' ? 'save' : 'bump'; } }
   };
-  Sim.prototype.goal = function (t) { this.sc[t]++; this.ev = 'goal' + t; if (this.sc[t] >= WIN || this.time <= 0) { this.over = t; this.msg = ''; return; } this.faceoff(); this.msg = 'GOAL!'; this.pause = 1.8; this.lastGoal = t; };
-  Sim.prototype.snap = function () { function r(x) { return Math.round(x * 1000) / 1000; } return { t: 's', u: this.u.map(r), p: this.p.map(r), c: this.c, sd: r(this.side), sc: this.sc, tm: Math.ceil(this.time), ov: this.over, msg: this.msg, pz: r(Math.max(0, this.pause)), g: this.grab.slice(), ev: this.ev }; };
-  root.Bubble = { Sim: Sim, TR: TR, L: L, PR: PR, R: R, GW: GW, GY: GY, pos: pos };
+  Sim.prototype.goal = function (t) { this.sc[t]++; this.ev = 'goal' + t; if (this.sc[t] >= WIN || this.time <= 0) { this.over = t; this.msg = ''; return; } this.faceoff(); this.ev = 'goal' + t; this.msg = 'GOAL!'; this.pause = 1.8; this.lastGoal = t; };
+  Sim.prototype.snap = function () { function r(x) { return Math.round(x * 1000) / 1000; } return { t: 's', u: this.u.map(r), p: this.p.map(r), c: this.c, sd: r(this.side), a: this.ang.map(r), sw: this.swing && this.swing[1] > 0 ? this.swing[0] : -1, sc: this.sc, tm: Math.ceil(this.time), ov: this.over, msg: this.msg, pz: r(Math.max(0, this.pause)), g: this.grab.slice(), ev: this.ev }; };
+  root.Bubble = { Sim: Sim, TR: TR, L: L, PR: PR, R: R, GW: GW, GY: GY, pos: pos, proj: proj };
 })(window);

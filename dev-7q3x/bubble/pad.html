@@ -3,13 +3,13 @@
 <style>body{background:#0c1226}#score{position:fixed;left:0;right:0;top:6px;text-align:center;z-index:5;font-size:20px;font-weight:700}#score span.t{font-weight:400;opacity:.7;font-size:15px;margin:0 10px}
 #hostq{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:210px;background:#000c;border-radius:16px;padding:12px;text-align:center;z-index:7;display:none}#hostq .kcode{font-size:24px}#kjoin .btn{width:100%;margin-top:8px}
 #tip{position:fixed;left:0;right:0;bottom:8px;text-align:center;font-size:12px;opacity:.6;z-index:4;pointer-events:none}</style></head><body>
-<canvas id="cv" class="full"></canvas><div id="score"></div><div class="big" id="big" style="opacity:0"></div><div id="tip">drag a player along his slot \u00b7 with the puck: slide to dangle \u00b7 flick to a teammate to pass \u00b7 tap to shoot</div>
+<canvas id="cv" class="full"></canvas><div id="score"></div><div class="big" id="big" style="opacity:0"></div><div id="tip">drag a player along his slot \u00b7 your finger turns his stick \u00b7 flick toward a teammate to pass \u00b7 tap to shoot</div>
 <div id="hostq"><div id="hq"></div><p style="margin:6px 0 0;font-size:14px">Friend scans to join.<br>The computer plays until they do.</p></div><div class="st" id="st"></div>
 <script>window.MINI = 'bubble';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="sim.js"></script><script src="view.js"></script>
 <script>
 (function () {
   var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), ctx = cv.getContext('2d'), dpr = 1, V = new BubbleView(), sim = null, host = null, c = null, st = null, team = 0, names = ['You', 'Computer'], trail = [];
-  $('tip').textContent = 'drag a player along his slot \u00b7 with the puck: slide to dangle \u00b7 flick toward a teammate to pass \u00b7 tap to shoot';
+  $('tip').textContent = 'drag a player along his slot \u00b7 your finger turns his stick \u00b7 flick toward a teammate to pass \u00b7 tap to shoot';
   function size() { dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; V.fit(innerWidth, innerHeight - 30, 34); } addEventListener('resize', size); size();
   function local(withHost) { var k = $('kjoin'); if (k) { var nmv = k.querySelector('#kname'); if (nmv) { c.name = (nmv.value || 'Player').trim(); localStorage.setItem('ztp-mini-name', c.name); names[0] = c.name; } mirror = !!(c.room && $('mir') && $('mir').checked); if (mirror) c.setName(c.name); k.remove(); } sim = new Bubble.Sim(); team = 0; V.team = 0; Kit.phase('play');
     if (withHost) { host = Kit.host({ max: 1, onJoin: function (p) { sim.ai[1] = false; names[1] = p.name; sim.reset(); $('hostq').style.display = 'none'; host.send(p, { t: 'team', team: 1 }); },
