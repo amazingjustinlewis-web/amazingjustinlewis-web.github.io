@@ -8,7 +8,7 @@
 <script>window.MINI = 'bubble';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="tracks.js"></script><script src="sim.js"></script><script src="view.js"></script><script src="three.min.js"></script><script src="view3d.js"></script>
 <script>
 (function () {
-  var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), R3 = null, dpr = 1, V = new BubbleView(), sim = null, host = null, c = null, st = null, team = 0, names = ['You', 'Computer'], trail = [];
+  var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), R3 = null, dpr = 1, V = new BubbleView(), sim = null, host = null, c = null, st = null, team = 0, hand = 0, names = ['You', 'Computer'], trail = [];
   $('tip').textContent = 'drag a player along his slot \u00b7 your finger turns his stick \u00b7 flick toward a teammate to pass \u00b7 tap to shoot';
   function size() { dpr = devicePixelRatio || 1;  V.fit(innerWidth, innerHeight - 30, 34); } addEventListener('resize', size); size();
   function local(withHost) { var k = $('kjoin'); if (k) { var nmv = k.querySelector('#kname'); if (nmv) { c.name = (nmv.value || 'Player').trim(); localStorage.setItem('ztp-mini-name', c.name); names[0] = c.name; } mirror = !!(c.room && $('mir') && $('mir').checked); if (mirror) c.setName(c.name); k.remove(); } sim = new Bubble.Sim(); team = 0; V.team = 0; Kit.phase('play');
@@ -16,7 +16,7 @@
       onLeave: function () { sim.ai[1] = true; names[1] = 'Computer'; }, onMsg: function (p, m) { sim.input(1, m); } });
       host.qr($('hq')); $('hostq').style.display = 'block'; $('hostq').onclick = function () { this.style.display = 'none'; }; } }
   var mirror = false, mirT = 0;
-  c = Kit.pad({ onMsg: function (m) { if (sim) return; if (m.t === 'team') { team = m.team; V.team = team; } else if (m.t === 's') { st = m; if (m.names) names = m.names; } }, onStatus: function (s) { $('st').textContent = s === 'online' ? '' : s; } });
+  c = Kit.pad({ onMsg: function (m) { if (sim) return; if (m.t === 'team') { team = m.team; V.team = team; V.allow = m.allow || null; hand = m.hand == null ? team : m.hand; if (m.role) $('tip').textContent = 'you play ' + m.role + ' \u00b7 flick to pass \u00b7 tap to shoot'; } else if (m.t === 's') { st = m; if (m.names) names = m.names; } }, onStatus: function (s) { $('st').textContent = s === 'online' ? '' : s; } });
   var jc = Kit.joinCard('BUBBLE HOCKEY', c, (c.room ? '<label style="display:flex;gap:10px;align-items:center;justify-content:center;margin:10px 0 0;font-size:16px"><input type="checkbox" id="mir" checked style="width:22px;height:22px"> Also show on screen</label>' : '') + '<button class="btn" id="vsai">\uD83E\uDD16 Play the computer</button><button class="btn" id="host2">\uD83D\uDCF1\uD83D\uDCF1 Host a match for 2 phones</button><p style="font-size:13px">First to 5 or 3 minutes. Your goal is at the bottom.</p>');
   if (c.room) { jc.querySelector('#kgo').textContent = '\uD83D\uDCFA Use the TV as the table'; jc.querySelector('#kgo').classList.remove('go'); jc.querySelector('h1').insertAdjacentElement('afterend', jc.querySelector('#kname')); var vb = $('vsai'); vb.classList.add('go'); jc.querySelector('#kname').insertAdjacentElement('afterend', $('mir').parentNode); $('mir').parentNode.insertAdjacentElement('afterend', vb); }
   if ($('vsai')) { $('vsai').onclick = function () { local(false); }; $('host2').onclick = function () { local(true); }; }
@@ -25,7 +25,7 @@
   var last = 0, sendT = 0;
   (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t;
     if (sim) { sim.step(dt); st = sim.snap(); if (st.ev.indexOf('goal') === 0 && navigator.vibrate) navigator.vibrate(120); if (mirror) { mirT += dt; if (mirT > 1 / 20) { mirT = 0; st.names = [names[0], names[1]]; c.send({ t: 'mirror', s: st }); } } if (host && host.players[0]) { sendT += dt; if (sendT > 1 / 30) { sendT = 0; st.names = [names[0], names[1]]; host.send(host.players[0], st); } } }
-        if (st) { R3 = R3 || new Bubble3D(cv, V, { phone: true }); R3.render(st, dt, { held: st.g ? st.g[team] : -1 });
+        if (st) { R3 = R3 || new Bubble3D(cv, V, { phone: true }); R3.render(st, dt, { held: st.g ? st.g[sim ? team : hand] : -1 });
       var o = 1 - team, C = BubbleCOL; $('score').innerHTML = '<span style="color:' + C[team] + '">' + names[team === 0 ? 0 : 1].replace(/</g, '') + ' ' + st.sc[team] + '</span><span class="t">' + Math.floor(st.tm / 60) + ':' + ('0' + st.tm % 60).slice(-2) + '</span><span style="color:' + C[o] + '">' + st.sc[o] + ' ' + names[o].replace(/</g, '') + '</span>';
       var b = $('big'); if (st.ov >= 0) { b.innerHTML = (st.ov === team ? 'YOU WIN!' : 'They win') + '<div style="font-size:.4em;color:#fff">tap to play again</div>'; b.style.opacity = 1; } else if (st.msg && st.msg !== 'GOAL!' && !(R3 && R3.replaying())) { b.textContent = st.msg; b.style.opacity = 1; } else b.style.opacity = 0; }
     requestAnimationFrame(loop); })(0);

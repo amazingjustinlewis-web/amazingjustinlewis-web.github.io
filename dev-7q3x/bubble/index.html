@@ -6,22 +6,26 @@
 <script>window.MINI = 'bubble';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script><script src="tracks.js"></script><script src="sim.js"></script><script src="view.js"></script><script src="three.min.js"></script><script src="view3d.js"></script>
 <script>
 (function () {
-  var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), R3 = null, dpr = 1, V = new BubbleView(), sim = new Bubble.Sim(), seats = [null, null], demo = true, trail = [];
+  var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), R3 = null, dpr = 1, V = new BubbleView(), sim = new Bubble.Sim(), demo = true, trail = [];
   sim.ai = [true, true];
-  function nm(i) { if (mirroring()) return mir.names[i]; return seats[i] && !sim.ai[i] ? seats[i].name : 'Computer'; }
-  var host = Kit.host({ max: 2, onJoin: function (p) { seats[p.seat] = p; sim.ai[p.seat] = false; host.send(p, { t: 'team', team: p.seat }); if (demo) { demo = false; sim.reset(); Kit.phase('play'); } },
-    onLeave: function (p) { sim.ai[p.seat] = true; }, onMsg: function (p, m) { if (m.t === 'mirror') { if (!p.mir) { p.mir = 1; if (seats[p.seat] === p) { seats[p.seat] = null; sim.ai[p.seat] = true; } } mir = m.s; mirAt = performance.now(); if (demo) { demo = false; Kit.phase('play'); } return; } if (p.mir) return; sim.input(p.seat, m); } });
+  // team play: up to 3 phones a side, teams by join order (alternate). Split: 1 phone = all six; 2 = goalie+D / forwards; 3 = goalie / D / forwards.
+  var plist = [], ROLE = { 1: [['all', [0, 1, 2, 3, 4, 5]]], 2: [['G+D', [0, 1, 2]], ['F', [3, 4, 5]]], 3: [['G', [0]], ['D', [1, 2]], ['F', [3, 4, 5]]] };
+  function assign() { [0, 1].forEach(function (t) { var hs = plist.filter(function (p) { return p.tm === t; }); sim.ai[t] = hs.length === 0;
+      hs.forEach(function (p, k) { var R = ROLE[hs.length][k]; p.hand = t + 2 * k; p.allow = R[1].map(function (j) { return j + t * 6; }); p.role = R[0]; sim.input(t, { t: 'rel' }, p.hand); host.send(p, { t: 'team', team: t, hand: p.hand, allow: hs.length > 1 ? p.allow : null, role: hs.length > 1 ? ({ 'G+D': 'goalie + defence', F: 'the forwards', G: 'goalie', D: 'defence' })[R[0]] : null }); }); }); }
+  function nm(i, roles) { if (mirroring()) return mir.names[i]; var hs = plist.filter(function (p) { return p.tm === i; }); if (!hs.length) return 'Computer'; return hs.map(function (p) { return String(p.name).replace(/</g, '') + (roles && hs.length > 1 ? ' <small style="opacity:.7">(' + p.role + ')</small>' : ''); }).join(' \u00b7 '); }
+  var host = Kit.host({ max: 6, onJoin: function (p) { if (plist.indexOf(p) < 0) { var n0 = plist.filter(function (q) { return q.tm === 0; }).length, n1 = plist.length - n0; p.tm = n0 <= n1 ? (n0 < 3 ? 0 : 1) : (n1 < 3 ? 1 : 0); plist.push(p); } assign(); if (demo) { demo = false; sim.reset(); Kit.phase('play'); } },
+    onLeave: function (p) { plist = plist.filter(function (q) { return q !== p; }); if (p.hand != null) sim.input(p.tm, { t: 'rel' }, p.hand); assign(); }, onMsg: function (p, m) { if (m.t === 'mirror') { if (!p.mir) { p.mir = 1; plist = plist.filter(function (q) { return q !== p; }); assign(); } mir = m.s; mirAt = performance.now(); if (demo) { demo = false; Kit.phase('play'); } return; } if (p.mir || p.hand == null) return; sim.input(p.tm, m, p.hand, p.allow); } });
   var mir = null, mirAt = 0; function mirroring() { return mir && performance.now() - mirAt < 3000; }
-  host.qr($('join')); $('big').innerHTML = 'BUBBLE HOCKEY<div style="font-size:.4em;color:#fff">scan to play \u00b7 1 phone = vs computer, 2 phones = head to head</div>';
+  host.qr($('join')); $('big').innerHTML = 'BUBBLE HOCKEY<div style="font-size:.4em;color:#fff">scan to play \u00b7 1-6 phones \u00b7 teams by join order, up to 3 a side \u00b7 computer fills an empty side</div>';
   function size() { dpr = devicePixelRatio || 1;  V.fit(innerWidth, innerHeight, innerHeight * .1, true, innerHeight * .08); } addEventListener('resize', size); size();
   var last = 0, sendT = 0;
   (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; sim.step(dt); if (demo && sim.over >= 0) sim.reset();
     var st = mirroring() ? mir : sim.snap(); $('join').style.display = mirroring() ? 'none' : ''; sendT += dt; if (sendT > 1 / 30) { sendT = 0; st.names = [nm(0), nm(1)]; host.all(st); }
     R3 = R3 || new Bubble3D(cv, V); R3.render(st, dt, { action: true });
-    $('sc').innerHTML = '<span style="color:' + BubbleCOL[1] + '">' + nm(1) + ' ' + st.sc[1] + '</span><span class="t">' + Math.floor(st.tm / 60) + ':' + ('0' + st.tm % 60).slice(-2) + '</span><span style="color:' + BubbleCOL[0] + '">' + st.sc[0] + ' ' + nm(0) + '</span>'; $('sc2').textContent = '\u25C0 ' + nm(1) + ' defends left \u00b7 first to 5 or 3:00 \u00b7 ' + nm(0) + ' defends right \u25B6';
+    $('sc').innerHTML = '<span style="color:' + BubbleCOL[1] + '">' + nm(1, 1) + ' ' + st.sc[1] + '</span><span class="t">' + Math.floor(st.tm / 60) + ':' + ('0' + st.tm % 60).slice(-2) + '</span><span style="color:' + BubbleCOL[0] + '">' + st.sc[0] + ' ' + nm(0, 1) + '</span>'; $('sc2').textContent = '\u25C0 ' + nm(1) + ' defends left \u00b7 first to 5 or 3:00 \u00b7 ' + nm(0) + ' defends right \u25B6';
     var b = $('big'); if (demo) b.style.opacity = 1; else if (st.ov >= 0) { b.innerHTML = nm(st.ov) + ' wins!<div style="font-size:.4em;color:#fff">tap a phone to play again</div>'; b.style.opacity = 1; } else if (st.msg && st.msg !== 'GOAL!' && !(R3 && R3.replaying())) { b.textContent = st.msg; b.style.opacity = 1; } else b.style.opacity = 0;
     requestAnimationFrame(loop); })(0);
   cv.addEventListener('pointerdown', function () { if (mirroring()) return; sim.input(0, { t: 'skip' }); });
-  Kit.over(function () { return !demo && sim.over >= 0; }, 40000); window.BHT = { sim: sim, host: host };
+  Kit.over(function () { return !demo && sim.over >= 0; }, 40000); window.BHT = { sim: sim, host: host, get plist() { return plist; } };
 })();
 </script></body></html>

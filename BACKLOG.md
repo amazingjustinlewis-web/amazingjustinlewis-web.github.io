@@ -99,3 +99,6 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
   9. Line-change buttons, penalties, reformed lines when short-handed.
   10. Penalty shot mode: 10-20% speed, zoomed red-line-to-net view, goalie vs one freer-moving skater; gentle flicks deke, forward flick shoots relative to the stick (may become the general subtle stick-control system).
   11. Keep the current fast speed; optional speed settings at join are fine.
+- Bubble Hockey later: two proxy bar guys standing at the table who yank, shove, pull and twist the rods (softly simulated from which players are active); super slow-mo replays fly in over their shoulders into the bubble.
+- Bubble Hockey later: separate hockey-player, goalie and ref proxies; penalties, injuries, line changes.
+- Bubble Hockey performance plan: phones can drop the extras (bar guys, ref, crowd, particles) if it chugs.

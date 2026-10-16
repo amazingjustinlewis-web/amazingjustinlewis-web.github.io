@@ -73,7 +73,7 @@
   function Gestures(el, V, getSt, send) {
     var id = null, pts = [], t0 = 0, start = null;
     el.addEventListener('pointerdown', function (e) { if (id !== null) { send({ t: 'tap' }); return; } id = e.pointerId; var w = V.s2w(e.clientX, e.clientY), st = getSt(); t0 = performance.now(); start = w; pts = [[w[0], w[1], t0]];
-      var best = -1, bd = .1; if (st) for (var i = V.team * 6; i < V.team * 6 + 6; i++) { var q = B.pos(B.TR[i], st.u[i]); if (st.o) q = [q[0] + st.o[i][0], q[1] + st.o[i][1]]; var d = Math.hypot(q[0] - w[0], q[1] - w[1]); if (d < bd) { bd = d; best = i; } }
+      var best = -1, bd = .1; if (st) for (var i = V.team * 6; i < V.team * 6 + 6; i++) { if (V.allow && V.allow.indexOf(i) < 0) continue; var q = B.pos(B.TR[i], st.u[i]); if (st.o) q = [q[0] + st.o[i][0], q[1] + st.o[i][1]]; var d = Math.hypot(q[0] - w[0], q[1] - w[1]); if (d < bd) { bd = d; best = i; } }
       send({ t: 'grab', i: best }); send({ t: 'drag', x: w[0], y: w[1] }); });
     el.addEventListener('pointermove', function (e) { if (e.pointerId !== id) return; var w = V.s2w(e.clientX, e.clientY), n = performance.now(); pts.push([w[0], w[1], n]); if (pts.length > 30) pts.shift(); if (!this.lt || n - this.lt > 30) { this.lt = n; send({ t: 'drag', x: w[0], y: w[1] }); } });
     function up(e) { if (e.pointerId !== id) return; id = null; var n = performance.now(), rec = pts.filter(function (p) { return n - p[2] < 120; }); var w = V.s2w(e.clientX, e.clientY), moved = Math.hypot(w[0] - start[0], w[1] - start[1]);
