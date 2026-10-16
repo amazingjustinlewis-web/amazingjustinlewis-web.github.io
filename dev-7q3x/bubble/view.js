@@ -85,7 +85,7 @@
     el.addEventListener('pointermove', function (e) { if (e.pointerId !== id) return; var w = pick(e.clientX, e.clientY), n = performance.now(); if (goalieT != null) { send({ t: 'drag', x: w[0], y: goalieT }); return; } pts.push([w[0], w[1], n]); if (pts.length > 30) pts.shift(); if (!this.lt || n - this.lt > 30) { this.lt = n; send({ t: 'drag', x: w[0], y: w[1] }); } });
     function up(e) { if (e.pointerId !== id) return; id = null; if (goalieT != null) { goalieT = null; send({ t: 'rel' }); return; } var n = performance.now(), rec = pts.filter(function (p) { return n - p[2] < 120; }); var w = pick(e.clientX, e.clientY), moved = Math.hypot(w[0] - start[0], w[1] - start[1]);
       send({ t: 'rel' });
-      if (n - t0 < 260 && moved < .035) { send({ t: 'tap' }); return; }
+      if (n - t0 < 260 && moved < .035) { send({ t: 'tap', x: start[0], y: start[1] }); return; }
       if (rec.length < 2) rec = pts.slice(-3); if (rec.length >= 2) { var a = rec[0], b = rec[rec.length - 1], dt = Math.max(.016, (b[2] - a[2]) / 1000), dx = (b[0] - a[0]) / dt, dy = (b[1] - a[1]) / dt, sp = Math.hypot(dx, dy); if (sp > .9) send({ t: 'flick', dx: dx, dy: dy, sp: Math.min(3.4, Math.max(.8, sp * .5)) }); } }
     el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
   }

@@ -45,6 +45,11 @@
       [-B.GW, B.GW].forEach(function (z) { var post = new THREE.Mesh(new THREE.CylinderGeometry(.005, .005, hh, 8), red); post.position.set(0, hh / 2, z); n.add(post); });
       var bar = new THREE.Mesh(new THREE.CylinderGeometry(.005, .005, B.GW * 2, 8), red); bar.rotation.x = Math.PI / 2; bar.position.set(0, hh, 0); n.add(bar);
       var mesh = new THREE.Mesh(new THREE.BoxGeometry(Math.abs(d), hh, B.GW * 2), new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: .35, side: THREE.DoubleSide })); mesh.position.set(d / 2, hh / 2, 0); n.add(mesh);
+      var lt = new THREE.Group(), dome = new THREE.Mesh(new THREE.SphereGeometry(.009, 12, 8, 0, 7, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x551018 })), base = new THREE.Mesh(new THREE.CylinderGeometry(.008, .009, .004, 12), mat(0x222222));
+      base.position.y = .002; dome.position.y = .004; lt.add(base); lt.add(dome); var spin = new THREE.Group(); spin.position.y = .008; lt.add(spin);
+      [0, Math.PI].forEach(function (a) { var bm = new THREE.Mesh(new THREE.PlaneGeometry(.2, .07), new THREE.MeshBasicMaterial({ map: beamTex(), color: 0xff2a2a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.NormalBlending, side: THREE.DoubleSide })); var bh = new THREE.Group(); bh.rotation.y = a; bm.rotation.x = -Math.PI / 2 + .35; bm.position.set(.1, 0, 0); bh.add(bm); spin.add(bh); });
+      var halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex('rgba(255,40,40,1)'), transparent: true, opacity: 0, depthWrite: false, blending: THREE.NormalBlending })); halo.scale.set(.11, .11, 1); halo.position.y = .008; lt.add(halo);
+      lt.position.set(d * .6, hh + .004, 0); n.add(lt); n.userData.light = { dome: dome, spin: spin, halo: halo, t: 0 };
       n.position.copy(L3(.5, gq[0])); G.add(n); self.nets.push(n); });
     // players: solid team-colour cylinders + stick + blade; blob shadow
     this.pl = B.TR.map(function (tr) { var p = new THREE.Group(); man(p, COLS[tr.t], tr.k === 'G');
@@ -71,6 +76,7 @@
     var hd = new THREE.Mesh(new THREE.SphereGeometry(r * .5, 12, 10), M(goalie ? 0xf2f2f2 : 0x20242e)); hd.position.y = .05 - r * .45; p.add(hd);
     var arm = new THREE.Group(), ab = new THREE.Mesh(new THREE.BoxGeometry(r * .45, .022, r * .45), jer), gl = new THREE.Mesh(new THREE.SphereGeometry(r * .42, 8, 6), dark); ab.position.y = .011; gl.position.y = .024; arm.add(ab); arm.add(gl); arm.position.set(0, .042, -r * .95); arm.visible = false; p.add(arm); p.userData.arm = arm;
     return p; }
+  function beamTex() { var c = document.createElement('canvas'); c.width = 128; c.height = 32; var x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 128, 0); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.beginPath(); x.moveTo(0, 14); x.lineTo(128, 0); x.lineTo(128, 32); x.lineTo(0, 18); x.fill(); return new THREE.CanvasTexture(c); }
   function dotTex(col) { var c = document.createElement('canvas'); c.width = c.height = 64; var x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, col); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); }
   R3.prototype.dom = function () {
     var d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:6;overflow:hidden';
@@ -115,6 +121,7 @@
     return { p: [lerp(a.p[0], b.p[0], k), lerp(a.p[1], b.p[1], k)], u: a.u.map(function (v, j) { return lerp(v, b.u[j], k); }), o: a.o.map(function (v, j) { return [lerp(v[0], b.o[j][0], k), lerp(v[1], b.o[j][1], k)]; }),
       a: a.a.map(function (v, j) { return v + Math.atan2(Math.sin(b.a[j] - v), Math.cos(b.a[j] - v)) * k; }), c: k < .5 ? a.c : b.c, gc: (k < .5 ? a : b).gc, z: lerp(a.z || 0, b.z || 0, k), pz: 0 }; }
   var SPRING_W = 160;   // visual smoothing stiffness (rad/s); higher = tighter. ~6 ms time constant: lag ~2v/W, about .012 at a fast 1 rink-width/s
+  var REP_TAIL = .4;   // each replay angle holds ~0.4 s on its last frame
   R3.prototype.place = function (st) { this.spr = this.spr || [];
     for (var i = 0; i < 12; i++) { var tr = B.TR[i], q = B.pos(tr, st.u[i]), o = st.o ? st.o[i] : [0, 0], p = this.pl[i], an = st.a ? st.a[i] : 0;
       var tg = L3(q[0] + o[0], q[1] + o[1], 0), sp = this.spr[i], h = this._dt || 0;   // visual-only critically damped spring (sim keeps true positions)
@@ -153,9 +160,9 @@
       if (R.t < R.wait) { var k = R.t / R.wait; flash.style.opacity = Math.max(0, .85 - k * 2.5) * (1 + Math.sin(R.t * 40) * .2); ban.style.opacity = Math.min(1, R.t * 5) * (k < .85 ? 1 : (1 - k) / .15); ban.style.transform = 'scale(' + (1 + Math.max(0, .25 - R.t) * 2) + ')';
         if (Math.random() < dt * 5) { var gy = R.team ? L - B.GY : B.GY; this.emit(.2 + Math.random() * .6, gy + (R.team ? -1 : 1) * (.1 + Math.random() * .4), .15 + Math.random() * .2, 70, R.team ? 0x9fd4ff : 0xffb3be, .5, 1.3, 1); }
         if (Math.random() < dt * 22) this.camFlash(); }
-      else { ban.style.opacity = 0; flash.style.opacity = 0; var seg = null, acc = 0; for (var si = 0; si < R.segs.length; si++) { var sg = R.segs[si], dur = (sg[1] - sg[0]) / sg[2]; if (T < acc + dur) { seg = sg; break; } acc += dur; }
+      else { ban.style.opacity = 0; flash.style.opacity = 0; var seg = null, acc = 0; for (var si = 0; si < R.segs.length; si++) { var sg = R.segs[si], dur = (sg[1] - sg[0]) / sg[2] + REP_TAIL; if (T < acc + dur) { seg = sg; break; } acc += dur; }
         if (!seg) { this.rep = null; this.d.querySelector('.b3rep').style.opacity = 0; this.d.querySelector('.b3bars').style.opacity = 0; }
-        else { var ct = seg[0] + (T - acc) * seg[2], fr = frameAt(R.F, R.F[0].t + ct); show = { p: fr.p, u: fr.u, o: fr.o, a: fr.a, c: fr.c, z: fr.z, gc: fr.gc, sc: st.sc, sw: -1 }; this.d.querySelector('.b3rep').style.opacity = 1; this.d.querySelector('.b3bars').style.opacity = this.phone ? 0 : 1;
+        else { var ct = Math.min(seg[1], seg[0] + (T - acc) * seg[2]), fr = frameAt(R.F, R.F[0].t + ct); show = { p: fr.p, u: fr.u, o: fr.o, a: fr.a, c: fr.c, z: fr.z, gc: fr.gc, sc: st.sc, sw: -1 }; this.d.querySelector('.b3rep').style.opacity = 1; this.d.querySelector('.b3bars').style.opacity = this.phone ? 0 : 1;
           cam = this.persp; cam.aspect = W / H; cam.updateProjectionMatrix(); this.shot(seg[3], fr, R, dt, seg !== R.cur); R.cur = seg; } } }
         if (MO && !R) {   // crazy-moment camera: swoops from high over the impact point down toward ice level as time slows
       var Gq = this.G, P3 = function (x, y, h) { return Gq.localToWorld(L3(x, y, h)); }, c = MO.c, d = MO.dir, sd = MO.pt[0] < .5 ? 1 : -1, hi = P3(MO.pt[0] - d[0] * .15, MO.pt[1] - d[1] * .15, 1.25), lo = P3(MO.pt[0] - d[0] * .34 + sd * .12, MO.pt[1] - d[1] * .34, .085);
@@ -174,6 +181,8 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     for (var z = n; z < 900; z++) pos[z * 3 + 1] = -9; this.pts.geometry.attributes.position.needsUpdate = true; this.pts.geometry.attributes.color.needsUpdate = true;
     this.pts.material.size = cam === this.ortho ? Math.max(4, this.V.s * .018) * Math.min(2, devicePixelRatio || 1) : .012; this.pts.material.sizeAttenuation = true;
     this.markers(cam, cam === this.ortho && (this.az || 1) > 1.05);
+    var rep = !!this.rep; this.nets.forEach(function (n) { var l = n.userData.light; if (!l) return; if (l.t > 0) l.t -= dt; if (!rep) l.rep = false; l.on = l.t > 0 || l.rep;
+      var k = l.on ? .75 + .25 * Math.sin(performance.now() / 90) : 0; l.dome.material.color.setHex(l.on ? 0xff3030 : 0x551018); l.spin.rotation.y += dt * 9; l.spin.children.forEach(function (b) { b.children[0].material.opacity = k * .8; }); l.halo.material.opacity = k * .9; });
     this.lastCam = cam; this.gl.render(this.scene, cam);
   };
   // screen -> rink through whatever camera drew the last frame (keeps touches right while zoomed)
@@ -198,13 +207,13 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     T.m.geometry.attributes.position.needsUpdate = true; T.m.geometry.attributes.color.needsUpdate = true; };
   R3.prototype.camFlash = function () { var f = document.createElement('div'), s = 4 + Math.random() * 10; f.style.cssText = 'position:absolute;width:' + s + 'px;height:' + s + 'px;border-radius:50%;background:#fff;box-shadow:0 0 14px 6px #fff;left:' + (Math.random() * 100) + '%;top:' + (Math.random() < .5 ? Math.random() * 14 : 86 + Math.random() * 14) + '%;transition:opacity .25s;opacity:1';
     this.d.appendChild(f); setTimeout(function () { f.style.opacity = 0; }, 60); setTimeout(function () { f.remove(); }, 400); };
-  R3.prototype.goal = function (team) {
+  R3.prototype.goal = function (team) { var nl = this.nets[team] && this.nets[team].userData.light; if (nl) { nl.t = 4.5; nl.rep = true; }
     var F = this.hist.slice(); while (F.length > 2 && Math.hypot(F[F.length - 1].p[0] - .5, F[F.length - 1].p[1] - L / 2) < .02) F.pop();   // drop the reset frame
     var D = this.phone ? 2.0 : 3.6, t1 = F[F.length - 1].t; F = F.filter(function (f) { return f.t >= t1 - D; }); if (F.length < 4) return; D = t1 - F[0].t;
     var ban = this.d.querySelector('.b3ban'); ban.textContent = 'GOAL!'; ban.style.color = team ? '#3aa8ff' : '#ff5a6e';
     // angle 1: high 3/4 view 1.5x out, normal speed; angle 2: 1.2x out at 75%; angle 3: close net cam at 2/3 of the old slow-mo (.2)
     var a1 = this.phone ? 1.4 : 2.0, a2 = this.phone ? .8 : 1.2, a3 = this.phone ? .35 : .45;
-    var segs = [[Math.max(0, D - a1), D, 1, 'top'], [Math.max(0, D - a2), D, .75, 'side'], [Math.max(0, D - a3), D, .2 * 2 / 3, 'net']];
+    var segs = [[Math.max(0, D - a1), D, 1, 'top'], [Math.max(0, D - a2), D, .75 / 1.1, 'side'], [Math.max(0, D - a3), D, .2 * 2 / 3 / 1.15, 'net']];
     this.rep = { F: F, team: team, t: 0, wait: this.phone ? 1.2 : 1.5, segs: segs, gy: team ? L - B.GY : B.GY, dir: team ? 1 : -1 };
   };
   R3.prototype.shot = function (kind, fr, R, dt, cut) {   // replay cameras, all at ice level

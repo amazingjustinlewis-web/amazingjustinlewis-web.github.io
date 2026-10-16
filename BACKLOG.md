@@ -113,3 +113,4 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Bubble Hockey: real glove-grab-down animation for the faceoff puck once the player models exist (v0.8.1 is a proxy lean + raised arm).
 - Bubble Hockey: varied movement animations per player (so the 12 guys don't all move identically).
 - Bubble Hockey performance plan: phones can drop the extras (bar guys, ref, crowd, particles) if it chugs.
+- [ ] Bubble Hockey (after v0.8.6): end-of-game highlight reel — keep each goal's replay buffer; after the final, play one replay per goal with a varied angle (slow following or static), scorer caption, skippable.

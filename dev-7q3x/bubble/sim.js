@@ -2,7 +2,7 @@
    point-mirror (x -> 1-x, y -> 1.8-y). Every player rides a fixed track (u = 0..1). AI slides everyone you are not touching. */
 (function (root) {
   'use strict';
-  var L = 2.0, PR = .022, R = .034, GW = .07, GY = .128, BL = .66, REACH = .055, GOALP = 9.4, MAGR = .045, MAGK = .0007, WIN = 5, TIME = 180;
+  var L = 2.0, PR = .022, R = .034, GW = .07, GY = .128, BL = .66, REACH = .055, GOALP = 10.4, MAGR = .045, MAGK = .0007, WIN = 5, TIME = 180;
   // v0.3 tracks come from tracks.js (sketch pixels, Catmull-Rom). Team 0 = sketch green (guards y=L), team 1 = sketch blue (guards y=0).
   var TB = root.BUBBLE_TRACKS, SK = TB.sketch;
   function sk(q) { return [(q[1] - SK.y0) / (SK.y1 - SK.y0), (q[0] - SK.x0) / (SK.x1 - SK.x0) * L]; }
@@ -16,6 +16,7 @@
   // v0.8: snag (thumb-down pick), one-timer, body checks
   var SNAG = { t: .45, spd: 4.2, free: .05 }, OT = { arm: 2.5, base: 2, press: 4, bounce: 3, max: 10, sp: 3.3 }, CHK = { min: .5, hard: 1.5, kb: .55, down: 1.5, cd: .4, maxO: .16 };
   var FO = { vz: 1.05, grabZ: .03 };   // faceoff: puck pops straight up out of the centre slot
+  var POKEX = 1.3;   // tap stick-check reach vs normal poke reach
   var HACK = { r: .14, max: Infinity, reach: .035, kick: 1.3, steal: .35 };   // slow-mo scramble: taps make your players near the puck jab at it (max = cap on players in the sphere)
   var AI = { goalieOut: .045, dMid: .22, dPress: .16, dStretch: .05, safeRe: .4, beat: .35, press: .055, rimP: .35, oneT: .4 };
   function cl(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -60,13 +61,18 @@
   Sim.prototype.input = function (team, m, hand, allow) { if (hand == null) hand = team;
     if (this.over >= 0) { if (m.t === 'tap') this.reset(); return; }
     if ((m.t === 'tap' || m.t === 'skip') && this.msg === 'GOAL!' && this.pause > 1.05) { this.pause = 1.05; return; }   // tap-to-skip the goal pause
-    if (m.t === 'tap' && this.mo && (this.c < 0 || this.team(this.c) !== team)) { this.hack(team, allow); return; }
-    if (m.t === 'tap' && this.c < 0 || (m.t === 'tap' && this.team(this.c) !== team)) { if ((this.clk || 0) - this.lf[hand] < OT.arm) { this.ot[team] = { t: this.clk, hand: hand }; this.ev = 'arm'; } return; }
+    // tap anytime: acts through YOUR player closest to the tap point (he shoots if he has the puck, else stick-checks).
+    // After a flick, a tap before contact arms a guaranteed one-timer for the next friendly touch (unless that receiver is held by a finger).
+    if (m.t === 'tap' && this.pause <= 0) { if (this.c < 0 && (this.clk || 0) - this.lf[hand] < OT.arm) { this.ot[team] = { t: this.clk, hand: hand }; this.ev = 'arm'; return; }
+      if (this.mo && (this.c < 0 || this.team(this.c) !== team)) { this.hack(team, allow); return; }
+      var tx = m.x != null ? m.x : this.p[0], ty = m.y != null ? m.y : this.p[1], who = -1, wd = 9; for (var ti = team * 6; ti < team * 6 + 6; ti++) { if (allow && allow.indexOf(ti) < 0) continue; if (this.dn[ti] > 0) continue; var tq = this.pp(ti), td = Math.hypot(tq[0] - tx, tq[1] - ty); if (td < wd) { wd = td; who = ti; } }
+      if (who < 0) return; if (who === this.c) { var oh = -1; for (var hh = team; hh < 10; hh += 2) if (this.grab[hh] === this.c) oh = hh; if (oh < 0 || oh === hand) this.shoot(); return; }
+      this.stickCheck(team, allow, who); return; }
     if (m.t === 'grab') { var gi = (m.i >= team * 6 && m.i < team * 6 + 6 && (!allow || allow.indexOf(m.i) >= 0)) ? m.i : -1; this.grab[hand] = gi; this.fing[hand] = null;
       if (gi >= 0 && m.snag && TR[gi].k !== 'G' && gi !== this.c && this.dn[gi] <= 0 && this.clear(this.pp(gi), team) > SNAG.free) { this.sn[gi] = SNAG.t; this.ln[gi] = .4; this.ev = 'snag'; } }
     else if (m.t === 'drag') this.fing[hand] = [m.x, m.y];
     else if (m.t === 'rel') { this.grab[hand] = -1; this.fing[hand] = null; }
-    else if (this.c >= 0 && this.team(this.c) === team && this.pause <= 0) { if (m.t === 'tap') this.shoot(); else if (m.t === 'flick') { this.pass([m.dx, m.dy], m.sp); this.lf[hand] = this.clk || 0; } } };
+    else if (this.c >= 0 && this.team(this.c) === team && this.pause <= 0) { if (m.t === 'flick') { this.pass([m.dx, m.dy], m.sp); this.lf[hand] = this.clk || 0; } } };
   // clearance of a point from the other team's bodies and blades
   Sim.prototype.clear = function (q, t) { var m = 9; for (var j = (1 - t) * 6; j < (1 - t) * 6 + 6; j++) { var a = this.pp(j), b = this.tip(j); m = Math.min(m, Math.hypot(a[0] - q[0], a[1] - q[1]), Math.hypot(b[0] - q[0], b[1] - q[1])); } return m; };
   // safest spot along player i's track (sampled), nudged toward the attacking end; cached for AI.safeRe seconds
@@ -171,9 +177,13 @@
         if (into > CHK.hard && TR[j].k !== 'G') { this.dn[j] = CHK.down; this.ev = 'bigcheck'; if (this.c === j) { this.c = -1; this.cool = j; this.coolT = .4; this.v = [nx * 1.2 + vx * .3, ny * 1.2 + vy * .3]; } } else this.ev = 'check';
         this.hit = { j: j, s: Math.min(1, into / 3) }; this.ln[i] = .35; this.ko[i][0] += nx * kb * .3; this.ko[i][1] += ny * kb * .3; } } };
   // armed one-timer: next own player to touch the puck fires it at the net, error cone grows with pressure / bouncing puck
-  Sim.prototype.onCatch = function (i) { var t = this.team(i), A = this.ot[t]; this.ot[1 - t] = null; if (!A) return; this.ot[t] = null; if (this.clk - A.t > OT.arm + 1) return;
+  Sim.prototype.onCatch = function (i) { var t = this.team(i), A = this.ot[t]; this.ot[1 - t] = null; if (!A) return; this.ot[t] = null; for (var fh = t; fh < 10; fh += 2) if (this.grab[fh] === i && this.fing[fh]) { this.ev = 'catch'; return; }
     var cp = this.carryPos(), gy = goalOf(t), pres = Math.max(0, 1 - this.clear(cp, t) / .08), bounce = this.z > .003 || Math.hypot(this.v[0], this.v[1]) > 2.2 ? 1 : 0, err = Math.min(OT.max, OT.base + OT.press * pres + OT.bounce * bounce) * Math.PI / 180 * (Math.random() * 2 - 1);
     var a = Math.atan2(gy - cp[1], .5 + (Math.random() - .5) * GW * .6 - cp[0]) + err; this.release([Math.cos(a), Math.sin(a)], OT.sp); this.ev = 'onetimer'; this.otFx = 1; };
+  Sim.prototype.stickCheck = function (team, allow, who) { var best = who != null ? who : -1, bd = who != null ? -1 : 9; for (var i = team * 6; i < team * 6 + 6; i++) { if (allow && allow.indexOf(i) < 0) continue; if (bd < 0) break; if (this.dn[i] > 0 || TR[i].k === 'G') continue; var q = this.pp(i), d = Math.hypot(q[0] - this.p[0], q[1] - this.p[1]); if (d < bd) { bd = d; best = i; } }
+    if (best < 0) return; var P = this.pp(best); this.ang[best] = Math.atan2(this.p[1] - P[1], this.p[0] - P[0]); this.ln[best] = .25; this.swing = [best, .15]; var T = this.tip(best), dd = Math.hypot(T[0] - this.p[0], T[1] - this.p[1]), reach = (PR + .02) * POKEX;
+    if (dd > reach || this.air) return; if (this.c >= 0) { var n = [this.p[0] - T[0], this.p[1] - T[1]], m = Math.hypot(n[0], n[1]) || 1; this.cool = this.c; this.coolT = .3; this.c = -1; this.v = [n[0] / m * .9, n[1] / m * .9]; this.ev = 'poke'; }
+    else { var gy = goalOf(team), a = Math.atan2(gy - this.p[1], .5 - this.p[0]) + (Math.random() - .5) * .8; this.v[0] += Math.cos(a) * 1.1; this.v[1] += Math.sin(a) * 1.1; this.ev = 'jab'; } };
   Sim.prototype.hack = function (team, allow) { var me = this, ids = []; for (var i = team * 6; i < team * 6 + 6; i++) { if (allow && allow.indexOf(i) < 0) continue; if (this.dn[i] > 0) continue; var q = this.pp(i), d = Math.hypot(q[0] - this.p[0], q[1] - this.p[1]); if (d < HACK.r) ids.push([d, i]); }
     ids.sort(function (a, b) { return a[0] - b[0]; }); ids = ids.slice(0, HACK.max); var gy = goalOf(team);
     ids.forEach(function (e) { var i = e[1], P = me.pp(i); me.ang[i] = Math.atan2(me.p[1] - P[1], me.p[0] - P[0]) + (Math.random() - .5) * .5; me.ln[i] = .22; me.swing = [i, .15]; var T = me.tip(i), dd = Math.hypot(T[0] - me.p[0], T[1] - me.p[1]);
