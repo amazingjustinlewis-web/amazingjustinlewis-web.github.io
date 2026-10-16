@@ -16,6 +16,7 @@
   // v0.8: snag (thumb-down pick), one-timer, body checks
   var SNAG = { t: .45, spd: 4.2, free: .05 }, OT = { arm: 2.5, base: 2, press: 4, bounce: 3, max: 10, sp: 3.3 }, CHK = { min: .5, hard: 1.5, kb: .55, down: 1.5, cd: .4, maxO: .16 };
   var FO = { vz: 1.05, grabZ: .03 };   // faceoff: puck pops straight up out of the centre slot
+  var HACK = { r: .14, max: Infinity, reach: .035, kick: 1.3, steal: .35 };   // slow-mo scramble: taps make your players near the puck jab at it (max = cap on players in the sphere)
   var AI = { goalieOut: .045, dMid: .22, dPress: .16, dStretch: .05, safeRe: .4, beat: .35, press: .055, rimP: .35, oneT: .4 };
   function cl(v, a, b) { return v < a ? a : v > b ? b : v; }
   function proj(tr, x, y) { var best = 0, bd = 9; for (var j = 1; j < tr.p.length; j++) { var a = tr.p[j - 1], b = tr.p[j], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy, f = cl(((x - a[0]) * dx + (y - a[1]) * dy) / l2, 0, 1), px = a[0] + dx * f - x, py = a[1] + dy * f - y, d = px * px + py * py;
@@ -59,6 +60,7 @@
   Sim.prototype.input = function (team, m, hand, allow) { if (hand == null) hand = team;
     if (this.over >= 0) { if (m.t === 'tap') this.reset(); return; }
     if ((m.t === 'tap' || m.t === 'skip') && this.msg === 'GOAL!' && this.pause > 1.05) { this.pause = 1.05; return; }   // tap-to-skip the goal pause
+    if (m.t === 'tap' && this.mo && (this.c < 0 || this.team(this.c) !== team)) { this.hack(team, allow); return; }
     if (m.t === 'tap' && this.c < 0 || (m.t === 'tap' && this.team(this.c) !== team)) { if ((this.clk || 0) - this.lf[hand] < OT.arm) { this.ot[team] = { t: this.clk, hand: hand }; this.ev = 'arm'; } return; }
     if (m.t === 'grab') { var gi = (m.i >= team * 6 && m.i < team * 6 + 6 && (!allow || allow.indexOf(m.i) >= 0)) ? m.i : -1; this.grab[hand] = gi; this.fing[hand] = null;
       if (gi >= 0 && m.snag && TR[gi].k !== 'G' && gi !== this.c && this.dn[gi] <= 0 && this.clear(this.pp(gi), team) > SNAG.free) { this.sn[gi] = SNAG.t; this.ln[gi] = .4; this.ev = 'snag'; } }
@@ -172,6 +174,10 @@
   Sim.prototype.onCatch = function (i) { var t = this.team(i), A = this.ot[t]; this.ot[1 - t] = null; if (!A) return; this.ot[t] = null; if (this.clk - A.t > OT.arm + 1) return;
     var cp = this.carryPos(), gy = goalOf(t), pres = Math.max(0, 1 - this.clear(cp, t) / .08), bounce = this.z > .003 || Math.hypot(this.v[0], this.v[1]) > 2.2 ? 1 : 0, err = Math.min(OT.max, OT.base + OT.press * pres + OT.bounce * bounce) * Math.PI / 180 * (Math.random() * 2 - 1);
     var a = Math.atan2(gy - cp[1], .5 + (Math.random() - .5) * GW * .6 - cp[0]) + err; this.release([Math.cos(a), Math.sin(a)], OT.sp); this.ev = 'onetimer'; this.otFx = 1; };
+  Sim.prototype.hack = function (team, allow) { var me = this, ids = []; for (var i = team * 6; i < team * 6 + 6; i++) { if (allow && allow.indexOf(i) < 0) continue; if (this.dn[i] > 0) continue; var q = this.pp(i), d = Math.hypot(q[0] - this.p[0], q[1] - this.p[1]); if (d < HACK.r) ids.push([d, i]); }
+    ids.sort(function (a, b) { return a[0] - b[0]; }); ids = ids.slice(0, HACK.max); var gy = goalOf(team);
+    ids.forEach(function (e) { var i = e[1], P = me.pp(i); me.ang[i] = Math.atan2(me.p[1] - P[1], me.p[0] - P[0]) + (Math.random() - .5) * .5; me.ln[i] = .22; me.swing = [i, .15]; var T = me.tip(i), dd = Math.hypot(T[0] - me.p[0], T[1] - me.p[1]);
+      if (dd < HACK.reach + PR && !me.air) { if (me.c >= 0 && Math.random() < HACK.steal) { me.c = i; me.hold = 0; me.ev = 'steal'; return; } if (me.c < 0) { var a = Math.atan2(gy - me.p[1], .5 - me.p[0]) + (Math.random() - .5) * 1.2; me.v[0] += Math.cos(a) * HACK.kick; me.v[1] += Math.sin(a) * HACK.kick; me.ev = 'jab'; } } }); };
   Sim.prototype.lift = function (sp) { if (sp > 1.3 && Math.random() < .6) this.vz = Math.max(this.vz, Math.min(.4, (sp - 1.3) * .3 * Math.random())); };
   Sim.prototype.goal = function (t) { this.sc[t]++; this.ev = 'goal' + t; if (this.sc[t] >= WIN || this.time <= 0) { this.over = t; this.msg = ''; return; } this.faceoff(); this.ev = 'goal' + t; this.msg = 'GOAL!'; this.pause = GOALP; this.lastGoal = t; };
   Sim.prototype.snap = function () { function r(x) { return Math.round(x * 1000) / 1000; } return { t: 's', u: this.u.map(r), o: this.o.map(function (q) { return [r(q[0]), r(q[1])]; }), p: this.p.map(r), c: this.c, sd: r(this.side), a: this.ang.map(r), sw: this.swing && this.swing[1] > 0 ? this.swing[0] : -1, sc: this.sc, tm: Math.ceil(this.time), ov: this.over, msg: this.msg, pz: r(Math.max(0, this.pause)), z: r(this.z || 0), dn: this.dn.map(function (x) { return x > 0 ? r(x) : 0; }), ln: this.ln.map(function (x) { return x > 0 ? r(x) : 0; }), ot: this.ot.map(function (x) { return x ? 1 : 0; }), g: this.grab.slice(), ev: this.ev }; };

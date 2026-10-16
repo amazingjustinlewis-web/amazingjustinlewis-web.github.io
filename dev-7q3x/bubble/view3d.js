@@ -89,6 +89,7 @@
     var W = this.cv.clientWidth, H = this.cv.clientHeight, v = new THREE.Vector3();
     for (i = 0; i < 12; i++) { var m = this.mk[i]; if (!on) { m.style.display = 'none'; continue; } this.pl[i].getWorldPosition(v); v.project(cam); var ax = Math.abs(v.x), ay = Math.abs(v.y), out = Math.max(ax, ay); if (out <= 1) { m.style.display = 'none'; continue; }
       var k = .96 / out, sz = Math.max(5, 16 / (1 + (out - 1) * 3)); m.style.display = 'block'; m.style.width = m.style.height = sz + 'px'; m.style.left = ((v.x * k + 1) / 2 * W) + 'px'; m.style.top = ((1 - v.y * k) / 2 * H) + 'px'; m.style.opacity = .85; } };
+  var PHONE_MO_ZOOM = 1.4;   // phones: extra top-down zoom at full slow-mo (1.4 = 2.4x)
   R3.prototype.setTop = function (st, dt) {   // orthographic camera that reproduces the 2D View mapping exactly
     var V = this.V, W = this.cv.clientWidth, H = this.cv.clientHeight, a = V.s2w(0, 0), bx = V.s2w(1, 0), by = V.s2w(0, -1), cam = this.ortho, G = this.G;
     var o = G.localToWorld(L3(a[0], a[1], 5)), right = G.localToWorld(L3(bx[0], bx[1], 5)).sub(o).normalize(), up = G.localToWorld(L3(by[0], by[1], 5)).sub(o).normalize();
@@ -97,7 +98,7 @@
     var z = this.az || 1; if (st) { var held = st.c >= 0 && !(st.pz > 0) && !this.rep, bk = held ? this.breakaway(st) : null; this.bk = (this.bk || 0) + ((bk ? 1 : 0) - (this.bk || 0)) * Math.min(1, dt * (bk ? 1.5 : 4));
       var zt = held ? 1.45 + (BREAK_ZOOM_PCT / 100 * .1) * this.bk : 1; z += zt > z ? (zt - z) * (1 - Math.exp(-dt * (.55 + this.bk))) : (zt - z) * (1 - Math.exp(-dt * 6));
       if (held) { var fx = st.p[0], fy = st.p[1]; if (bk) { fx += (.5 - fx) * .3 * this.bk; fy += (bk[1] - fy) * .25 * this.bk; } var fs = V.w2s(fx, fy); this.af = this.af ? [this.af[0] + (fs[0] - this.af[0]) * Math.min(1, dt * 3), this.af[1] + (fs[1] - this.af[1]) * Math.min(1, dt * 3)] : fs; } }
-    else z = 1; this.az = z;
+    else if (this.phone && this.pzc > .002 && this.pmoPt) { z = 1 + this.pzc * PHONE_MO_ZOOM; this.af = V.w2s(this.pmoPt[0], this.pmoPt[1]); } else z = 1; this.az = z;
     if (z > 1.001 && this.af) { var k = (z - 1) / .45 * .7, px2 = (this.af[0] - W / 2) * k, py2 = (this.af[1] - H / 2) * k, c1 = V.w2s(-.07, -.07), c2 = V.w2s(1.07, L + .07);
       // keep the zoomed window over the rink (no panning out past the boards)
       var x0 = Math.min(c1[0], c2[0]), x1 = Math.max(c1[0], c2[0]), y0 = Math.min(c1[1], c2[1]), y1 = Math.max(c1[1], c2[1]), hw = W / 2 / z, hh = H / 2 / z;
@@ -146,7 +147,8 @@
     // goal detection by score change (works on remote phones too)
     var tot = st.sc[0] + st.sc[1]; if (this.sc != null && tot > this.sc && this.hist.length > 10) this.goal(st.sc[0] > this.lastSc[0] ? 0 : 1);
     this.sc = tot; this.lastSc = st.sc.slice();
-    var cam = this.setTop(opt.action ? st : null, dt), show = st, R = this.rep, flash = this.d.querySelector('.b3flash'), ban = this.d.querySelector('.b3ban');
+    if (this.phone) { var mtg = st.mo ? st.mo.c : 0; if (st.mo) this.pmoPt = st.mo.pt; this.pzc = this.pzc || 0; this.pzc += (mtg - this.pzc) * (1 - Math.exp(-dt * (mtg > this.pzc ? 9 : 4))); }   // fast in / fast out, slow tapers; tighter going in
+    var cam = this.setTop(opt.action ? st : null, dt), show = st, MO = opt.moment && !this.rep ? opt.moment : null, R = this.rep, flash = this.d.querySelector('.b3flash'), ban = this.d.querySelector('.b3ban');
     if (R) { R.t += dt; var T = R.t - R.wait;
       if (R.t < R.wait) { var k = R.t / R.wait; flash.style.opacity = Math.max(0, .85 - k * 2.5) * (1 + Math.sin(R.t * 40) * .2); ban.style.opacity = Math.min(1, R.t * 5) * (k < .85 ? 1 : (1 - k) / .15); ban.style.transform = 'scale(' + (1 + Math.max(0, .25 - R.t) * 2) + ')';
         if (Math.random() < dt * 5) { var gy = R.team ? L - B.GY : B.GY; this.emit(.2 + Math.random() * .6, gy + (R.team ? -1 : 1) * (.1 + Math.random() * .4), .15 + Math.random() * .2, 70, R.team ? 0x9fd4ff : 0xffb3be, .5, 1.3, 1); }
@@ -155,7 +157,10 @@
         if (!seg) { this.rep = null; this.d.querySelector('.b3rep').style.opacity = 0; this.d.querySelector('.b3bars').style.opacity = 0; }
         else { var ct = seg[0] + (T - acc) * seg[2], fr = frameAt(R.F, R.F[0].t + ct); show = { p: fr.p, u: fr.u, o: fr.o, a: fr.a, c: fr.c, z: fr.z, gc: fr.gc, sc: st.sc, sw: -1 }; this.d.querySelector('.b3rep').style.opacity = 1; this.d.querySelector('.b3bars').style.opacity = this.phone ? 0 : 1;
           cam = this.persp; cam.aspect = W / H; cam.updateProjectionMatrix(); this.shot(seg[3], fr, R, dt, seg !== R.cur); R.cur = seg; } } }
-    this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
+        if (MO && !R) {   // crazy-moment camera: swoops from high over the impact point down toward ice level as time slows
+      var Gq = this.G, P3 = function (x, y, h) { return Gq.localToWorld(L3(x, y, h)); }, c = MO.c, d = MO.dir, sd = MO.pt[0] < .5 ? 1 : -1, hi = P3(MO.pt[0] - d[0] * .15, MO.pt[1] - d[1] * .15, 1.25), lo = P3(MO.pt[0] - d[0] * .34 + sd * .12, MO.pt[1] - d[1] * .34, .085);
+      cam = this.persp; cam.aspect = W / H; cam.fov = 50 - c * 8; cam.position.copy(hi.lerp(lo, c)); cam.up.set(0, 1, 0); cam.lookAt(P3(MO.pt[0], MO.pt[1], .005)); cam.updateProjectionMatrix(); }
+this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     // puck trail + glow at speed (visual only)
     var lt = this.trail; lt.push([pp[0], pp[1]]); if (lt.length > 8) lt.shift(); var sp = lt.length > 1 ? Math.hypot(lt[lt.length - 1][0] - lt[lt.length - 2][0], lt[lt.length - 1][1] - lt[lt.length - 2][1]) / Math.max(dt, .001) : 0;
     this.glow.position.copy(this.puck.position); this.glow.material.opacity = Math.max(0, Math.min(.8, (sp - .6) * .5)) * (this.puck.visible ? 1 : 0);
@@ -169,8 +174,11 @@
     for (var z = n; z < 900; z++) pos[z * 3 + 1] = -9; this.pts.geometry.attributes.position.needsUpdate = true; this.pts.geometry.attributes.color.needsUpdate = true;
     this.pts.material.size = cam === this.ortho ? Math.max(4, this.V.s * .018) * Math.min(2, devicePixelRatio || 1) : .012; this.pts.material.sizeAttenuation = true;
     this.markers(cam, cam === this.ortho && (this.az || 1) > 1.05);
-    this.gl.render(this.scene, cam);
+    this.lastCam = cam; this.gl.render(this.scene, cam);
   };
+  // screen -> rink through whatever camera drew the last frame (keeps touches right while zoomed)
+  R3.prototype.toRink = function (X, Y) { var cam = this.lastCam; if (!cam) return null; var r = this.cv.getBoundingClientRect(), nd = new THREE.Vector2((X - r.left) / r.width * 2 - 1, -((Y - r.top) / r.height) * 2 + 1), rc = this.rc || (this.rc = new THREE.Raycaster());
+    rc.setFromCamera(nd, cam); var o = rc.ray.origin, d = rc.ray.direction; if (Math.abs(d.y) < 1e-6) return null; var t = -o.y / d.y, w = o.clone().addScaledVector(d, t), l = this.G.worldToLocal(w); return [l.z, l.x]; };
   var TRAIL = { n: 40, w: .0075, life: .11, lifeK: .05, minSp: .35 };
   R3.prototype.ribbon = function (pp, h, vis, dt) { var T = this.rib; if (!T) { var g = new THREE.BufferGeometry(), N = TRAIL.n, idx = [];
       for (var k = 0; k < N - 1; k++) { var a = k * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }

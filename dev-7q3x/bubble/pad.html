@@ -22,6 +22,7 @@
   if (c.room) { jc.querySelector('#kgo').textContent = '\uD83D\uDCFA Use the TV as the table'; jc.querySelector('#kgo').classList.remove('go'); jc.querySelector('h1').insertAdjacentElement('afterend', jc.querySelector('#kname')); var vb = $('vsai'); vb.classList.add('go'); jc.querySelector('#kname').insertAdjacentElement('afterend', $('mir').parentNode); $('mir').parentNode.insertAdjacentElement('afterend', vb); }
   if ($('vsai')) { $('vsai').onclick = function () { local(false); }; $('host2').onclick = function () { local(true); }; }
   if (Kit.Q.get('solo') === '1') local(false); else if (Kit.Q.get('host') === '1') local(true);
+  V.pick = function (X, Y) { return R3 && R3.pzc > .002 ? R3.toRink(X, Y) : null; };
   BubbleGestures(cv, V, function () { return st; }, function (m) { if (sim) sim.input(team, m); else c.send(m); });
   var last = 0, sendT = 0;
   (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t;
@@ -32,6 +33,6 @@
       $('otr').style.opacity = st.ot && st.ot[team] ? 1 : 0;
       var b = $('big'); if (st.ov >= 0) { b.innerHTML = (st.ov === team ? 'YOU WIN!' : 'They win') + '<div style="font-size:.4em;color:#fff">tap to play again</div>'; b.style.opacity = 1; } else if (st.msg && st.msg !== 'GOAL!' && !(R3 && R3.replaying())) { b.textContent = st.msg; b.style.opacity = 1; } else b.style.opacity = 0; }
     requestAnimationFrame(loop); })(0);
-  window.BHP = { get sim() { return sim; }, V: V, get st() { return st; } };
+  window.BHP = { get R3() { return R3; }, get sim() { return sim; }, V: V, get st() { return st; } };
 })();
 </script></body></html>
