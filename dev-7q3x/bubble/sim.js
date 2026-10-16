@@ -2,7 +2,7 @@
    point-mirror (x -> 1-x, y -> 1.8-y). Every player rides a fixed track (u = 0..1). AI slides everyone you are not touching. */
 (function (root) {
   'use strict';
-  var L = 2.0, PR = .022, R = .034, GW = .07, GY = .128, BL = .66, REACH = .055, WIN = 5, TIME = 180;
+  var L = 2.0, PR = .022, R = .034, GW = .07, GY = .128, BL = .66, REACH = .055, GOALP = 9.4, MAGR = .045, MAGK = .0007, WIN = 5, TIME = 180;
   // v0.3 tracks come from tracks.js (sketch pixels, Catmull-Rom). Team 0 = sketch green (guards y=L), team 1 = sketch blue (guards y=0).
   var TB = root.BUBBLE_TRACKS, SK = TB.sketch;
   function sk(q) { return [(q[1] - SK.y0) / (SK.y1 - SK.y0), (q[0] - SK.x0) / (SK.x1 - SK.x0) * L]; }
@@ -92,6 +92,8 @@
       if (this.c >= 0) return; }
     // loose puck
     var sub = 3; for (var k = 0; k < sub; k++) { var h = dt / sub; this.p[0] += this.v[0] * h; this.p[1] += this.v[1] * h; var f = Math.exp(-.55 * h); this.v[0] *= f; this.v[1] *= f;
+      // tight inverse-square magnet around each stick blade so the puck isn't lost on tight edges
+      for (var mg = 0; mg < 12; mg++) { if (mg === this.cool) continue; var bt = this.tip(mg), mx2 = bt[0] - this.p[0], my2 = bt[1] - this.p[1], md = Math.hypot(mx2, my2); if (md > MAGR || md < .004) continue; var acc = Math.min(5, MAGK / (md * md)); this.v[0] += mx2 / md * acc * h; this.v[1] += my2 / md * acc * h; }
       var x = this.p[0], y = this.p[1];
       if (y < GY && Math.abs(x - .5) < GW) { this.goal(0); return; } if (y > L - GY && Math.abs(x - .5) < GW) { this.goal(1); return; }
       if (x < PR) { this.p[0] = PR; this.v[0] = Math.abs(this.v[0]) * .8; } if (x > 1 - PR) { this.p[0] = 1 - PR; this.v[0] = -Math.abs(this.v[0]) * .8; }
@@ -106,7 +108,7 @@
         if (spd2 < catchV) { this.c = i; this.hold = 0; this.side = 0; this.to = -1; this.aimA = null; if (TR[i].k === 'G') this.ev = 'save'; return; }
         var nx = dx / d, ny = dy / d, vn = this.v[0] * nx + this.v[1] * ny; this.p = [Q[0] + nx * (R + PR), Q[1] + ny * (R + PR)]; if (vn < 0) { this.v[0] -= 1.7 * vn * nx; this.v[1] -= 1.7 * vn * ny; this.v[0] *= .8; this.v[1] *= .8; } this.ev = TR[i].k === 'G' ? 'save' : 'bump'; } }
   };
-  Sim.prototype.goal = function (t) { this.sc[t]++; this.ev = 'goal' + t; if (this.sc[t] >= WIN || this.time <= 0) { this.over = t; this.msg = ''; return; } this.faceoff(); this.ev = 'goal' + t; this.msg = 'GOAL!'; this.pause = 1.8; this.lastGoal = t; };
+  Sim.prototype.goal = function (t) { this.sc[t]++; this.ev = 'goal' + t; if (this.sc[t] >= WIN || this.time <= 0) { this.over = t; this.msg = ''; return; } this.faceoff(); this.ev = 'goal' + t; this.msg = 'GOAL!'; this.pause = GOALP; this.lastGoal = t; };
   Sim.prototype.snap = function () { function r(x) { return Math.round(x * 1000) / 1000; } return { t: 's', u: this.u.map(r), o: this.o.map(function (q) { return [r(q[0]), r(q[1])]; }), p: this.p.map(r), c: this.c, sd: r(this.side), a: this.ang.map(r), sw: this.swing && this.swing[1] > 0 ? this.swing[0] : -1, sc: this.sc, tm: Math.ceil(this.time), ov: this.over, msg: this.msg, pz: r(Math.max(0, this.pause)), g: this.grab.slice(), ev: this.ev }; };
-  root.Bubble = { Sim: Sim, TR: TR, L: L, BL: BL, PR: PR, R: R, GW: GW, GY: GY, pos: pos, proj: proj };
+  root.Bubble = { Sim: Sim, TR: TR, L: L, BL: BL, GOALP: GOALP, PR: PR, R: R, GW: GW, GY: GY, pos: pos, proj: proj };
 })(window);

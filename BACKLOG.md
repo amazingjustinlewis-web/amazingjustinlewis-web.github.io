@@ -83,3 +83,6 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 ## Orbit Brawl: HUD placement (from v0.3)
 - v0.3 hides the top HUD (timer, kills, rank, kill feed) so the cockpit stays clean; only a tiny timer + kills readout sits in a corner. Rethink where these live: end screen, a small corner, the radar rim, or a pull-down. Decide after more playtests.
 - Radar has no pickups yet (none exist); add pickups and show them on the radar.
+- Bubble Hockey: tune track positions/lengths and stick lengths after playtests (bubble/tracks.js).
+- Bubble Hockey: real player models (currently cylinders + box sticks).
+- Bubble Hockey: crossbar/post physics (puck is flat 2D; posts are simple circles).
