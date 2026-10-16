@@ -110,4 +110,5 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Bubble Hockey: periods, arcade-length line changes, cinematic angles.
 - Bubble Hockey rules: no offsides, only goals stop play. Refs point and freak out at offsides and checks, but no penalties except after a fight (sometimes both players, sometimes the more aggressive one). Track aggression per player and per team to trigger fights; a constant aggressor must win convincingly or he alone goes to the box.
 - Bubble Hockey fighting system once models exist.
+- Bubble Hockey: real glove-grab-down animation for the faceoff puck once the player models exist (v0.8.1 is a proxy lean + raised arm).
 - Bubble Hockey performance plan: phones can drop the extras (bar guys, ref, crowd, particles) if it chugs.

@@ -67,6 +67,7 @@
     var tor = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.0, r * .85, .016, 14), jer); tor.position.y = .034; p.add(tor);
     var sh = new THREE.Mesh(new THREE.SphereGeometry(r * 1.0, 14, 8, 0, 7, 0, Math.PI / 2), jer); sh.scale.y = .45; sh.position.y = .042; p.add(sh);
     var hd = new THREE.Mesh(new THREE.SphereGeometry(r * .5, 12, 10), M(goalie ? 0xf2f2f2 : 0x20242e)); hd.position.y = .05 - r * .45; p.add(hd);
+    var arm = new THREE.Group(), ab = new THREE.Mesh(new THREE.BoxGeometry(r * .45, .022, r * .45), jer), gl = new THREE.Mesh(new THREE.SphereGeometry(r * .42, 8, 6), dark); ab.position.y = .011; gl.position.y = .024; arm.add(ab); arm.add(gl); arm.position.set(0, .042, -r * .95); arm.visible = false; p.add(arm); p.userData.arm = arm;
     return p; }
   function dotTex(col) { var c = document.createElement('canvas'); c.width = c.height = 64; var x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, col); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); }
   R3.prototype.dom = function () {
@@ -96,14 +97,18 @@
       a: a.a.map(function (v, j) { return v + Math.atan2(Math.sin(b.a[j] - v), Math.cos(b.a[j] - v)) * k; }), c: k < .5 ? a.c : b.c, z: lerp(a.z || 0, b.z || 0, k), pz: 0 }; }
   R3.prototype.place = function (st) {
     for (var i = 0; i < 12; i++) { var tr = B.TR[i], q = B.pos(tr, st.u[i]), o = st.o ? st.o[i] : [0, 0], p = this.pl[i], an = st.a ? st.a[i] : 0;
-      p.position.copy(L3(q[0] + o[0], q[1] + o[1], 0)); p.rotation.y = Math.atan2(-Math.cos(an), Math.sin(an)); p.userData.stick.material.color.setHex(st.sw === i ? 0xffffff : 0x5a3a1c);
+      p.position.copy(L3(q[0] + o[0], q[1] + o[1], 0)); p.rotation.set(0, Math.atan2(-Math.cos(an), Math.sin(an)), 0); p.userData.stick.material.color.setHex(st.sw === i ? 0xffffff : 0x5a3a1c);
       var lnv = st.ln ? st.ln[i] : 0, dnv = st.dn ? st.dn[i] : 0, sk = p.userData.stick, bl = p.userData.blade, ln0 = p.userData.len, ext = 1 + Math.min(1, lnv / .3) * 2.2;   // snag/check lunge: lean in, stick shoots out
       sk.scale.x = ext; sk.position.x = ln0 * ext / 2; bl.position.x = ln0 * ext; p.position.y = 0;
       if (dnv > 0) { var tt = 1.5 - dnv, lie = tt < .25 ? tt / .25 : dnv < .45 ? dnv / .45 : 1; p.userData.spin = (p.userData.spin || (Math.random() - .5) * 16); p.rotateY(p.userData.spin * Math.max(0, 1 - tt) * .05); p.rotateZ(lie * Math.PI / 2 * .92); p.position.y = lie * .01 + Math.abs(Math.sin(tt * 9)) * .006 * Math.max(0, 1 - tt * 2); }
       else { p.userData.spin = 0; if (lnv > 0) p.rotateZ(-Math.min(1, lnv / .3) * .55); } }
-    var pz = st.pz || 0, POP = .55, h = 0, px = st.p[0], py = st.p[1]; this.puck.visible = !(pz > POP);
-    if (pz > 0 && pz <= POP) { var uu = 1 - pz / POP; h = Math.sin(uu * Math.PI) * .09; px = .5; py = L / 2; }
-    if (!h && st.z) h = st.z; this.puck.position.copy(L3(px, py, .006 + h)); return [px, py];
+    var pz = st.pz || 0, h = 0, px = st.p[0], py = st.p[1]; this.puck.visible = !(pz > 0);   // faceoff: hidden in the slot until it launches
+    if (st.z) h = st.z; this.puck.position.copy(L3(px, py, .006 + h)); var gs = 1 + h * 7; this.puck.scale.set(gs, 1, gs);
+    if (!this.pshad) { this.pshad = new THREE.Mesh(new THREE.CircleGeometry(B.PR, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0, depthWrite: false })); this.pshad.rotation.x = -Math.PI / 2; this.G.add(this.pshad); }
+    this.pshad.position.copy(L3(px + h * .45, py + h * .3, .0015)); this.pshad.scale.setScalar(1 + h * 2.5); this.pshad.material.opacity = this.puck.visible && h > .004 ? Math.max(.22, .5 - h * 1.6) : 0;
+    // proxy glove grab: players near an airborne puck lean in and reach up
+    for (var gi = 0; gi < 12; gi++) { var pl = this.pl[gi], q0 = pl.position, dd = Math.hypot(q0.z - px, q0.x - py), reach = this.puck.visible && h > .02 && st.c < 0 && !(st.dn && st.dn[gi] > 0) ? Math.max(0, 1 - dd / .16) : 0, arm = pl.userData.arm;
+      arm.visible = reach > 0; if (reach > 0) { pl.rotateZ(-reach * .3); arm.rotation.set(0, 0, -.5 + reach * .3); arm.scale.y = 1 + reach * .8; } } return [px, py];
   };
   R3.prototype.emit = function (x, y, h, n, col, spd, life, grav) { for (var k = 0; k < n && this.parts.length < this.NP; k++) { var a = Math.random() * 7, e = Math.random() * 1.4 - .2, v = spd * (.4 + Math.random() * .6);
       this.parts.push({ p: L3(x, y, h), v: new THREE.Vector3(Math.cos(a) * Math.cos(e) * v, Math.sin(e) * v + (grav ? spd * .3 : 0), Math.sin(a) * Math.cos(e) * v), c: new THREE.Color(col), l: life * (.6 + Math.random() * .5), l0: life, g: grav || 0 }); } };
@@ -113,7 +118,7 @@
     if (!this.rep && !(st.pz > 0)) { this.hist.push({ t: this.clock, p: st.p.slice(), u: st.u.slice(), o: (st.o || st.u.map(function () { return [0, 0]; })).map(function (q) { return q.slice(); }), a: (st.a || st.u.map(function () { return 0; })).slice(), c: st.c, z: st.z || 0 });
       while (this.hist.length && this.hist[0].t < this.clock - 5) this.hist.shift(); }
     // buzzer right before the puck is spat out (pz counts down; pop starts at .55)
-    if (st.pz > .55 && st.pz < 1.05 && !this.buzzed) { this.buzzed = true; buzz(); } if (!(st.pz > 0)) this.buzzed = false;
+    if (st.pz > .02 && st.pz < .5 && !this.buzzed) { this.buzzed = true; buzz(); } if (!(st.pz > 0)) this.buzzed = false;
     // tap-to-skip: the sim cut the pause short, so end the replay too
     if (this.rep && st.pz > 0 && st.pz < 1.1) { this.rep = null; this.d.querySelector('.b3rep').style.opacity = 0; this.d.querySelector('.b3bars').style.opacity = 0; this.d.querySelector('.b3ban').style.opacity = 0; this.d.querySelector('.b3flash').style.opacity = 0; }
     // goal detection by score change (works on remote phones too)
