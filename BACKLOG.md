@@ -119,3 +119,6 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - [ ] Bubble Hockey (next): post-game breakdown alongside the highlight reel.
 - [ ] Bubble Hockey: goalie reach/lunge animation from Justin's models (replaces the proxy lean + 'reachPad' box).
 - [ ] Bubble Hockey: tilt-shift / miniature depth-of-field on select cinematic and replay angles (TV), toggleable.
+- [x] Bubble Hockey v0.9: soft movement spring for thumb-held players (MOVE_SPRING) + flick keeps some carry whip (WHIP); goalie freeze (cover ~5 s or glove save -> whistle, coast, faceoff at the zone dot).
+- [ ] Bubble Hockey: zone faceoffs - players line up around the zone dot (they currently coast to their usual slot spots); serve-slot pop visual at the zone dots.
+- [ ] Bubble Hockey: real glove-hand side per goalie model (current glove save is a proxy: hard shot to one side, ~30% chance).
