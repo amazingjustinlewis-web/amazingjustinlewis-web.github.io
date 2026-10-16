@@ -48,7 +48,7 @@
       n.position.copy(L3(.5, gq[0])); G.add(n); self.nets.push(n); });
     // players: solid team-colour cylinders + stick + blade; blob shadow
     this.pl = B.TR.map(function (tr) { var p = new THREE.Group(); man(p, COLS[tr.t], tr.k === 'G');
-      var len = B.R + tr.sl, st = new THREE.Mesh(new THREE.BoxGeometry(len, .008, .009), mat(0x5a3a1c)); st.position.set(len / 2, .012, 0); p.add(st);
+      var len = B.R * .5 + tr.sl * .25, st = new THREE.Mesh(new THREE.BoxGeometry(len, .008, .009), mat(0x5a3a1c)); st.position.set(len / 2, .012, 0); p.add(st);
       var bl = new THREE.Mesh(new THREE.BoxGeometry(.012, .012, .03), mat(0x111111)); bl.position.set(len, .008, -.008); p.add(bl);
       var sh = new THREE.Mesh(new THREE.CircleGeometry(B.R * .62, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: .18 })); sh.rotation.x = -Math.PI / 2; sh.position.set(.006, .001, .006); p.add(sh);
       p.userData.stick = st; G.add(p); return p; });

@@ -101,4 +101,6 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
   11. Keep the current fast speed; optional speed settings at join are fine.
 - Bubble Hockey later: two proxy bar guys standing at the table who yank, shove, pull and twist the rods (softly simulated from which players are active); super slow-mo replays fly in over their shoulders into the bubble.
 - Bubble Hockey later: separate hockey-player, goalie and ref proxies; penalties, injuries, line changes.
+- Bubble Hockey track redraw (Justin): move the D bow-in slightly inside the blue line.
+- Bubble Hockey short-handed (4 on ice): reconfigure the available paths to maximize ice use.
 - Bubble Hockey performance plan: phones can drop the extras (bar guys, ref, crowd, particles) if it chugs.

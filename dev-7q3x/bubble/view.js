@@ -44,7 +44,7 @@
     // players: shadow, stick, jersey, helmet
     for (i = 0; i < 12; i++) { var tr2 = B.TR[i], q = B.pos(tr2, st.u[i]), q = st.o ? [q[0] + st.o[i][0], q[1] + st.o[i][1]] : q, Qp = P(q[0], q[1]), t = tr2.t, fy = (t ? 1 : -1) * (this.team ? -1 : 1), r = B.R * s;
       c.fillStyle = '#0003'; c.beginPath(); c.ellipse(Qp[0] + r * .18, Qp[1] + r * .25, r * 1.02, r * 1.02, 0, 0, 7); c.fill();
-      var an = st.a ? st.a[i] : (t ? -1.57 : 1.57), Tw = [q[0] + Math.cos(an) * (B.R + tr2.sl), q[1] + Math.sin(an) * (B.R + tr2.sl)], Tq = P(Tw[0], Tw[1]), Bw = P(q[0] + Math.cos(an) * B.R * .4, q[1] + Math.sin(an) * B.R * .4);
+      var an = st.a ? st.a[i] : (t ? -1.57 : 1.57), Tw = [q[0] + Math.cos(an) * (B.R * .5 + tr2.sl * .25), q[1] + Math.sin(an) * (B.R * .5 + tr2.sl * .25)], Tq = P(Tw[0], Tw[1]), Bw = P(q[0] + Math.cos(an) * B.R * .4, q[1] + Math.sin(an) * B.R * .4);
       c.strokeStyle = '#0003'; c.lineWidth = r * .32; line(c, [Bw[0] + r * .15, Bw[1] + r * .2], [Tq[0] + r * .15, Tq[1] + r * .2]);
       c.strokeStyle = st.sw === i ? '#fff' : '#3b2a1a'; c.lineWidth = r * .3; line(c, Bw, Tq); c.fillStyle = '#111'; c.beginPath(); c.arc(Tq[0], Tq[1], r * .26, 0, 7); c.fill();
       var jg = c.createRadialGradient(Qp[0] - r * .3, Qp[1] - r * .3, r * .1, Qp[0], Qp[1], r); jg.addColorStop(0, '#fff8'); jg.addColorStop(.35, COL[t]); jg.addColorStop(1, t ? '#1d5fae' : '#b02a40'); c.fillStyle = jg; c.beginPath(); c.arc(Qp[0], Qp[1], r, 0, 7); c.fill();

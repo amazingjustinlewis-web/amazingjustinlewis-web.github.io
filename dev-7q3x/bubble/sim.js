@@ -11,6 +11,9 @@
   var TR = []; [['green', 0], ['blue', 1]].forEach(function (g) { TB[g[0]].forEach(function (k) { var p = spline(k.pts.map(sk)), cum = [0], t = g[1];
     for (var j = 1; j < p.length; j++) cum.push(cum[j - 1] + Math.hypot(p[j][0] - p[j - 1][0], p[j][1] - p[j - 1][1]));
     TR.push({ p: p, cum: cum, len: cum[cum.length - 1], k: k.k, sl: k.sl, t: t, a: p[0], b: p[p.length - 1] }); }); });
+  // v0.7 tunables. SL: visual/solid stick = 25% of the track's sl; the old reach is kept by a weak blade magnet out to (sl * MAGOUT).
+  var SL = .25, MAGOUT = .85, MAG2K = .00035, AISPD = .9;
+  var AI = { goalieOut: .045, dMid: .22, dPress: .16, dStretch: .05, safeRe: .4, beat: .35, press: .055, rimP: .35, oneT: .4 };
   function cl(v, a, b) { return v < a ? a : v > b ? b : v; }
   function proj(tr, x, y) { var best = 0, bd = 9; for (var j = 1; j < tr.p.length; j++) { var a = tr.p[j - 1], b = tr.p[j], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy, f = cl(((x - a[0]) * dx + (y - a[1]) * dy) / l2, 0, 1), px = a[0] + dx * f - x, py = a[1] + dy * f - y, d = px * px + py * py;
     if (d < bd) { bd = d; best = (tr.cum[j - 1] + Math.sqrt(l2) * f) / tr.len; } } return best; }
@@ -23,8 +26,8 @@
   Sim.prototype.faceoff = function () { this.p = [.5, L / 2]; this.z = 0; this.vz = 0; this.v = [(Math.random() - .5) * .25, (Math.random() - .5) * .25]; this.c = -1; this.pause = 1.1; this.msg = 'FACE OFF'; this.to = -1; this.cool = -1; this.coolT = 0; this.hold = 0; this.ev = ''; };
   Sim.prototype.pp = function (i) { var q = pos(TR[i], this.u[i]), o = this.o ? this.o[i] : null; return o ? [q[0] + o[0], q[1] + o[1]] : q; };
   Sim.prototype.team = function (i) { return i < 6 ? 0 : 1; };
-  Sim.prototype.carryPos = function () { var i = this.c, P = this.pp(i), a = this.ang[i], d = R + TR[i].sl * .75 + PR * .6; return [P[0] + Math.cos(a) * d, P[1] + Math.sin(a) * d]; };
-  Sim.prototype.tip = function (i) { var P = this.pp(i), a = this.ang[i], d = R + TR[i].sl; return [P[0] + Math.cos(a) * d, P[1] + Math.sin(a) * d]; };
+  Sim.prototype.carryPos = function () { var i = this.c, P = this.pp(i), a = this.ang[i], d = R * .5 + TR[i].sl * SL * .75 + PR * .9; return [P[0] + Math.cos(a) * d, P[1] + Math.sin(a) * d]; };
+  Sim.prototype.tip = function (i) { var P = this.pp(i), a = this.ang[i], d = R * .5 + TR[i].sl * SL; return [P[0] + Math.cos(a) * d, P[1] + Math.sin(a) * d]; };
   Sim.prototype.release = function (dir, sp, to, pt) { var i = this.c; if (i < 0) return; var m = Math.hypot(dir[0], dir[1]) || 1; this.ang[i] = Math.atan2(dir[1], dir[0]); this.swing = [i, .18]; this.p = this.carryPos(); if (pt) { dir = [pt[0] - this.p[0], pt[1] - this.p[1]]; m = Math.hypot(dir[0], dir[1]) || 1; } this.v = [dir[0] / m * sp, dir[1] / m * sp]; this.cool = i; this.coolT = .25; this.z = 0; this.vz = sp > 2.0 ? Math.min(.6, (sp - 2.0) * .6 * (.3 + Math.random())) : 0; this.to = to == null ? -1 : to; this.c = -1; this.hold = 0; this.side = 0; };
   Sim.prototype.shoot = function (dir, sp) { var i = this.c; if (i < 0) return; var t = this.team(i), cp = this.carryPos(), gy = goalOf(t);
     if (!dir) { var ln = this.lane(cp, t); dir = [ln[0], ln[1]]; var pt = [ln[3][0] + (Math.random() - .5) * .03, ln[3][1]]; sp = 2.8; }
@@ -57,15 +60,36 @@
     else if (m.t === 'drag') this.fing[hand] = [m.x, m.y];
     else if (m.t === 'rel') { this.grab[hand] = -1; this.fing[hand] = null; }
     else if (this.c >= 0 && this.team(this.c) === team && this.pause <= 0) { if (m.t === 'tap') this.shoot(); else if (m.t === 'flick') this.pass([m.dx, m.dy], m.sp); } };
+  // clearance of a point from the other team's bodies and blades
+  Sim.prototype.clear = function (q, t) { var m = 9; for (var j = (1 - t) * 6; j < (1 - t) * 6 + 6; j++) { var a = this.pp(j), b = this.tip(j); m = Math.min(m, Math.hypot(a[0] - q[0], a[1] - q[1]), Math.hypot(b[0] - q[0], b[1] - q[1])); } return m; };
+  // safest spot along player i's track (sampled), nudged toward the attacking end; cached for AI.safeRe seconds
+  Sim.prototype.safeU = function (i) { this.spot = this.spot || []; var S = this.spot[i], now = this.clk || 0; if (S && now - S.t < AI.safeRe) return S.u;
+    var tr = TR[i], t = tr.t, best = this.u[i], bs = -9; for (var k = 0; k <= 8; k++) { var u = cl(this.u[i] + (k - 4) * .06, 0, 1), q = pos(tr, u), sc = Math.min(.12, this.clear(q, t)) - Math.abs(q[1] - goalOf(t)) * .03 - Math.abs(u - this.u[i]) * .05; if (sc > bs) { bs = sc; best = u; } }
+    this.spot[i] = { u: best, t: now }; return best; };
+  // where a non-held player wants to be
+  Sim.prototype.aiWant = function (i, tgt, own, dt) { var tr = TR[i], t = tr.t, k = tr.k; this.pk = this.pk || []; this.pk[i] = null;
+    if (k === 'G') { var gy = t ? GY : L - GY, gc = [.5, gy], dx = tgt[0] - gc[0], dy = tgt[1] - gc[1], m = Math.hypot(dx, dy) || 1; return proj(tr, gc[0] + dx / m * AI.goalieOut, gc[1] + dy / m * AI.goalieOut); }   // on the puck line, squared to the shooter
+    if (own === 1 - t && this.c >= 0) { var cp = this.carryPos(), mine = (cp[1] - L / 2) * face(t) < 0;   // opponent has it
+      if (k === 'D' && mine && Math.abs(cp[0] - .5) < AI.dMid) { var u = proj(tr, cp[0], cp[1]), q = pos(tr, u); if (Math.hypot(q[0] - cp[0], q[1] - cp[1]) < AI.dPress) this.pk[i] = cp; return u; } }
+    if (own === t && this.c >= 0) { if (k === 'W' || k === 'C') return this.safeU(i); }   // forwards hunt open one-timer spots
+    var lead = own === t && k !== 'D' ? face(t) * .12 : 0; return proj(tr, tgt[0], tgt[1] + lead); };
   Sim.prototype.aiCarrier = function (dt) { var i = this.c, t = this.team(i), P = this.pp(i), gy = goalOf(t); this.hold += dt; if (this.hold > 2.6 && TR[i].k === 'G') { this.release([0, face(t)], 1.6); this.ev = 'pass'; return; }
     var P0 = this.pp(i); this.aimA = Math.atan2(gy - P0[1], .5 - P0[0]) + Math.sin(this.hold * 7 + i) * .7;
     if (this.hold < .55 + (1 - this.diff) * .8) return;
+    var cpp = this.carryPos(), pres = this.clear(cpp, t) < AI.press, settled = Math.abs(this.safeU(i) - this.u[i]) < .02; this.beatT = settled ? (this.beatT || 0) + dt : 0;
+    if (!pres && this.beatT < AI.beat && this.hold < 2.4) return;
+    if (TR[i].k === 'D' && Math.abs(P[1] - (t ? GY : L - GY)) < .45 && Math.random() < AI.rimP) { var mates = [], me = this; for (var j = t * 6; j < t * 6 + 6; j++) if (j !== i && TR[j].k !== 'G') mates.push(j);
+      var D2 = mates.filter(function (j) { return TR[j].k === 'D'; })[0], Wg = mates.filter(function (j) { return TR[j].k === 'W'; }).sort(function (a, b) { return Math.abs(me.pp(a)[0] - P[0]) - Math.abs(me.pp(b)[0] - P[0]); })[0];
+      var by = t ? .05 : L - .05, tgtM, ref;
+      if (D2 != null && Math.random() < .5) { tgtM = D2; var q3 = this.pp(D2); ref = [q3[0], 2 * by - q3[1]]; }   // rim behind the net off the end boards
+      else if (Wg != null) { tgtM = Wg; var q4 = this.pp(Wg), bx = q4[0] < .5 ? 0 : 1; ref = [2 * bx - q4[0], q4[1]]; }   // hard around the side boards up to a forward
+      if (ref) { this.release([ref[0] - cpp[0], ref[1] - cpp[1]], 2.8, tgtM); this.ev = 'rim'; return; } }
     var dg = Math.abs(P[1] - gy); if (dg < .62 || (TR[i].k === 'C' && dg < .8)) { var ln = this.lane(this.carryPos(), t); if (ln[2] < PR + .01 && this.hold < 2.2 && dg > .3) return; ln[3][0] += (Math.random() - .5) * .06 * (1.4 - this.diff); this.release([ln[0], ln[1]], 2.5, null, ln[3]); this.ev = 'shot'; return; }
     var best = -1, by = 9; for (var j = t * 6; j < t * 6 + 6; j++) { if (j === i) continue; var q = this.pp(j), adv = Math.abs(q[1] - gy); if (adv < Math.abs(P[1] - gy) - .05 && adv < by) { by = adv; best = j; } }
     if (best < 0) best = t * 6 + 4; var cp = this.carryPos(), q2 = this.pp(best), dx = q2[0] - cp[0], dy = q2[1] - cp[1], e = (Math.random() - .5) * .3 * (1.2 - this.diff), a = Math.atan2(dy, dx) + e;
     this.release([Math.cos(a), Math.sin(a)], cl(Math.hypot(dx, dy) * 2.4 + .7, 1.1, 2.4), best); this.ev = 'pass'; };
   Sim.prototype.step = function (dt) {
-    var me = this, F; this.ev = '';
+    var me = this, F; this.ev = ''; this.clk = (this.clk || 0) + dt;
     if (this.over >= 0) return;
     this.time -= dt; if (this.time <= 0) { this.time = 0; if (this.sc[0] !== this.sc[1]) { this.over = this.sc[0] > this.sc[1] ? 0 : 1; return; } this.msg = 'SUDDEN DEATH'; }
     if (this.swing) this.swing[1] -= dt;
@@ -75,13 +99,13 @@
     for (var i = 0; i < 12; i++) { var tr = TR[i], t = tr.t, want, spd;
       if ((F = this.fg(i))) { want = proj(tr, F[0], F[1]); spd = 3.2;
         }
-      else if (i === this.c && this.ai[t]) { want = t ? 0 : 0; want = proj(tr, .5, goalOf(t)); spd = .35; }
+      else if (i === this.c && this.ai[t]) { want = this.safeU(i); spd = .35 * AISPD; }
       else if (i === this.c) { want = this.u[i]; spd = 0; this.side *= Math.exp(-dt * 2); }
-      else { var lead = own === t && tr.k !== 'G' && tr.k !== 'D' ? -face(t) * -.12 : 0; want = proj(tr, tgt[0], tgt[1] + lead); spd = (this.ai[t] ? .75 + this.diff * .35 : 1.0) * (tr.k === 'G' ? 1.6 : tr.k === 'D' && own >= 0 && own !== t ? .8 : 1); }
+      else { want = this.aiWant(i, tgt, own, dt); spd = AISPD * (this.ai[t] ? .75 + this.diff * .35 : 1.0) * (tr.k === 'G' ? 1.6 : tr.k === 'D' && own >= 0 && own !== t ? .8 : 1); }
       var du = want - this.u[i], mx = spd * dt / tr.len; this.u[i] += cl(du, -mx, mx);
       // stretch off the line toward the finger: offset saturates at REACH with an inverse-cube pull back
       var oo = this.o[i]; if ((F = this.fg(i))) { var bq = pos(tr, this.u[i]), ddx = F[0] - bq[0], ddy = F[1] - bq[1], m = Math.hypot(ddx, ddy) || 1e-6, eff = m / Math.cbrt(1 + Math.pow(m / REACH, 3)), kk = Math.min(1, dt * 18);
-        oo[0] += (ddx / m * eff - oo[0]) * kk; oo[1] += (ddy / m * eff - oo[1]) * kk; } else { var dk = Math.exp(-dt * 9); oo[0] *= dk; oo[1] *= dk; }
+        oo[0] += (ddx / m * eff - oo[0]) * kk; oo[1] += (ddy / m * eff - oo[1]) * kk; } else if (this.pk && this.pk[i]) { var pk = this.pk[i], bq2 = pos(tr, this.u[i]), ex = pk[0] - bq2[0], ey = pk[1] - bq2[1], em = Math.hypot(ex, ey) || 1e-6, ef = Math.min(em, AI.dStretch), k2 = Math.min(1, dt * 6); oo[0] += (ex / em * ef - oo[0]) * k2; oo[1] += (ey / em * ef - oo[1]) * k2; } else { var dk = Math.exp(-dt * 9); oo[0] *= dk; oo[1] *= dk; }
       var P = this.pp(i), ta;
       if ((F = this.fg(i)) && Math.hypot(F[0] - P[0], F[1] - P[1]) > R * .8) ta = Math.atan2(F[1] - P[1], F[0] - P[0]);
       else if (i === this.c) ta = this.aimA != null && this.ai[t] ? this.aimA : Math.atan2(goalOf(t) - P[1], .5 - P[0]) + Math.sin(this.hold * 6 + i) * .6;
@@ -97,7 +121,7 @@
     // loose puck
     var sub = 3; for (var k = 0; k < sub; k++) { var h = dt / sub; this.p[0] += this.v[0] * h; this.p[1] += this.v[1] * h; var f = Math.exp(-.55 * h); this.v[0] *= f; this.v[1] *= f;
       // tight inverse-square magnet around each stick blade so the puck isn't lost on tight edges
-      for (var mg = 0; mg < 12; mg++) { if (mg === this.cool) continue; var bt = this.tip(mg), mx2 = bt[0] - this.p[0], my2 = bt[1] - this.p[1], md = Math.hypot(mx2, my2); if (md > MAGR || md < .004) continue; var acc = Math.min(5, MAGK / (md * md)); this.v[0] += mx2 / md * acc * h; this.v[1] += my2 / md * acc * h; }
+      for (var mg = 0; mg < 12; mg++) { if (mg === this.cool) continue; var bt = this.tip(mg), mx2 = bt[0] - this.p[0], my2 = bt[1] - this.p[1], md = Math.hypot(mx2, my2); var mr = Math.max(MAGR, TR[mg].sl * MAGOUT); if (md > mr || md < .004) continue; var acc = Math.min(6, MAGK / (md * md) + MAG2K / (md * md) * (1 - md / mr)); this.v[0] += mx2 / md * acc * h; this.v[1] += my2 / md * acc * h; }
       // 3D puck height: gravity, strong pull back to the ice (upward motion damped), low bounce on landing
       if (this.z > 0 || this.vz > 0) { this.vz -= 3.5 * h; if (this.vz > 0) this.vz *= Math.exp(-h * 1.4); this.z += this.vz * h; if (this.z <= 0) { this.z = 0; if (this.vz < -.18) { this.vz = -this.vz * .32; this.ev = this.ev || 'land'; } else this.vz = 0; } }
       var x = this.p[0], y = this.p[1], NH = .045, ND = .05, sp0 = Math.hypot(this.v[0], this.v[1]);
