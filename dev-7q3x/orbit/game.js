@@ -29,7 +29,7 @@
     if (this.o.onRound) this.o.onRound();
   };
   Game.prototype.state = function () { var sim = this.sim; return { seed: sim.seed, time: Math.ceil(sim.time), over: sim.over, feed: sim.feed,
-    ships: sim.ships.map(function (s) { return { id: s.id, p: s.p, q: s.q, v: s.v, col: s.col, name: s.name, alive: s.alive, sh: s.sh, hull: s.hull, k: s.k, d: s.d, bot: s.bot, hit: s.hitT < .25 }; }),
+    ships: sim.ships.map(function (s) { return { id: s.id, p: s.p, q: s.q, v: s.v, col: s.col, name: s.name, alive: s.alive, sh: s.sh, hull: s.hull, k: s.k, d: s.d, bot: s.bot, hit: s.hitT < .25, sec: s.sec, hs: s.hitSec == null ? -1 : s.hitSec }; }),
     bul: sim.bul.map(function (b) { return [b.p.x, b.p.y, b.p.z, b.v.x, b.v.y, b.v.z]; }), bombs: sim.bombs.map(function (b) { return [b.p.x, b.p.y, b.p.z, b.c]; }),
     fx: sim.fx.map(function (f) { return [f.k, f.x, f.y, f.z, f.r, f.t, f.life, f.col]; }) }; };
   root.OrbitGame = Game;

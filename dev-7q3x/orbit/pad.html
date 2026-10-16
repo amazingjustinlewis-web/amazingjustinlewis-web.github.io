@@ -19,17 +19,19 @@
 (function () {
   var $ = function (i) { return document.getElementById(i); }, T = THREE, V = new OrbitView($('cv'), { phone: true }), H = $('hud'), hx = H.getContext('2d');
   var G = null, c = null, snaps = new OrbitSnaps(), myId = 0, rec = null, replay = null;
-  var pad = ZTPPad.init({ game: 'orbit', sticks: { L: 'Throttle (slide up/down, stays set)', R: 'Steer: nose up/down/left/right' }, invert: true, invertX: true, corner: 'tr', extra: [['tilt', 'Steer by tilting the phone'], ['third', 'Third-person view (chase cam)'], ['roll', 'Steer left/right rolls (instead of yaw)']], onChange: function (o) { layout(); if (o.tilt && !tilt.on) tiltStart(); } });
+  var pad = ZTPPad.init({ game: 'orbit', sticks: { L: 'Throttle (slide or tap the bar)', R: 'Fly: left/right rolls, pull back = nose up' }, invert: true, invertX: true, corner: 'tr', extra: [['tilt', 'Steer by tilting the phone'], ['third', 'Third-person view (chase cam)'], ['yaw', 'Left/right turns flat (yaw) instead of roll']], onChange: function (o) { layout(); if (o.tilt && !tilt.on) tiltStart(); } });
   function size() { V.size(); var d = Math.min(devicePixelRatio || 1, 2); H.width = innerWidth * d; H.height = innerHeight * d; hx.setTransform(d, 0, 0, d, 0, 0); } addEventListener('resize', size); size();
   // ---- v0.2 controls: throttle half (slide, stays set) + steering half (floating stick or phone tilt) + GUN/BOMB stacked on the steering edge
   var sticks = { L: { id: null, o: [0, 0], v: [0, 0] }, R: { id: null, o: [0, 0], v: [0, 0] } }, fire = false, charging = 0, chargeOn = false;
-  var thr = { id: null, v: .55, y0: 0, v0: 0 }, TMIN = -.4;
+  var thr = { id: null, v: .55, tgt: .55, y0: 0, drag: false }, TMIN = -.4;
+  function thrGeo() { var Hh = innerHeight; return { top: Hh * .2, h: Hh * .62 }; }
+  function thrLevel(y) { var g = thrGeo(), v = TMIN + (1 - TMIN) * (1 - (y - g.top) / g.h); v = Math.max(TMIN, Math.min(1, v)); return Math.abs(v) < .04 ? 0 : v; }
   function layout() { document.body.classList.toggle('sw', !!pad.opts.swap); $('lvl').style.display = pad.opts.tilt ? 'block' : 'none'; if (!pad.opts.tilt && /[Tt]ilt/.test($('st').textContent)) $('st').textContent = ''; }
-  function thrSide(x) { return pad.opts.swap ? x >= innerWidth / 2 : x < innerWidth / 2; }
+  function thrSide(x, y) { var w = Math.max(110, innerWidth * .16); return (pad.opts.swap ? x > innerWidth - w : x < w) && y > innerHeight * .12; }
   addEventListener('pointerdown', function (e) { if (e.target !== H && e.target !== $('cv') && e.target !== $('frame')) return; if (replay) return;
-    if (thrSide(e.clientX)) { if (thr.id !== null) return; thr.id = e.pointerId; thr.y0 = e.clientY; thr.v0 = thr.v; return; }
+    if (thrSide(e.clientX, e.clientY)) { if (thr.id !== null) return; thr.id = e.pointerId; thr.y0 = e.clientY; thr.drag = false; thr.tgt = thrLevel(e.clientY); return; }
     var s = sticks.R; if (s.id !== null || pad.opts.tilt) return; s.id = e.pointerId; s.o = [e.clientX, e.clientY]; s.v = [0, 0]; });
-  addEventListener('pointermove', function (e) { if (thr.id === e.pointerId) { thr.v = Math.max(TMIN, Math.min(1, thr.v0 - (e.clientY - thr.y0) / (innerHeight * .45))); if (Math.abs(thr.v) < .04) thr.v = 0; return; }
+  addEventListener('pointermove', function (e) { if (thr.id === e.pointerId) { if (Math.abs(e.clientY - thr.y0) > 6) thr.drag = true; if (thr.drag) thr.v = thr.tgt = thrLevel(e.clientY); return; }
     var s = sticks.R; if (s.id !== e.pointerId) return; var R = Math.min(70, innerHeight * .14), dx = (e.clientX - s.o[0]) / R, dy = (e.clientY - s.o[1]) / R, m = Math.hypot(dx, dy);
     if (m > 1) { s.o[0] += (dx - dx / m) * R; s.o[1] += (dy - dy / m) * R; dx /= m; dy /= m; } s.v = [dx, dy]; });
   function lift(e) { if (thr.id === e.pointerId) thr.id = null; if (sticks.R.id === e.pointerId) { sticks.R.id = null; sticks.R.v = [0, 0]; } } addEventListener('pointerup', lift); addEventListener('pointercancel', lift);
@@ -52,12 +54,12 @@
   function dz(v) { var m = Math.hypot(v[0], v[1]); if (m < .12) return [0, 0]; var k = Math.min(1, (m - .12) / .88); k = k * (.4 + .6 * k); return [v[0] / m * k, v[1] / m * k]; }
   var gpPrev = {};
   function input() { var o = pad.opts, ix = o.invX ? -1 : 1, iy = o.invY ? -1 : 1, tn = dz(sticks.R.v), gf = false, tx = 0, tz = thr.v;
-    var P = -tn[1] * iy, Y = -tn[0] * ix;
+    var P = tn[1] * iy, Y = -tn[0] * ix;   // flight-sim: pull back = nose up, left/right = roll
     if (o.tilt && tilt.on) { var tv = tiltRead(); Y = tv[0] * ix; P = tv[1] * iy; }
     var gps = navigator.getGamepads ? navigator.getGamepads() : []; for (var i = 0; i < (gps ? gps.length : 0); i++) { var g = gps[i]; if (!g || !g.connected || pad.isOpen()) continue; var r = pad.read(g), mv = dz(r.L), gt = dz(r.R);
-      if (mv[0] || mv[1]) { tx = mv[0]; thr.v = Math.max(TMIN, Math.min(1, thr.v - mv[1] * .02)); tz = thr.v; } if (gt[0] || gt[1]) { P = -gt[1]; Y = -gt[0]; }   // pad.read already applies swap + invert
+      if (mv[0] || mv[1]) { tx = mv[0]; thr.v = thr.tgt = Math.max(TMIN, Math.min(1, thr.v - mv[1] * .02)); tz = thr.v; } if (gt[0] || gt[1]) { P = gt[1]; Y = -gt[0]; }   // pad.read already applies swap + invert
       gf = g.buttons[7] && g.buttons[7].value > .3; var lb = g.buttons[6] && g.buttons[6].value > .3; if (lb && !gpPrev.lb) { chargeOn = true; charging = 0; } if (!lb && gpPrev.lb && chargeOn) { chargeOn = false; throwBomb(Math.min(1, charging / Orbit.C.BOMB_MAX)); } gpPrev.lb = lb; break; }
-    return { tx: tx, tz: tz, p: P, y: o.roll ? 0 : Y, r: o.roll ? Y : 0, fire: fire || gf }; }
+    return { tx: tx, tz: tz, p: P, y: o.yaw ? Y : Y * .3, r: o.yaw ? 0 : Y, fire: fire || gf }; }
   function vwBtn() { $('vw').textContent = pad.opts.third ? '\uD83D\uDE80 3rd person' : '\uD83D\uDC41 1st person'; } vwBtn();
   $('vw').onclick = function () { pad.opts.third = !pad.opts.third; try { localStorage.setItem('ztp-pad-orbit', JSON.stringify(pad.opts)); } catch (e) {} vwBtn(); };
   // ---- start
@@ -84,16 +86,26 @@
     // bars
     function bar(x, y, w, v, col, lab) { hx.fillStyle = '#0008'; hx.fillRect(x, y, w, 9); hx.fillStyle = col; hx.fillRect(x, y, w * Math.max(0, v) / 100, 9); hx.fillStyle = '#fff'; hx.font = '11px Fredoka,system-ui'; hx.fillText(lab, x, y - 3); }
     bar(cx - 130, Hh - 26, 120, me.sh, '#5fc8ff', 'SHIELD'); bar(cx + 10, Hh - 26, 120, me.hull, me.hull < 35 ? '#ff5a3a' : '#ffb347', 'HULL');
-    hx.font = '700 16px Fredoka,system-ui'; hx.fillStyle = '#fff'; hx.textAlign = 'center'; hx.fillText(Math.floor(st.time / 60) + ':' + ('0' + st.time % 60).slice(-2) + '   \u2716 ' + me.k + '   \u2620 ' + me.d, cx, 22);
-    var rank = st.ships.slice().sort(function (a, b) { return b.k - a.k || a.d - b.d; }).indexOf(me) + 1; hx.font = '12px Fredoka,system-ui'; hx.fillText('#' + rank + ' of ' + st.ships.length, cx, 38);
-    (st.feed || []).slice(0, 3).forEach(function (f, i) { hx.fillStyle = '#fffc'; hx.fillText((f.a ? f.a + ' ' : '') + (f.kind === 'bomb' ? '\uD83D\uDCA3 ' : f.kind === 'rock' ? '\u2604 ' : '\u2716 ') + f.b, cx, 56 + i * 15); });
+    hx.textAlign = 'center';   // v0.3: top HUD hidden for now (see BACKLOG); tiny corner readout only
+    hx.textAlign = 'left'; hx.font = '11px Fredoka,system-ui'; hx.fillStyle = '#ffffff88'; hx.fillText(Math.floor(st.time / 60) + ':' + ('0' + st.time % 60).slice(-2) + '  \u2716' + me.k, pad.opts.swap ? W - 70 : 12, 18); hx.textAlign = 'center'; radar(st, me);
     if (me.p.length() > Orbit.C.R * .92 && me.alive) { hx.fillStyle = '#ffb347'; hx.font = '700 16px Fredoka,system-ui'; hx.fillText('LEAVING THE ARENA \u2014 TURN BACK', cx, cy + 60); }
     if (!me.alive) { hx.fillStyle = '#ff7a6a'; hx.font = '700 26px Fredoka,system-ui'; hx.fillText('DESTROYED', cx, cy - 40); hx.font = '15px Fredoka,system-ui'; hx.fillStyle = '#fff'; hx.fillText('respawning\u2026', cx, cy - 16); }
     hx.textAlign = 'left';
     // stick rings
     drawThr(); ['R'].forEach(function (k) { var s = sticks[k]; if (s.id === null) return; var R = Math.min(70, innerHeight * .14); hx.strokeStyle = '#ffffff55'; hx.lineWidth = 2; hx.beginPath(); hx.arc(s.o[0], s.o[1], R, 0, 7); hx.stroke(); hx.fillStyle = '#ffffff66'; hx.beginPath(); hx.arc(s.o[0] + s.v[0] * R, s.o[1] + s.v[1] * R, R * .38, 0, 7); hx.fill(); });
   }
-  function drawThr() { var W = innerWidth, Hh = innerHeight, x = pad.opts.swap ? W - 34 : 22, top = Hh * .2, h = Hh * .62, zero = top + h * (1 / (1 - TMIN)), y = top + h * (1 - (thr.v - TMIN) / (1 - TMIN));
+  var rocksSeed = null, rocks = [];
+  function radar(st, me) { var R = 46, cx = innerWidth / 2, cy = 10 + R, inv = me.q.clone().invert(), RANGE = 320, d = new THREE.Vector3();
+    if (st.seed !== rocksSeed) { rocksSeed = st.seed; rocks = Orbit.field(st.seed); }
+    hx.fillStyle = '#04122acc'; hx.beginPath(); hx.arc(cx, cy, R + 3, 0, 7); hx.fill(); hx.strokeStyle = '#4ad0ff66'; hx.lineWidth = 1; hx.beginPath(); hx.arc(cx, cy, R, 0, 7); hx.stroke(); hx.beginPath(); hx.arc(cx, cy, R / 2, 0, 7); hx.stroke();
+    hx.beginPath(); hx.moveTo(cx, cy - R); hx.lineTo(cx, cy + R); hx.moveTo(cx - R, cy); hx.lineTo(cx + R, cy); hx.strokeStyle = '#4ad0ff22'; hx.stroke();
+    function dot(p, col, base, max) { d.copy(p).sub(me.p).applyQuaternion(inv); var pl = Math.hypot(d.x, d.z); if (pl > RANGE * (max || 1.6)) return; var k = Math.min(1, pl / RANGE) * R / Math.max(pl, .001), x = cx + d.x * k, y = cy + d.z * k;
+      var sz = Math.max(1, base * (1 + Math.max(-.6, Math.min(.9, d.y / 90)))); hx.fillStyle = col; hx.globalAlpha = pl > RANGE ? .45 : 1; hx.beginPath(); hx.arc(x, y, sz, 0, 7); hx.fill(); hx.globalAlpha = 1; }
+    rocks.forEach(function (a) { dot(new THREE.Vector3(a.x, a.y, a.z), '#8d8a99', 1 + a.r / 14, 1); });
+    (st.bombs || []).forEach(function (b) { dot(new THREE.Vector3(b[0], b[1], b[2]), '#ffd27a', 2); });
+    st.ships.forEach(function (s) { if (s.id !== me.id && s.alive) dot(s.p, s.col, 2.8); });
+    hx.fillStyle = '#fff'; hx.beginPath(); hx.moveTo(cx, cy - 5); hx.lineTo(cx - 3.5, cy + 3); hx.lineTo(cx + 3.5, cy + 3); hx.fill(); }
+  function drawThr() { var W = innerWidth, Hh = innerHeight, x = pad.opts.swap ? W - 34 : 22, top = thrGeo().top, h = thrGeo().h, zero = top + h * (1 / (1 - TMIN)), y = top + h * (1 - (thr.v - TMIN) / (1 - TMIN));
     hx.fillStyle = '#0008'; hx.fillRect(x, top, 12, h); hx.fillStyle = thr.v >= 0 ? '#5fdc7a' : '#ff9f43'; hx.fillRect(x, Math.min(y, zero), 12, Math.abs(zero - y)); hx.fillStyle = '#fff'; hx.fillRect(x - 5, y - 2, 22, 4); hx.fillRect(x - 2, zero - 1, 16, 2);
     hx.font = '11px Fredoka,system-ui'; hx.textAlign = pad.opts.swap ? 'right' : 'left'; hx.fillText(thr.v < 0 ? 'REV' : Math.round(thr.v * 100) + '%', pad.opts.swap ? x - 8 : x + 18, y + 4); hx.textAlign = 'left';
     if (thr.id !== null) { hx.strokeStyle = '#ffffff33'; hx.strokeRect(x - 8, top - 6, 28, h + 12); } }
@@ -103,12 +115,12 @@
       (G ? '<div style="display:flex;gap:10px;margin-top:14px">' + (rec && rec.clips.length ? '<button class="btn" id="rw">\u25B6 Replays</button>' : '') + '<button class="btn go" id="again">Fly again</button></div>' : '<p style="opacity:.7">next round starts on the TV</p>');
     if ($('again')) $('again').onclick = function () { o.style.display = 'none'; G.next(); myId = G.me.id; rec = new OrbitReplay.Recorder(); };
     if ($('rw')) $('rw').onclick = function () { startReplays(); }; }
-  function startReplays() { $('over').style.display = 'none'; replay = new OrbitReplay.Player(rec.clips, V); $('rp').style.display = 'block'; $('skip').style.display = 'block'; $('gun').style.display = $('bomb').style.display = 'none'; }
+  function startReplays() { if (V.holo) V.holo.visible = false; $('over').style.display = 'none'; replay = new OrbitReplay.Player(rec.clips, V); $('rp').style.display = 'block'; $('skip').style.display = 'block'; $('gun').style.display = $('bomb').style.display = 'none'; }
   $('skip').onclick = function () { if (replay) replay.skip(); };
   function endReplay() { replay = null; $('rp').style.display = 'none'; $('skip').style.display = 'none'; $('gun').style.display = $('bomb').style.display = ''; $('over').style.display = 'none'; }
   var last = 0, wasOver = false;
   (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; var I = input();
-    if (chargeOn) charging += dt; $('bomb').firstChild.style.height = Math.min(100, charging / Orbit.C.BOMB_MAX * 100) + '%';
+    if (chargeOn) charging += dt; thr.v += (thr.tgt - thr.v) * (1 - Math.exp(-5 * dt)); if (Math.abs(thr.tgt - thr.v) < .002) thr.v = thr.tgt; $('bomb').firstChild.style.height = Math.min(100, charging / Orbit.C.BOMB_MAX * 100) + '%';
     if (replay) { var lab = replay.step(dt); if (lab === null) { endReplay(); wasOver = false; } else $('rp').textContent = lab; hx.clearRect(0, 0, innerWidth, innerHeight); $('frame').style.display = 'none'; return requestAnimationFrame(loop); }
         var st = null;
     if (G) { var mi = G.me.inp; mi.tx = I.tx; mi.tz = I.tz; mi.p = I.p; mi.y = I.y; mi.r = I.r; mi.fire = I.fire; G.step(dt); st = G.state(); if (rec) rec.frame(st, dt, G);
@@ -116,6 +128,7 @@
     else { st = snaps.state(); sendT += dt; if (st && sendT > .05) { sendT = 0; c.send({ t: 'in', a: [I.tx, I.tz, I.p, I.y, I.r].map(function (x) { return Math.round(x * 100) / 100; }), f: I.fire ? 1 : 0 }); } }
     if (st) { var me = st.ships.filter(function (s) { return s.id === myId; })[0];
       if (me) { vwBtn(); if (me.alive && pad.opts.third) V.chase(me, dt, 13, 3.6); else if (me.alive) V.cockpit(me, dt); else V.chase(me, dt, 30, 10);
+        if ((me.sh < lastSh - .5 || me.hull < lastHull - .5) && me.alive) V.holoHit(me.hs); V.holoStep(me.sec, dt, me.alive);
         if (me.sh < lastSh - .5 && me.alive) { flash('#5fc8ff', .35); V.shake = Math.max(V.shake, .5); if (navigator.vibrate) navigator.vibrate(25); }
         if (me.hull < lastHull - .5 && me.alive) { flash('#ff4a2a', .5); V.shake = Math.max(V.shake, 1); if (navigator.vibrate) navigator.vibrate(60); }
         if (lastHull > 0 && !me.alive) { flash('#ffffff', .8); V.shake = 1.5; if (navigator.vibrate) navigator.vibrate([80, 40, 140]); }

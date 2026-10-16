@@ -79,3 +79,7 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - [ ] A long list of arcade-style bits to add over time (collect ideas here). For now the proxies sliding around is fine.
 
 - Bubble Hockey: animate players stickhandling and shooting (currently static figures that slide along their slots).
+
+## Orbit Brawl: HUD placement (from v0.3)
+- v0.3 hides the top HUD (timer, kills, rank, kill feed) so the cockpit stays clean; only a tiny timer + kills readout sits in a corner. Rethink where these live: end screen, a small corner, the radar rim, or a pull-down. Decide after more playtests.
+- Radar has no pickups yet (none exist); add pickups and show them on the radar.

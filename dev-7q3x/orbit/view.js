@@ -60,7 +60,7 @@
     this.ships = {}; this.fxPool = []; this.bombPool = [];
     var bmax = 600; this.bpos = new Float32Array(bmax * 6); var bg = new T.BufferGeometry(); bg.setAttribute('position', new T.BufferAttribute(this.bpos, 3));
     this.tracers = new T.LineSegments(bg, new T.LineBasicMaterial({ color: 0xfff1a8, transparent: true, opacity: .95, blending: T.AdditiveBlending })); this.tracers.frustumCulled = false; S.add(this.tracers);
-    this.pv = new T.Vector3(); this.st = null; this.me = 0; this.shake = 0;
+    S.add(this.cam); this.pv = new T.Vector3(); this.st = null; this.me = 0; this.shake = 0;
     var self = this; glbWait.push(function () { Object.keys(self.ships).forEach(function (k) { self.S.remove(self.ships[k].g); }); self.ships = {}; });
   }
   View.prototype.size = function () { var w = innerWidth, h = innerHeight; this.R.setSize(w, h, false); this.cam.aspect = w / h; this.cam.updateProjectionMatrix(); };
@@ -103,7 +103,21 @@
     if (this.a) this.a.s.forEach(function (r) { A[r[0]] = r; });
     var ships = this.b.s.map(function (r) { var p = new T.Vector3(r[1], r[2], r[3]), q = new T.Quaternion(r[4], r[5], r[6], r[7]).normalize(), o = A[r[0]];
       if (o && o[10] && r[10]) { var p0 = new T.Vector3(o[1], o[2], o[3]); if (p0.distanceTo(p) < 40) { p0.lerp(p, u); p = p0; var q0 = new T.Quaternion(o[4], o[5], o[6], o[7]).normalize(); q0.slerp(q, Math.min(1, u)); q = q0; } }
-      var nm = N[r[0]] || { name: '?', col: '#fff' }; return { id: r[0], p: p, q: q, sh: r[8], hull: r[9], alive: !!r[10], k: r[11], d: r[12], hit: !!r[13], v: new T.Vector3(r[14], r[15], r[16]), bot: !!r[17], name: nm.name, col: nm.col }; });
+      var nm = N[r[0]] || { name: '?', col: '#fff' }; return { id: r[0], p: p, q: q, sh: r[8], hull: r[9], alive: !!r[10], k: r[11], d: r[12], hit: !!r[13], v: new T.Vector3(r[14], r[15], r[16]), bot: !!r[17], sec: r[18], hs: r[19], name: nm.name, col: nm.col }; });
     return { seed: this.b.seed, ships: ships, bul: this.b.b, bombs: this.b.m, fx: this.b.f, feed: this.b.k, time: this.b.tm, over: !!this.b.ov, dtx: Math.min(.2, now - this.at) }; };
+  // damage hologram: wireframe of your own pod just above the crosshair, turned to show the side that was hit; 6 shield plates coloured by strength
+  var NRM = [[0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0], [0, 1, 0], [0, -1, 0]];
+  View.prototype.holoInit = function () { var g = new T.Group(), pd = proxyPod('#7fd8ff'), self = this; pd.traverse(function (m) { if (m.isMesh) m.material = new T.MeshBasicMaterial({ color: 0x7fe8ff, wireframe: true, transparent: true, opacity: .5, depthTest: false, depthWrite: false }); m.renderOrder = 999; });
+    pd.scale.multiplyScalar(1); g.add(pd); this.holoPod = pd; this.plates = NRM.map(function (n) { var m = new T.Mesh(new T.SphereGeometry(3.2, 10, 3, 0, Math.PI * 2, 0, .62), new T.MeshBasicMaterial({ color: 0x5fdc7a, wireframe: true, transparent: true, opacity: .4, depthTest: false, depthWrite: false }));
+      m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), new T.Vector3(n[0], n[1], n[2])); m.renderOrder = 1000; g.add(m); return m; });
+    g.scale.setScalar(.36); g.position.set(0, 1.35, -7.5); this.cam.add(g); this.holo = g; this.holoA = 0; this.holoT = 9; this.flashT = 9; this.flashK = -1; this.holoQ = new T.Quaternion(); g.visible = false; };
+  View.prototype.holoHit = function (k) { if (!this.holo) this.holoInit(); this.holoT = 0; this.flashT = 0; this.flashK = k;
+    if (k >= 0) { var n = new T.Vector3().fromArray(NRM[k]), to = new T.Vector3(0, .45, 1).normalize(); this.holoQ.setFromUnitVectors(n, to); if (k === 4 || k === 5) this.holoQ.premultiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1, 0, 0), k === 4 ? -.25 : .25)); } };
+  View.prototype.holoStep = function (sec, dt, alive) { if (!this.holo) this.holoInit(); var g = this.holo; this.holoT += dt; this.flashT += dt;
+    var a = !alive ? 0 : this.holoT < 3 ? 1 : Math.max(0, 1 - (this.holoT - 3)); this.holoA += (a - this.holoA) * Math.min(1, dt * 8); g.visible = this.holoA > .02; if (!g.visible) return;
+    g.quaternion.slerp(this.holoQ, Math.min(1, dt * 6)); var A = this.holoA, fl = this.flashT < .4 && Math.floor(this.flashT * 12) % 2 === 0;
+    this.holoPod.traverse(function (m) { if (m.isMesh) m.material.opacity = .5 * A; });
+    var self = this; this.plates.forEach(function (m, i) { var v = sec ? sec[i] / 100 : 1; if (fl && i === self.flashK) { m.material.color.set('#ffffff'); m.material.opacity = .9 * A; return; }
+      m.material.color.setHSL(.33 * v, 1, .55); m.material.opacity = (v > 0 ? .25 + .3 * (1 - v) : .15) * A + (i === self.flashK && self.flashT < 1.5 ? .25 * A : 0); }); };
   root.OrbitView = View; root.OrbitSnaps = Snaps;
 })(window);
