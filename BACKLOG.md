@@ -103,4 +103,11 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Bubble Hockey later: separate hockey-player, goalie and ref proxies; penalties, injuries, line changes.
 - Bubble Hockey track redraw (Justin): move the D bow-in slightly inside the blue line.
 - Bubble Hockey short-handed (4 on ice): reconfigure the available paths to maximize ice use.
+- Bubble Hockey glass dome: checks can punch through it (persistent cracks/holes); enough damage shatters it and it falls, the arcade guys toss it aside and play continues; checked players can fly over the edge onto the arcade floor.
+- Bubble Hockey animations from Justin: skating slow/fast, drifting, crouched, stick handling, wrist shots, passes, slapshots; checks and impacts from 8 directions at light/medium/hard.
+- Bubble Hockey health ring at the feet: blends green/yellow/red, recovers with stamina, players slow when red; ring breathes with stamina (gentle thickening, faster when panting); rattled and black when knocked out.
+- Bubble Hockey: helmets knocked off; sticks fly, slide toward their player and stay on the ice as physics objects until reset at the whistle.
+- Bubble Hockey: periods, arcade-length line changes, cinematic angles.
+- Bubble Hockey rules: no offsides, only goals stop play. Refs point and freak out at offsides and checks, but no penalties except after a fight (sometimes both players, sometimes the more aggressive one). Track aggression per player and per team to trigger fights; a constant aggressor must win convincingly or he alone goes to the box.
+- Bubble Hockey fighting system once models exist.
 - Bubble Hockey performance plan: phones can drop the extras (bar guys, ref, crowd, particles) if it chugs.

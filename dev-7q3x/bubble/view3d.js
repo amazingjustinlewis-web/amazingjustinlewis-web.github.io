@@ -51,12 +51,14 @@
       var len = B.R * .5 + tr.sl * .25, st = new THREE.Mesh(new THREE.BoxGeometry(len, .008, .009), mat(0x5a3a1c)); st.position.set(len / 2, .012, 0); p.add(st);
       var bl = new THREE.Mesh(new THREE.BoxGeometry(.012, .012, .03), mat(0x111111)); bl.position.set(len, .008, -.008); p.add(bl);
       var sh = new THREE.Mesh(new THREE.CircleGeometry(B.R * .62, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: .18 })); sh.rotation.x = -Math.PI / 2; sh.position.set(.006, .001, .006); p.add(sh);
-      p.userData.stick = st; G.add(p); return p; });
+      p.userData.stick = st; p.userData.blade = bl; p.userData.len = len; G.add(p); return p; });
     var pk = this.puck = new THREE.Mesh(new THREE.CylinderGeometry(B.PR, B.PR, .012, 20), mat(0x111111)); G.add(pk);
     var gm = new THREE.SpriteMaterial({ map: dotTex('rgba(150,220,255,1)'), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }); this.glow = new THREE.Sprite(gm); this.glow.scale.set(.09, .09, 1); G.add(this.glow);
     // trail + fireworks + held-player particles share one Points buffer
     this.NP = 900; var pg = new THREE.BufferGeometry(); this.pPos = new Float32Array(this.NP * 3); this.pCol = new Float32Array(this.NP * 3); pg.setAttribute('position', new THREE.BufferAttribute(this.pPos, 3)); pg.setAttribute('color', new THREE.BufferAttribute(this.pCol, 3));
     this.pts = new THREE.Points(pg, new THREE.PointsMaterial({ size: .018, vertexColors: true, map: dotTex('#fff'), transparent: true, depthWrite: false })); this.pts.frustumCulled = false; G.add(this.pts); this.parts = [];
+    this.NF = this.phone ? 140 : 700; var fg = new THREE.BufferGeometry(); this.fPos = new Float32Array(this.NF * 3); this.fCol = new Float32Array(this.NF * 3); fg.setAttribute('position', new THREE.BufferAttribute(this.fPos, 3)); fg.setAttribute('color', new THREE.BufferAttribute(this.fCol, 3));
+    this.fpts = new THREE.Points(fg, new THREE.PointsMaterial({ size: .02, vertexColors: true, map: dotTex('#fff'), transparent: true, depthWrite: false })); this.fpts.frustumCulled = false; G.add(this.fpts); this.fl = []; this.fsp = 0;
   };
   // simple beefy proxy skater: radius ~B.R/2, height .05 (legs, pants, jersey torso, shoulders, helmet head). Goalie gets pads.
   function man(p, col, goalie, opa) { var M = function (c) { return new THREE.MeshLambertMaterial(opa ? { color: c, transparent: true, opacity: opa, depthWrite: false } : { color: c }); }, r = B.R * .5, dark = M(0x1a1d26), jer = M(col);
@@ -94,7 +96,11 @@
       a: a.a.map(function (v, j) { return v + Math.atan2(Math.sin(b.a[j] - v), Math.cos(b.a[j] - v)) * k; }), c: k < .5 ? a.c : b.c, z: lerp(a.z || 0, b.z || 0, k), pz: 0 }; }
   R3.prototype.place = function (st) {
     for (var i = 0; i < 12; i++) { var tr = B.TR[i], q = B.pos(tr, st.u[i]), o = st.o ? st.o[i] : [0, 0], p = this.pl[i], an = st.a ? st.a[i] : 0;
-      p.position.copy(L3(q[0] + o[0], q[1] + o[1], 0)); p.rotation.y = Math.atan2(-Math.cos(an), Math.sin(an)); p.userData.stick.material.color.setHex(st.sw === i ? 0xffffff : 0x5a3a1c); }
+      p.position.copy(L3(q[0] + o[0], q[1] + o[1], 0)); p.rotation.y = Math.atan2(-Math.cos(an), Math.sin(an)); p.userData.stick.material.color.setHex(st.sw === i ? 0xffffff : 0x5a3a1c);
+      var lnv = st.ln ? st.ln[i] : 0, dnv = st.dn ? st.dn[i] : 0, sk = p.userData.stick, bl = p.userData.blade, ln0 = p.userData.len, ext = 1 + Math.min(1, lnv / .3) * 2.2;   // snag/check lunge: lean in, stick shoots out
+      sk.scale.x = ext; sk.position.x = ln0 * ext / 2; bl.position.x = ln0 * ext; p.position.y = 0;
+      if (dnv > 0) { var tt = 1.5 - dnv, lie = tt < .25 ? tt / .25 : dnv < .45 ? dnv / .45 : 1; p.userData.spin = (p.userData.spin || (Math.random() - .5) * 16); p.rotateY(p.userData.spin * Math.max(0, 1 - tt) * .05); p.rotateZ(lie * Math.PI / 2 * .92); p.position.y = lie * .01 + Math.abs(Math.sin(tt * 9)) * .006 * Math.max(0, 1 - tt * 2); }
+      else { p.userData.spin = 0; if (lnv > 0) p.rotateZ(-Math.min(1, lnv / .3) * .55); } }
     var pz = st.pz || 0, POP = .55, h = 0, px = st.p[0], py = st.p[1]; this.puck.visible = !(pz > POP);
     if (pz > 0 && pz <= POP) { var uu = 1 - pz / POP; h = Math.sin(uu * Math.PI) * .09; px = .5; py = L / 2; }
     if (!h && st.z) h = st.z; this.puck.position.copy(L3(px, py, .006 + h)); return [px, py];
@@ -126,7 +132,15 @@
     // puck trail + glow at speed (visual only)
     var lt = this.trail; lt.push([pp[0], pp[1]]); if (lt.length > 8) lt.shift(); var sp = lt.length > 1 ? Math.hypot(lt[lt.length - 1][0] - lt[lt.length - 2][0], lt[lt.length - 1][1] - lt[lt.length - 2][1]) / Math.max(dt, .001) : 0;
     this.glow.position.copy(this.puck.position); this.glow.material.opacity = Math.max(0, Math.min(.8, (sp - .6) * .5)) * (this.puck.visible ? 1 : 0);
-    if (sp > .9 && this.puck.visible) for (var k = 0; k < 2; k++) { var q = lt[Math.max(0, lt.length - 2 - k)]; this.parts.push({ p: L3(q[0], q[1], .008), v: new THREE.Vector3(), c: new THREE.Color(0x9fdcff), l: .25, l0: .25, g: 0, tr: 1 }); }
+    // arcade flame trail: more, hotter, bigger and longer-lived with puck speed; phones get a light version
+    this.fsp += (sp - this.fsp) * Math.min(1, dt * 8); var hot = Math.max(0, Math.min(1, (this.fsp - .7) / 2.6)), pp0 = this.puck.position;
+    if (this.fsp > .7 && this.puck.visible && dt > 0) { var rate = (this.phone ? 30 : 120) * (.25 + hot * 1.4), nn = Math.floor(rate * dt + Math.random()), lst = lt[lt.length - 2] || lt[0];
+      for (var k = 0; k < nn && this.fl.length < this.NF; k++) { var f0 = Math.random(), qx = lerp(lst[0], pp[0], f0), qy = lerp(lst[1], pp[1], f0), j2 = .004 + hot * .006;
+        this.fl.push({ p: L3(qx + (Math.random() - .5) * j2, qy + (Math.random() - .5) * j2, pp0.y + Math.random() * .004), v: new THREE.Vector3((Math.random() - .5) * .05, .03 + Math.random() * .06 * (1 + hot), (Math.random() - .5) * .05), l: .18 + hot * .35, l0: .18 + hot * .35, h: hot }); } }
+    var FL = this.fl, fn = 0, fpos = this.fPos, fcol = this.fCol, NF = this.NF; this.fl = FL.filter(function (q) { q.l -= dt; if (q.l <= 0) return false; q.p.addScaledVector(q.v, dt); return true; });
+    this.fl.forEach(function (q) { if (fn >= NF) return; var a2 = q.l / q.l0, hh = q.h * a2; fpos[fn * 3] = q.p.x; fpos[fn * 3 + 1] = q.p.y; fpos[fn * 3 + 2] = q.p.z; fcol[fn * 3] = 1; fcol[fn * 3 + 1] = Math.min(1, .15 + .55 * a2 + .4 * hh); fcol[fn * 3 + 2] = Math.min(1, .05 + .6 * hh * a2 * a2); fn++; });
+    for (var zf = fn; zf < NF; zf++) fpos[zf * 3 + 1] = -9; this.fpts.geometry.attributes.position.needsUpdate = true; this.fpts.geometry.attributes.color.needsUpdate = true;
+    var fsz = .02 + hot * .035; this.fpts.material.size = cam === this.ortho ? Math.max(4, this.V.s * fsz) * Math.min(2, devicePixelRatio || 1) : fsz * .8;
     // the player under your thumb sparkles (phone)
     if (opt.held >= 0) { var hp = this.pl[opt.held].position; for (k = 0; k < 2; k++) { var a = Math.random() * 7, rr2 = B.R * (1.1 + Math.random() * .5); this.parts.push({ p: new THREE.Vector3(hp.x + Math.cos(a) * rr2, .055, hp.z + Math.sin(a) * rr2), v: new THREE.Vector3(Math.cos(a) * .08, .05, Math.sin(a) * .08), c: new THREE.Color(k % 2 ? 0xffb300 : 0xff5a00), l: .7, l0: .7, g: 0 }); } }
     // particles
