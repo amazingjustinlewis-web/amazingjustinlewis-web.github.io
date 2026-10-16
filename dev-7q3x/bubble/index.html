@@ -48,6 +48,6 @@
     var b = $('big'); if (demo) b.style.opacity = 1; else if (st.ov >= 0) { b.innerHTML = nm(st.ov) + ' wins!<div style="font-size:.4em;color:#fff">tap a phone to play again</div>'; b.style.opacity = 1; } else if (st.msg && st.msg !== 'GOAL!' && !(R3 && R3.replaying())) { b.textContent = st.msg; b.style.opacity = 1; } else b.style.opacity = 0;
     requestAnimationFrame(loop); })(0);
   cv.addEventListener('pointerdown', function () { if (mirroring()) return; sim.input(0, { t: 'skip' }); });
-  Kit.over(function () { return !demo && sim.over >= 0; }, 40000); window.BHT = { sim: sim, host: host, get plist() { return plist; } };
+  Kit.over(function () { return !demo && sim.over >= 0; }, 40000); window.BHT = { sim: sim, host: host, get R3() { return R3; }, get plist() { return plist; } };
 })();
 </script></body></html>

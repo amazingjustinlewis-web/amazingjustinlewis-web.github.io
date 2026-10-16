@@ -125,7 +125,10 @@
     return { p: [lerp(a.p[0], b.p[0], k), lerp(a.p[1], b.p[1], k)], u: a.u.map(function (v, j) { return lerp(v, b.u[j], k); }), o: a.o.map(function (v, j) { return [lerp(v[0], b.o[j][0], k), lerp(v[1], b.o[j][1], k)]; }),
       a: a.a.map(function (v, j) { return v + Math.atan2(Math.sin(b.a[j] - v), Math.cos(b.a[j] - v)) * k; }), c: k < .5 ? a.c : b.c, gc: (k < .5 ? a : b).gc, z: lerp(a.z || 0, b.z || 0, k), pz: 0 }; }
   var SPRING_W = 160;   // visual smoothing stiffness (rad/s); higher = tighter. ~6 ms time constant: lag ~2v/W, about .012 at a fast 1 rink-width/s
-  var REP_TAIL = 0, REP_POST = 1.2;   // each angle shows ~1.2 s (replay time) of live footage after the goal: puck bouncing in the net (was a 0.4 s freeze)
+  var CHASE = { minSp: 1.8, p: .4, rate: .18, pre: .4 };   // chase-cam variant: shots faster than minSp replace angle 2 with probability p; very slow (rate), from ~pre s before the goal
+  var CAMLIM = { v: 1.6, a: 6, lv: 1.2, la: 5 };   // replay / slow-mo camera limits: position and look-target max speed (rink units/s) and acceleration
+  function camLim(S, want, dt, mv, ma) { if (!S.v) S.v = new THREE.Vector3(); if (dt <= 0) return; var w = 7, e = want.clone().sub(S.p), acc = e.multiplyScalar(w * w).addScaledVector(S.v, -2 * w); if (acc.length() > ma) acc.setLength(ma); S.v.addScaledVector(acc, dt); if (S.v.length() > mv) S.v.setLength(mv); S.p.addScaledVector(S.v, dt); }
+  var REP_TAIL = 0, REP_POST = 1.8;   // each angle shows ~1.2 s (replay time) of live footage after the goal: puck bouncing in the net (was a 0.4 s freeze)
   R3.prototype.place = function (st) { this.spr = this.spr || [];
     for (var i = 0; i < 12; i++) { var tr = B.TR[i], q = B.pos(tr, st.u[i]), o = st.o ? st.o[i] : [0, 0], p = this.pl[i], an = st.a ? st.a[i] : 0;
       var tg = L3(q[0] + o[0], q[1] + o[1], 0), sp = this.spr[i], h = this._dt || 0;   // visual-only critically damped spring (sim keeps true positions)
@@ -171,7 +174,7 @@
           cam = this.persp; cam.aspect = W / H; cam.updateProjectionMatrix(); this.shot(seg[3], fr, R, dt, seg !== R.cur); R.cur = seg; } } }
         if (MO && !R) {   // crazy-moment camera: swoops from high over the impact point down toward ice level as time slows
       var Gq = this.G, P3 = function (x, y, h) { return Gq.localToWorld(L3(x, y, h)); }, c = MO.c, d = MO.dir, sd = MO.pt[0] < .5 ? 1 : -1, hi = P3(MO.pt[0] - d[0] * .15, MO.pt[1] - d[1] * .15, 1.25), lo = P3(MO.pt[0] - d[0] * .34 + sd * .12, MO.pt[1] - d[1] * .34, .085);
-      cam = this.persp; cam.aspect = W / H; cam.fov = 50 - c * 8; cam.position.copy(hi.lerp(lo, c)); cam.up.set(0, 1, 0); cam.lookAt(P3(MO.pt[0], MO.pt[1], .005)); cam.updateProjectionMatrix(); }
+      cam = this.persp; cam.aspect = W / H; cam.fov = 50 - c * 8; var wp = hi.lerp(lo, c), wl = P3(MO.pt[0], MO.pt[1], .005); if (!this.mcs || this.lastCam !== this.persp) { this.mcs = { p: wp.clone() }; this.mls = { p: wl.clone() }; } else { camLim(this.mcs, wp, dt, CAMLIM.v * 2.5, CAMLIM.a * 3); camLim(this.mls, wl, dt, CAMLIM.lv, CAMLIM.la); } cam.position.copy(this.mcs.p); cam.up.set(0, 1, 0); cam.lookAt(this.mls.p); cam.updateProjectionMatrix(); }
 this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     // puck trail + glow at speed (visual only)
     var lt = this.trail; lt.push([pp[0], pp[1]]); if (lt.length > 8) lt.shift(); var sp = lt.length > 1 ? Math.hypot(lt[lt.length - 1][0] - lt[lt.length - 2][0], lt[lt.length - 1][1] - lt[lt.length - 2][1]) / Math.max(dt, .001) : 0;
@@ -221,17 +224,24 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     // angle 1: high 3/4 view 1.5x out, normal speed; angle 2: 1.2x out at 75%; angle 3: close net cam at 2/3 of the old slow-mo (.2)
     var a1 = this.phone ? 1.4 : 2.0, a2 = this.phone ? .8 : 1.2, a3 = this.phone ? .35 : .45;
     var r1 = 1, r2 = .75 / 1.1, r3 = .2 * 2 / 3 / 1.15, segs = [[Math.max(0, D - a1), D + REP_POST * r1, r1, 'top'], [Math.max(0, D - a2), D + REP_POST * r2, r2, 'side'], [Math.max(0, D - a3), D + REP_POST * r3, r3, 'net']];
+    // hard/clean shot: sometimes swap angle 2 for a very slow chase cam off the stick into the net
+    var n = F.length, ts = -1, sp = 0; for (var q = n - 1; q > 0 && F[n - 1].t - F[q].t < 1.2; q--) { var f0 = F[q - 1], f1 = F[q], v = Math.hypot(f1.p[0] - f0.p[0], f1.p[1] - f0.p[1]) / ((f1.t - f0.t) || 1); if (v > sp) sp = v; if (f0.c >= 0) { ts = f1.t - F[0].t; break; } }
+    this.lastShotSp = sp; var force = root.BH_CHASE; if ((sp > CHASE.minSp && Math.random() < CHASE.p) || force) { var st0 = Math.max(0, ts >= 0 ? Math.max(ts - .05, D - CHASE.pre) : D - CHASE.pre), f2 = frameAt(F, F[0].t + st0), f3 = frameAt(F, F[0].t + Math.min(D, st0 + .08)), dv = [f3.p[0] - f2.p[0], f3.p[1] - f2.p[1]], dm = Math.hypot(dv[0], dv[1]) || 1;
+      segs[1] = [st0, D + REP_POST * CHASE.rate, CHASE.rate, 'chase']; this.chaseDir = dm > .004 ? [dv[0] / dm, dv[1] / dm] : [0, R0dir(team)]; }
     this.rep = { F: F, team: team, t: 0, wait: this.phone ? 1.2 : 1.5, segs: segs, gy: team ? L - B.GY : B.GY, dir: team ? 1 : -1 };
   };
+  function R0dir(team) { return team ? 1 : -1; }
   R3.prototype.shot = function (kind, fr, R, dt, cut) {   // replay cameras, all at ice level
     var cam = this.persp, G = this.G, pk = new THREE.Vector3(fr.p[0], 0, fr.p[1]), want, look;
     var P = function (x, y, h) { return G.localToWorld(L3(x, y, h)); }, puck = P(fr.p[0], fr.p[1], .01);
-    if (kind === 'top') { var sd = fr.p[0] < .5 ? -1 : 1; want = P(fr.p[0] + sd * .3, fr.p[1] - R.dir * .55, .5); look = P(fr.p[0], fr.p[1] + R.dir * .1, 0); }
+    if (cut || R.sd == null) R.sd = fr.p[0] < .5 ? -1 : 1;   // shot spot side picked once per angle, then held
+    if (kind === 'chase') { var cd = this.chaseDir || [0, R.dir], inNet = (fr.p[1] - R.gy) * R.dir > 0, back = inNet ? .16 : .09; want = P(fr.p[0] - cd[0] * back + R.sd * .03, fr.p[1] - cd[1] * back, .035 + (fr.z || 0)); look = P(fr.p[0] + cd[0] * .05, fr.p[1] + cd[1] * .05, .008 + (fr.z || 0)); if (inNet) { want = P(.5 - cd[0] * .14 + R.sd * .03, R.gy - R.dir * .14, .05); look = P(fr.p[0], fr.p[1], .01); } }
+    else if (kind === 'top') { var sd = R.sd; want = P(fr.p[0] + sd * .3, fr.p[1] - R.dir * .55, .5); look = P(fr.p[0], fr.p[1] + R.dir * .1, 0); }
     else if (kind === 'track') { var dx = R.gy - fr.p[1], side = fr.p[0] < .5 ? -1 : 1; want = P(fr.p[0] + side * .2, fr.p[1] - R.dir * .38, .07); look = P(fr.p[0], fr.p[1] + R.dir * .12, .01); }
-    else if (kind === 'side') { var sx = fr.p[0] < .5 ? .95 : .05; sx = .5 + (sx - .5) * 1.2; want = P(sx, R.gy - R.dir * .41, .14); look = P(fr.p[0], fr.p[1], .015); }
-    else { want = P(.5 + (fr.p[0] < .5 ? -.03 : .03), R.gy + R.dir * .045, .115); look = P(fr.p[0], fr.p[1], 0); }
-    if (cut || !R.cp) { R.cp = want.clone(); R.cl = look.clone(); } else { var k = 1 - Math.exp(-dt * (kind === 'track' || kind === 'top' ? 4 : 10)); R.cp.lerp(want, k); R.cl.lerp(look, 1 - Math.exp(-dt * 12)); }
-    cam.position.copy(R.cp); cam.up.set(0, 1, 0); cam.lookAt(R.cl); cam.fov = kind === 'net' ? 60 : 50; cam.updateProjectionMatrix();
+    else if (kind === 'side') { var sx = R.sd < 0 ? .95 : .05; sx = .5 + (sx - .5) * 1.2; want = P(sx, R.gy - R.dir * .41, .14); look = P(fr.p[0], fr.p[1], .015); }
+    else if (kind !== 'chase') { want = P(.5 + (R.sd < 0 ? -.03 : .03), R.gy + R.dir * .045, .115); look = P(fr.p[0], fr.p[1], 0); }
+    var ch = kind === 'chase' ? 2.2 : 1; if (cut || !R.cs) { R.cs = { p: want.clone() }; R.ls = { p: look.clone() }; } else { camLim(R.cs, want, dt, CAMLIM.v * ch, CAMLIM.a * ch); camLim(R.ls, look, dt, CAMLIM.lv * ch, CAMLIM.la * ch); }   // smoothed, rate-limited position + look-at: no whip
+    cam.position.copy(R.cs.p); cam.up.set(0, 1, 0); cam.lookAt(R.ls.p); cam.fov = kind === 'net' ? 60 : kind === 'chase' ? 40 : 50; cam.updateProjectionMatrix();
   };
   // ref: 50% see-through, follows play at half player speed, no effect on the game. Hard contact knocks him over (cosmetic).
   R3.prototype.refStep = function (st, dt) { var F = this.ref; if (!F) { F = this.ref = { g: man(new THREE.Group(), 0xf4f4f4, false, .5), x: .9, y: L / 2, down: 0, prev: [], hd: 0 };

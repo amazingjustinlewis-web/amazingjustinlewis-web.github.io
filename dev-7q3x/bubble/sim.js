@@ -2,7 +2,7 @@
    point-mirror (x -> 1-x, y -> 1.8-y). Every player rides a fixed track (u = 0..1). AI slides everyone you are not touching. */
 (function (root) {
   'use strict';
-  var L = 2.0, PR = .022, R = .034, GW = .07, GY = .128, BL = .66, REACH = .055, GOALP = 12.8, MAGR = .045, MAGK = .0007, WIN = 5, TIME = 180;
+  var L = 2.0, PR = .022, R = .034, GW = .07, GY = .128, BL = .66, REACH = .055, GOALP = 16.8, MAGR = .045, MAGK = .0007, WIN = 5, TIME = 180;
   // v0.3 tracks come from tracks.js (sketch pixels, Catmull-Rom). Team 0 = sketch green (guards y=L), team 1 = sketch blue (guards y=0).
   var TB = root.BUBBLE_TRACKS, SK = TB.sketch;
   function sk(q) { return [(q[1] - SK.y0) / (SK.y1 - SK.y0), (q[0] - SK.x0) / (SK.x1 - SK.x0) * L]; }
