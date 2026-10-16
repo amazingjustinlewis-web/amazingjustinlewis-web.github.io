@@ -3,7 +3,7 @@
 <style>body{background:#05040d}#hud{position:fixed;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
 #frame{position:fixed;inset:0;z-index:1;pointer-events:none;width:100%;height:100%}
 .fb{position:fixed;z-index:4;width:22vmin;height:22vmin;max-width:120px;max-height:120px;border-radius:50%;border:3px solid #fff5;color:#fff;font:700 15px Fredoka,system-ui;display:flex;align-items:center;justify-content:center;text-align:center;touch-action:none}
-#gun{left:max(14px,env(safe-area-inset-left));bottom:46vh;background:#ff5a6e44}#bomb{right:max(14px,env(safe-area-inset-right));bottom:46vh;background:#ffc93f33;overflow:hidden}#bomb i{position:absolute;left:0;right:0;bottom:0;background:#ffc93f88;height:0}#bomb span{position:relative}
+#gun{right:max(14px,env(safe-area-inset-right));bottom:calc(6vh + min(22vmin,120px) + 14px);background:#ff5a6e44}#bomb{right:max(14px,env(safe-area-inset-right));bottom:6vh;background:#ffc93f33;overflow:hidden}#bomb i{position:absolute;left:0;right:0;bottom:0;background:#ffc93f88;height:0}#bomb span{position:relative}body.sw #gun,body.sw #bomb{right:auto;left:max(14px,env(safe-area-inset-left))}#lvl{position:fixed;left:50%;bottom:78px;transform:translateX(-50%);z-index:5;font-size:12px;padding:4px 10px;background:#0007;display:none}
 .fb.on{border-color:#fff;transform:scale(.94)}#flash{position:fixed;inset:0;z-index:3;pointer-events:none;opacity:0}
 #over{position:fixed;inset:0;z-index:8;display:none;flex-direction:column;align-items:center;justify-content:center;background:#05040dcc;font-size:17px;text-align:center}#over h1{color:#ffe7a0;margin:0 0 8px}
 #over .r{display:flex;justify-content:space-between;gap:20px;min-width:240px}#rp{position:fixed;left:0;right:0;top:12px;text-align:center;z-index:8;font-size:20px;font-weight:700;color:#ffe7a0;display:none;text-shadow:0 2px 6px #000}
@@ -12,22 +12,38 @@
 <canvas id="cv" class="full"></canvas><svg id="frame" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0 0 L18 0 L6 30 L0 34Z M100 0 L82 0 L94 30 L100 34Z M0 100 L0 80 L10 86 L22 100Z M100 100 L100 80 L90 86 L78 100Z" fill="#0b0f1ccc"/><path d="M18 0 L6 30 M82 0 L94 30" stroke="#4a7bff55" stroke-width=".4" fill="none"/></svg>
 <canvas id="hud"></canvas><div id="flash"></div>
 <div class="fb" id="gun">GUN</div><div class="fb" id="bomb"><i></i><span>HOLD<br>BOMB</span></div>
-<div id="over"></div><div id="rp"></div><button class="btn" id="vw" style="position:fixed;left:50%;transform:translateX(-50%);top:46px;z-index:5;font-size:12px;padding:4px 10px;background:#0007;opacity:.75"></button><button class="btn" id="skip">Skip &#9654;</button><div id="hostq"><div id="hq"></div><p style="margin:6px 0 0;font-size:13px">Friends scan to join this match.<br>Tap to hide.</p></div><div class="st" id="st"></div>
+<div id="over"></div><div id="rp"></div><button class="btn" id="vw" style="position:fixed;left:50%;transform:translateX(-50%);bottom:46px;z-index:5;font-size:12px;padding:4px 10px;background:#0007;opacity:.75"></button><button class="btn" id="lvl">⌖ Recalibrate tilt</button><button class="btn" id="skip">Skip &#9654;</button><div id="hostq"><div id="hq"></div><p style="margin:6px 0 0;font-size:13px">Friends scan to join this match.<br>Tap to hide.</p></div><div class="st" id="st"></div>
 <script>window.MINI = 'orbit';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script>
 <script src="../../assets/js/ztp-pad-settings.js"></script><script src="three.min.js"></script><script src="sim.js"></script><script src="view.js"></script><script src="game.js"></script><script src="replay.js"></script>
 <script>
 (function () {
   var $ = function (i) { return document.getElementById(i); }, T = THREE, V = new OrbitView($('cv'), { phone: true }), H = $('hud'), hx = H.getContext('2d');
   var G = null, c = null, snaps = new OrbitSnaps(), myId = 0, rec = null, replay = null;
-  var pad = ZTPPad.init({ game: 'orbit', sticks: { L: 'Fly: forward/back + strafe', R: 'Turn: pitch + yaw' }, invert: true, invertX: true, corner: 'tr', extra: [['third', 'Third-person view (chase cam)'], ['roll', 'Turn stick left/right rolls (instead of yaw)']] });
+  var pad = ZTPPad.init({ game: 'orbit', sticks: { L: 'Throttle (slide up/down, stays set)', R: 'Steer: nose up/down/left/right' }, invert: true, invertX: true, corner: 'tr', extra: [['tilt', 'Steer by tilting the phone'], ['third', 'Third-person view (chase cam)'], ['roll', 'Steer left/right rolls (instead of yaw)']], onChange: function (o) { layout(); if (o.tilt && !tilt.on) tiltStart(); } });
   function size() { V.size(); var d = Math.min(devicePixelRatio || 1, 2); H.width = innerWidth * d; H.height = innerHeight * d; hx.setTransform(d, 0, 0, d, 0, 0); } addEventListener('resize', size); size();
-  // ---- twin virtual sticks (float where the thumb lands; left half / right half)
+  // ---- v0.2 controls: throttle half (slide, stays set) + steering half (floating stick or phone tilt) + GUN/BOMB stacked on the steering edge
   var sticks = { L: { id: null, o: [0, 0], v: [0, 0] }, R: { id: null, o: [0, 0], v: [0, 0] } }, fire = false, charging = 0, chargeOn = false;
-  function stickFor(x) { return x < innerWidth / 2 ? 'L' : 'R'; }
-  addEventListener('pointerdown', function (e) { if (e.target !== H && e.target !== $('cv') && e.target !== $('frame')) return; if (replay) return; var k = stickFor(e.clientX), s = sticks[k]; if (s.id !== null) return; s.id = e.pointerId; s.o = [e.clientX, e.clientY]; s.v = [0, 0]; });
-  addEventListener('pointermove', function (e) { ['L', 'R'].forEach(function (k) { var s = sticks[k]; if (s.id !== e.pointerId) return; var R = Math.min(70, innerHeight * .14), dx = (e.clientX - s.o[0]) / R, dy = (e.clientY - s.o[1]) / R, m = Math.hypot(dx, dy);
-    if (m > 1) { s.o[0] += (dx - dx / m) * R; s.o[1] += (dy - dy / m) * R; dx /= m; dy /= m; } s.v = [dx, dy]; }); });
-  function lift(e) { ['L', 'R'].forEach(function (k) { if (sticks[k].id === e.pointerId) { sticks[k].id = null; sticks[k].v = [0, 0]; } }); } addEventListener('pointerup', lift); addEventListener('pointercancel', lift);
+  var thr = { id: null, v: .55, y0: 0, v0: 0 }, TMIN = -.4;
+  function layout() { document.body.classList.toggle('sw', !!pad.opts.swap); $('lvl').style.display = pad.opts.tilt ? 'block' : 'none'; if (!pad.opts.tilt && /[Tt]ilt/.test($('st').textContent)) $('st').textContent = ''; }
+  function thrSide(x) { return pad.opts.swap ? x >= innerWidth / 2 : x < innerWidth / 2; }
+  addEventListener('pointerdown', function (e) { if (e.target !== H && e.target !== $('cv') && e.target !== $('frame')) return; if (replay) return;
+    if (thrSide(e.clientX)) { if (thr.id !== null) return; thr.id = e.pointerId; thr.y0 = e.clientY; thr.v0 = thr.v; return; }
+    var s = sticks.R; if (s.id !== null || pad.opts.tilt) return; s.id = e.pointerId; s.o = [e.clientX, e.clientY]; s.v = [0, 0]; });
+  addEventListener('pointermove', function (e) { if (thr.id === e.pointerId) { thr.v = Math.max(TMIN, Math.min(1, thr.v0 - (e.clientY - thr.y0) / (innerHeight * .45))); if (Math.abs(thr.v) < .04) thr.v = 0; return; }
+    var s = sticks.R; if (s.id !== e.pointerId) return; var R = Math.min(70, innerHeight * .14), dx = (e.clientX - s.o[0]) / R, dy = (e.clientY - s.o[1]) / R, m = Math.hypot(dx, dy);
+    if (m > 1) { s.o[0] += (dx - dx / m) * R; s.o[1] += (dy - dy / m) * R; dx /= m; dy /= m; } s.v = [dx, dy]; });
+  function lift(e) { if (thr.id === e.pointerId) thr.id = null; if (sticks.R.id === e.pointerId) { sticks.R.id = null; sticks.R.v = [0, 0]; } } addEventListener('pointerup', lift); addEventListener('pointercancel', lift);
+  // ---- tilt steering: gravity in screen axes, relative to how the phone was held at calibration
+  var tilt = { on: false, g: null, g0: null, v: [0, 0] };
+  function scr(a) { var an = ((screen.orientation && screen.orientation.angle) || window.orientation || 0) * Math.PI / 180, c = Math.cos(an), s = Math.sin(an); return [a.x * c - a.y * s, a.x * s + a.y * c, a.z]; }
+  function onMotion(e) { var a = e.accelerationIncludingGravity; if (!a || a.x == null) return; var g = scr(a); tilt.g = tilt.g ? tilt.g.map(function (v, i) { return v + (g[i] - v) * .25; }) : g; if (!tilt.g0) tilt.g0 = tilt.g.slice(); }
+  function angs(g) { return [Math.atan2(g[0], Math.hypot(g[1], g[2])), Math.atan2(g[1], g[2])]; }
+  function tiltStart() { var go = function () { tilt.on = true; tilt.g0 = null; addEventListener('devicemotion', onMotion); };
+    if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) DeviceMotionEvent.requestPermission().then(function (r) { if (r !== 'granted') $('st').textContent = 'Tilt needs motion permission (tap Recalibrate)'; go(); }).catch(function () { $('st').textContent = 'Tap Recalibrate to allow tilt'; go(); }); else go(); }
+  function tiltRead() { if (!tilt.g || !tilt.g0) return [0, 0]; var a = angs(tilt.g), b = angs(tilt.g0), K = 22 * Math.PI / 180, D = 3 * Math.PI / 180;
+    function f(d) { var s = Math.sign(d), m = Math.max(0, Math.abs(d) - D) / K; return s * Math.min(1, m); } return [f(a[0] - b[0]), f(a[1] - b[1])]; }   // [turn (+ = wheel turned left), pitch (+ = top edge tipped back)]
+  $('lvl').onclick = function () { if (!tilt.on) tiltStart(); tilt.g0 = tilt.g ? tilt.g.slice() : null; $('lvl').textContent = '\u2316 Level set'; setTimeout(function () { $('lvl').textContent = '\u2316 Recalibrate tilt'; }, 1200); };
+  if (pad.opts.tilt) tiltStart();
   function btn(el, dn, up) { el.addEventListener('pointerdown', function (e) { e.preventDefault(); el.classList.add('on'); try { el.setPointerCapture(e.pointerId); } catch (x) {} dn(); });
     function u() { if (!el.classList.contains('on')) return; el.classList.remove('on'); up(); } el.addEventListener('pointerup', u); el.addEventListener('pointercancel', u); }
   btn($('gun'), function () { fire = true; }, function () { fire = false; });
@@ -35,11 +51,13 @@
   function throwBomb(cv) { if (G && G.me) G.sim.bomb(G.me, cv); else if (c) c.send({ t: 'bomb', c: cv }); }
   function dz(v) { var m = Math.hypot(v[0], v[1]); if (m < .12) return [0, 0]; var k = Math.min(1, (m - .12) / .88); k = k * (.4 + .6 * k); return [v[0] / m * k, v[1] / m * k]; }
   var gpPrev = {};
-  function input() { var o = pad.opts, Ls = dz(sticks.L.v), Rs = dz(sticks.R.v), mv = o.swap ? Rs : Ls, tn = o.swap ? Ls : Rs, gf = false;
-    var gps = navigator.getGamepads ? navigator.getGamepads() : []; for (var i = 0; i < (gps ? gps.length : 0); i++) { var g = gps[i]; if (!g || !g.connected || pad.isOpen()) continue; var r = pad.read(g); mv = dz(r.L); tn = dz([r.R[0] * (o.invX ? -1 : 1), r.R[1] * (o.invY ? -1 : 1)]);
+  function input() { var o = pad.opts, ix = o.invX ? -1 : 1, iy = o.invY ? -1 : 1, tn = dz(sticks.R.v), gf = false, tx = 0, tz = thr.v;
+    var P = -tn[1] * iy, Y = -tn[0] * ix;
+    if (o.tilt && tilt.on) { var tv = tiltRead(); Y = tv[0] * ix; P = tv[1] * iy; }
+    var gps = navigator.getGamepads ? navigator.getGamepads() : []; for (var i = 0; i < (gps ? gps.length : 0); i++) { var g = gps[i]; if (!g || !g.connected || pad.isOpen()) continue; var r = pad.read(g), mv = dz(r.L), gt = dz(r.R);
+      if (mv[0] || mv[1]) { tx = mv[0]; thr.v = Math.max(TMIN, Math.min(1, thr.v - mv[1] * .02)); tz = thr.v; } if (gt[0] || gt[1]) { P = -gt[1]; Y = -gt[0]; }   // pad.read already applies swap + invert
       gf = g.buttons[7] && g.buttons[7].value > .3; var lb = g.buttons[6] && g.buttons[6].value > .3; if (lb && !gpPrev.lb) { chargeOn = true; charging = 0; } if (!lb && gpPrev.lb && chargeOn) { chargeOn = false; throwBomb(Math.min(1, charging / Orbit.C.BOMB_MAX)); } gpPrev.lb = lb; break; }
-    var ix = o.invX ? -1 : 1, iy = o.invY ? -1 : 1;
-    return { tx: mv[0], tz: -mv[1], p: -tn[1] * iy, y: o.roll ? 0 : -tn[0] * ix, r: o.roll ? -tn[0] * ix : 0, fire: fire || gf }; }
+    return { tx: tx, tz: tz, p: P, y: o.roll ? 0 : Y, r: o.roll ? Y : 0, fire: fire || gf }; }
   function vwBtn() { $('vw').textContent = pad.opts.third ? '\uD83D\uDE80 3rd person' : '\uD83D\uDC41 1st person'; } vwBtn();
   $('vw').onclick = function () { pad.opts.third = !pad.opts.third; try { localStorage.setItem('ztp-pad-orbit', JSON.stringify(pad.opts)); } catch (e) {} vwBtn(); };
   // ---- start
@@ -49,7 +67,7 @@
     if (withFriends) { G.host.qr($('hq')); $('hostq').style.display = 'block'; $('hostq').onclick = function () { this.style.display = 'none'; }; } }
   c = Kit.pad({ onMsg: function (m) { if (m.t === 's') snaps.push(m); else if (m.t === 'you' && m.ship) myId = m.ship; else if (m.t === 'full') $('st').textContent = 'Match is full (20 pilots)'; }, onStatus: function (s, d) { $('st').textContent = s === 'online' ? '' : s + (d ? ' \u00b7 ' + d : ''); } });
   if (Kit.Q.get('solo') === '1') solo(false); else if (Kit.Q.get('host') === '1') solo(true);
-  else { Kit.joinCard('ORBIT BRAWL', c, c.room ? '' : '<button class="btn" id="b1">\uD83D\uDE80 Fly on this phone (vs bots)</button><button class="btn" id="b2">\uD83D\uDCF1 Host a match for friends</button><p style="font-size:13px;opacity:.8">Left stick flies, right stick turns. Gun on the left, hold Bomb on the right. \u2699 swaps sticks.</p>');
+  else { Kit.joinCard('ORBIT BRAWL', c, c.room ? '' : '<button class="btn" id="b1">\uD83D\uDE80 Fly on this phone (vs bots)</button><button class="btn" id="b2">\uD83D\uDCF1 Host a match for friends</button><p style="font-size:13px;opacity:.8">Left thumb: slide up/down for throttle (it stays set). Right thumb: steer (or tilt, in \u2699). Gun + hold Bomb on the right.</p>');
     if ($('b1')) { $('b1').onclick = function () { solo(false); }; $('b2').onclick = function () { solo(true); }; } }
   // ---- HUD
   var lastHull = 100, lastSh = 100, flashA = 0, flashC = '#7fd8ff', feedSeen = '', sendT = 0;
@@ -73,8 +91,12 @@
     if (!me.alive) { hx.fillStyle = '#ff7a6a'; hx.font = '700 26px Fredoka,system-ui'; hx.fillText('DESTROYED', cx, cy - 40); hx.font = '15px Fredoka,system-ui'; hx.fillStyle = '#fff'; hx.fillText('respawning\u2026', cx, cy - 16); }
     hx.textAlign = 'left';
     // stick rings
-    ['L', 'R'].forEach(function (k) { var s = sticks[k]; if (s.id === null) return; var R = Math.min(70, innerHeight * .14); hx.strokeStyle = '#ffffff55'; hx.lineWidth = 2; hx.beginPath(); hx.arc(s.o[0], s.o[1], R, 0, 7); hx.stroke(); hx.fillStyle = '#ffffff66'; hx.beginPath(); hx.arc(s.o[0] + s.v[0] * R, s.o[1] + s.v[1] * R, R * .38, 0, 7); hx.fill(); });
+    drawThr(); ['R'].forEach(function (k) { var s = sticks[k]; if (s.id === null) return; var R = Math.min(70, innerHeight * .14); hx.strokeStyle = '#ffffff55'; hx.lineWidth = 2; hx.beginPath(); hx.arc(s.o[0], s.o[1], R, 0, 7); hx.stroke(); hx.fillStyle = '#ffffff66'; hx.beginPath(); hx.arc(s.o[0] + s.v[0] * R, s.o[1] + s.v[1] * R, R * .38, 0, 7); hx.fill(); });
   }
+  function drawThr() { var W = innerWidth, Hh = innerHeight, x = pad.opts.swap ? W - 34 : 22, top = Hh * .2, h = Hh * .62, zero = top + h * (1 / (1 - TMIN)), y = top + h * (1 - (thr.v - TMIN) / (1 - TMIN));
+    hx.fillStyle = '#0008'; hx.fillRect(x, top, 12, h); hx.fillStyle = thr.v >= 0 ? '#5fdc7a' : '#ff9f43'; hx.fillRect(x, Math.min(y, zero), 12, Math.abs(zero - y)); hx.fillStyle = '#fff'; hx.fillRect(x - 5, y - 2, 22, 4); hx.fillRect(x - 2, zero - 1, 16, 2);
+    hx.font = '11px Fredoka,system-ui'; hx.textAlign = pad.opts.swap ? 'right' : 'left'; hx.fillText(thr.v < 0 ? 'REV' : Math.round(thr.v * 100) + '%', pad.opts.swap ? x - 8 : x + 18, y + 4); hx.textAlign = 'left';
+    if (thr.id !== null) { hx.strokeStyle = '#ffffff33'; hx.strokeRect(x - 8, top - 6, 28, h + 12); } }
   function overScreen(st) { var o = $('over'); if (!st.over || replay) { o.style.display = 'none'; return; } if (o.style.display === 'flex') return; o.style.display = 'flex';
     var rows = st.ships.slice().sort(function (a, b) { return b.k - a.k || a.d - b.d; });
     o.innerHTML = '<h1>' + (rows[0] ? (rows[0].id === myId ? 'You win!' : rows[0].name + ' wins!') : 'Round over') + '</h1>' + rows.slice(0, 8).map(function (s, i) { return '<div class="r" style="' + (s.id === myId ? 'font-weight:700' : '') + '"><span style="color:' + s.col + '">' + (i + 1) + '. ' + s.name + '</span><span>' + s.k + ' / ' + s.d + '</span></div>'; }).join('') +
@@ -101,6 +123,6 @@
       V.draw(st, { hide: me && me.alive && !pad.opts.third ? me.id : 0 }); $('frame').style.display = pad.opts.third ? 'none' : ''; drawHud(st, me, t); overScreen(st); }
     flashA = Math.max(0, flashA - dt * 2); var f = $('flash'); f.style.background = 'radial-gradient(ellipse at center, transparent 35%, ' + flashC + ')'; f.style.opacity = flashA;
     requestAnimationFrame(loop); })(0);
-  window.OBP = { get G() { return G; }, V: V, sticks: sticks, pad: pad, get rec() { return rec; }, setFire: function (v) { fire = v; }, bomb: throwBomb, startReplays: startReplays, snaps: snaps };
+  layout(); window.OBP = { thr: thr, tilt: tilt, layout: layout, get G() { return G; }, V: V, sticks: sticks, pad: pad, get rec() { return rec; }, setFire: function (v) { fire = v; }, bomb: throwBomb, startReplays: startReplays, snaps: snaps };
 })();
 </script></body></html>
