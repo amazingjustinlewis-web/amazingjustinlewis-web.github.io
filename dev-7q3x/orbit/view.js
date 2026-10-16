@@ -110,14 +110,25 @@
   View.prototype.holoInit = function () { var g = new T.Group(), pd = proxyPod('#7fd8ff'), self = this; pd.traverse(function (m) { if (m.isMesh) m.material = new T.MeshBasicMaterial({ color: 0x7fe8ff, wireframe: true, transparent: true, opacity: .5, depthTest: false, depthWrite: false }); m.renderOrder = 999; });
     pd.scale.multiplyScalar(1); g.add(pd); this.holoPod = pd; this.plates = NRM.map(function (n) { var m = new T.Mesh(new T.SphereGeometry(3.2, 10, 3, 0, Math.PI * 2, 0, .62), new T.MeshBasicMaterial({ color: 0x5fdc7a, wireframe: true, transparent: true, opacity: .4, depthTest: false, depthWrite: false }));
       m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), new T.Vector3(n[0], n[1], n[2])); m.renderOrder = 1000; g.add(m); return m; });
-    g.scale.setScalar(.36); g.position.set(0, 1.35, -7.5); this.cam.add(g); this.holo = g; this.holoA = 0; this.holoT = 9; this.flashT = 9; this.flashK = -1; this.holoQ = new T.Quaternion(); g.visible = false; };
+    g.scale.setScalar(.3); g.position.set(0, .95, -7.5); this.cam.add(g); this.holo = g; this.holoA = 0; this.holoT = 9; this.flashT = 9; this.flashK = -1; this.holoQ = new T.Quaternion(); g.visible = false; };
   View.prototype.holoHit = function (k) { if (!this.holo) this.holoInit(); this.holoT = 0; this.flashT = 0; this.flashK = k;
     if (k >= 0) { var n = new T.Vector3().fromArray(NRM[k]), to = new T.Vector3(0, .45, 1).normalize(); this.holoQ.setFromUnitVectors(n, to); if (k === 4 || k === 5) this.holoQ.premultiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1, 0, 0), k === 4 ? -.25 : .25)); } };
   View.prototype.holoStep = function (sec, dt, alive) { if (!this.holo) this.holoInit(); var g = this.holo; this.holoT += dt; this.flashT += dt;
     var a = !alive ? 0 : this.holoT < 3 ? 1 : Math.max(0, 1 - (this.holoT - 3)); this.holoA += (a - this.holoA) * Math.min(1, dt * 8); g.visible = this.holoA > .02; if (!g.visible) return;
-    g.quaternion.slerp(this.holoQ, Math.min(1, dt * 6)); var A = this.holoA, fl = this.flashT < .4 && Math.floor(this.flashT * 12) % 2 === 0;
+    g.quaternion.slerp(this.holoQ, Math.min(1, dt * 6)); g.scale.setScalar(.3 * Math.min(1, this.cam.aspect * 1.3)); g.position.y = this.cam.aspect < 1 ? .75 : .95; var A = this.holoA, fl = this.flashT < .4 && Math.floor(this.flashT * 12) % 2 === 0;
     this.holoPod.traverse(function (m) { if (m.isMesh) m.material.opacity = .5 * A; });
     var self = this; this.plates.forEach(function (m, i) { var v = sec ? sec[i] / 100 : 1; if (fl && i === self.flashK) { m.material.color.set('#ffffff'); m.material.opacity = .9 * A; return; }
       m.material.color.setHSL(.33 * v, 1, .55); m.material.opacity = (v > 0 ? .25 + .3 * (1 - v) : .15) * A + (i === self.flashK && self.flashT < 1.5 ? .25 * A : 0); }); };
+  // speed cue: short streaks in the camera's own space, flowing past the canopy with your velocity (forward or reverse)
+  View.prototype.speed = function (vl, dt, on) { var N = 90, self = this;
+    if (!this.sp) { this.spP = new Float32Array(N * 3); for (var i = 0; i < N; i++) this.seedSp(i, true); var g = new T.BufferGeometry(); this.spBuf = new Float32Array(N * 6); g.setAttribute('position', new T.BufferAttribute(this.spBuf, 3));
+      this.sp = new T.LineSegments(g, new T.LineBasicMaterial({ color: 0xbfd8ff, transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false })); this.sp.frustumCulled = false; this.cam.add(this.sp); }
+    var P = this.spP, B = this.spBuf, v = vl.length(), k = Math.min(1, v / 50); this.sp.visible = on && v > 2; this.sp.material.opacity = .15 + .55 * k; if (!this.sp.visible) return;
+    for (var j = 0; j < N; j++) { var o = j * 3; P[o] -= vl.x * dt; P[o + 1] -= vl.y * dt; P[o + 2] -= vl.z * dt;
+      if (P[o + 2] > 2 || P[o + 2] < -90 || Math.abs(P[o]) > 40 || Math.abs(P[o + 1]) > 40) this.seedSp(j, false, vl);
+      var L = .02 + .045 * k; B[j * 6] = P[o]; B[j * 6 + 1] = P[o + 1]; B[j * 6 + 2] = P[o + 2]; B[j * 6 + 3] = P[o] + vl.x * L; B[j * 6 + 4] = P[o + 1] + vl.y * L; B[j * 6 + 5] = P[o + 2] + vl.z * L; }
+    this.sp.geometry.attributes.position.needsUpdate = true; this.sp.geometry.setDrawRange(0, Math.round(N * (.3 + .7 * k)) * 2); };
+  View.prototype.seedSp = function (j, any, vl) { var P = this.spP, o = j * 3, a = Math.random() * 6.28, r = 3 + Math.random() * 30; P[o] = Math.cos(a) * r; P[o + 1] = Math.sin(a) * r;
+    P[o + 2] = any ? -Math.random() * 90 : (vl && vl.z > 0 ? -1 - Math.random() * 4 : -60 - Math.random() * 30); if (vl && vl.z > 0 && !any) P[o + 2] = -Math.random() * 10 - 2; if (vl && vl.z <= 0 && !any) P[o + 2] = -85 + Math.random() * 10; };
   root.OrbitView = View; root.OrbitSnaps = Snaps;
 })(window);
