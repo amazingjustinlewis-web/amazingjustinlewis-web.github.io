@@ -95,6 +95,7 @@
     var W = this.cv.clientWidth, H = this.cv.clientHeight, v = new THREE.Vector3();
     for (i = 0; i < 12; i++) { var m = this.mk[i]; if (!on) { m.style.display = 'none'; continue; } this.pl[i].getWorldPosition(v); v.project(cam); var ax = Math.abs(v.x), ay = Math.abs(v.y), out = Math.max(ax, ay); if (out <= 1) { m.style.display = 'none'; continue; }
       var k = .96 / out, sz = Math.max(5, 16 / (1 + (out - 1) * 3)); m.style.display = 'block'; m.style.width = m.style.height = sz + 'px'; m.style.left = ((v.x * k + 1) / 2 * W) + 'px'; m.style.top = ((1 - v.y * k) / 2 * H) + 'px'; m.style.opacity = .85; } };
+  var PHONE_ZIP = 7;   // phones: zip-zoom rate, same in and out for replays and live moments (exponential: fast, then a slow taper)
   var PHONE_MO_ZOOM = 1.4;   // phones: extra top-down zoom at full slow-mo (1.4 = 2.4x)
   R3.prototype.setTop = function (st, dt) {   // orthographic camera that reproduces the 2D View mapping exactly
     var V = this.V, W = this.cv.clientWidth, H = this.cv.clientHeight, a = V.s2w(0, 0), bx = V.s2w(1, 0), by = V.s2w(0, -1), cam = this.ortho, G = this.G;
@@ -132,7 +133,7 @@
       sk.scale.x = ext; sk.position.x = ln0 * ext / 2; bl.position.x = ln0 * ext; p.position.y = 0;
       if (dnv > 0) { var tt = 1.5 - dnv, lie = tt < .25 ? tt / .25 : dnv < .45 ? dnv / .45 : 1; p.userData.spin = (p.userData.spin || (Math.random() - .5) * 16); p.rotateY(p.userData.spin * Math.max(0, 1 - tt) * .05); p.rotateZ(lie * Math.PI / 2 * .92); p.position.y = lie * .01 + Math.abs(Math.sin(tt * 9)) * .006 * Math.max(0, 1 - tt * 2); }
       else { p.userData.spin = 0; if (lnv > 0) p.rotateZ(-Math.min(1, lnv / .3) * .55); } }
-    var pz = st.pz || 0, h = 0, px = st.p[0], py = st.p[1]; this.puck.visible = !(pz > 0);   // faceoff: hidden in the slot until it launches
+    var pz = st.pz || 0, h = 0, px = st.p[0], py = st.p[1]; this.puck.visible = !(pz > 0) || !!st.pg;   // faceoff: hidden in the slot until it launches
     if (st.z) h = st.z; this.puck.position.copy(L3(px, py, .006 + h)); var gs = 1 + h * 7; this.puck.scale.set(gs, 1, gs);
     if (!this.pshad) { this.pshad = new THREE.Mesh(new THREE.CircleGeometry(B.PR, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0, depthWrite: false })); this.pshad.rotation.x = -Math.PI / 2; this.G.add(this.pshad); }
     this.pshad.position.copy(L3(px + h * .45, py + h * .3, .0015)); this.pshad.scale.setScalar(1 + h * 2.5); this.pshad.material.opacity = this.puck.visible && h > .004 ? Math.max(.22, .5 - h * 1.6) : 0;
@@ -145,7 +146,7 @@
   R3.prototype.render = function (st, dt, opt) {
     opt = opt || {}; this.clock += dt; var W = this.cv.clientWidth, H = this.cv.clientHeight; if (this.W !== W || this.H !== H) { this.W = W; this.H = H; this.gl.setSize(W, H, false); }
     // record history (skip while paused)
-    if (!this.rep && !(st.pz > 0)) { this.hist.push({ t: this.clock, p: st.p.slice(), u: st.u.slice(), o: (st.o || st.u.map(function () { return [0, 0]; })).map(function (q) { return q.slice(); }), a: (st.a || st.u.map(function () { return 0; })).slice(), c: st.c, z: st.z || 0, gc: st.gc ? st.gc.slice() : null });
+    if (!this.rep && (!(st.pz > 0) || st.pg)) { this.hist.push({ t: this.clock, p: st.p.slice(), u: st.u.slice(), o: (st.o || st.u.map(function () { return [0, 0]; })).map(function (q) { return q.slice(); }), a: (st.a || st.u.map(function () { return 0; })).slice(), c: st.c, z: st.z || 0, gc: st.gc ? st.gc.slice() : null });
       while (this.hist.length && this.hist[0].t < this.clock - 5) this.hist.shift(); }
     // buzzer right before the puck is spat out (pz counts down; pop starts at .55)
     if (st.pz > .02 && st.pz < .5 && !this.buzzed) { this.buzzed = true; buzz(); } if (!(st.pz > 0)) this.buzzed = false;
@@ -154,7 +155,7 @@
     // goal detection by score change (works on remote phones too)
     var tot = st.sc[0] + st.sc[1]; if (this.sc != null && tot > this.sc && this.hist.length > 10) this.goal(st.sc[0] > this.lastSc[0] ? 0 : 1);
     this.sc = tot; this.lastSc = st.sc.slice();
-    if (this.phone) { var mtg = st.mo ? st.mo.c : 0; if (st.mo) this.pmoPt = st.mo.pt; this.pzc = this.pzc || 0; this.pzc += (mtg - this.pzc) * (1 - Math.exp(-dt * (mtg > this.pzc ? 9 : 4))); }   // fast in / fast out, slow tapers; tighter going in
+    if (this.phone) { var mtg = st.mo ? st.mo.c : 0; if (st.mo) this.pmoPt = st.mo.pt; if (this.rep) { mtg = 1; this.pmoPt = [.5, this.rep.gy]; } this.pzc = this.pzc || 0; this.pzc += (mtg - this.pzc) * (1 - Math.exp(-dt * PHONE_ZIP)); }   // fast in / fast out, slow tapers; tighter going in
     var cam = this.setTop(opt.action ? st : null, dt), show = st, MO = opt.moment && !this.rep ? opt.moment : null, R = this.rep, flash = this.d.querySelector('.b3flash'), ban = this.d.querySelector('.b3ban');
     if (R) { R.t += dt; var T = R.t - R.wait;
       if (R.t < R.wait) { var k = R.t / R.wait; flash.style.opacity = Math.max(0, .85 - k * 2.5) * (1 + Math.sin(R.t * 40) * .2); ban.style.opacity = Math.min(1, R.t * 5) * (k < .85 ? 1 : (1 - k) / .15); ban.style.transform = 'scale(' + (1 + Math.max(0, .25 - R.t) * 2) + ')';

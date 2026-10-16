@@ -106,19 +106,20 @@
     if (this.over >= 0) return;
     this.time -= dt; if (this.time <= 0) { this.time = 0; if (this.sc[0] !== this.sc[1]) { this.over = this.sc[0] > this.sc[1] ? 0 : 1; return; } this.msg = 'SUDDEN DEATH'; }
     if (this.swing) this.swing[1] -= dt;
-    if (this.pause > 0) { this.pause -= dt; if (this.pause <= 0) { this.msg = '';
+    if (this.pause > 0) { this.pause -= dt; if (this.pg && this.pause <= 1.1) { this.pg = false; var pl0 = this.pause; this.faceoff(); this.pause = Math.max(.02, pl0); this.uv = null; } if (this.pause <= 0) { this.msg = '';
       if (this.launch) { this.launch = false; this.p = [.5, L / 2]; this.v = [(Math.random() - .5) * .16, (Math.random() - .5) * .16]; this.z = .002; this.vz = FO.vz * (.92 + Math.random() * .16); this.air = true; this.ev = 'launch'; } } }
     // move players
     var tgt = this.c >= 0 ? this.carryPos() : [this.p[0] + this.v[0] * .18, this.p[1] + this.v[1] * .18], own = this.c >= 0 ? this.team(this.c) : -1;
     for (var i = 0; i < 12; i++) { var tr = TR[i], t = tr.t, want, spd;
-      if (this.dn[i] > 0) { want = this.u[i]; spd = 0; }
+      if (this.pg) { this.uv = this.uv || this.u.map(function () { return 0; }); var hv = cl((.5 - this.u[i]) * 1.2, -.12, .12), kk0 = 1 - Math.exp(-dt * 1.3); this.uv[i] += (hv - this.uv[i]) * kk0; this.u[i] = cl(this.u[i] + this.uv[i] * dt, 0, 1); want = this.u[i]; spd = 0; }
+      else if (this.dn[i] > 0) { want = this.u[i]; spd = 0; }
       else if (this.sn[i] > 0 && this.c !== i) { want = proj(tr, this.p[0], this.p[1]); spd = SNAG.spd; }
       else if ((F = this.fg(i))) { want = proj(tr, F[0], F[1]); spd = 3.2;
         }
       else if (i === this.c && this.ai[t]) { want = this.safeU(i); spd = .35 * AISPD; }
       else if (i === this.c) { want = this.u[i]; spd = 0; this.side *= Math.exp(-dt * 2); }
       else { want = this.aiWant(i, tgt, own, dt); spd = AISPD * (this.ai[t] ? .75 + this.diff * .35 : 1.0) * (tr.k === 'G' ? 1.6 : tr.k === 'D' && own >= 0 && own !== t ? .8 : 1); }
-      var du = want - this.u[i], mx = spd * dt / tr.len; this.u[i] += cl(du, -mx, mx);
+      var du = want - this.u[i], mx = spd * dt / tr.len, u0 = this.u[i]; this.u[i] += cl(du, -mx, mx); if (!this.pg && dt > 0) { this.lu = this.lu || this.u.map(function () { return 0; }); this.lu[i] += ((this.u[i] - u0) / dt - this.lu[i]) * Math.min(1, dt * 12); }
       // stretch off the line toward the finger: offset saturates at REACH with an inverse-cube pull back
       if (this.sn[i] > 0) this.sn[i] -= dt; if (this.ln[i] > 0) this.ln[i] -= dt;
       var oo = this.o[i], kv = this.ko[i]; if (tr.k === 'G') { oo[0] = oo[1] = 0; kv[0] = kv[1] = 0; }   // goalie stays on his crease line
@@ -127,15 +128,16 @@
         var bp = pos(tr, this.u[i]), wx = bp[0] + oo[0], wy = bp[1] + oo[1]; if (wx < .03 || wx > .97) { kv[0] = -kv[0] * .5; oo[0] = cl(wx, .03, .97) - bp[0]; }
         for (var gs2 = 0; gs2 < 2; gs2++) { var gl2 = gs2 ? L - GY : GY, dr2 = gs2 ? 1 : -1, ps2 = (wy - gl2) * dr2; if (Math.abs(wx - .5) < GW + .02 && ps2 > -.02 && ps2 < .07) { kv[1] = -kv[1] * .6; kv[0] = kv[0] * .6 + (wx > .5 ? .3 : -.3); oo[1] += (ps2 < .025 ? -1 : 1) * dr2 * .01; this.ev = 'netbang'; } }
         if (this.dn[i] > 0) { this.dn[i] -= dt; var sl2 = Math.exp(-dt * 1.2); oo[0] *= sl2; oo[1] *= sl2; } else { var dk0 = Math.exp(-dt * 5); oo[0] *= dk0; oo[1] *= dk0; } }
-      else if ((F = this.fg(i))) { var bq = pos(tr, this.u[i]), ddx = F[0] - bq[0], ddy = F[1] - bq[1], m = Math.hypot(ddx, ddy) || 1e-6, eff = m / Math.cbrt(1 + Math.pow(m / REACH, 3)), kk = Math.min(1, dt * 18);
+      else if (!this.pg && (F = this.fg(i))) { var bq = pos(tr, this.u[i]), ddx = F[0] - bq[0], ddy = F[1] - bq[1], m = Math.hypot(ddx, ddy) || 1e-6, eff = m / Math.cbrt(1 + Math.pow(m / REACH, 3)), kk = Math.min(1, dt * 18);
         oo[0] += (ddx / m * eff - oo[0]) * kk; oo[1] += (ddy / m * eff - oo[1]) * kk; } else if (this.pk && this.pk[i]) { var pk = this.pk[i], bq2 = pos(tr, this.u[i]), ex = pk[0] - bq2[0], ey = pk[1] - bq2[1], em = Math.hypot(ex, ey) || 1e-6, ef = Math.min(em, AI.dStretch), k2 = Math.min(1, dt * 6); oo[0] += (ex / em * ef - oo[0]) * k2; oo[1] += (ey / em * ef - oo[1]) * k2; } else { var dk = Math.exp(-dt * 9); oo[0] *= dk; oo[1] *= dk; }
       var P = this.pp(i), ta;
-      if (tr.k !== 'G' && (F = this.fg(i)) && Math.hypot(F[0] - P[0], F[1] - P[1]) > R * .8) ta = Math.atan2(F[1] - P[1], F[0] - P[0]);
+      if (!this.pg && tr.k !== 'G' && (F = this.fg(i)) && Math.hypot(F[0] - P[0], F[1] - P[1]) > R * .8) ta = Math.atan2(F[1] - P[1], F[0] - P[0]);
       else if (i === this.c) ta = this.aimA != null && this.ai[t] ? this.aimA : Math.atan2(goalOf(t) - P[1], .5 - P[0]) + Math.sin(this.hold * 6 + i) * .6;
       else ta = Math.atan2(tgt[1] - P[1], tgt[0] - P[0]);
       var rate = i === this.c ? 7 : 10; this.ang[i] += cl(adiff(ta, this.ang[i]), -rate * dt, rate * dt); }
-    this.checks(dt);
-    if (this.pause > 0) return;
+    if (!this.pg) this.checks(dt);
+    if (this.pause > 0 && !this.pg) return;
+    if (this.pg) { this.puckPG(dt); return; }
     if (this.c >= 0 && this.c !== this.lastC) this.onCatch(this.c); this.lastC = this.c;
     if (this.coolT > 0) { this.coolT -= dt; if (this.coolT <= 0) this.cool = -1; }
     if (this.c >= 0) { var ct = this.team(this.c);
@@ -188,8 +190,14 @@
     ids.sort(function (a, b) { return a[0] - b[0]; }); ids = ids.slice(0, HACK.max); var gy = goalOf(team);
     ids.forEach(function (e) { var i = e[1], P = me.pp(i); me.ang[i] = Math.atan2(me.p[1] - P[1], me.p[0] - P[0]) + (Math.random() - .5) * .5; me.ln[i] = .22; me.swing = [i, .15]; var T = me.tip(i), dd = Math.hypot(T[0] - me.p[0], T[1] - me.p[1]);
       if (dd < HACK.reach + PR && !me.air) { if (me.c >= 0 && Math.random() < HACK.steal) { me.c = i; me.hold = 0; me.ev = 'steal'; return; } if (me.c < 0) { var a = Math.atan2(gy - me.p[1], .5 - me.p[0]) + (Math.random() - .5) * 1.2; me.v[0] += Math.cos(a) * HACK.kick; me.v[1] += Math.sin(a) * HACK.kick; me.ev = 'jab'; } } }); };
+  Sim.prototype.puckPG = function (dt) { var h = dt / 3; for (var k = 0; k < 3; k++) { this.p[0] += this.v[0] * h; this.p[1] += this.v[1] * h; var f = Math.exp(-1.4 * h); this.v[0] *= f; this.v[1] *= f;
+      if (this.z > 0 || this.vz > 0) { this.vz -= 3.5 * h; this.z += this.vz * h; if (this.z <= 0) { this.z = 0; this.vz = this.vz < -.15 ? -this.vz * .3 : 0; } }
+      var bot = this.p[1] > L / 2, gl = bot ? L - GY : GY, dir = bot ? 1 : -1, past = (this.p[1] - gl) * dir, ND = .05, x = this.p[0];
+      if (past > -PR) { if (past < PR * .6) { this.p[1] = gl + dir * PR * .6; this.v[1] = Math.abs(this.v[1]) * dir * .3; } if (past > ND - PR) { this.p[1] = gl + dir * (ND - PR); this.v[1] = -Math.abs(this.v[1]) * dir * .35; this.v[0] += (Math.random() - .5) * .2; }
+        if (Math.abs(x - .5) > GW - PR) { var sg = x > .5 ? 1 : -1; this.p[0] = .5 + sg * (GW - PR); this.v[0] = -sg * Math.abs(this.v[0]) * .4; } }
+      if (this.p[1] < .05 + PR) { this.p[1] = .05 + PR; this.v[1] = Math.abs(this.v[1]) * .7; } if (this.p[1] > L - .05 - PR) { this.p[1] = L - .05 - PR; this.v[1] = -Math.abs(this.v[1]) * .7; } if (this.p[0] < PR) { this.p[0] = PR; this.v[0] = Math.abs(this.v[0]) * .7; } if (this.p[0] > 1 - PR) { this.p[0] = 1 - PR; this.v[0] = -Math.abs(this.v[0]) * .7; } } };
   Sim.prototype.lift = function (sp) { if (sp > 1.3 && Math.random() < .6) this.vz = Math.max(this.vz, Math.min(.4, (sp - 1.3) * .3 * Math.random())); };
-  Sim.prototype.goal = function (t) { this.sc[t]++; this.ev = 'goal' + t; if (this.sc[t] >= WIN || this.time <= 0) { this.over = t; this.msg = ''; return; } this.faceoff(); this.ev = 'goal' + t; this.msg = 'GOAL!'; this.pause = GOALP; this.lastGoal = t; };
-  Sim.prototype.snap = function () { function r(x) { return Math.round(x * 1000) / 1000; } return { t: 's', u: this.u.map(r), o: this.o.map(function (q) { return [r(q[0]), r(q[1])]; }), p: this.p.map(r), c: this.c, sd: r(this.side), a: this.ang.map(r), sw: this.swing && this.swing[1] > 0 ? this.swing[0] : -1, sc: this.sc, tm: Math.ceil(this.time), ov: this.over, msg: this.msg, pz: r(Math.max(0, this.pause)), z: r(this.z || 0), dn: this.dn.map(function (x) { return x > 0 ? r(x) : 0; }), ln: this.ln.map(function (x) { return x > 0 ? r(x) : 0; }), ot: this.ot.map(function (x) { return x ? 1 : 0; }), g: this.grab.slice(), ev: this.ev }; };
+  Sim.prototype.goal = function (t) { this.sc[t]++; this.ev = 'goal' + t; if (this.sc[t] >= WIN || this.time <= 0) { this.over = t; this.msg = ''; return; } this.pg = true; this.uv = (this.lu || this.u.map(function () { return 0; })).slice(); this.c = -1; this.to = -1; this.ot = [null, null]; this.ev = 'goal' + t; this.msg = 'GOAL!'; this.pause = GOALP; this.lastGoal = t; this.gIn = t; };
+  Sim.prototype.snap = function () { function r(x) { return Math.round(x * 1000) / 1000; } return { t: 's', u: this.u.map(r), o: this.o.map(function (q) { return [r(q[0]), r(q[1])]; }), p: this.p.map(r), c: this.c, sd: r(this.side), a: this.ang.map(r), sw: this.swing && this.swing[1] > 0 ? this.swing[0] : -1, sc: this.sc, tm: Math.ceil(this.time), ov: this.over, msg: this.msg, pz: r(Math.max(0, this.pause)), z: r(this.z || 0), dn: this.dn.map(function (x) { return x > 0 ? r(x) : 0; }), ln: this.ln.map(function (x) { return x > 0 ? r(x) : 0; }), ot: this.ot.map(function (x) { return x ? 1 : 0; }), g: this.grab.slice(), ev: this.ev, pg: this.pg ? 1 : 0 }; };
   root.Bubble = { Sim: Sim, TR: TR, L: L, BL: BL, GOALP: GOALP, PR: PR, R: R, GW: GW, GY: GY, pos: pos, proj: proj };
 })(window);
