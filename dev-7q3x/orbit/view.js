@@ -59,7 +59,10 @@
     this.rocks = new T.Group(); S.add(this.rocks); this.seed = null;
     this.ships = {}; this.fxPool = []; this.bombPool = [];
     var bmax = 600; this.bpos = new Float32Array(bmax * 6); var bg = new T.BufferGeometry(); bg.setAttribute('position', new T.BufferAttribute(this.bpos, 3));
-    this.tracers = new T.LineSegments(bg, new T.LineBasicMaterial({ color: 0xfff1a8, transparent: true, opacity: .95, blending: T.AdditiveBlending })); this.tracers.frustumCulled = false; S.add(this.tracers);
+    var bc = new Float32Array(bmax * 6); for (var ci = 0; ci < bmax; ci++) bc.set([1, .93, .88, .75, .08, .04], ci * 6); bg.setAttribute('color', new T.BufferAttribute(bc, 3));
+    this.tracers = new T.LineSegments(bg, new T.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: .95, blending: T.AdditiveBlending, depthWrite: false }));
+    this.hpos = new Float32Array(bmax * 3); var hg = new T.BufferGeometry(); hg.setAttribute('position', new T.BufferAttribute(this.hpos, 3));
+    this.heads = new T.Points(hg, new T.PointsMaterial({ color: 0xffd0c0, size: 3.5, sizeAttenuation: false, transparent: true, opacity: .95, blending: T.AdditiveBlending, depthWrite: false })); this.heads.frustumCulled = false; S.add(this.heads); this.tracers.frustumCulled = false; S.add(this.tracers);
     S.add(this.cam); this.pv = new T.Vector3(); this.st = null; this.me = 0; this.shake = 0;
     var self = this; glbWait.push(function () { Object.keys(self.ships).forEach(function (k) { self.S.remove(self.ships[k].g); }); self.ships = {}; });
   }
@@ -76,8 +79,8 @@
       seen[s.id] = 1; sh.g.visible = s.alive && s.id !== opt.hide; sh.g.position.copy(s.p); sh.g.quaternion.copy(s.q);
       var hit = s.hit && s.sh > 0 ? 1 : 0; if (!sh.fl) { sh.fl = []; sh.g.traverse(function (m) { if (m.userData.flame) sh.fl.push(m); }); } var fk = .8 + Math.random() * .4; sh.fl.forEach(function (m) { m.scale.set(1, fk, 1); }); sh.bub.material.opacity += ((hit ? .45 : 0) - sh.bub.material.opacity) * .3; });
     Object.keys(this.ships).forEach(function (k) { if (!seen[k]) { S.remove(self.ships[k].g); delete self.ships[k]; } });
-    var bp = this.bpos, n = Math.min(st.bul.length, 600), d = st.dtx || 0; for (var i = 0; i < n; i++) { var b = st.bul[i], x = b[0] + b[3] * d, y = b[1] + b[4] * d, z = b[2] + b[5] * d; bp[i * 6] = x; bp[i * 6 + 1] = y; bp[i * 6 + 2] = z; bp[i * 6 + 3] = x - b[3] * .035; bp[i * 6 + 4] = y - b[4] * .035; bp[i * 6 + 5] = z - b[5] * .035; }
-    this.tracers.geometry.setDrawRange(0, n * 2); this.tracers.geometry.attributes.position.needsUpdate = true;
+    var bp = this.bpos, n = Math.min(st.bul.length, 600), d = st.dtx || 0; for (var i = 0; i < n; i++) { var b = st.bul[i], x = b[0] + b[3] * d, y = b[1] + b[4] * d, z = b[2] + b[5] * d; bp[i * 6] = x; bp[i * 6 + 1] = y; bp[i * 6 + 2] = z; bp[i * 6 + 3] = x - b[3] * .1; bp[i * 6 + 4] = y - b[4] * .1; bp[i * 6 + 5] = z - b[5] * .1; this.hpos[i * 3] = x; this.hpos[i * 3 + 1] = y; this.hpos[i * 3 + 2] = z; }
+    this.tracers.geometry.setDrawRange(0, n * 2); this.tracers.geometry.attributes.position.needsUpdate = true; this.heads.geometry.setDrawRange(0, n); this.heads.geometry.attributes.position.needsUpdate = true;
     function pool(arr, k, mk) { while (arr.length <= k) { var m = mk(); S.add(m); arr.push(m); } return arr[k]; }
     var bi = 0; (st.bombs || []).forEach(function (b, j) { var m = pool(self.bombPool, bi++, function () { return new T.Mesh(new T.IcosahedronGeometry(1, 1), new T.MeshBasicMaterial({ color: 0xffd27a })); }); m.visible = true; m.position.set(b[0], b[1], b[2]); m.scale.setScalar(.8 + b[3] + Math.sin(performance.now() / 60) * .2); });
     for (; bi < this.bombPool.length; bi++) this.bombPool[bi].visible = false;

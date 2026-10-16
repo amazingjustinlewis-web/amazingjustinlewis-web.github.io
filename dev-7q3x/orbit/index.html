@@ -18,7 +18,7 @@
   var $ = function (i) { return document.getElementById(i); }, T = THREE, V = new OrbitView($('cv'), {}), shot = null, shotT = 0, joined = false, pending = null;
   addEventListener('resize', function () { V.size(); }); V.size();
   var G = new OrbitGame({ onJoin: function () { if (!joined) { joined = true; $('big').style.opacity = 0; } },
-    onEv: function (e) { if (e.e === 'boom' && e.hits >= 1) pending = { id: e.id, at: new T.Vector3(e.x, e.y, e.z), why: 'BOMB!', w: 3 + e.hits };
+    onEv: function (e) { if (e.e === 'hit' || e.e === 'kill' || e.e === 'boom' || e.e === 'man') heat.push(G ? G.sim.t : 0); if (e.e === 'boom' && e.hits >= 1) pending = { id: e.id, at: new T.Vector3(e.x, e.y, e.z), why: 'BOMB!', w: 3 + e.hits };
       else if (e.e === 'kill' && e.by && (!pending || pending.w < 3)) pending = { id: e.by, vic: e.id, why: 'KILL', w: 2 }; },
     onRound: function () { $('end').style.display = 'none'; } });
   G.host.qr($('join'));
@@ -26,21 +26,26 @@
   function ship(id) { return G.sim.ships.filter(function (s) { return s.id === id; })[0]; }
   function busiest() { var best = null, bs = -1; G.sim.ships.forEach(function (s) { if (!s.alive) return; var sc = (s.bot ? 0 : 2) + Math.random() * 1.5;
       G.sim.ships.forEach(function (o) { if (o !== s && o.alive && o.p.distanceTo(s.p) < 120) sc += 1; }); sc += s.k * .3; if (sc > bs) { bs = sc; best = s; } }); return best; }
-  var KINDS = ['chase', 'flyby', 'duel', 'wide'];
+  var KINDS = ['chase', 'flyby', 'duel', 'wide', 'wing', 'wing', 'vwide'], heat = [];
+  function action() { var t = G.sim.t; heat = heat.filter(function (x) { return t - x < 3; }); return heat.length; }   // events in the last 3 s
+  function shooter() { var best = null, bs = 0; G.sim.ships.forEach(function (s) { if (!s.alive || !s.inp.fire) return; var f = G.sim.fwd(s); G.sim.ships.forEach(function (o) { if (o === s || !o.alive) return; var to = o.p.clone().sub(s.p), d = to.length(); if (d > 220) return; var c = to.normalize().dot(f); if (c > .97 && c + (s.bot ? 0 : .5) > bs) { bs = c + (s.bot ? 0 : .5); best = s; } }); }); return best; }
   function cut(force) {   // pick a new shot
-    var subj = force ? ship(force.id) : busiest(); if (!subj || !subj.alive) subj = busiest(); if (!subj) return;
-    var kind = force ? (force.why === 'BOMB!' ? 'wide' : 'chase') : KINDS[(Math.random() * KINDS.length) | 0];
+    var kind = force ? (force.why === 'BOMB!' ? 'wide' : 'chase') : KINDS[(Math.random() * KINDS.length) | 0], sh = !force && (kind === 'wing' || Math.random() < .3) ? shooter() : null; if (sh) kind = 'wing';
+    var subj = sh || (force ? ship(force.id) : busiest()); if (!subj || !subj.alive) subj = busiest(); if (!subj) return; if (kind === 'vwide' && force) kind = 'wide';
     var foe = null, fd = 1e9; G.sim.ships.forEach(function (o) { if (o !== subj && o.alive) { var d = o.p.distanceTo(subj.p); if (d < fd) { fd = d; foe = o; } } });
-    shot = { s: subj, kind: kind, foe: foe, len: force ? 3.5 : 4 + Math.random() * 3, why: force ? force.why : '', at: force && force.at, fixed: null }; shotT = 0;
+    var A = action(), base = A > 8 ? 2.6 : A > 3 ? 4 : 7; shot = { s: subj, kind: kind, foe: foe, side: Math.random() < .5 ? -1 : 1, orb: Math.random() * 6.28, len: force ? 3.5 : kind === 'vwide' ? base + 4 : base + Math.random() * base * .4, why: force ? force.why : '', at: force && force.at, fixed: null }; shotT = 0;
     if (kind === 'flyby') shot.fixed = subj.p.clone().add(subj.v.clone().multiplyScalar(1.6)).add(new T.Vector3(Math.random() * 30 - 15, 8 + Math.random() * 10, Math.random() * 30 - 15));
     if (kind === 'wide') shot.fixed = (shot.at || subj.p).clone().add(new T.Vector3(60, 30, 60));
-    $('cap').innerHTML = (shot.why ? '<span style="color:#ffe7a0">' + shot.why + '</span> \u00b7 ' : '') + '<span style="color:' + subj.col + '">' + subj.name + '</span>' + (foe && kind === 'duel' ? ' vs <span style="color:' + foe.col + '">' + foe.name + '</span>' : '');
+    $('cap').innerHTML = (shot.why ? '<span style="color:#ffe7a0">' + shot.why + '</span> \u00b7 ' : '') + '<span style="color:' + subj.col + '">' + subj.name + '</span>' + (kind === 'vwide' ? ' \u00b7 the whole fight' : '') + (foe && (kind === 'duel' || kind === 'wing') ? ' vs <span style="color:' + foe.col + '">' + foe.name + '</span>' : '');
     place(1 / 60, true);
   }
   function place(dt, snap) { var s = shot.s, U = new T.Vector3(0, 1, 0);
     if (shot.kind === 'chase') V.chase(s, dt, 18, 5, snap);
     else if (shot.kind === 'flyby') V.look(shot.fixed, s.p, U, dt, snap);
     else if (shot.kind === 'wide') { shot.fixed.applyAxisAngle(U, dt * .15); V.look(shot.fixed, shot.at || s.p, U, dt, snap); }
+    else if (shot.kind === 'wing') { var off = new T.Vector3(shot.side * 3.4, 1.2, 2.4).applyQuaternion(s.q); V.cam.position.copy(s.p).add(off); V.look(null, s.p.clone().add(G.sim.fwd(s).multiplyScalar(70)), new T.Vector3(0, 1, 0).applyQuaternion(s.q), dt * 2, snap); }
+    else if (shot.kind === 'vwide') { var cen = new T.Vector3(), n = 0, R = 0; G.sim.ships.forEach(function (o) { if (o.alive) { cen.add(o.p); n++; } }); if (n) cen.divideScalar(n); G.sim.ships.forEach(function (o) { if (o.alive) R = Math.max(R, o.p.distanceTo(cen)); });
+      shot.orb += dt * .05; shot.cen = shot.cen ? shot.cen.lerp(cen, dt * .5) : cen; var D = R * 1.4 + 90; V.look(shot.cen.clone().add(new T.Vector3(Math.cos(shot.orb) * D, D * .35, Math.sin(shot.orb) * D)), shot.cen, U, dt, snap); }
     else { var f = shot.foe && shot.foe.alive ? shot.foe : s, mid = s.p.clone().lerp(f.p, .5), d = Math.max(30, s.p.distanceTo(f.p)), side = s.p.clone().sub(f.p).cross(U).normalize().multiplyScalar(d * .9);
       V.look(mid.clone().add(side).add(new T.Vector3(0, d * .25, 0)), mid, U, dt, snap); } }
   var last = 0;
@@ -60,6 +65,6 @@
     $('tm').textContent = Math.floor(sim.time / 60) + ':' + ('0' + Math.floor(sim.time % 60)).slice(-2);
     var e = $('end'); if (sim.over) { e.style.display = 'flex'; e.innerHTML = '<h1>' + (rows[0] ? rows[0].name + ' wins!' : 'Round over') + '</h1>' + rows.slice(0, 8).map(function (s, i) { return '<div class="r"><span style="color:' + s.col + '">' + (i + 1) + '. ' + s.name + '</span><span>' + s.k + ' kills \u00b7 ' + s.d + ' deaths</span></div>'; }).join('') + '<p style="opacity:.7">next round in a moment</p>'; } }
   Kit.over(function () { return joined && G.sim.over; }, 40000);
-  window.OBT = { G: G, V: V };
+  window.OBT = { G: G, V: V, get shot() { return shot; }, force: function (k) { cut(); shot.kind = k; place(1 / 60, true); } };
 })();
 </script></body></html>

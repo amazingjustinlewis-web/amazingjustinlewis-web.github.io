@@ -3,7 +3,7 @@
 (function (root) {
   'use strict';
   var T = root.THREE, V = function (x, y, z) { return new T.Vector3(x || 0, y || 0, z || 0); };
-  var C = { R: 420, SPEED: 46, STRAFE: 30, BOOSTDRAG: 1.6, TURN: 1.9, SHIELD: 100, HULL: 100, BUL: 230, BLIFE: 1.1, RATE: 0.09, DMG: 7,
+  var C = { R: 420, SPEED: 46, STRAFE: 30, BOOSTDRAG: 1.6, TURN: 1.9, SHIELD: 100, HULL: 100, BUL: 115, BLIFE: 1.8, RATE: 0.09, DMG: 7,
     BOMB_MAX: 1.6, RESPAWN: 3, ROUND: 180, SHIP_R: 2.6, FILL: 8, MAX: 20 };
   var COLS = ['#ff5a6e', '#3aa8ff', '#5fdc7a', '#ffc93f', '#c77dff', '#ff9f43', '#4ef0e0', '#ff7fd0', '#b8ff5a', '#ffffff'];
   var BOTN = ['Vex', 'Nyx', 'Orrin', 'Kestra', 'Juno', 'Rook', 'Talon', 'Pip', 'Zed', 'Mira', 'Quill', 'Sable', 'Dax', 'Lumo', 'Echo', 'Fen', 'Brix', 'Ivo', 'Wren', 'Cass'];
@@ -35,7 +35,7 @@
   Sim.prototype.section = function (s, from) { if (!from) return (Math.random() * 6) | 0; var d = from.clone().sub(s.p).applyQuaternion(s.q.clone().invert()), ax = Math.abs(d.x), ay = Math.abs(d.y), az = Math.abs(d.z);
     return az >= ax && az >= ay ? (d.z < 0 ? 0 : 1) : ax >= ay ? (d.x < 0 ? 2 : 3) : (d.y > 0 ? 4 : 5); };
   Sim.prototype.damage = function (s, n, by, kind, from) {
-    if (!s.alive || this.t - s.spawnT < 1.5) return; var k = this.section(s, from), sec = s.sec, shield = sec[k] > 0; sec[k] -= n * 2.2; if (sec[k] < 0) { s.hull += sec[k] / 2.2; sec[k] = 0; }
+    if (!s.alive || this.t - s.spawnT < 1.5 || this.t < (s.ifr || 0)) return; var k = this.section(s, from), sec = s.sec, shield = sec[k] > 0; sec[k] -= n * 2.2; if (sec[k] < 0) { s.hull += sec[k] / 2.2; sec[k] = 0; }
     s.sh = (sec[0] + sec[1] + sec[2] + sec[3] + sec[4] + sec[5]) / 6; s.hitT = 0; s.hitSec = k;
     this.ev.push({ e: 'hit', id: s.id, sh: shield ? 1 : 0, by: by ? by.id : 0, sec: k });
     if (s.hull <= 0) { s.alive = false; s.dead = C.RESPAWN; s.d++; if (by && by !== s) by.k++;
@@ -43,6 +43,18 @@
       this.ev.push({ e: 'kill', id: s.id, by: by ? by.id : 0, kind: kind });
       this.feed.unshift({ a: by && by !== s ? by.name : '', ac: by ? by.col : '#fff', b: s.name, bc: s.col, kind: kind, t: this.t }); this.feed.length = Math.min(this.feed.length, 5); }
   };
+  // evasive maneuvers: 0 corkscrew barrel roll, 1 split-S reversal, 2 snap juke sideslip. Brief, aggressive, short cooldown, small i-frame window.
+  var MAN = [{ dur: .9, ifr: .45, cd: 2.6 }, { dur: 1.05, ifr: .4, cd: 3.2 }, { dur: .35, ifr: .3, cd: 1.8 }];
+  Sim.prototype.maneuver = function (s, k, side) { k = Math.max(0, Math.min(2, k | 0)); if (!s.alive || s.man || this.t < (s.manCD || 0)) return false; var M = MAN[k];
+    s.man = { k: k, t: 0, dur: M.dur, side: side || (s.inp.y > .1 ? -1 : s.inp.y < -.1 ? 1 : (Math.random() < .5 ? -1 : 1)) }; s.ifr = this.t + M.ifr; s.manCD = this.t + M.cd; this.ev.push({ e: 'man', id: s.id, k: k }); return true; };
+  Sim.prototype.manStep = function (s, dt) { var m = s.man, u0 = m.t / m.dur; m.t += dt; var u1 = Math.min(1, m.t / m.dur), du = u1 - u0, f = this.fwd(s), q = new T.Quaternion();
+    if (m.k === 0) { q.setFromAxisAngle(V(0, 0, 1), -m.side * Math.PI * 2 * du); s.q.multiply(q).normalize(); var r = V(Math.cos(u1 * 6.28), Math.sin(u1 * 6.28), 0).applyQuaternion(s.q);
+      s.v.copy(f.multiplyScalar(C.SPEED * 1.15)).addScaledVector(r, 22); }
+    else if (m.k === 1) { if (u1 <= .35) q.setFromAxisAngle(V(0, 0, 1), Math.PI * du / .35); else q.setFromAxisAngle(V(1, 0, 0), Math.PI * (u1 - Math.max(.35, u0)) / .65); s.q.multiply(q).normalize();
+      s.v.multiplyScalar(Math.exp(-2.5 * dt)).addScaledVector(this.fwd(s), 60 * dt); }
+    else { var sd = V(m.side, 0, 0).applyQuaternion(s.q); q.setFromAxisAngle(V(0, 0, 1), -m.side * Math.sin(u1 * Math.PI) * .5 - (-m.side * Math.sin(u0 * Math.PI) * .5)); s.q.multiply(q).normalize(); s.v.copy(this.fwd(s).multiplyScalar(C.SPEED)).addScaledVector(sd, 55 * Math.sin(u1 * Math.PI) + 10); }
+    s.p.addScaledVector(s.v, dt); if (s.p.length() > C.R + 60) s.p.multiplyScalar((C.R + 60) / s.p.length()); s.cd -= dt;
+    if (m.t >= m.dur) s.man = null; return true; };
   Sim.prototype.bomb = function (s, c) { if (!s.alive) return; c = Math.max(0, Math.min(1, c)); var f = this.fwd(s);
     this.bombs.push({ id: this.nid++, o: s, p: s.p.clone().addScaledVector(f, 5), v: s.v.clone().addScaledVector(f, 55 + 95 * c), c: c, t: 0, fuse: 2.4 });
     this.ev.push({ e: 'throw', id: s.id }); };
@@ -61,6 +73,7 @@
     var dist = tg ? tg.p.distanceTo(s.p) : 999;
     s.inp.tz = dist < 25 ? -.4 : ang > 1.2 ? .35 : 1; s.inp.tx = Math.sin(this.t * .7 + s.id) * .5;
     s.inp.fire = !!tg && ang < .09 && dist < 210 && Math.random() < s.skill + .1;
+    if (s.hitT < .1 && Math.random() < .25) this.maneuver(s, (Math.random() * 3) | 0);
     if (tg && dist > 45 && dist < 130 && ang < .15 && Math.random() < dt * .12) this.bomb(s, rnd(.2, .9));
   };
   Sim.prototype.step = function (dt) {
@@ -69,7 +82,7 @@
     this.ships.forEach(function (s) {
       if (!s.alive) { s.dead -= dt; if (s.dead <= 0 && !me.over) me.spawn(s); return; }
       if (s.bot) me.bot(s, dt);
-      var I = s.inp; s.hitT += dt;
+      var I = s.inp; s.hitT += dt; if (s.man && me.manStep(s, dt)) return;
       if (s.hitT > (s.bot ? 4 : 3) && s.sh < C.SHIELD) { var rg = (s.bot ? 15 : 22) * dt; for (var si = 0; si < 6; si++) s.sec[si] = Math.min(100, s.sec[si] + rg); s.sh = (s.sec[0] + s.sec[1] + s.sec[2] + s.sec[3] + s.sec[4] + s.sec[5]) / 6; }
       e.set(I.p * C.TURN * .8 * dt, I.y * C.TURN * dt, (I.r * 2.2 - I.y * .35) * dt, 'XYZ'); qd.setFromEuler(e); s.q.multiply(qd).normalize();
       var want = V(I.tx * C.STRAFE, 0, -(I.tz >= 0 ? I.tz * C.SPEED + 8 : I.tz * C.SPEED * .5)).applyQuaternion(s.q);
@@ -88,7 +101,7 @@
     // bullets (swept test against ships + rocks)
     var seg = V(), tmp = V();
     this.bul = this.bul.filter(function (b) { b.t += dt; if (b.t > C.BLIFE) return false; seg.copy(b.v).multiplyScalar(dt); var len = seg.length(); seg.divideScalar(len);
-      for (var i = 0; i < me.ships.length; i++) { var s = me.ships[i]; if (s === b.o || !s.alive) continue; tmp.copy(s.p).sub(b.p); var u = Math.max(0, Math.min(len, tmp.dot(seg))); if (tmp.addScaledVector(seg, -u).lengthSq() < 9) { me.damage(s, C.DMG, b.o, 'gun', b.p.clone().addScaledVector(b.v, -.02)); me.fx.push({ k: 'spark', x: s.p.x, y: s.p.y, z: s.p.z, r: 3, t: 0, life: .25, col: s.sh > 0 ? '#7fd8ff' : '#ffb347' }); return false; } }
+      for (var i = 0; i < me.ships.length; i++) { var s = me.ships[i]; if (s === b.o || !s.alive) continue; tmp.copy(s.p).sub(b.p); var u = Math.max(0, Math.min(len, tmp.dot(seg))); if (tmp.addScaledVector(seg, -u).lengthSq() < 12.5) { me.damage(s, C.DMG, b.o, 'gun', b.p.clone().addScaledVector(b.v, -.02)); me.fx.push({ k: 'spark', x: s.p.x, y: s.p.y, z: s.p.z, r: 3, t: 0, life: .25, col: s.sh > 0 ? '#7fd8ff' : '#ffb347' }); return false; } }
       b.p.addScaledVector(seg, len);
       for (var j = 0; j < me.rocks.length; j++) { var a = me.rocks[j], dx = b.p.x - a.x, dy = b.p.y - a.y, dz = b.p.z - a.z; if (dx * dx + dy * dy + dz * dz < a.r * a.r) return false; }
       return true; });
