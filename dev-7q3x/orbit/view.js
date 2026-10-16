@@ -92,8 +92,9 @@
     this.dust.geometry.attributes.position.needsUpdate = true; this.sky.position.copy(c); this.stars.position.copy(c);
     this.R.render(S, this.cam);
   };
-  View.prototype.cockpit = function (s, dt) {   // first person from ship s
-    this.cam.position.copy(s.p); this.cam.quaternion.copy(s.q); if (this.shake > 0) { this.shake = Math.max(0, this.shake - dt * 2.5); var k = this.shake * .35; this.cam.position.x += (Math.random() - .5) * k; this.cam.position.y += (Math.random() - .5) * k; this.cam.rotateZ((Math.random() - .5) * k * .05); } };
+  View.prototype.cockpit = function (s, dt, head) {   // first person from ship s; head = optional gyro look (rotates only the camera)
+    this.cam.position.copy(s.p); this.cam.quaternion.copy(s.q); if (head) this.cam.quaternion.multiply(head);
+    if (!this.pit) this.pitInit(); this.pit.visible = !!head; if (head) { this.pit.position.copy(s.p); this.pit.quaternion.copy(s.q); } if (this.shake > 0) { this.shake = Math.max(0, this.shake - dt * 2.5); var k = this.shake * .35; this.cam.position.x += (Math.random() - .5) * k; this.cam.position.y += (Math.random() - .5) * k; this.cam.rotateZ((Math.random() - .5) * k * .05); } };
   View.prototype.chase = function (s, dt, back, up, snap) { var off = new T.Vector3(0, up || 4, back || 16).applyQuaternion(s.q), want = s.p.clone().add(off), k = snap ? 1 : 1 - Math.exp(-5 * dt);
     this.cam.position.lerp(want, k); var look = s.p.clone().add(new T.Vector3(0, 0, -30).applyQuaternion(s.q)); var m = new T.Matrix4().lookAt(this.cam.position, look, new T.Vector3(0, 1, 0).applyQuaternion(s.q)); var q = new T.Quaternion().setFromRotationMatrix(m); this.cam.quaternion.slerp(q, snap ? 1 : 1 - Math.exp(-6 * dt)); };
   View.prototype.look = function (from, at, up, dt, snap) { if (from) { if (snap) this.cam.position.copy(from); else this.cam.position.lerp(from, 1 - Math.exp(-2 * dt)); } var m = new T.Matrix4().lookAt(this.cam.position, at, up || new T.Vector3(0, 1, 0)); var q = new T.Quaternion().setFromRotationMatrix(m); this.cam.quaternion.slerp(q, snap ? 1 : 1 - Math.exp(-4 * dt)); };
@@ -133,5 +134,21 @@
     this.sp.geometry.attributes.position.needsUpdate = true; this.sp.geometry.setDrawRange(0, Math.round(N * (.3 + .7 * k)) * 2); };
   View.prototype.seedSp = function (j, any, vl) { var P = this.spP, o = j * 3, a = Math.random() * 6.28, r = 3 + Math.random() * 30; P[o] = Math.cos(a) * r; P[o + 1] = Math.sin(a) * r;
     P[o + 2] = any ? -Math.random() * 90 : (vl && vl.z > 0 ? -1 - Math.random() * 4 : -60 - Math.random() * 30); if (vl && vl.z > 0 && !any) P[o + 2] = -Math.random() * 10 - 2; if (vl && vl.z <= 0 && !any) P[o + 2] = -85 + Math.random() * 10; };
+  // full 3D cockpit (only with gyro look-around): canopy glass front/sides/overhead, glass floor below the feet, frame struts, dash
+  View.prototype.pitInit = function () { var g = new T.Group(), strut = new T.MeshStandardMaterial({ color: 0x2a3348, roughness: .5, metalness: .6, flatShading: true }), dark = new T.MeshStandardMaterial({ color: 0x141a28, roughness: .8 });
+    var glass = new T.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: .07, side: T.DoubleSide, depthWrite: false });
+    var shell = new T.Mesh(new T.SphereGeometry(2.2, 24, 16), glass); shell.scale.set(1, .85, 1.25); g.add(shell);
+    function hoop(z, r, arc, rotZ) { var m = new T.Mesh(new T.TorusGeometry(r, .045, 6, 24, arc), strut); m.position.z = z; m.rotation.z = rotZ; g.add(m); return m; }
+    hoop(-1.9, 1.15, Math.PI, 0); hoop(-.2, 1.95, Math.PI * 1.15, -.075 * Math.PI); hoop(1.5, 1.6, Math.PI * 1.2, -.1 * Math.PI);
+    var spine = new T.Mesh(new T.TorusGeometry(2.1, .04, 6, 24, Math.PI * .9), strut); spine.rotation.y = Math.PI / 2; spine.rotation.x = 0; spine.position.y = -.3; spine.rotation.z = .05 * Math.PI; g.add(spine);
+    [-1, 1].forEach(function (sd) { var r = new T.Mesh(new T.BoxGeometry(.08, .08, 4), strut); r.position.set(sd * 1.75, -.55, 0); g.add(r);
+      var con = new T.Mesh(new T.BoxGeometry(.35, .5, 1.4), dark); con.position.set(sd * 1.3, -.95, -.4); g.add(con); });
+    var dash = new T.Mesh(new T.BoxGeometry(1.8, .3, .5), dark); dash.position.set(0, -1.25, -1.75); dash.rotation.x = .5; g.add(dash);
+    [-.55, 0, .55].forEach(function (x, i) { var sc = new T.Mesh(new T.PlaneGeometry(.36, .18), new T.MeshBasicMaterial({ color: [0x2a7fff, 0x4ef0e0, 0xff9f43][i], transparent: true, opacity: .55 })); sc.position.set(x * .8, -1.08, -1.63); sc.rotation.x = -1.07; g.add(sc); });
+    var floor = new T.Mesh(new T.PlaneGeometry(2.6, 3.4), new T.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: .06, side: T.DoubleSide, depthWrite: false })); floor.rotation.x = -Math.PI / 2; floor.position.y = -1.5; g.add(floor);
+    var fr = new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(2.6, .01, 3.4)), new T.LineBasicMaterial({ color: 0x3a4a6a })); fr.position.y = -1.5; g.add(fr);
+    [-.5, .5].forEach(function (x) { var l = new T.Mesh(new T.BoxGeometry(.06, .06, 3.4), strut); l.position.set(x, -1.5, 0); g.add(l); });
+    var seat = new T.Mesh(new T.BoxGeometry(1, 1.4, .25), dark); seat.position.set(0, -.6, 1.35); g.add(seat);
+    g.traverse(function (m) { m.renderOrder = 2; }); g.visible = false; this.S.add(g); this.pit = g; };
   root.OrbitView = View; root.OrbitSnaps = Snaps;
 })(window);

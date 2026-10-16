@@ -23,14 +23,15 @@ body.sw #evm{right:auto;left:calc(14px + min(22vmin,120px) + 10px);transform:tra
 (function () {
   var $ = function (i) { return document.getElementById(i); }, T = THREE, V = new OrbitView($('cv'), { phone: true }), H = $('hud'), hx = H.getContext('2d');
   var G = null, c = null, snaps = new OrbitSnaps(), myId = 0, rec = null, replay = null;
-  var pad = ZTPPad.init({ game: 'orbit', sticks: { L: 'Throttle (slide or tap the bar)', R: 'Fly: left/right rolls, pull back = nose up' }, invert: true, invertX: true, corner: 'tr', extra: [['tilt', 'Steer by tilting the phone'], ['third', 'Third-person view (chase cam)'], ['yaw', 'Left/right turns flat (yaw) instead of roll']], onChange: function (o) { layout(); if (o.tilt && !tilt.on) tiltStart(); } });
+  var prevOpt = {};
+  var pad = ZTPPad.init({ game: 'orbit', sticks: { L: 'Throttle (slide or tap the bar)', R: 'Fly: left/right rolls, pull back = nose up' }, invert: true, invertX: true, corner: 'tr', extra: [['look', 'Look around (gyro) \u2014 head only, stick steers'], ['tilt', 'Steer by tilting the phone'], ['third', 'Third-person view (chase cam)'], ['yaw', 'Left/right turns flat (yaw) instead of roll']], onChange: function (o) { if (o.look && o.tilt) { var off = prevOpt.look ? 'look' : 'tilt'; o[off] = false; var cb = document.querySelector('.ztpp label[data-k=' + off + '] input'); if (cb) cb.checked = false; try { localStorage.setItem('ztp-pad-orbit', JSON.stringify(o)); } catch (e) {} } prevOpt = { look: o.look, tilt: o.tilt }; layout(); if (o.look && !look.on) lookStart(); if (o.tilt && !tilt.on) tiltStart(); } });
   function size() { V.size(); var d = Math.min(devicePixelRatio || 1, 2); H.width = innerWidth * d; H.height = innerHeight * d; hx.setTransform(d, 0, 0, d, 0, 0); } addEventListener('resize', size); size();
   // ---- v0.2 controls: throttle half (slide, stays set) + steering half (floating stick or phone tilt) + GUN/BOMB stacked on the steering edge
   var sticks = { L: { id: null, o: [0, 0], v: [0, 0] }, R: { id: null, o: [0, 0], v: [0, 0] } }, fire = false, charging = 0, chargeOn = false;
   var thr = { id: null, v: .55, tgt: .55, y0: 0, drag: false }, TMIN = -.4;
   function thrGeo() { var Hh = innerHeight, W = innerWidth; if (Hh > W) { var bw = Math.min(W * .22, 120), bot = Hh - (Hh * .06 + bw * 3 + 28) - 26; return { top: Hh * .24, h: Math.max(80, bot - Hh * .24) }; } return { top: Hh * .2, h: Hh * .62 }; }
   function thrLevel(y) { var g = thrGeo(), v = TMIN + (1 - TMIN) * (1 - (y - g.top) / g.h); v = Math.max(TMIN, Math.min(1, v)); return Math.abs(v) < .04 ? 0 : v; }
-  function layout() { document.body.classList.toggle('sw', !!pad.opts.swap); $('lvl').style.display = pad.opts.tilt ? 'block' : 'none'; if (!pad.opts.tilt && /[Tt]ilt/.test($('st').textContent)) $('st').textContent = ''; }
+  function layout() { document.body.classList.toggle('sw', !!pad.opts.swap); $('lvl').style.display = pad.opts.tilt || pad.opts.look ? 'block' : 'none'; $('lvl').textContent = pad.opts.look ? '\u2316 Calibrate look' : '\u2316 Recalibrate tilt'; if (!pad.opts.tilt && /[Tt]ilt/.test($('st').textContent)) $('st').textContent = ''; }
   function thrX() { if (innerHeight > innerWidth) return pad.opts.swap ? 20 : innerWidth - 34; var bw = Math.min(Math.min(innerWidth, innerHeight) * .22, 120), e = 14 + bw + 22; return pad.opts.swap ? e : innerWidth - e - 12; }   // left edge of the 12px bar, just inside the GUN/BOMB column
   function thrSide(x, y) { var c = thrX() + 6, g = thrGeo(); return Math.abs(x - c) < 40 && y > g.top - 30 && y < g.top + g.h + 30; }
   addEventListener('pointerdown', function (e) { if (e.target !== H && e.target !== $('cv') && e.target !== $('frame')) return; if (replay) return;
@@ -49,7 +50,15 @@ body.sw #evm{right:auto;left:calc(14px + min(22vmin,120px) + 10px);transform:tra
     if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) DeviceMotionEvent.requestPermission().then(function (r) { if (r !== 'granted') $('st').textContent = 'Tilt needs motion permission (tap Recalibrate)'; go(); }).catch(function () { $('st').textContent = 'Tap Recalibrate to allow tilt'; go(); }); else go(); }
   function tiltRead() { if (!tilt.g || !tilt.g0) return [0, 0]; var a = angs(tilt.g), b = angs(tilt.g0), K = 22 * Math.PI / 180, D = 3 * Math.PI / 180;
     function f(d) { var s = Math.sign(d), m = Math.max(0, Math.abs(d) - D) / K; return s * Math.min(1, m); } return [f(a[0] - b[0]), f(a[1] - b[1])]; }   // [turn (+ = wheel turned left), pitch (+ = top edge tipped back)]
-  $('lvl').onclick = function () { if (!tilt.on) tiltStart(); tilt.g0 = tilt.g ? tilt.g.slice() : null; $('lvl').textContent = '\u2316 Level set'; setTimeout(function () { $('lvl').textContent = '\u2316 Recalibrate tilt'; }, 1200); };
+  // ---- gyro look-around: phone orientation turns only the pilot's head (camera), relative to the calibrated pose
+  var look = { on: false, q: null, q0: null, head: new THREE.Quaternion() }, LE = new THREE.Euler(), LQ1 = new THREE.Quaternion(-Math.sqrt(.5), 0, 0, Math.sqrt(.5)), LZ = new THREE.Vector3(0, 0, 1);
+  function onOri(e) { if (e.alpha == null) return; var D = Math.PI / 180, orient = ((screen.orientation && screen.orientation.angle) || window.orientation || 0) * D, q = new THREE.Quaternion();
+    LE.set(e.beta * D, e.alpha * D, -e.gamma * D, 'YXZ'); q.setFromEuler(LE); q.multiply(LQ1); q.multiply(new THREE.Quaternion().setFromAxisAngle(LZ, -orient)); look.q = q; if (!look.q0) look.q0 = q.clone(); if (/Look-around/.test($('st').textContent)) $('st').textContent = ''; }
+  function lookStart() { var go = function () { look.on = true; look.q0 = null; addEventListener('deviceorientation', onOri); };
+    var R = window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission; if (R) DeviceOrientationEvent.requestPermission().then(function (r) { if (r !== 'granted') $('st').textContent = 'Look-around needs motion permission (tap Calibrate)'; go(); }).catch(function () { $('st').textContent = 'Tap Calibrate to allow look-around'; go(); }); else go(); }
+  function lookHead() { if (!pad.opts.look || !look.on || !look.q || !look.q0) return pad.opts.look ? look.head.identity() : null; look.head.copy(look.q0).invert().multiply(look.q); return look.head; }
+  if (pad.opts.look) lookStart(); prevOpt = { look: pad.opts.look, tilt: pad.opts.tilt };
+  $('lvl').onclick = function () { if (pad.opts.look) { if (!look.on) lookStart(); look.q0 = look.q ? look.q.clone() : null; $('lvl').textContent = '\u2316 Straight ahead set'; setTimeout(layout, 1200); return; } if (!tilt.on) tiltStart(); tilt.g0 = tilt.g ? tilt.g.slice() : null; $('lvl').textContent = '\u2316 Level set'; setTimeout(function () { $('lvl').textContent = '\u2316 Recalibrate tilt'; }, 1200); };
   if (pad.opts.tilt) tiltStart();
   function btn(el, dn, up) { el.addEventListener('pointerdown', function (e) { e.preventDefault(); el.classList.add('on'); try { el.setPointerCapture(e.pointerId); } catch (x) {} dn(); });
     function u() { if (!el.classList.contains('on')) return; el.classList.remove('on'); up(); } el.addEventListener('pointerup', u); el.addEventListener('pointercancel', u); }
@@ -60,7 +69,7 @@ body.sw #evm{right:auto;left:calc(14px + min(22vmin,120px) + 10px);transform:tra
   var gpPrev = {};
   function input() { var o = pad.opts, ix = o.invX ? -1 : 1, iy = o.invY ? -1 : 1, tn = dz(sticks.R.v), gf = false, tx = 0, tz = thr.v;
     var P = tn[1] * iy, Y = -tn[0] * ix;   // flight-sim: pull back = nose up, left/right = roll
-    if (o.tilt && tilt.on) { var tv = tiltRead(); Y = tv[0] * ix; P = tv[1] * iy; }
+    if (o.tilt && !o.look && tilt.on) { var tv = tiltRead(); Y = tv[0] * ix; P = tv[1] * iy; }
     var gps = navigator.getGamepads ? navigator.getGamepads() : []; for (var i = 0; i < (gps ? gps.length : 0); i++) { var g = gps[i]; if (!g || !g.connected || pad.isOpen()) continue; var r = pad.read(g), mv = dz(r.L), gt = dz(r.R);
       if (mv[0] || mv[1]) { tx = mv[0]; thr.v = thr.tgt = Math.max(TMIN, Math.min(1, thr.v - mv[1] * .02)); tz = thr.v; } if (gt[0] || gt[1]) { P = gt[1]; Y = -gt[0]; }   // pad.read already applies swap + invert
       gf = g.buttons[7] && g.buttons[7].value > .3; var lb = g.buttons[6] && g.buttons[6].value > .3; if (lb && !gpPrev.lb) { chargeOn = true; charging = 0; } if (!lb && gpPrev.lb && chargeOn) { chargeOn = false; throwBomb(Math.min(1, charging / Orbit.C.BOMB_MAX)); } gpPrev.lb = lb; var yb = g.buttons[3] && g.buttons[3].pressed, rb = g.buttons[5] && g.buttons[5].pressed; if (yb && !gpPrev.y) evGo(); if (rb && !gpPrev.rb) evPick((evSel + 1) % 3); gpPrev.y = yb; gpPrev.rb = rb; break; }
@@ -100,7 +109,7 @@ body.sw #evm{right:auto;left:calc(14px + min(22vmin,120px) + 10px);transform:tra
   var lastHull = 100, lastSh = 100, flashA = 0, flashC = '#7fd8ff', feedSeen = '', sendT = 0;
   function flash(col, a) { flashC = col; flashA = Math.max(flashA, a); }
   function drawHud(st, me, t) { var W = innerWidth, Hh = innerHeight, cx = W / 2, cy = Hh / 2; hx.clearRect(0, 0, W, Hh); if (!me) return; var ax = cx, ay = cy;
-    if (pad.opts.third && me.alive) { var aq = V.project(me.p.clone().add(new THREE.Vector3(0, 0, -160).applyQuaternion(me.q))); if (!aq.behind) { ax = aq.x; ay = aq.y; } }
+    if ((pad.opts.third || pad.opts.look) && me.alive) { var aq = V.project(me.p.clone().add(new THREE.Vector3(0, 0, -160).applyQuaternion(me.q))); if (!aq.behind) { ax = aq.x; ay = aq.y; } }
     hx.lineWidth = 2; hx.strokeStyle = '#bff3ffcc'; hx.beginPath(); hx.arc(ax, ay, 14, 0, 7); hx.moveTo(ax - 26, ay); hx.lineTo(ax - 18, ay); hx.moveTo(ax + 18, ay); hx.lineTo(ax + 26, ay); hx.moveTo(ax, ay - 26); hx.lineTo(ax, ay - 18); hx.stroke();
     var foes = st.ships.filter(function (s) { return s.id !== me.id && s.alive; }).map(function (s) { return { s: s, d: s.p.distanceTo(me.p) }; }).sort(function (a, b) { return a.d - b.d; });
     foes.forEach(function (f, i) { var q = V.project(f.s.p), s = f.s; hx.strokeStyle = s.col; hx.fillStyle = s.col;
@@ -187,15 +196,15 @@ body.sw #evm{right:auto;left:calc(14px + min(22vmin,120px) + 10px);transform:tra
       if (st.over && !wasOver && rec && rec.clips.length) { wasOver = true; setTimeout(function () { if (G.sim.over && !replay) startReplays(); }, 1200); } if (!st.over) wasOver = false; }
     else { st = snaps.state(); sendT += dt; if (st && sendT > .05) { sendT = 0; c.send({ t: 'in', a: [I.tx, I.tz, I.p, I.y, I.r].map(function (x) { return Math.round(x * 100) / 100; }), f: I.fire ? 1 : 0 }); } }
     if (st) { var me = st.ships.filter(function (s) { return s.id === myId; })[0];
-      if (me) { vwBtn(); if (me.alive && pad.opts.third) V.chase(me, dt, 13, 3.6); else if (me.alive) V.cockpit(me, dt); else V.chase(me, dt, 30, 10);
+      if (me) { vwBtn(); if (me.alive && pad.opts.third) V.chase(me, dt, 13, 3.6); else if (me.alive) V.cockpit(me, dt, lookHead()); else V.chase(me, dt, 30, 10);
         if ((me.sh < lastSh - .5 || me.hull < lastHull - .5) && me.alive) V.holoHit(me.hs); V.holoStep(me.sec, dt, me.alive);
         if (me.sh < lastSh - .5 && me.alive) { flash('#5fc8ff', .35); V.shake = Math.max(V.shake, .5); if (navigator.vibrate) navigator.vibrate(25); }
         if (me.hull < lastHull - .5 && me.alive) { flash('#ff4a2a', .5); V.shake = Math.max(V.shake, 1); if (navigator.vibrate) navigator.vibrate(60); }
         if (lastHull > 0 && !me.alive) { flash('#ffffff', .8); V.shake = 1.5; if (navigator.vibrate) navigator.vibrate([80, 40, 140]); }
         lastSh = me.sh; lastHull = me.alive ? me.hull : 0; }
-      V.draw(st, { hide: me && me.alive && !pad.opts.third ? me.id : 0 }); $('frame').style.display = pad.opts.third ? 'none' : ''; drawHud(st, me, t); cockpitFx(me, dt); if (me) { var vl = me.v.clone().applyQuaternion(me.q.clone().invert()); V.speed(vl, dt, me.alive && !pad.opts.third); } overScreen(st); }
+      V.draw(st, { hide: me && me.alive && !pad.opts.third ? me.id : 0 }); $('frame').style.display = pad.opts.third || pad.opts.look ? 'none' : ''; drawHud(st, me, t); cockpitFx(me, dt); if (me) { var vl = me.v.clone().applyQuaternion(V.cam.quaternion.clone().invert()); V.speed(vl, dt, me.alive && !pad.opts.third); } overScreen(st); }
     flashA = Math.max(0, flashA - dt * 2); var f = $('flash'); f.style.background = 'radial-gradient(ellipse at center, transparent 35%, ' + flashC + ')'; f.style.opacity = flashA;
     requestAnimationFrame(loop); })(0);
-  layout(); window.OBP = { evGo: evGo, evPick: evPick, get evSel() { return evSel; }, thr: thr, tilt: tilt, layout: layout, get G() { return G; }, V: V, sticks: sticks, pad: pad, get rec() { return rec; }, setFire: function (v) { fire = v; }, bomb: throwBomb, startReplays: startReplays, snaps: snaps };
+  layout(); window.OBP = { look: look, evGo: evGo, evPick: evPick, get evSel() { return evSel; }, thr: thr, tilt: tilt, layout: layout, get G() { return G; }, V: V, sticks: sticks, pad: pad, get rec() { return rec; }, setFire: function (v) { fire = v; }, bomb: throwBomb, startReplays: startReplays, snaps: snaps };
 })();
 </script></body></html>
