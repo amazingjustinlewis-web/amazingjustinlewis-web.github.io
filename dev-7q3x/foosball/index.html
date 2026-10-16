@@ -1,0 +1,31 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<title>Foosball (dev)</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>body{background:#10140f}#sc,#sc2{position:fixed;left:0;right:0;text-align:center;z-index:4;font-size:4.2vh;font-weight:700}#sc{top:2.5vh}#sc2{bottom:2.5vh;font-size:2.4vh;font-weight:400;opacity:.8}#sc .t{margin:0 4vw;opacity:.6}#join{position:fixed;right:1.5vw;top:1.5vh;width:140px;z-index:6}</style></head><body>
+<canvas id="cv" class="full"></canvas><div id="sc"></div><div id="sc2"></div><div id="join"></div><div class="big" id="big"></div>
+<script>if (Math.min(screen.width, screen.height) < 600 && new URLSearchParams(location.search).get('tv') !== '1') location.replace('pad.html' + location.search);</script>
+<script>window.MINI = 'foosball';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script><script src="sim.js"></script><script src="view.js"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), ctx = cv.getContext('2d'), V = new FoosView(), sim = new Foos.Sim(), demo = true, players = [];
+  var RODS = [{ GD: [7, 6], MA: [4, 2] }, { GD: [0, 1], MA: [3, 5] }];
+  sim.ai = [true, true];
+  // team = seat % 2. Two humans on a team: first (lower seat) takes goalie + defence, second takes midfield + attack.
+  function assign() { [0, 1].forEach(function (t) { var hs = players.filter(function (p) { return p.seat % 2 === t; }).sort(function (a, b) { return a.seat - b.seat; });
+      sim.ai[t] = hs.length === 0; hs.forEach(function (p, i) { p.rods = hs.length > 1 ? (i ? RODS[t].MA : RODS[t].GD) : null; host.send(p, { t: 'team', team: t, rods: p.rods }); }); }); }
+  function nm(t) { var hs = players.filter(function (p) { return p.seat % 2 === t; }); return hs.length ? hs.map(function (p) { return p.name; }).join(' + ') : 'Computer'; }
+  var host = Kit.host({ max: 4, onJoin: function (p) { if (players.indexOf(p) < 0) players.push(p); assign(); if (demo) { demo = false; sim.reset(); Kit.phase('play'); } },
+    onLeave: function (p) { players = players.filter(function (q) { return q !== p; }); sim.input(p.seat, p.seat % 2, null, { t: 'rel' }); assign(); },
+    onMsg: function (p, m) { sim.input(p.seat, p.seat % 2, p.rods, m); } });
+  host.qr($('join')); $('big').innerHTML = 'FOOSBALL<div style="font-size:.4em;color:#fff">scan to play \u00b7 1-4 phones \u00b7 computer fills empty sides</div>';
+  function size() { var d = devicePixelRatio || 1; cv.width = innerWidth * d; cv.height = innerHeight * d; ctx.setTransform(d, 0, 0, d, 0, 0); V.fit(innerWidth, innerHeight, innerHeight * .1, true, innerHeight * .07); } addEventListener('resize', size); size();
+  var last = 0, sendT = 0;
+  (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; sim.step(dt); if (demo && sim.over >= 0) sim.reset();
+    var st = sim.snap(); sendT += dt; if (sendT > 1 / 30) { sendT = 0; st.names = [nm(0), nm(1)]; host.all(st); }
+    V.draw(ctx, st); var C = FoosCOL;
+    $('sc').innerHTML = '<span style="color:' + C[1] + '">' + nm(1) + ' ' + st.sc[1] + '</span><span class="t">first to 5</span><span style="color:' + C[0] + '">' + st.sc[0] + ' ' + nm(0) + '</span>';
+    $('sc2').textContent = '\u25C0 ' + nm(1) + ' defends left \u00b7 ' + nm(0) + ' defends right \u25B6';
+    var b = $('big'); if (demo) b.style.opacity = 1; else if (st.ov >= 0) { b.innerHTML = nm(st.ov) + ' wins!<div style="font-size:.4em;color:#fff">tap a phone to play again</div>'; b.style.opacity = 1; } else if (st.msg) { b.textContent = st.msg; b.style.opacity = 1; } else b.style.opacity = 0;
+    requestAnimationFrame(loop); })(0);
+  Kit.over(function () { return !demo && sim.over >= 0; }, 40000); window.FT = { sim: sim, host: host, get players() { return players; } };
+})();
+</script></body></html>

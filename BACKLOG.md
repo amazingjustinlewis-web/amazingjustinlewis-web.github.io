@@ -87,3 +87,15 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Bubble Hockey: real player models (currently cylinders + box sticks).
 - Bubble Hockey: crossbar/post physics (puck is flat 2D; posts are simple circles).
 - Bubble Hockey: Justin will model a proper dome-hockey table in Blender. Hooks: swap the Bubble3D.build() scene for the GLB; add faded background crowd (cheering / freaking out) shown during replays; multiple broadcast-style cinematic cameras (extend Bubble3D.shot() kinds and the replay segment list in Bubble3D.goal()).
+- Bubble Hockey next iteration (v0.6+), in this order:
+  1. Opponent players drawn 60% transparent on your phone so it's clear you can't control them.
+  2. Body checks: holding your guy and making a quick move without lifting checks opponents. Square hard check can send them over the glass (respawn a few seconds later); hard checks knock them down sliding, then they get up and skate back. Each player has a blended weight toward their path (keep the springiness).
+  3. Hard pushes visually strain/bend the track a couple of pixels.
+  4. Hard shots in slow-mo tear/shatter the net or knock it off its posts so it bounces around.
+  5. Later: Justin's own simple 3D hockey guys (poses, skating, skating hard, body checks from 8 angles).
+  6. Fights.
+  7. Stamina/health ring around each player (green/yellow/red) from hits, with recovery and injuries.
+  8. Helmets that get knocked off (flying stick: maybe, much later).
+  9. Line-change buttons, penalties, reformed lines when short-handed.
+  10. Penalty shot mode: 10-20% speed, zoomed red-line-to-net view, goalie vs one freer-moving skater; gentle flicks deke, forward flick shoots relative to the stick (may become the general subtle stick-control system).
+  11. Keep the current fast speed; optional speed settings at join are fine.
