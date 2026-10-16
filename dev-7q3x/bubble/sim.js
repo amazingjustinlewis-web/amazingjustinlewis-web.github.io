@@ -2,17 +2,13 @@
    point-mirror (x -> 1-x, y -> 1.8-y). Every player rides a fixed track (u = 0..1). AI slides everyone you are not touching. */
 (function (root) {
   'use strict';
-  var L = 1.6, PR = .022, R = .034, GW = .085, GY = .09, WIN = 5, TIME = 180;
-  // v0.2 curved slots (Super Chexx style), authored as if defending y=0, then flipped so team 0 defends the bottom (y=L). Polylines; team 1 is the point mirror. Not left-right symmetric on purpose.
-  // stick lengths follow the Chexx rods: wingers long, centre medium, defence short.
-  var T0 = [
-    { k: 'G', sl: .04, p: [[.38, .135], [.44, .15], [.5, .155], [.56, .15], [.62, .135]] },
-    { k: 'D', sl: .05, p: [[.46, .34], [.30, .345], [.18, .32], [.11, .23], [.12, .11], [.20, .045], [.34, .035], [.44, .035]] },
-    { k: 'D', sl: .05, p: [[.55, .30], [.70, .31], [.83, .28], [.89, .19], [.87, .08], [.78, .04], [.64, .035], [.55, .035]] },
-    { k: 'W', sl: .08, p: [[.11, .44], [.09, .62], [.09, .86], [.12, 1.12]] },
-    { k: 'C', sl: .065, p: [[.47, 1.2], [.48, 1.06], [.48, .9], [.44, .79], [.35, .72], [.27, .70]] },
-    { k: 'W', sl: .08, p: [[.84, .46], [.85, .66], [.85, .9], [.82, 1.12]] }];
-  var TR = []; [0, 1].forEach(function (t) { T0.forEach(function (k) { var p = k.p.map(function (q) { return t ? [1 - q[0], q[1]] : [q[0], L - q[1]]; }), cum = [0];
+  var L = 2.0, PR = .022, R = .034, GW = .07, GY = .128, BL = .66, REACH = .055, WIN = 5, TIME = 180;
+  // v0.3 tracks come from tracks.js (sketch pixels, Catmull-Rom). Team 0 = sketch green (guards y=L), team 1 = sketch blue (guards y=0).
+  var TB = root.BUBBLE_TRACKS, SK = TB.sketch;
+  function sk(q) { return [(q[1] - SK.y0) / (SK.y1 - SK.y0), (q[0] - SK.x0) / (SK.x1 - SK.x0) * L]; }
+  function spline(P) { var out = [P[0]]; for (var j = 0; j < P.length - 1; j++) { var p0 = P[Math.max(0, j - 1)], p1 = P[j], p2 = P[j + 1], p3 = P[Math.min(P.length - 1, j + 2)];
+      for (var k = 1; k <= 8; k++) { var t = k / 8, t2 = t * t, t3 = t2 * t; out.push([0, 1].map(function (d) { return .5 * (2 * p1[d] + (-p0[d] + p2[d]) * t + (2 * p0[d] - 5 * p1[d] + 4 * p2[d] - p3[d]) * t2 + (-p0[d] + 3 * p1[d] - 3 * p2[d] + p3[d]) * t3); })); } } return out; }
+  var TR = []; [['green', 0], ['blue', 1]].forEach(function (g) { TB[g[0]].forEach(function (k) { var p = spline(k.pts.map(sk)), cum = [0], t = g[1];
     for (var j = 1; j < p.length; j++) cum.push(cum[j - 1] + Math.hypot(p[j][0] - p[j - 1][0], p[j][1] - p[j - 1][1]));
     TR.push({ p: p, cum: cum, len: cum[cum.length - 1], k: k.k, sl: k.sl, t: t, a: p[0], b: p[p.length - 1] }); }); });
   function cl(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -23,16 +19,16 @@
   function face(t) { return t ? 1 : -1; }   // y direction a team attacks
   function goalOf(t) { return t ? L - GY : GY; } // the goal line team t shoots at
   function Sim() { this.ai = [false, true]; this.diff = .85; this.reset(); }
-  Sim.prototype.reset = function () { this.u = TR.map(function (tr) { return tr.k === 'G' || tr.k === 'D' ? .5 : .5; }); this.sc = [0, 0]; this.time = TIME; this.over = -1; this.grab = [-1, -1]; this.fing = [null, null]; this.side = 0; this.ang = TR.map(function (tr) { return tr.t ? Math.PI / 2 : -Math.PI / 2; }); this.faceoff(); };
+  Sim.prototype.reset = function () { this.u = TR.map(function (tr) { return tr.k === 'G' || tr.k === 'D' ? .5 : .5; }); this.sc = [0, 0]; this.time = TIME; this.over = -1; this.grab = [-1, -1]; this.fing = [null, null]; this.side = 0; this.o = TR.map(function () { return [0, 0]; }); this.ang = TR.map(function (tr) { return tr.t ? Math.PI / 2 : -Math.PI / 2; }); this.faceoff(); };
   Sim.prototype.faceoff = function () { this.p = [.5, L / 2]; this.v = [(Math.random() - .5) * .25, (Math.random() - .5) * .25]; this.c = -1; this.pause = 1.1; this.msg = 'FACE OFF'; this.to = -1; this.cool = -1; this.coolT = 0; this.hold = 0; this.ev = ''; };
-  Sim.prototype.pp = function (i) { return pos(TR[i], this.u[i]); };
+  Sim.prototype.pp = function (i) { var q = pos(TR[i], this.u[i]), o = this.o ? this.o[i] : null; return o ? [q[0] + o[0], q[1] + o[1]] : q; };
   Sim.prototype.team = function (i) { return i < 6 ? 0 : 1; };
   Sim.prototype.carryPos = function () { var i = this.c, P = this.pp(i), a = this.ang[i], d = R + TR[i].sl * .75 + PR * .6; return [P[0] + Math.cos(a) * d, P[1] + Math.sin(a) * d]; };
   Sim.prototype.tip = function (i) { var P = this.pp(i), a = this.ang[i], d = R + TR[i].sl; return [P[0] + Math.cos(a) * d, P[1] + Math.sin(a) * d]; };
   Sim.prototype.release = function (dir, sp, to, pt) { var i = this.c; if (i < 0) return; var m = Math.hypot(dir[0], dir[1]) || 1; this.ang[i] = Math.atan2(dir[1], dir[0]); this.swing = [i, .18]; this.p = this.carryPos(); if (pt) { dir = [pt[0] - this.p[0], pt[1] - this.p[1]]; m = Math.hypot(dir[0], dir[1]) || 1; } this.v = [dir[0] / m * sp, dir[1] / m * sp]; this.cool = i; this.coolT = .25; this.to = to == null ? -1 : to; this.c = -1; this.hold = 0; this.side = 0; };
   Sim.prototype.shoot = function (dir, sp) { var i = this.c; if (i < 0) return; var t = this.team(i), cp = this.carryPos(), gy = goalOf(t);
     if (!dir) { var ln = this.lane(cp, t); dir = [ln[0], ln[1]]; var pt = [ln[3][0] + (Math.random() - .5) * .03, ln[3][1]]; sp = 2.8; }
-    this.release(dir, cl(sp || 2.6, 1.6, 3.1), null, pt); this.ev = 'shot'; };
+    this.release(dir, cl(sp || 2.6, 1.4, 3.5), null, pt); this.ev = 'shot'; };
   // pick the most open lane to the net: sample aim points across the mouth, score by clearance from every body and stick blade on the way
   Sim.prototype.lane = function (cp, t) { var gy = goalOf(t), best = .5, bc = -1, me = this;
     for (var k = -4; k <= 4; k++) { var ax = .5 + k / 4 * GW * .45, dx = ax - cp[0], dy = gy - face(t) * .02 - cp[1], l2 = dx * dx + dy * dy, cmin = 9;
@@ -45,11 +41,11 @@
     var gy = goalOf(t), ga = Math.atan2(gy - cp[1], .5 - cp[0]), gd = Math.abs(Math.atan2(Math.sin(fa - ga), Math.cos(fa - ga)));
     for (var j = t * 6; j < t * 6 + 6; j++) { if (j === i) continue; var q = this.pp(j), a = Math.atan2(q[1] - cp[1], q[0] - cp[0]), d = Math.atan2(Math.sin(fa - a), Math.cos(fa - a)); if (Math.abs(d) < Math.abs(bd)) { bd = d; best = j; } }
     var CONE = 75 * Math.PI / 180, W = CONE * .4;
-    if (gd < Math.min(.45, Math.abs(bd)) && (cp[1] - gy) * face(t) < 0) { this.shoot(dir, sp * 1.1); return 'shot'; }
+    if (gd < Math.min(.45, Math.abs(bd)) && (cp[1] - gy) * face(t) < 0 && sp > 1.6) { this.shoot(dir, sp * 1.1); return 'shot'; }
     if (best < 0 || Math.abs(bd) > CONE) { this.release(dir, cl(sp, .8, 2.2)); return 'loose'; }
     var q2 = this.pp(best), exact = Math.atan2(q2[1] - cp[1], q2[0] - cp[0]), ad = Math.abs(bd), err = ad <= W ? ad * .12 : W * .12 + (ad - W) * .75;
     var ang = exact + Math.sign(bd) * err, dist = Math.hypot(q2[0] - cp[0], q2[1] - cp[1]);
-    this.release([Math.cos(ang), Math.sin(ang)], cl(dist * 2.4 + .7, 1.1, 2.4), best); this.ev = 'pass'; return best; };
+    this.release([Math.cos(ang), Math.sin(ang)], cl(sp, .8, 3.2), best); this.ev = 'pass'; return best; };
   // input from a team (local or over the net): {t:'grab',i} {t:'drag',x,y} {t:'rel'} {t:'tap'} {t:'flick',dx,dy,sp}
   Sim.prototype.input = function (team, m) {
     if (this.over >= 0) { if (m.t === 'tap') this.reset(); return; }
@@ -79,9 +75,12 @@
       else if (i === this.c) { want = this.u[i]; spd = 0; this.side *= Math.exp(-dt * 2); }
       else { var lead = own === t && tr.k !== 'G' && tr.k !== 'D' ? -face(t) * -.12 : 0; want = proj(tr, tgt[0], tgt[1] + lead); spd = (this.ai[t] ? .75 + this.diff * .35 : 1.0) * (tr.k === 'G' ? 1.6 : tr.k === 'D' && own >= 0 && own !== t ? .8 : 1); }
       var du = want - this.u[i], mx = spd * dt / tr.len; this.u[i] += cl(du, -mx, mx);
+      // stretch off the line toward the finger: offset saturates at REACH with an inverse-cube pull back
+      var oo = this.o[i]; if (this.grab[t] === i && this.fing[t]) { var bq = pos(tr, this.u[i]), ddx = this.fing[t][0] - bq[0], ddy = this.fing[t][1] - bq[1], m = Math.hypot(ddx, ddy) || 1e-6, eff = m / Math.cbrt(1 + Math.pow(m / REACH, 3)), kk = Math.min(1, dt * 18);
+        oo[0] += (ddx / m * eff - oo[0]) * kk; oo[1] += (ddy / m * eff - oo[1]) * kk; } else { var dk = Math.exp(-dt * 9); oo[0] *= dk; oo[1] *= dk; }
       var P = this.pp(i), ta;
       if (this.grab[t] === i && this.fing[t] && Math.hypot(this.fing[t][0] - P[0], this.fing[t][1] - P[1]) > R * .8) ta = Math.atan2(this.fing[t][1] - P[1], this.fing[t][0] - P[0]);
-      else if (i === this.c) ta = this.aimA != null && this.ai[t] ? this.aimA : Math.atan2(goalOf(t) - P[1], .5 - P[0]);
+      else if (i === this.c) ta = this.aimA != null && this.ai[t] ? this.aimA : Math.atan2(goalOf(t) - P[1], .5 - P[0]) + Math.sin(this.hold * 6 + i) * .6;
       else ta = Math.atan2(tgt[1] - P[1], tgt[0] - P[0]);
       var rate = i === this.c ? 7 : 10; this.ang[i] += cl(adiff(ta, this.ang[i]), -rate * dt, rate * dt); }
     if (this.pause > 0) return;
@@ -108,6 +107,6 @@
         var nx = dx / d, ny = dy / d, vn = this.v[0] * nx + this.v[1] * ny; this.p = [Q[0] + nx * (R + PR), Q[1] + ny * (R + PR)]; if (vn < 0) { this.v[0] -= 1.7 * vn * nx; this.v[1] -= 1.7 * vn * ny; this.v[0] *= .8; this.v[1] *= .8; } this.ev = TR[i].k === 'G' ? 'save' : 'bump'; } }
   };
   Sim.prototype.goal = function (t) { this.sc[t]++; this.ev = 'goal' + t; if (this.sc[t] >= WIN || this.time <= 0) { this.over = t; this.msg = ''; return; } this.faceoff(); this.ev = 'goal' + t; this.msg = 'GOAL!'; this.pause = 1.8; this.lastGoal = t; };
-  Sim.prototype.snap = function () { function r(x) { return Math.round(x * 1000) / 1000; } return { t: 's', u: this.u.map(r), p: this.p.map(r), c: this.c, sd: r(this.side), a: this.ang.map(r), sw: this.swing && this.swing[1] > 0 ? this.swing[0] : -1, sc: this.sc, tm: Math.ceil(this.time), ov: this.over, msg: this.msg, pz: r(Math.max(0, this.pause)), g: this.grab.slice(), ev: this.ev }; };
-  root.Bubble = { Sim: Sim, TR: TR, L: L, PR: PR, R: R, GW: GW, GY: GY, pos: pos, proj: proj };
+  Sim.prototype.snap = function () { function r(x) { return Math.round(x * 1000) / 1000; } return { t: 's', u: this.u.map(r), o: this.o.map(function (q) { return [r(q[0]), r(q[1])]; }), p: this.p.map(r), c: this.c, sd: r(this.side), a: this.ang.map(r), sw: this.swing && this.swing[1] > 0 ? this.swing[0] : -1, sc: this.sc, tm: Math.ceil(this.time), ov: this.over, msg: this.msg, pz: r(Math.max(0, this.pause)), g: this.grab.slice(), ev: this.ev }; };
+  root.Bubble = { Sim: Sim, TR: TR, L: L, BL: BL, PR: PR, R: R, GW: GW, GY: GY, pos: pos, proj: proj };
 })(window);
