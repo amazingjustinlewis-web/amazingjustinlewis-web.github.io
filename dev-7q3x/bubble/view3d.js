@@ -138,7 +138,9 @@
       var lnv = st.ln ? st.ln[i] : 0, dnv = st.dn ? st.dn[i] : 0, sk = p.userData.stick, bl = p.userData.blade, ln0 = p.userData.len, ext = 1 + Math.min(1, lnv / .3) * 2.2;   // snag/check lunge: lean in, stick shoots out
       sk.scale.x = ext; sk.position.x = ln0 * ext / 2; bl.position.x = ln0 * ext; p.position.y = 0;
       if (dnv > 0) { var tt = 1.5 - dnv, lie = tt < .25 ? tt / .25 : dnv < .45 ? dnv / .45 : 1; p.userData.spin = (p.userData.spin || (Math.random() - .5) * 16); p.rotateY(p.userData.spin * Math.max(0, 1 - tt) * .05); p.rotateZ(lie * Math.PI / 2 * .92); p.position.y = lie * .01 + Math.abs(Math.sin(tt * 9)) * .006 * Math.max(0, 1 - tt * 2); }
-      else { p.userData.spin = 0; if (lnv > 0) p.rotateZ(-Math.min(1, lnv / .3) * .55); } }
+      else { p.userData.spin = 0; if (lnv > 0) p.rotateZ(-Math.min(1, lnv / .3) * .55); }
+      if (tr.k === 'G') { var grv = st.gr ? st.gr[tr.t] : 0, rp = p.userData.rpad; if (!rp) { rp = p.userData.rpad = new THREE.Mesh(new THREE.BoxGeometry(.012, .02, .03), new THREE.MeshLambertMaterial({ color: tr.t ? 0x3aa8ff : 0xff5a6e })); rp.name = 'reachPad'; this.G.add(rp); }   // proxy blocker/pad (Justin's model reach animation drops in later)
+        rp.visible = !!grv; if (grv) { var gx = sp.z, gz = sp.x; p.position.z += grv * .008; p.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), grv * .5)); rp.position.copy(L3(gx + grv * (B.R * .5 + .012), gz, .01)); rp.scale.set(1, 1, .6 + Math.abs(grv) * .7); } } }
     var pz = st.pz || 0, h = 0, px = st.p[0], py = st.p[1]; this.puck.visible = !(pz > 0) || !!st.pg;   // faceoff: hidden in the slot until it launches
     if (st.z) h = st.z; this.puck.position.copy(L3(px, py, .006 + h)); var gs = 1 + h * 7; this.puck.scale.set(gs, 1, gs);
     if (!this.pshad) { this.pshad = new THREE.Mesh(new THREE.CircleGeometry(B.PR, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0, depthWrite: false })); this.pshad.rotation.x = -Math.PI / 2; this.G.add(this.pshad); }

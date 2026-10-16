@@ -72,17 +72,19 @@
   // touch -> intents. send(m) gets {t:'grab',i} {t:'drag',x,y} {t:'rel'} {t:'tap'} {t:'flick',dx,dy,sp} in rink coords
   function Gestures(el, V, getSt, send) {
     function pick(X, Y) { var w = V.pick && V.pick(X, Y); return w || V.s2w(X, Y); }
-    var id = null, pts = [], t0 = 0, start = null, goalieT = null;
+    var id = null, pts = [], t0 = 0, start = null, goalieT = null, gv = null, GSWIPE = 1.1;   // strip finger speed (rink widths/s) that triggers a goalie reach
+    // goalie strip spans 2x the net, centred; finger travel maps 2:1 so the strip ends put the goalie a hair past each post
+    function gmap(x) { var k = (B.GW + .006) / (2 * B.GW); return .5 + Math.max(-2 * B.GW, Math.min(2 * B.GW, x - .5)) * k; }
     el.addEventListener('pointerdown', function (e) { if (id !== null) { send({ t: 'tap' }); return; } id = e.pointerId; var w = pick(e.clientX, e.clientY), st = getSt(); t0 = performance.now(); start = w; pts = [[w[0], w[1], t0]];
       // goalie strip: touches behind your own goal line (the edge nearest you) slide your goalie; he never leaves his line
-      var gl = V.team ? B.GY : B.L - B.GY, behind = V.team ? w[1] < gl - .015 : w[1] > gl + .015, gi = V.team * 6;
-      if (behind && !V.horiz && (!V.allow || V.allow.indexOf(gi) >= 0)) { var gq = B.pos(B.TR[gi], .5); goalieT = gq[1]; send({ t: 'grab', i: gi }); send({ t: 'drag', x: w[0], y: goalieT }); return; } goalieT = null;
+      var gl = V.team ? B.GY : B.L - B.GY, behind = (V.team ? w[1] < gl - .015 : w[1] > gl + .015) && Math.abs(w[0] - .5) < 2 * B.GW + .01, gi = V.team * 6;
+      if (behind && !V.horiz && (!V.allow || V.allow.indexOf(gi) >= 0)) { var gq = B.pos(B.TR[gi], .5); goalieT = gq[1]; gv = { x: w[0], t: t0, rt: 0 }; send({ t: 'grab', i: gi }); send({ t: 'drag', x: gmap(w[0]), y: goalieT }); return; } goalieT = null;
       var best = -1, bd = .1; if (st) for (var i = V.team * 6; i < V.team * 6 + 6; i++) { if (V.allow && V.allow.indexOf(i) < 0) continue; var q = B.pos(B.TR[i], st.u[i]); if (st.o) q = [q[0] + st.o[i][0], q[1] + st.o[i][1]]; var d = Math.hypot(q[0] - w[0], q[1] - w[1]); if (d < bd) { bd = d; best = i; } }
       var snag = 0; if (st && (best < 0 || bd > .05) && (st.c < 0 || (st.c < 6 ? 0 : 1) !== V.team)) { var pk = st.p, tp = Math.hypot(pk[0] - w[0], pk[1] - w[1]), bs = 9;   // thumb snag: best thumb-player-puck triangulation
         for (i = V.team * 6; i < V.team * 6 + 6; i++) { if (V.allow && V.allow.indexOf(i) < 0) continue; var q2 = B.pos(B.TR[i], st.u[i]); if (st.o) q2 = [q2[0] + st.o[i][0], q2[1] + st.o[i][1]]; var dT = Math.hypot(q2[0] - w[0], q2[1] - w[1]), dP = Math.hypot(q2[0] - pk[0], q2[1] - pk[1]); if (dT > .45) continue;
           var sc = dT + dP, between = ((q2[0] - w[0]) * (pk[0] - w[0]) + (q2[1] - w[1]) * (pk[1] - w[1])) > 0 && dT < tp; if (between) sc -= .04; if (sc < bs) { bs = sc; best = i; } } snag = best >= 0 && bs < tp + .25 ? 1 : 0; }
       send({ t: 'grab', i: best, snag: snag }); send({ t: 'drag', x: w[0], y: w[1] }); });
-    el.addEventListener('pointermove', function (e) { if (e.pointerId !== id) return; var w = pick(e.clientX, e.clientY), n = performance.now(); if (goalieT != null) { send({ t: 'drag', x: w[0], y: goalieT }); return; } pts.push([w[0], w[1], n]); if (pts.length > 30) pts.shift(); if (!this.lt || n - this.lt > 30) { this.lt = n; send({ t: 'drag', x: w[0], y: w[1] }); } });
+    el.addEventListener('pointermove', function (e) { if (e.pointerId !== id) return; var w = pick(e.clientX, e.clientY), n = performance.now(); if (goalieT != null) { send({ t: 'drag', x: gmap(w[0]), y: goalieT }); var gdt = (n - gv.t) / 1000; if (gdt > .006) { var gvx = (w[0] - gv.x) / gdt; if (Math.abs(gvx) > GSWIPE && n - gv.rt > 400) { gv.rt = n; send({ t: 'reach', d: gvx }); } gv.x = w[0]; gv.t = n; } return; } pts.push([w[0], w[1], n]); if (pts.length > 30) pts.shift(); if (!this.lt || n - this.lt > 30) { this.lt = n; send({ t: 'drag', x: w[0], y: w[1] }); } });
     function up(e) { if (e.pointerId !== id) return; id = null; if (goalieT != null) { goalieT = null; send({ t: 'rel' }); return; } var n = performance.now(), rec = pts.filter(function (p) { return n - p[2] < 120; }); var w = pick(e.clientX, e.clientY), moved = Math.hypot(w[0] - start[0], w[1] - start[1]);
       send({ t: 'rel' });
       if (n - t0 < 260 && moved < .035) { send({ t: 'tap', x: start[0], y: start[1] }); return; }

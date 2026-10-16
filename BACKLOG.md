@@ -117,3 +117,4 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - [ ] Bubble Hockey (next): jerseys show the user's profile name or arcade 3-letter initials; names on the scoreboard.
 - [ ] Bubble Hockey (next): clean stat overlays between plays on the TV with the cinematic view (shots, saves, hits, possession).
 - [ ] Bubble Hockey (next): post-game breakdown alongside the highlight reel.
+- [ ] Bubble Hockey: goalie reach/lunge animation from Justin's models (replaces the proxy lean + 'reachPad' box).
