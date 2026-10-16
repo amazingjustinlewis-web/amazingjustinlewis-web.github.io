@@ -107,7 +107,7 @@
     if (this.a) this.a.s.forEach(function (r) { A[r[0]] = r; });
     var ships = this.b.s.map(function (r) { var p = new T.Vector3(r[1], r[2], r[3]), q = new T.Quaternion(r[4], r[5], r[6], r[7]).normalize(), o = A[r[0]];
       if (o && o[10] && r[10]) { var p0 = new T.Vector3(o[1], o[2], o[3]); if (p0.distanceTo(p) < 40) { p0.lerp(p, u); p = p0; var q0 = new T.Quaternion(o[4], o[5], o[6], o[7]).normalize(); q0.slerp(q, Math.min(1, u)); q = q0; } }
-      var nm = N[r[0]] || { name: '?', col: '#fff' }; return { id: r[0], p: p, q: q, sh: r[8], hull: r[9], alive: !!r[10], k: r[11], d: r[12], hit: !!r[13], v: new T.Vector3(r[14], r[15], r[16]), bot: !!r[17], sec: r[18], hs: r[19], name: nm.name, col: nm.col }; });
+      var nm = N[r[0]] || { name: '?', col: '#fff' }; return { id: r[0], p: p, q: q, sh: r[8], hull: r[9], alive: !!r[10], k: r[11], d: r[12], hit: !!r[13], v: new T.Vector3(r[14], r[15], r[16]), bot: !!r[17], sec: r[18], hs: r[19], killer: r[20], launch: !!r[21], name: nm.name, col: nm.col }; });
     return { seed: this.b.seed, ships: ships, bul: this.b.b, bombs: this.b.m, fx: this.b.f, feed: this.b.k, time: this.b.tm, over: !!this.b.ov, dtx: Math.min(.2, now - this.at) }; };
   // damage hologram: wireframe of your own pod just above the crosshair, turned to show the side that was hit; 6 shield plates coloured by strength
   var NRM = [[0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0], [0, 1, 0], [0, -1, 0]];

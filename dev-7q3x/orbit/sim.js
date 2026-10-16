@@ -26,7 +26,7 @@
     this.spawn(s); this.ships.push(s); return s;
   };
   Sim.prototype.remove = function (s) { this.ships = this.ships.filter(function (x) { return x !== s; }); };
-  Sim.prototype.spawn = function (s) { s.p.copy(this.free()); s.v.set(0, 0, 0); var m = new T.Matrix4().lookAt(s.p, V(0, 0, 0), V(0, 1, 0)); s.q.setFromRotationMatrix(m); s.sec = [100, 100, 100, 100, 100, 100]; s.sh = C.SHIELD; s.hull = C.HULL; s.alive = true; s.hitT = 9; s.spawnT = this.t; };
+  Sim.prototype.spawn = function (s) { s.p.copy(this.free()); s.v.set(0, 0, 0); var m = new T.Matrix4().lookAt(s.p, V(0, 0, 0), V(0, 1, 0)); s.q.setFromRotationMatrix(m); s.sec = [100, 100, 100, 100, 100, 100]; s.sh = C.SHIELD; s.hull = C.HULL; s.alive = true; s.hitT = 9; s.spawnT = this.t; s.v.copy(this.fwd(s)).multiplyScalar(85); if (this.fx) this.fx.push({ k: 'launch', x: s.p.x, y: s.p.y, z: s.p.z, r: 9, t: 0, life: .9, col: s.col }); };
   // keep 'fill' ships in play: bots join/leave as people come and go
   Sim.prototype.fill = function (n) { var hum = this.ships.filter(function (s) { return !s.bot; }).length, bots = this.ships.filter(function (s) { return s.bot; }), want = Math.max(0, Math.min(C.MAX, n) - hum);
     while (bots.length > want) this.remove(bots.pop());
@@ -38,7 +38,7 @@
     if (!s.alive || this.t - s.spawnT < 1.5 || this.t < (s.ifr || 0)) return; var k = this.section(s, from), sec = s.sec, shield = sec[k] > 0; sec[k] -= n * 2.2; if (sec[k] < 0) { s.hull += sec[k] / 2.2; sec[k] = 0; }
     s.sh = (sec[0] + sec[1] + sec[2] + sec[3] + sec[4] + sec[5]) / 6; s.hitT = 0; s.hitSec = k;
     this.ev.push({ e: 'hit', id: s.id, sh: shield ? 1 : 0, by: by ? by.id : 0, sec: k });
-    if (s.hull <= 0) { s.alive = false; s.dead = C.RESPAWN; s.d++; if (by && by !== s) by.k++;
+    if (s.hull <= 0) { s.alive = false; s.dead = s.bot ? C.RESPAWN : 5.8; s.killer = by && by !== s ? by.id : 0; s.man = null; s.d++; if (by && by !== s) by.k++;
       this.fx.push({ k: 'boom', x: s.p.x, y: s.p.y, z: s.p.z, r: 10, t: 0, life: 1.2, col: s.col });
       this.ev.push({ e: 'kill', id: s.id, by: by ? by.id : 0, kind: kind });
       this.feed.unshift({ a: by && by !== s ? by.name : '', ac: by ? by.col : '#fff', b: s.name, bc: s.col, kind: kind, t: this.t }); this.feed.length = Math.min(this.feed.length, 5); }
@@ -119,7 +119,7 @@
   // compact network snapshot (rounded) - phones and the TV draw from this
   function r1(x) { return Math.round(x * 10) / 10; } function r3(x) { return Math.round(x * 1000) / 1000; }
   Sim.prototype.snap = function () { var me = this; return { t: 's', T: r1(this.t), tm: Math.ceil(this.time), ov: this.over ? 1 : 0, seed: this.seed,
-    s: this.ships.map(function (s) { return [s.id, r1(s.p.x), r1(s.p.y), r1(s.p.z), r3(s.q.x), r3(s.q.y), r3(s.q.z), r3(s.q.w), Math.round(s.sh), Math.round(s.hull), s.alive ? 1 : 0, s.k, s.d, s.hitT < .25 ? 1 : 0, r1(s.v.x), r1(s.v.y), r1(s.v.z), s.bot ? 1 : 0, s.sec.map(Math.round), s.hitSec == null ? -1 : s.hitSec]; }),
+    s: this.ships.map(function (s) { return [s.id, r1(s.p.x), r1(s.p.y), r1(s.p.z), r3(s.q.x), r3(s.q.y), r3(s.q.z), r3(s.q.w), Math.round(s.sh), Math.round(s.hull), s.alive ? 1 : 0, s.k, s.d, s.hitT < .25 ? 1 : 0, r1(s.v.x), r1(s.v.y), r1(s.v.z), s.bot ? 1 : 0, s.sec.map(Math.round), s.hitSec == null ? -1 : s.hitSec, s.killer || 0, me.t - (s.spawnT || -9) < .9 ? 1 : 0]; }),
     n: this.ships.map(function (s) { return [s.id, s.name, s.col]; }),
     b: this.bul.map(function (b) { return [r1(b.p.x), r1(b.p.y), r1(b.p.z), r1(b.v.x), r1(b.v.y), r1(b.v.z)]; }),
     m: this.bombs.map(function (b) { return [r1(b.p.x), r1(b.p.y), r1(b.p.z), r1(b.c)]; }),

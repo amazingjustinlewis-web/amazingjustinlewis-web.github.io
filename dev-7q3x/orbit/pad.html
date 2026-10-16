@@ -108,7 +108,7 @@ body.sw #evm{right:auto;left:calc(14px + min(22vmin,120px) + 10px);transform:tra
   // ---- HUD
   var lastHull = 100, lastSh = 100, flashA = 0, flashC = '#7fd8ff', feedSeen = '', sendT = 0;
   function flash(col, a) { flashC = col; flashA = Math.max(flashA, a); }
-  function drawHud(st, me, t) { var W = innerWidth, Hh = innerHeight, cx = W / 2, cy = Hh / 2; hx.clearRect(0, 0, W, Hh); if (!me) return; var ax = cx, ay = cy;
+  function drawHud(st, me, t) { var W = innerWidth, Hh = innerHeight, cx = W / 2, cy = Hh / 2; hx.clearRect(0, 0, W, Hh); if (!me) return; if (death) { drawDeathHud(me); return; } var ax = cx, ay = cy;
     if ((pad.opts.third || pad.opts.look) && me.alive) { var aq = V.project(me.p.clone().add(new THREE.Vector3(0, 0, -160).applyQuaternion(me.q))); if (!aq.behind) { ax = aq.x; ay = aq.y; } }
     hx.lineWidth = 2; hx.strokeStyle = '#bff3ffcc'; hx.beginPath(); hx.arc(ax, ay, 14, 0, 7); hx.moveTo(ax - 26, ay); hx.lineTo(ax - 18, ay); hx.moveTo(ax + 18, ay); hx.lineTo(ax + 26, ay); hx.moveTo(ax, ay - 26); hx.lineTo(ax, ay - 18); hx.stroke();
     var foes = st.ships.filter(function (s) { return s.id !== me.id && s.alive; }).map(function (s) { return { s: s, d: s.p.distanceTo(me.p) }; }).sort(function (a, b) { return a.d - b.d; });
@@ -123,7 +123,7 @@ body.sw #evm{right:auto;left:calc(14px + min(22vmin,120px) + 10px);transform:tra
     hx.textAlign = 'center';   // v0.3: top HUD hidden for now (see BACKLOG); tiny corner readout only
     hx.textAlign = 'left'; hx.font = '11px Fredoka,system-ui'; hx.fillStyle = '#ffffff88'; hx.fillText(Math.floor(st.time / 60) + ':' + ('0' + st.time % 60).slice(-2) + '  \u2716' + me.k, 12, 18); hx.textAlign = 'center'; radar(st, me);
     if (me.p.length() > Orbit.C.R * .92 && me.alive) { hx.fillStyle = '#ffb347'; hx.font = '700 16px Fredoka,system-ui'; hx.fillText('LEAVING THE ARENA \u2014 TURN BACK', cx, cy + 60); }
-    if (!me.alive) { hx.fillStyle = '#ff7a6a'; hx.font = '700 26px Fredoka,system-ui'; hx.fillText('DESTROYED', cx, cy - 40); hx.font = '15px Fredoka,system-ui'; hx.fillStyle = '#fff'; hx.fillText('respawning\u2026', cx, cy - 16); }
+    
     hx.textAlign = 'left';
     // stick rings
     drawThr(); ['R'].forEach(function (k) { var s = sticks[k]; if (s.id === null) return; var R = Math.min(70, innerHeight * .14); hx.strokeStyle = '#ffffff55'; hx.lineWidth = 2; hx.beginPath(); hx.arc(s.o[0], s.o[1], R, 0, 7); hx.stroke(); hx.fillStyle = '#ffffff66'; hx.beginPath(); hx.arc(s.o[0] + s.v[0] * R, s.o[1] + s.v[1] * R, R * .38, 0, 7); hx.fill(); });
@@ -187,6 +187,22 @@ body.sw #evm{right:auto;left:calc(14px + min(22vmin,120px) + 10px);transform:tra
   function startReplays() { if (V.holo) V.holo.visible = false; $('over').style.display = 'none'; replay = new OrbitReplay.Player(rec.clips, V); $('rp').style.display = 'block'; $('skip').style.display = 'block'; $('gun').style.display = $('bomb').style.display = $('eva').style.display = 'none'; }
   $('skip').onclick = function () { if (replay) replay.skip(); };
   function endReplay() { replay = null; $('rp').style.display = 'none'; $('skip').style.display = 'none'; $('gun').style.display = $('bomb').style.display = $('eva').style.display = ''; $('over').style.display = 'none'; }
+  // ---- v0.7 death sequence: slide out of the cockpit while the ship blows, turn to the killer, slow-mo kill cam, then relaunch
+  var death = null, launchK = 0, RESP = 5.8;
+  function deathCam(me, st, dt) { var U = new THREE.Vector3(0, 1, 0);
+    if (!death) { death = { t: 0, p: (me.p.clone ? me.p.clone() : me.p), q: me.q.clone(), killer: me.killer, recT: rec ? rec.t : 0, crack: [], player: null, done: false };
+      var cx = innerWidth * (.3 + Math.random() * .4), cy = innerHeight * (.35 + Math.random() * .3); for (var i = 0; i < 11; i++) { var a = Math.random() * 6.28, L = 60 + Math.random() * 260, mx = cx + Math.cos(a + .3) * L * .5, my = cy + Math.sin(a + .3) * L * .5; death.crack.push([cx, cy, mx, my, cx + Math.cos(a) * L, cy + Math.sin(a) * L]); } }
+    var D = death; D.t += dt; var k = st.ships.filter(function (s) { return s.id === D.killer; })[0];
+    if (D.t < 1.4) { var e = 1 - Math.pow(1 - D.t / 1.4, 3); V.cam.position.copy(D.p).add(new THREE.Vector3(0, 7, 24).applyQuaternion(D.q).multiplyScalar(e)); V.look(null, D.p, new THREE.Vector3(0, 1, 0).applyQuaternion(D.q), dt * 3, false); return false; }
+    if (D.t < 2.5 || D.done || !rec) { if (k && k.alive) V.look(null, k.p, U, dt * .7, false); return false; }
+    if (!D.player) { var fr = rec.buf.filter(function (f) { return f.t >= D.recT - 2.4 && f.t <= D.recT + .25; }); if (fr.length < 8) { D.done = true; return false; }
+      D.player = new OrbitReplay.Player([{ id: D.killer || myId, label: k ? 'KILL CAM \u00b7 ' + k.name + ' got you' : 'KILL CAM', frames: fr }], V, .5); D.player.snap = true; }
+    var lab = D.player.step(dt); if (lab === null || D.t > RESP - .6) { D.done = true; V.cam.position.copy(D.p).add(new THREE.Vector3(0, 7, 24).applyQuaternion(D.q)); return false; } D.lab = lab; return true; }
+  function drawDeathHud(me) { if (!death) return; var D = death, W = innerWidth, Hh = innerHeight; hx.textAlign = 'center';
+    if (D.t < .7) { hx.strokeStyle = 'rgba(230,245,255,' + (1 - D.t / .7).toFixed(2) + ')'; hx.lineWidth = 1.5; D.crack.forEach(function (c) { hx.beginPath(); hx.moveTo(c[0], c[1]); hx.lineTo(c[2], c[3]); hx.lineTo(c[4], c[5]); hx.stroke(); }); }
+    var left = Math.max(0, Math.ceil(RESP - D.t)); hx.fillStyle = '#ff7a6a'; hx.font = '700 24px Fredoka,system-ui'; hx.fillText(D.player && !D.done ? '' : 'DESTROYED', W / 2, Hh * .3);
+    if (D.player && !D.done && D.lab) { hx.fillStyle = '#ffe7a0'; hx.font = '700 16px Fredoka,system-ui'; hx.fillText(D.lab.replace(/REPLAY 1\/1 \u00b7 /, ''), W / 2, 30); hx.fillStyle = '#ffffff22'; hx.fillRect(0, 0, W, 4); hx.fillRect(0, Hh - 4, W, 4); }
+    hx.fillStyle = '#fff'; hx.font = '15px Fredoka,system-ui'; hx.fillText(left > 0 ? 'Relaunch in ' + left : 'Launching\u2026', W / 2, Hh - 70); hx.textAlign = 'left'; }
   var last = 0, wasOver = false;
   (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; var I = input();
     evTick(dt); if (chargeOn) charging += dt; thr.v += (thr.tgt - thr.v) * (1 - Math.exp(-5 * dt)); if (Math.abs(thr.tgt - thr.v) < .002) thr.v = thr.tgt; $('bomb').firstChild.style.height = Math.min(100, charging / Orbit.C.BOMB_MAX * 100) + '%';
@@ -194,15 +210,15 @@ body.sw #evm{right:auto;left:calc(14px + min(22vmin,120px) + 10px);transform:tra
         var st = null;
     if (G) { var mi = G.me.inp; mi.tx = I.tx; mi.tz = I.tz; mi.p = I.p; mi.y = I.y; mi.r = I.r; mi.fire = I.fire; G.step(dt); st = G.state(); if (rec) rec.frame(st, dt, G);
       if (st.over && !wasOver && rec && rec.clips.length) { wasOver = true; setTimeout(function () { if (G.sim.over && !replay) startReplays(); }, 1200); } if (!st.over) wasOver = false; }
-    else { st = snaps.state(); sendT += dt; if (st && sendT > .05) { sendT = 0; c.send({ t: 'in', a: [I.tx, I.tz, I.p, I.y, I.r].map(function (x) { return Math.round(x * 100) / 100; }), f: I.fire ? 1 : 0 }); } }
+    else { st = snaps.state(); if (st) { if (!rec) rec = new OrbitReplay.Recorder(); rec.frame(st, dt, null); } sendT += dt; if (st && sendT > .05) { sendT = 0; c.send({ t: 'in', a: [I.tx, I.tz, I.p, I.y, I.r].map(function (x) { return Math.round(x * 100) / 100; }), f: I.fire ? 1 : 0 }); } }
     if (st) { var me = st.ships.filter(function (s) { return s.id === myId; })[0];
-      if (me) { vwBtn(); if (me.alive && pad.opts.third) V.chase(me, dt, 13, 3.6); else if (me.alive) V.cockpit(me, dt, lookHead()); else V.chase(me, dt, 30, 10);
+      if (me) { vwBtn(); if (me.alive && pad.opts.third) V.chase(me, dt, 13, 3.6); else if (me.alive) V.cockpit(me, dt, lookHead()); if (!me.alive) { if (deathCam(me, st, dt)) { hx.clearRect(0, 0, innerWidth, innerHeight); drawDeathHud(me); return requestAnimationFrame(loop); } } else if (death) { death = null; launchK = 1; flash('#7fe8ff', .55); V.shake = .6; if (navigator.vibrate) navigator.vibrate(40); }
         if ((me.sh < lastSh - .5 || me.hull < lastHull - .5) && me.alive) V.holoHit(me.hs); V.holoStep(me.sec, dt, me.alive);
         if (me.sh < lastSh - .5 && me.alive) { flash('#5fc8ff', .35); V.shake = Math.max(V.shake, .5); if (navigator.vibrate) navigator.vibrate(25); }
         if (me.hull < lastHull - .5 && me.alive) { flash('#ff4a2a', .5); V.shake = Math.max(V.shake, 1); if (navigator.vibrate) navigator.vibrate(60); }
         if (lastHull > 0 && !me.alive) { flash('#ffffff', .8); V.shake = 1.5; if (navigator.vibrate) navigator.vibrate([80, 40, 140]); }
         lastSh = me.sh; lastHull = me.alive ? me.hull : 0; }
-      V.draw(st, { hide: me && me.alive && !pad.opts.third ? me.id : 0 }); $('frame').style.display = pad.opts.third || pad.opts.look ? 'none' : ''; drawHud(st, me, t); cockpitFx(me, dt); if (me) { var vl = me.v.clone().applyQuaternion(V.cam.quaternion.clone().invert()); V.speed(vl, dt, me.alive && !pad.opts.third); } overScreen(st); }
+      V.draw(st, { hide: me && me.alive && !pad.opts.third ? me.id : 0 }); if (death) drawDeathHud(me); launchK = Math.max(0, launchK - dt * 1.3); var fv = 72 + 26 * launchK * launchK; if (Math.abs(V.cam.fov - fv) > .05) { V.cam.fov = fv; V.cam.updateProjectionMatrix(); } $('frame').style.display = pad.opts.third || pad.opts.look || death ? 'none' : ''; drawHud(st, me, t); cockpitFx(me, dt); if (me) { var vl = me.v.clone().applyQuaternion(V.cam.quaternion.clone().invert()); V.speed(vl, dt, me.alive && !pad.opts.third); } overScreen(st); }
     flashA = Math.max(0, flashA - dt * 2); var f = $('flash'); f.style.background = 'radial-gradient(ellipse at center, transparent 35%, ' + flashC + ')'; f.style.opacity = flashA;
     requestAnimationFrame(loop); })(0);
   layout(); window.OBP = { look: look, evGo: evGo, evPick: evPick, get evSel() { return evSel; }, thr: thr, tilt: tilt, layout: layout, get G() { return G; }, V: V, sticks: sticks, pad: pad, get rec() { return rec; }, setFire: function (v) { fire = v; }, bomb: throwBomb, startReplays: startReplays, snaps: snaps };
