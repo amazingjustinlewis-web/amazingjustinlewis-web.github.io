@@ -76,15 +76,31 @@
       '<div class="b3rep" style="position:absolute;left:3vw;top:3vh;font:700 3.6vmin Fredoka,sans-serif;color:#fff;background:#d8344c;padding:.3em .8em;border-radius:.4em;opacity:0">\u25CF INSTANT REPLAY <span style="font-weight:400;opacity:.8;font-size:.7em">\u00b7 tap to skip</span></div><div class="b3bars" style="position:absolute;inset:0;opacity:0;box-shadow:inset 0 9vh 0 #000,inset 0 -9vh 0 #000"></div>';
     document.body.appendChild(d); this.d = d; this.flashes = [];
   };
+  // breakaway: carrier with no skater (goalie excluded) between him and the net within BREAK.dist. Camera eases toward that end.
+  var BREAK_ZOOM_PCT = 100;   // Justin: scale the breakaway zoom by percent (0 = off, 100 = default gentle, 200 = double)
+  var BREAK = { dist: .95, lane: .14 };
+  R3.prototype.breakaway = function (st) { var i = st.c, t = i < 6 ? 0 : 1, q = B.pos(B.TR[i], st.u[i]), gy = t ? L - B.GY : B.GY, dy = gy - q[1]; if (Math.abs(dy) > BREAK.dist || Math.hypot(.5 - q[0], dy) > BREAK.dist) return null;
+    for (var j = (1 - t) * 6; j < (1 - t) * 6 + 6; j++) { if (B.TR[j].k === 'G') continue; var p = B.pos(B.TR[j], st.u[j]); if (st.o) p = [p[0] + st.o[j][0], p[1] + st.o[j][1]]; var f = (p[1] - q[1]) / dy; if (f <= 0 || f >= 1) continue; var lx = q[0] + (.5 - q[0]) * f; if (Math.abs(p[0] - lx) < BREAK.lane) return null; }
+    return [.5, gy]; };
+  // small edge markers for players pushed off-screen by the zoom; smaller the further away
+  R3.prototype.markers = function (cam, on) { if (!this.mk) { this.mk = []; for (var i = 0; i < 12; i++) { var d = document.createElement('div'); d.style.cssText = 'position:absolute;border-radius:50%;pointer-events:none;z-index:3;border:2px solid #fff;display:none;transform:translate(-50%,-50%)'; d.style.background = '#' + (i < 6 ? 'ff5a6e' : '3aa8ff'); this.d.appendChild(d); this.mk.push(d); } }
+    var W = this.cv.clientWidth, H = this.cv.clientHeight, v = new THREE.Vector3();
+    for (i = 0; i < 12; i++) { var m = this.mk[i]; if (!on) { m.style.display = 'none'; continue; } this.pl[i].getWorldPosition(v); v.project(cam); var ax = Math.abs(v.x), ay = Math.abs(v.y), out = Math.max(ax, ay); if (out <= 1) { m.style.display = 'none'; continue; }
+      var k = .96 / out, sz = Math.max(5, 16 / (1 + (out - 1) * 3)); m.style.display = 'block'; m.style.width = m.style.height = sz + 'px'; m.style.left = ((v.x * k + 1) / 2 * W) + 'px'; m.style.top = ((1 - v.y * k) / 2 * H) + 'px'; m.style.opacity = .85; } };
   R3.prototype.setTop = function (st, dt) {   // orthographic camera that reproduces the 2D View mapping exactly
     var V = this.V, W = this.cv.clientWidth, H = this.cv.clientHeight, a = V.s2w(0, 0), bx = V.s2w(1, 0), by = V.s2w(0, -1), cam = this.ortho, G = this.G;
     var o = G.localToWorld(L3(a[0], a[1], 5)), right = G.localToWorld(L3(bx[0], bx[1], 5)).sub(o).normalize(), up = G.localToWorld(L3(by[0], by[1], 5)).sub(o).normalize();
     cam.position.copy(o); cam.up.copy(up); cam.lookAt(o.clone().add(new THREE.Vector3(0, -1, 0))); cam.left = 0; cam.right = W / V.s; cam.top = 0; cam.bottom = -H / V.s;
     // action camera (TV): tighten slowly on a held puck, open back out quickly on release
-    var z = this.az || 1; if (st) { var held = st.c >= 0 && !(st.pz > 0) && !this.rep; z += held ? (1.45 - z) * (1 - Math.exp(-dt * .55)) : (1 - z) * (1 - Math.exp(-dt * 6));
-      if (held) { var fs = V.w2s(st.p[0], st.p[1]); this.af = this.af ? [this.af[0] + (fs[0] - this.af[0]) * Math.min(1, dt * 3), this.af[1] + (fs[1] - this.af[1]) * Math.min(1, dt * 3)] : fs; } }
+    var z = this.az || 1; if (st) { var held = st.c >= 0 && !(st.pz > 0) && !this.rep, bk = held ? this.breakaway(st) : null; this.bk = (this.bk || 0) + ((bk ? 1 : 0) - (this.bk || 0)) * Math.min(1, dt * (bk ? 1.5 : 4));
+      var zt = held ? 1.45 + (BREAK_ZOOM_PCT / 100 * .1) * this.bk : 1; z += zt > z ? (zt - z) * (1 - Math.exp(-dt * (.55 + this.bk))) : (zt - z) * (1 - Math.exp(-dt * 6));
+      if (held) { var fx = st.p[0], fy = st.p[1]; if (bk) { fx += (.5 - fx) * .3 * this.bk; fy += (bk[1] - fy) * .25 * this.bk; } var fs = V.w2s(fx, fy); this.af = this.af ? [this.af[0] + (fs[0] - this.af[0]) * Math.min(1, dt * 3), this.af[1] + (fs[1] - this.af[1]) * Math.min(1, dt * 3)] : fs; } }
     else z = 1; this.az = z;
-    if (z > 1.001 && this.af) { var k = (z - 1) / .45 * .7, dx = (this.af[0] - W / 2) * k / V.s, dy = (this.af[1] - H / 2) * k / V.s; cam.position.addScaledVector(right, dx).addScaledVector(up, -dy); }
+    if (z > 1.001 && this.af) { var k = (z - 1) / .45 * .7, px2 = (this.af[0] - W / 2) * k, py2 = (this.af[1] - H / 2) * k, c1 = V.w2s(-.07, -.07), c2 = V.w2s(1.07, L + .07);
+      // keep the zoomed window over the rink (no panning out past the boards)
+      var x0 = Math.min(c1[0], c2[0]), x1 = Math.max(c1[0], c2[0]), y0 = Math.min(c1[1], c2[1]), y1 = Math.max(c1[1], c2[1]), hw = W / 2 / z, hh = H / 2 / z;
+      var cx = W / 2 + px2, cy = H / 2 + py2; cx = x1 - x0 > 2 * hw ? Math.max(x0 + hw, Math.min(x1 - hw, cx)) : (x0 + x1) / 2; cy = y1 - y0 > 2 * hh ? Math.max(y0 + hh, Math.min(y1 - hh, cy)) : (y0 + y1) / 2;
+      var dx = (cx - W / 2) / V.s, dy = (cy - H / 2) / V.s; cam.position.addScaledVector(right, dx).addScaledVector(up, -dy); }
     cam.zoom = z; cam.updateProjectionMatrix(); return cam;
   };
   var AC = null; function buzz() { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); var t = AC.currentTime, o = AC.createOscillator(), o2 = AC.createOscillator(), g = AC.createGain();
@@ -153,6 +169,7 @@
     this.parts.forEach(function (p) { if (n >= 900) return; var f = Math.min(1, p.l / p.l0 * 1.5); pos[n * 3] = p.p.x; pos[n * 3 + 1] = p.p.y; pos[n * 3 + 2] = p.p.z; col[n * 3] = lerp(1, p.c.r, f); col[n * 3 + 1] = lerp(1, p.c.g, f); col[n * 3 + 2] = lerp(1, p.c.b, f); n++; });
     for (var z = n; z < 900; z++) pos[z * 3 + 1] = -9; this.pts.geometry.attributes.position.needsUpdate = true; this.pts.geometry.attributes.color.needsUpdate = true;
     this.pts.material.size = cam === this.ortho ? Math.max(4, this.V.s * .018) * Math.min(2, devicePixelRatio || 1) : .012; this.pts.material.sizeAttenuation = true;
+    this.markers(cam, cam === this.ortho && (this.az || 1) > 1.05);
     this.gl.render(this.scene, cam);
   };
   R3.prototype.camFlash = function () { var f = document.createElement('div'), s = 4 + Math.random() * 10; f.style.cssText = 'position:absolute;width:' + s + 'px;height:' + s + 'px;border-radius:50%;background:#fff;box-shadow:0 0 14px 6px #fff;left:' + (Math.random() * 100) + '%;top:' + (Math.random() < .5 ? Math.random() * 14 : 86 + Math.random() * 14) + '%;transition:opacity .25s;opacity:1';

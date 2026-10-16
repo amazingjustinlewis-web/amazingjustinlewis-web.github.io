@@ -71,15 +71,18 @@
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
   // touch -> intents. send(m) gets {t:'grab',i} {t:'drag',x,y} {t:'rel'} {t:'tap'} {t:'flick',dx,dy,sp} in rink coords
   function Gestures(el, V, getSt, send) {
-    var id = null, pts = [], t0 = 0, start = null;
+    var id = null, pts = [], t0 = 0, start = null, goalieT = null;
     el.addEventListener('pointerdown', function (e) { if (id !== null) { send({ t: 'tap' }); return; } id = e.pointerId; var w = V.s2w(e.clientX, e.clientY), st = getSt(); t0 = performance.now(); start = w; pts = [[w[0], w[1], t0]];
+      // goalie strip: touches behind your own goal line (the edge nearest you) slide your goalie; he never leaves his line
+      var gl = V.team ? B.GY : B.L - B.GY, behind = V.team ? w[1] < gl - .015 : w[1] > gl + .015, gi = V.team * 6;
+      if (behind && !V.horiz && (!V.allow || V.allow.indexOf(gi) >= 0)) { var gq = B.pos(B.TR[gi], .5); goalieT = gq[1]; send({ t: 'grab', i: gi }); send({ t: 'drag', x: w[0], y: goalieT }); return; } goalieT = null;
       var best = -1, bd = .1; if (st) for (var i = V.team * 6; i < V.team * 6 + 6; i++) { if (V.allow && V.allow.indexOf(i) < 0) continue; var q = B.pos(B.TR[i], st.u[i]); if (st.o) q = [q[0] + st.o[i][0], q[1] + st.o[i][1]]; var d = Math.hypot(q[0] - w[0], q[1] - w[1]); if (d < bd) { bd = d; best = i; } }
       var snag = 0; if (st && (best < 0 || bd > .05) && (st.c < 0 || (st.c < 6 ? 0 : 1) !== V.team)) { var pk = st.p, tp = Math.hypot(pk[0] - w[0], pk[1] - w[1]), bs = 9;   // thumb snag: best thumb-player-puck triangulation
         for (i = V.team * 6; i < V.team * 6 + 6; i++) { if (V.allow && V.allow.indexOf(i) < 0) continue; var q2 = B.pos(B.TR[i], st.u[i]); if (st.o) q2 = [q2[0] + st.o[i][0], q2[1] + st.o[i][1]]; var dT = Math.hypot(q2[0] - w[0], q2[1] - w[1]), dP = Math.hypot(q2[0] - pk[0], q2[1] - pk[1]); if (dT > .45) continue;
           var sc = dT + dP, between = ((q2[0] - w[0]) * (pk[0] - w[0]) + (q2[1] - w[1]) * (pk[1] - w[1])) > 0 && dT < tp; if (between) sc -= .04; if (sc < bs) { bs = sc; best = i; } } snag = best >= 0 && bs < tp + .25 ? 1 : 0; }
       send({ t: 'grab', i: best, snag: snag }); send({ t: 'drag', x: w[0], y: w[1] }); });
-    el.addEventListener('pointermove', function (e) { if (e.pointerId !== id) return; var w = V.s2w(e.clientX, e.clientY), n = performance.now(); pts.push([w[0], w[1], n]); if (pts.length > 30) pts.shift(); if (!this.lt || n - this.lt > 30) { this.lt = n; send({ t: 'drag', x: w[0], y: w[1] }); } });
-    function up(e) { if (e.pointerId !== id) return; id = null; var n = performance.now(), rec = pts.filter(function (p) { return n - p[2] < 120; }); var w = V.s2w(e.clientX, e.clientY), moved = Math.hypot(w[0] - start[0], w[1] - start[1]);
+    el.addEventListener('pointermove', function (e) { if (e.pointerId !== id) return; var w = V.s2w(e.clientX, e.clientY), n = performance.now(); if (goalieT != null) { send({ t: 'drag', x: w[0], y: goalieT }); return; } pts.push([w[0], w[1], n]); if (pts.length > 30) pts.shift(); if (!this.lt || n - this.lt > 30) { this.lt = n; send({ t: 'drag', x: w[0], y: w[1] }); } });
+    function up(e) { if (e.pointerId !== id) return; id = null; if (goalieT != null) { goalieT = null; send({ t: 'rel' }); return; } var n = performance.now(), rec = pts.filter(function (p) { return n - p[2] < 120; }); var w = V.s2w(e.clientX, e.clientY), moved = Math.hypot(w[0] - start[0], w[1] - start[1]);
       send({ t: 'rel' });
       if (n - t0 < 260 && moved < .035) { send({ t: 'tap' }); return; }
       if (rec.length < 2) rec = pts.slice(-3); if (rec.length >= 2) { var a = rec[0], b = rec[rec.length - 1], dt = Math.max(.016, (b[2] - a[2]) / 1000), dx = (b[0] - a[0]) / dt, dy = (b[1] - a[1]) / dt, sp = Math.hypot(dx, dy); if (sp > .9) send({ t: 'flick', dx: dx, dy: dy, sp: Math.min(3.4, Math.max(.8, sp * .5)) }); } }

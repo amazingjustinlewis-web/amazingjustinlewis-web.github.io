@@ -61,7 +61,7 @@
     if ((m.t === 'tap' || m.t === 'skip') && this.msg === 'GOAL!' && this.pause > 1.05) { this.pause = 1.05; return; }   // tap-to-skip the goal pause
     if (m.t === 'tap' && this.c < 0 || (m.t === 'tap' && this.team(this.c) !== team)) { if ((this.clk || 0) - this.lf[hand] < OT.arm) { this.ot[team] = { t: this.clk, hand: hand }; this.ev = 'arm'; } return; }
     if (m.t === 'grab') { var gi = (m.i >= team * 6 && m.i < team * 6 + 6 && (!allow || allow.indexOf(m.i) >= 0)) ? m.i : -1; this.grab[hand] = gi; this.fing[hand] = null;
-      if (gi >= 0 && m.snag && gi !== this.c && this.dn[gi] <= 0 && this.clear(this.pp(gi), team) > SNAG.free) { this.sn[gi] = SNAG.t; this.ln[gi] = .4; this.ev = 'snag'; } }
+      if (gi >= 0 && m.snag && TR[gi].k !== 'G' && gi !== this.c && this.dn[gi] <= 0 && this.clear(this.pp(gi), team) > SNAG.free) { this.sn[gi] = SNAG.t; this.ln[gi] = .4; this.ev = 'snag'; } }
     else if (m.t === 'drag') this.fing[hand] = [m.x, m.y];
     else if (m.t === 'rel') { this.grab[hand] = -1; this.fing[hand] = null; }
     else if (this.c >= 0 && this.team(this.c) === team && this.pause <= 0) { if (m.t === 'tap') this.shoot(); else if (m.t === 'flick') { this.pass([m.dx, m.dy], m.sp); this.lf[hand] = this.clk || 0; } } };
@@ -113,7 +113,8 @@
       var du = want - this.u[i], mx = spd * dt / tr.len; this.u[i] += cl(du, -mx, mx);
       // stretch off the line toward the finger: offset saturates at REACH with an inverse-cube pull back
       if (this.sn[i] > 0) this.sn[i] -= dt; if (this.ln[i] > 0) this.ln[i] -= dt;
-      var oo = this.o[i], kv = this.ko[i]; if (kv[0] || kv[1] || this.dn[i] > 0) { oo[0] += kv[0] * dt; oo[1] += kv[1] * dt; var kd = Math.exp(-dt * 3.5); kv[0] *= kd; kv[1] *= kd; if (Math.abs(kv[0]) + Math.abs(kv[1]) < .01) kv[0] = kv[1] = 0;
+      var oo = this.o[i], kv = this.ko[i]; if (tr.k === 'G') { oo[0] = oo[1] = 0; kv[0] = kv[1] = 0; }   // goalie stays on his crease line
+      else if (kv[0] || kv[1] || this.dn[i] > 0) { oo[0] += kv[0] * dt; oo[1] += kv[1] * dt; var kd = Math.exp(-dt * 3.5); kv[0] *= kd; kv[1] *= kd; if (Math.abs(kv[0]) + Math.abs(kv[1]) < .01) kv[0] = kv[1] = 0;
         var om = Math.hypot(oo[0], oo[1]); if (om > CHK.maxO) { oo[0] *= CHK.maxO / om; oo[1] *= CHK.maxO / om; kv[0] *= -.4; kv[1] *= -.4; this.ev = 'thud'; }   // springs/bounces back at the max knockback
         var bp = pos(tr, this.u[i]), wx = bp[0] + oo[0], wy = bp[1] + oo[1]; if (wx < .03 || wx > .97) { kv[0] = -kv[0] * .5; oo[0] = cl(wx, .03, .97) - bp[0]; }
         for (var gs2 = 0; gs2 < 2; gs2++) { var gl2 = gs2 ? L - GY : GY, dr2 = gs2 ? 1 : -1, ps2 = (wy - gl2) * dr2; if (Math.abs(wx - .5) < GW + .02 && ps2 > -.02 && ps2 < .07) { kv[1] = -kv[1] * .6; kv[0] = kv[0] * .6 + (wx > .5 ? .3 : -.3); oo[1] += (ps2 < .025 ? -1 : 1) * dr2 * .01; this.ev = 'netbang'; } }
@@ -121,7 +122,7 @@
       else if ((F = this.fg(i))) { var bq = pos(tr, this.u[i]), ddx = F[0] - bq[0], ddy = F[1] - bq[1], m = Math.hypot(ddx, ddy) || 1e-6, eff = m / Math.cbrt(1 + Math.pow(m / REACH, 3)), kk = Math.min(1, dt * 18);
         oo[0] += (ddx / m * eff - oo[0]) * kk; oo[1] += (ddy / m * eff - oo[1]) * kk; } else if (this.pk && this.pk[i]) { var pk = this.pk[i], bq2 = pos(tr, this.u[i]), ex = pk[0] - bq2[0], ey = pk[1] - bq2[1], em = Math.hypot(ex, ey) || 1e-6, ef = Math.min(em, AI.dStretch), k2 = Math.min(1, dt * 6); oo[0] += (ex / em * ef - oo[0]) * k2; oo[1] += (ey / em * ef - oo[1]) * k2; } else { var dk = Math.exp(-dt * 9); oo[0] *= dk; oo[1] *= dk; }
       var P = this.pp(i), ta;
-      if ((F = this.fg(i)) && Math.hypot(F[0] - P[0], F[1] - P[1]) > R * .8) ta = Math.atan2(F[1] - P[1], F[0] - P[0]);
+      if (tr.k !== 'G' && (F = this.fg(i)) && Math.hypot(F[0] - P[0], F[1] - P[1]) > R * .8) ta = Math.atan2(F[1] - P[1], F[0] - P[0]);
       else if (i === this.c) ta = this.aimA != null && this.ai[t] ? this.aimA : Math.atan2(goalOf(t) - P[1], .5 - P[0]) + Math.sin(this.hold * 6 + i) * .6;
       else ta = Math.atan2(tgt[1] - P[1], tgt[0] - P[0]);
       var rate = i === this.c ? 7 : 10; this.ang[i] += cl(adiff(ta, this.ang[i]), -rate * dt, rate * dt); }
