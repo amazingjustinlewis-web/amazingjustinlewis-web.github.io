@@ -198,6 +198,15 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Phone: height-tinted minimap with hill shading, your dot (pulsing) + others in colour, tap ripple + dashed course line; How to play (3 steps); perf.js on both.
 - Next: unit selection/groups, obstacles/no-fly, fog of war, flier collision, pinch-zoom minimap.
 
+## RTS v0.4 wheel + controls (done)
+- Reopen: CFG.reopenAt 'prev' (default, wheel returns at its old ox/oy; thumb becomes the pick anchor) | 'thumb'. Drop 'zip' (default, 650 ms): straight up to slot+60 px, then quadratic arc/zip into the slot, wheel body fades out over first 60% while the orb fades in; 180 ms landing bounce. RECATCH_MS 330, CFG.dbl 420, orbR 16-28 px, spacing 70 px. localStorage key now rts4-cfg.
+- QCOL per top quadrant (orange/gold/cyan/violet). layers() = one per loaded leaf (its quadrant) then one per menu layer -> concentric rings around wheel, concentric fill in orbs (inner = first).
+- Tree is generic (branches nest any depth). Move/Attack > Move only > Resource/Scout/Aggression > bias pairs (mv:* sets bias + next tap = move); Targets > Attack/Defend T1/T2 (TV orders attackset / guard); Build > Worker priority > Rush (TV b.rush 25 s, non-strict idle team units within 30 m drift over, heal + speed the queue) / Normal / Strict. Bias > Economy (greedy/protective) / Risk (bold/careful: retreat at 60% hp) / Posture / Upgrade.
+- Nodes A/B/C bottom centre: ordered combo (15 + none), comboLayer(): first node decides (A top, B layer 2, C layer 3) -- 2/3-node combos are logged + stubbed. Layer path = last branch path used, else AI guess, padded with first branch child.
+- Groups: own lasso -> G bubble (max 6, dedup); enemy-only lasso -> red E bubble; drag bubble onto TARGET box -> T1/T2 (max 2, tap chip to remove).
+- Disconnect: phone heartbeat {t:'hb'} every 3 s; TV treats >7 s silence (or Kit close) as gone. dcPause -> 10 s countdown then sim paused; else AI (aiTick every 4 s: gather, train, attack-move at 8+ fighters) after dcAI s. Rejoin = control back.
+- Todo: real 2/3-node combo meanings; multiple orbs only via re-catch (re-touch always reopens newest); AI is very basic.
+
 ## RTS v0.3 phone wheel (done)
 - Lift without GO: orb only if something is loaded or you are inside a sub-menu (top level + empty = plain close). Snap to green circle, drop DROP_MS 500 along dropAt(): soft (ease-out cubic + arc), sharp (12% ease-in then quartic snap), plinko (straight accelerating rise to just under the slot, then curved ramp in).
 - Pending orb: pointerdown anywhere (not on an orb / UI) reopens the NEWEST orb exactly centred on the thumb (no clamp, edges can go off-screen), state per CFG.reopen; stack always kept. Quick release (<220 ms, <12 px) puts the orb back untouched and arms double-tap; 2nd tap within 250 ms = actuate newest orb. Lasso / single map taps are unavailable while an orb is pending (clear by GO, or BOTTOM reset at top level then lift). Pinch still works (orb restored).

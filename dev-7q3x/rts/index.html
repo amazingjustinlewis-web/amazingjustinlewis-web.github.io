@@ -41,7 +41,7 @@
     capsule: new THREE.CapsuleGeometry(.32, .5, 4, 10), pillar: new THREE.BoxGeometry(.55, 1.5, .55), knot: new THREE.TorusKnotGeometry(.38, .12, 48, 8) };
   function mesh(g, m) { var o = new THREE.Mesh(g, m); o.castShadow = true; o.receiveShadow = true; return o; }
   function gy(x, z) { return Math.max(T.h(x, z), -1.0); }
-  var CFG = { spd: 1, waves: true };   // v0.3: set from the phone test panel
+  var CFG = { spd: 1, waves: true, dcAI: 15, dcPause: false }, DC = { t: 0, ai: false, paused: false, ever: false, aiT: 0 };   // v0.3: set from the phone test panel
   var E = {}, nid = 1, res = [150, 150, 150, 150], angry = {}, beams = [], over = 0, waveT = 20;
   // selection rings (TV mirror of phone selections) + upgrade glow sprite
   function dotTex(col) { var c = document.createElement('canvas'); c.width = c.height = 64; var x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, col); g.addColorStop(1, 'rgba(255,200,80,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); }
@@ -93,27 +93,36 @@
       if (!n) { n = nearest(e, function (q) { return q.k === 'n' && q.amt > 0; }, 40); if (!n) { e.o = null; return; } o.id = n.id; }
       if (moveTo(e, n.x, n.z, sp, dt, 2.2)) { e.gt = (e.gt || 0) + dt; if (e.gt > 1.6) { e.gt = 0; e.carry = SH.COST.gather; n.amt -= SH.COST.gather; if (n.amt <= 0) { scene.remove(n.m); delete E[n.id]; } } } return; }
     if (u.role === 'gather' && !o) { var dmgB = nearest(e, function (q) { return q.k === 'b' && q.team === e.team && q.hp < q.mhp; }, 6); if (dmgB) { dmgB.hp = Math.min(dmgB.mhp, dmgB.hp + 8 * dt); if (Math.random() < dt * 5) beam(e, dmgB, 0x3fd8ff, .15); } }
+    if (bi.retreat && e.team === 0 && e.hp < e.mhp * bi.retreat) { var hqR = nearest(e, function (q) { return q.k === 'b' && q.team === e.team && q.kind === 'hq'; }, 999); if (hqR) { moveTo(e, hqR.x + Math.cos(e.ph) * 9, hqR.z + Math.sin(e.ph) * 9, sp, dt, 1.5); return; } }   // careful: fall back when hurt
+    if (o && o.k === 'attackset') { t = nearest(e, function (q) { return o.ids.indexOf(q.id) >= 0; }, 999); if (!t) e.o = o = null; }
+    if (o && o.k === 'guard') { var al = o.ids.map(function (i) { return E[i]; }).filter(Boolean); if (!al.length) e.o = o = null; else { var gx = 0, gz = 0; al.forEach(function (q) { gx += q.x; gz += q.z; }); gx /= al.length; gz /= al.length;
+      t = nearest(e, function (q) { return q.k !== 'n' && hostile(e, q) && o.ids.indexOf(q.id) < 0 && Math.hypot(q.x - gx, q.z - gz) < 14; }, 40); if (!t) { moveTo(e, gx + Math.cos(e.ph * .3) * 6, gz + Math.sin(e.ph * .3) * 6, sp * .7, dt, 1); return; } } }
     if (o && o.k === 'attack') { t = E[o.id]; if (!t) e.o = o = null; else if (t.k === 'b') { var thr = nearest(e, function (q) { return q.k === 'u' && hostile(e, q); }, Math.max(8, u.rng + 2)); if (thr) t = thr; } }   // fight off attackers before hitting a building
     if (!t && !(o && o.k === 'move') && o !== 'hold') { var ag = bi.aggro + (u.rng > 6 ? u.rng * .5 : 0), cx = e.x, cz = e.z; t = nearest(e, function (q) { return q.k !== 'n' && hostile(e, q); }, ag);
       if (t && bi.leash && Math.hypot(t.x - e.ax, t.z - e.az) > bi.leash) t = null; if (t && e.bias === 'recon' && e.hp < e.mhp * .6) t = null; }
     if (t) { var d = Math.hypot(t.x - e.x, t.z - e.z) - rad(t); if (d <= u.rng) { e.face = Math.atan2(t.x - e.x, t.z - e.z); if (e.cd <= 0) { e.cd = u.rate; hurt(t, u.dmg * (e.buff > 0 ? 1.25 : 1), e); beam(e, t, e.team === 0 ? 0x9fd0ff : e.team === 1 ? 0xffa060 : e.team === 2 ? 0xbffcff : 0xffc080, u.rng > 4 ? .14 : .08); } }
       else if (o !== 'hold') moveTo(e, t.x, t.z, sp, dt, rad(t) + u.rng * .8); return; }
     if (o && (o.k === 'amove' || o.k === 'move')) { if (moveTo(e, o.x + (o.ox || 0), o.z + (o.oz || 0), sp, dt)) { e.ax = e.x; e.az = e.z; e.o = null; } return; }
+    if (!o && e.team === 0 && e.bias !== 'strict') { var rbB = nearest(e, function (q) { return q.k === 'b' && q.team === 0 && q.rush > 0; }, 30); if (rbB) { var rr = rad(rbB) + 3; if (moveTo(e, rbB.x + Math.cos(e.ph * .2) * rr, rbB.z + Math.sin(e.ph * .2) * rr, sp * .7, dt, 1)) { rbB.help = (rbB.help || 0) + 1; if (Math.random() < dt * 3) beam(e, rbB, 0x3fd8ff, .15); } return; } }   // worker-priority rush: non-strict idle helpers drift over to help
     if (e.bias === 'protect') { var mb = nearest(e, function (q) { return q.k === 'b' && q.team === e.team; }, 60); if (mb) moveTo(e, mb.x + Math.cos(e.ph) * (rad(mb) + 4), mb.z + Math.sin(e.ph) * (rad(mb) + 4), sp * .6, dt); }
     else if (e.bias === 'defensive' || e.team !== 0) moveTo(e, e.ax, e.az, sp * .6, dt, 1.5); }
-  function stepB(e, dt) { var b = BT[e.kind]; if (e.kind === 'tower' || (e.kind === 'workshop' && e.lvl > 1)) { e.cd -= dt; var t = nearest(e, function (q) { return q.k === 'u' && hostile(e, q); }, (b.rng || 13) + e.lvl * 2); if (t) { if (e.m.userData.tur) e.m.userData.tur.rotation.y = Math.atan2(t.x - e.x, t.z - e.z) - Math.PI / 2; if (e.cd <= 0) { e.cd = 1.1; hurt(t, (b.dmg || 6) * e.lvl, e); beam(e, t, 0xffe08a, .14); } } }
+  function stepB(e, dt) { var b = BT[e.kind]; if (e.rush > 0) { e.rush -= dt; var hp = e.help || 0; e.hp = Math.min(e.mhp, e.hp + hp * 2 * dt); if (e.q.length) e.q[0].t -= dt * Math.min(3, hp * .4); } e.help = 0; if (e.kind === 'tower' || (e.kind === 'workshop' && e.lvl > 1)) { e.cd -= dt; var t = nearest(e, function (q) { return q.k === 'u' && hostile(e, q); }, (b.rng || 13) + e.lvl * 2); if (t) { if (e.m.userData.tur) e.m.userData.tur.rotation.y = Math.atan2(t.x - e.x, t.z - e.z) - Math.PI / 2; if (e.cd <= 0) { e.cd = 1.1; hurt(t, (b.dmg || 6) * e.lvl, e); beam(e, t, 0xffe08a, .14); } } }
     if (e.q.length) { e.q[0].t -= dt; if (e.q[0].t <= 0) { var ty = e.q.shift().ty, a = Math.random() * 6; var nu = unit(ty, e.team, e.x + Math.cos(a) * (b.r + 3), e.z + Math.sin(a) * (b.r + 3)); if (U[ty].role === 'gather') nu.o = { k: 'gather', id: 0 }; } } }
   // ---------- commands from phones ----------
   var sels = {};
   function ents(ids) { return (ids || []).map(function (i) { return E[i]; }).filter(function (e) { return e && e.team === 0; }); }
   function cmd(p, m) { var L = ents(m.ids), us = L.filter(function (e) { return e.k === 'u'; });
     if (m.t === 'sel') { sels[p.id] = (m.ids || []).slice(0, 200); return; }
-    if (m.t === 'cfg') { CFG.spd = Math.max(.25, Math.min(3, +m.spd || 1)); CFG.waves = m.waves !== false; return; }
+    if (m.t === 'cfg') { CFG.spd = Math.max(.25, Math.min(3, +m.spd || 1)); CFG.waves = m.waves !== false; if (m.dcAI != null) CFG.dcAI = +m.dcAI || 0; if (m.dcPause != null) CFG.dcPause = !!m.dcPause; return; }
+    p.seen = performance.now(); if (m.t === 'hb') return;
     if (m.t === 'go') { var tg = m.tg && E[m.tg]; var n = us.length, cols = Math.ceil(Math.sqrt(n));
       us.forEach(function (e, i) { if (tg && tg.k === 'n' && U[e.ty].role === 'gather') e.o = { k: 'gather', id: tg.id }; else if (tg && tg.k !== 'n' && tg.team !== 0) { if (tg.team > 1) angry[tg.team] = 1; e.o = { k: 'attack', id: tg.id }; }
         else e.o = { k: m.mode === 'move' ? 'move' : 'amove', x: +m.x, z: +m.z, ox: (i % cols - cols / 2) * 2.4, oz: (Math.floor(i / cols) - cols / 2) * 2.4 }; e.ax = +m.x; e.az = +m.z; }); return; }
     if (m.t === 'act') { var a = String(m.a || ''), arg = a.split(':')[1];
       if (a.indexOf('bias:') === 0) (us.length ? us : Object.values(E).filter(function (e) { return e.k === 'u' && e.team === 0; })).forEach(function (e) { e.bias = arg; e.ax = e.x; e.az = e.z; });
+      else if (a.indexOf('tgt:') === 0) { var tids = (m.tids || []).filter(function (i) { return E[i]; }); if (tids.length) us.forEach(function (e) { e.o = { k: arg === 'defend' ? 'guard' : 'attackset', ids: tids }; }); tids.forEach(function (i) { var q = E[i]; if (q.team > 1 && arg !== 'defend') angry[q.team] = 1; }); }
+      else if (a === 'prio:rush') { var bx = +m.x || 0, bz = +m.z || 0, rb = null, rd = 1e9; Object.values(E).forEach(function (q) { if (q.k === 'b' && q.team === 0) { var d = Math.hypot(q.x - bx, q.z - bz); if (d < rd) { rd = d; rb = q; } } }); if (rb) rb.rush = 25; }
+      else if (a === 'prio:normal') Object.values(E).forEach(function (q) { if (q.k === 'b') q.rush = 0; });
       else if (a === 'hold') us.forEach(function (e) { e.o = 'hold'; }); else if (a === 'stop') us.forEach(function (e) { e.o = null; e.ax = e.x; e.az = e.z; });
       else if (a.indexOf('build:') === 0 && BT[arg] && res[0] >= BT[arg].cost) { var x = Math.max(-70, Math.min(70, +m.x || 0)), z = Math.max(-70, Math.min(70, +m.z || 0)); res[0] -= BT[arg].cost; building(arg, 0, x, z); }
       else if (a.indexOf('train:') === 0) { var hq = Object.values(E).filter(function (e) { return e.k === 'b' && e.team === 0 && (e.kind === 'hq' || e.kind === 'barracks'); }); if (hq.length && res[0] >= SH.COST.train) { res[0] -= SH.COST.train; var h = hq[Math.floor(Math.random() * hq.length)]; h.q.push({ ty: +arg, t: 2.5 }); } }
@@ -121,17 +130,21 @@
       else if (a === 'share') { var c = 0; us.forEach(function (e) { c += e.carry; e.carry = 0; }); res[0] += c; }
       else if (a === 'stack') { var cx = 0, cz = 0; us.forEach(function (e) { cx += e.x; cz += e.z; }); cx /= us.length || 1; cz /= us.length || 1; us.forEach(function (e, i) { e.o = { k: 'move', x: cx, z: cz, ox: Math.cos(i * 2.4) * Math.sqrt(i) * 1.6, oz: Math.sin(i * 2.4) * Math.sqrt(i) * 1.6 }; }); }
       else if (a === 'order') us.forEach(function (e) { var ks = Object.keys(SH.BIAS); e.bias = ks[(ks.indexOf(e.bias) + 1) % ks.length]; }); } }
-  var host = Kit.host({ max: 8, onJoin: function (p) { host.send(p, { t: 'you', id: p.id, col: SH.FAC[0].col, fac: 0 }); hud(); }, onLeave: function (p) { delete sels[p.id]; hud(); }, onMsg: cmd });
+  var host = Kit.host({ max: 8, onJoin: function (p) { p.seen = performance.now(); host.send(p, { t: 'you', id: p.id, col: SH.FAC[0].col, fac: 0 }); hud(); }, onLeave: function (p) { delete sels[p.id]; hud(); }, onMsg: cmd });
   host.qr($('join'));
   function hud() { var n = host.players.filter(function (p) { return p.on; }).length; $('hud').innerHTML = SH.FAC.map(function (f, t) { var c = 0; for (var k in E) if (E[k].k === 'u' && E[k].team === t) c++; return '<div style="border-color:' + f.col + '">' + f.n + (t === 0 ? ' (you) \u00b7 \u25c6' + Math.floor(res[0]) : t > 1 ? (angry[t] ? ' \u00b7 hostile' : ' \u00b7 neutral') : ' \u00b7 enemy') + ' \u00b7 ' + c + '</div>'; }).join('');
-    $('msg').textContent = over ? 'Your Core fell! New battle in a moment\u2026' : n ? 'Lasso shapes \u00b7 tap to attack-move \u00b7 hold for the wheel' : 'Scan to join \u00b7 lasso your shapes on the phone'; }
-  window.RTS = { nbeams: function () { return beams.length; }, E: E2, host: host, cam: cam, res: res, cmd: cmd, reset: reset, sels: sels, angry: angry };
+    $('msg').textContent = msgOv ? msgOv : over ? 'Your Core fell! New battle in a moment\u2026' : n ? 'Lasso shapes \u00b7 tap to attack-move \u00b7 hold for the wheel' : 'Scan to join \u00b7 lasso your shapes on the phone'; }
+  window.RTS = { nbeams: function () { return beams.length; }, E: E2, host: host, cam: cam, res: res, cmd: cmd, reset: reset, sels: sels, angry: angry, DC: DC, CFG: CFG, get msg() { return msgOv; } };
   function E2() { return E; }
   // ---------- loop ----------
   var camT = new THREE.Vector3(BASE[0][0] * .4, 0, BASE[0][1] * .4), last = 0, sendT = 0, hudT = 0, clock = 0;
   function frame(t) { var dtR = Math.min(.25, (t - last) / 1000 || 0), dt; last = t; clock += dtR;
     var W = innerWidth, H = innerHeight; if (R.domElement.width !== Math.round(W * R.getPixelRatio())) { R.setSize(W, H, false); cam.aspect = W / H; cam.updateProjectionMatrix(); }
-    var nsub = Math.max(1, Math.ceil(dtR / .05)); dt = dtR / nsub; for (var sub = 0; sub < nsub; sub++) {   // fixed-ish sim steps so slow devices keep real-time pace
+    var nowS = performance.now(), onl = host.players.filter(function (p) { return p.on && nowS - (p.seen || 0) < 7000; }).length; /* heartbeat: phones ping every 3 s */ if (onl) { if (DC.ai || DC.paused) msgOv = ''; DC.ever = true; DC.t = 0; DC.ai = false; DC.paused = false; } else if (DC.ever) { DC.t += dtR;
+      if (CFG.dcPause) { var left = Math.ceil(10 - DC.t); if (left > 0) msgOv = 'Player disconnected \u00b7 pausing in ' + left; else { DC.paused = true; msgOv = 'PAUSED \u00b7 waiting for the phone to reconnect'; } }
+      else if (CFG.dcAI > 0 && DC.t > CFG.dcAI) { DC.ai = true; msgOv = 'Phone disconnected \u00b7 AI is playing your shapes'; } else msgOv = 'Phone disconnected' + (CFG.dcAI > 0 ? ' \u00b7 AI takes over in ' + Math.ceil(CFG.dcAI - DC.t) : ''); }
+    if (DC.ai) { DC.aiT -= dtR; if (DC.aiT <= 0) { DC.aiT = 4; aiTick(); } }
+    var nsub = DC.paused ? 0 : Math.max(1, Math.ceil(dtR / .05)); dt = dtR / nsub; for (var sub = 0; sub < nsub; sub++) {   // (0 steps while paused)   // fixed-ish sim steps so slow devices keep real-time pace
     if (over > 0) { over -= dt; if (over <= 0) reset(); }
     res[0] += dt * 1.5; res[1] += dt * 2;
     if (CFG.waves) waveT -= dt; if (waveT <= 0) { waveT = 40; var mc = BASE[1], hq0 = Object.values(E).filter(function (e) { return e.kind === 'hq' && e.team === 0; })[0]; [1, 0, 3, 1].forEach(function (ty, i) { var nu = unit(ty, 1, mc[0] - 6 + i * 2, mc[1] - 6); if (hq0) nu.o = { k: 'amove', x: hq0.x, z: hq0.z, ox: i * 2, oz: 0 }; }); }
@@ -163,6 +176,12 @@
     hudT += dt; if (hudT > .5) { hudT = 0; hud(); }
     sendT += dt; if (sendT > .15) { sendT = 0; snap(); }
     requestAnimationFrame(frame); }
+  // simple stand-in AI for a disconnected player: workers gather, keep training, attack-move once the army is big enough
+  function aiTick() { var mine = Object.values(E).filter(function (e) { return e.team === 0; }), us2 = mine.filter(function (e) { return e.k === 'u'; }), wk = us2.filter(function (e) { return U[e.ty].role === 'gather'; }), ft = us2.filter(function (e) { return U[e.ty].role !== 'gather'; });
+    wk.forEach(function (e) { if (!e.o) e.o = { k: 'gather', id: 0 }; });
+    var hq = mine.filter(function (e) { return e.k === 'b' && (e.kind === 'hq' || e.kind === 'barracks'); })[0]; if (hq && res[0] >= 40 && hq.q.length < 2) { res[0] -= SH.COST.train; hq.q.push({ ty: wk.length < 5 ? 8 : [0, 2, 3, 4][Math.floor(Math.random() * 4)], t: 2.5 }); }
+    var foe = Object.values(E).filter(function (e) { return e.team === 1 && e.k !== 'n'; }); if (ft.length >= 8 && foe.length) { var f0 = foe[0]; ft.forEach(function (e, i) { if (!e.o) e.o = { k: 'amove', x: f0.x, z: f0.z, ox: (i % 4) * 2, oz: Math.floor(i / 4) * 2 }; }); } }
+  var msgOv = '';
   function info(e) { return { isB: e.k === 'b', ty: e.ty, kind: e.kind, hpf: e.hp / e.mhp, carry: e.carry, lvl: e.lvl }; }
   function snap() { var u = [], b = [], n = []; for (var k in E) { var e = E[k], x = Math.round(e.x * 10) / 10, z = Math.round(e.z * 10) / 10;
       if (e.k === 'u') u.push([e.id, e.ty, e.team, x, z, Math.round(e.hp / e.mhp * 100), e.carry ? 1 : 0, e.bias[0]]); else if (e.k === 'b') b.push([e.id, e.kind, e.team, x, z, Math.round(e.hp / e.mhp * 100), e.lvl, e.pulse ? 1 : 0]); else n.push([e.id, x, z, e.amt]); }

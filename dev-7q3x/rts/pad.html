@@ -49,8 +49,10 @@
     send({ t: 'go', ids: sel, x: +w[0].toFixed(1), z: +w[1].toFixed(1), tg: e ? e.id : 0, mode: tapMode }); buzz(12); if (tapMode === 'move') tapMode = 'amove'; }
   function dtap(px, py) { var e = hit(px, py); if (e && e.team === 0 && (e.k === 'b' || sel.indexOf(e.id) >= 0)) { if (e.k === 'b') { sel = [e.id]; sendSel(); } openOpt(e); } }
   function inPoly(P, x, y) { var ins = false; for (var i = 0, j = P.length - 1; i < P.length; j = i++) { var a = P[i], b = P[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) ins = !ins; } return ins; }
-  function lassoSel(P) { var us = [], bs = []; for (var k in ents) { var e = ents[k]; if (e.team !== 0 || e.k === 'n') continue; var p = w2s(e.x, e.z); if (inPoly(P, p[0], p[1])) (e.k === 'u' ? us : bs).push(e.id); }
-    sel = us.length ? us.concat(bs) : bs; sendSel(); if (sel.length) { buzz(15); toast(sel.length + ' selected'); } }
+  function lassoSel(P) { var us = [], bs = [], en = []; for (var k in ents) { var e = ents[k]; if (e.k === 'n') continue; var p = w2s(e.x, e.z); if (!inPoly(P, p[0], p[1])) continue; if (e.team === 0) (e.k === 'u' ? us : bs).push(e.id); else en.push(e.id); }
+    if (!us.length && !bs.length && en.length) { saveGroup(en, true); EFL = { ids: en, t: performance.now() }; buzz(15); toast(en.length + ' enemies marked \u00b7 drag the red bubble onto TARGET'); return; }   // lasso on enemies = enemy group (for targets)
+    sel = us.length ? us.concat(bs) : bs; sendSel(); if (sel.length) { buzz(15); toast(sel.length + ' selected'); if (us.length) saveGroup(us, false); } }
+  var EFL = null;
   // ---------- option panel (double-tap) ----------
   var optE = null;
   function openOpt(e) { optE = e; var o = $('opt'); o.style.display = 'block'; $('tree').style.display = 'none'; var isB = e.k === 'b';
@@ -69,42 +71,47 @@
   $('o5').onclick = function () { var t = $('tree'); t.style.display = t.style.display === 'block' ? 'none' : 'block'; t.textContent = 'COMBINE TREE (stub)\n\u25a0 Brick + \u25a0 Brick  \u2192 \u25ae Pillar\n\u25cf Orb + \u25b2 Dart     \u2192 \u2742 Knot\n\u25b2 Spike + \u25c6 Prism  \u2192 ? (locked)\n\u25ef Ring + \u2302 Core    \u2192 wheels + gun'; };
   ['pointerdown', 'pointerup', 'pointermove', 'wheel'].forEach(function (ev) { $('opt').addEventListener(ev, function (e) { e.stopPropagation(); }); });
   // ---------- hold wheel (exists only while the thumb is down) ----------
-  // Picks load a context chain (stack of leaves). Edge circles: TOP actuate, BOTTOM reset, LEFT back one level, RIGHT AI prediction.
-  // v0.3 test settings (left pull-over panel), persisted
-  var CFG = Object.assign({ drop: 'soft', reopen: 'exact', size: 'M', ai: true, spd: 1, waves: true, hold: 450 }, JSON.parse(localStorage.getItem('rts3-cfg') || '{}'));
-  function saveCfg() { localStorage.setItem('rts3-cfg', JSON.stringify(CFG)); send({ t: 'cfg', spd: CFG.spd, waves: CFG.waves }); }
-  var DROP_MS = 500, lastOrbTap = 0;
-  var WH = null, TH = 32, ORBS = [], FX = [], ROLO = null, OPT = { resetTop: localStorage.getItem('rts2-resettop') !== '0' };
+  // Picks walk a tree (branches deepen, leaves load the context chain). Edge circles: TOP actuate, BOTTOM reset, LEFT back one level, RIGHT AI guess.
+  var CFG = Object.assign({ drop: 'zip', reopen: 'exact', reopenAt: 'prev', size: 'M', ai: true, spd: 1, waves: true, hold: 450, dbl: 420, dcAI: 15, dcPause: false }, JSON.parse(localStorage.getItem('rts4-cfg') || '{}'));
+  function saveCfg() { localStorage.setItem('rts4-cfg', JSON.stringify(CFG)); send({ t: 'cfg', spd: CFG.spd, waves: CFG.waves, dcAI: CFG.dcAI, dcPause: CFG.dcPause }); }
+  var DROP_MS = 650, RECATCH_MS = 330, lastOrbTap = 0, QCOL = SH.QCOL;
+  var WH = null, TH = 32, ORBS = [], FX = [], ROLO = null, OPT = { resetTop: localStorage.getItem('rts2-resettop') !== '0' }, LASTPATH = [];
   var PRED = JSON.parse(localStorage.getItem('rts2-pred') || '{}');   // action -> { n: uses, t: last use ms }
-  function leafOf(a) { for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) if (SH.WHEEL[i].c[j].a === a) return { it: SH.WHEEL[i].c[j], cat: i }; return null; }
+  function nodeAt(path) { var it = SH.WHEEL; for (var i = 0; i < path.length; i++) { var n = it[path[i]]; if (!n || !n.c) return it; it = n.c; } return it; }
+  function leafOf(a) { var out = null; (function walk(list, path) { list.forEach(function (it, q) { if (out) return; var p = path.concat(q); if (it.c) walk(it.c, p); else if (it.a === a) out = { it: it, cat: p[0], path: p.slice(0, -1), q: q }; }); })(SH.WHEEL, []); return out; }
   function predict(w) { var best = 'mode:amove', bs = -1, now = Date.now(), last = w && w.stack.length ? w.stack[w.stack.length - 1].it.a : null;
-    for (var a in PRED) { if (a === last || !leafOf(a)) continue; var r = PRED[a], sc = r.n + 6 * Math.exp(-(now - r.t) / 120000) + (w && w.path.length && leafOf(a).cat === w.path[0] ? 3 : 0); if (sc > bs) { bs = sc; best = a; } } return leafOf(best); }
+    for (var a in PRED) { var lf = leafOf(a); if (a === last || !lf) continue; var r = PRED[a], sc = r.n + 6 * Math.exp(-(now - r.t) / 120000) + (w && w.path.length && lf.cat === w.path[0] ? 3 : 0); if (sc > bs) { bs = sc; best = a; } } return leafOf(best); }
   function learn(chain) { var now = Date.now(); chain.forEach(function (l) { var r = PRED[l.it.a] || (PRED[l.it.a] = { n: 0, t: 0 }); r.n = r.n * .95 + 1; r.t = now; }); localStorage.setItem('rts2-pred', JSON.stringify(PRED)); }
   function quad(dx, dy) { return dx < 0 ? (dy < 0 ? 0 : 3) : (dy < 0 ? 1 : 2); }
   function whR() { return Math.min(W, H) * ({ S: .3, M: .36, L: .42 }[CFG.size] || .36); }
-  function openWheel(x, y, exact) { var R = whR(), ox = exact ? x : Math.max(R + 30, Math.min(W - R - 30, x)), oy = exact ? y : Math.max(R + 70, Math.min(H - R - 70, y)); WH = { ox: ox, oy: oy, R: R, path: [], stack: [], flash: -1, ax: x, ay: y, tx: x, ty: y, wp: s2w(x, y), edge: '' }; buzz(25); }
-  function wItems() { return WH.path.length ? SH.WHEEL[WH.path[0]].c : SH.WHEEL; }
+  function openWheel(x, y, exact) { var R = whR(), ox = exact ? x : Math.max(R + 30, Math.min(W - R - 30, x)), oy = exact ? y : Math.max(R + 70, Math.min(H - R - 110, y)); WH = { ox: ox, oy: oy, R: R, path: [], stack: [], flash: -1, ax: x, ay: y, tx: x, ty: y, wp: s2w(x, y), edge: '' }; buzz(25); return WH; }
+  function wItems() { return nodeAt(WH.path); }
   function edgePts(w) { return { top: [w.ox, w.oy - w.R], bottom: [w.ox, w.oy + w.R], left: [w.ox - w.R, w.oy], right: [w.ox + w.R, w.oy] }; }
-  function wPick(q) { if (!WH.path.length) { WH.path = [q]; buzz(12); } else { var it = SH.WHEEL[WH.path[0]].c[q]; WH.stack.push({ it: it, cat: WH.path[0] }); WH.flash = q; WH.ft = performance.now(); buzz(10); } }
+  function wPick(q) { var it = wItems()[q]; if (!it) return; if (it.c) { WH.path.push(q); LASTPATH = WH.path.slice(); buzz(12); } else { WH.stack.push({ it: it, cat: WH.path.length ? WH.path[0] : q, path: WH.path.slice(), q: q }); WH.flash = q; WH.ft = performance.now(); buzz(10); } }
   function wEdge(k) { var w = WH; if (k === 'top') return actuate(w.stack, [w.ox, w.oy, w.R], true);
     if (k === 'bottom') { w.stack = []; if (OPT.resetTop) w.path = []; buzz(20); }
     if (k === 'left') { w.path.pop(); buzz(10); }
-    if (k === 'right' && CFG.ai) { var pr = predict(w); w.stack.push(pr); w.path = [pr.cat]; w.flash = SH.WHEEL[pr.cat].c.indexOf(pr.it); w.ft = performance.now(); buzz(12); } }
+    if (k === 'right' && CFG.ai) { var pr = predict(w); w.stack.push(pr); w.path = pr.path.slice(); w.flash = pr.q; w.ft = performance.now(); buzz(12); } }
   function wMove(x, y) { var w = WH; w.tx = x; w.ty = y; var E2 = edgePts(w), hitE = '';
     for (var k in E2) if ((k !== 'right' || CFG.ai) && Math.hypot(x - E2[k][0], y - E2[k][1]) < 20) hitE = k;
     if (hitE !== w.edge) { w.edge = hitE; if (hitE) { wEdge(hitE); if (!WH) return; w.ax = x; w.ay = y; return; } }
     if (hitE) return;
     if (Math.hypot(x - w.ox, y - w.oy) > w.R * .78) { w.ax = x; w.ay = y; return; }   // outer band = travel zone to the edge circles: no picks there
     var dx = x - w.ax, dy = y - w.ay; if (Math.max(Math.abs(dx), Math.abs(dy)) > TH) { wPick(quad(dx, dy)); w.ax = x; w.ay = y; } }
-  // lift without actuating: the wheel snaps into a transparent green circle that drops into its orb slot (~0.5 s). Top level + empty stack = just close.
-  function wLift() { var w = WH; WH = null; if (w.stack.length || w.path.length) { ORBS.push({ stack: w.stack, path: w.path.slice(), wp: w.wp, sel: sel.slice(), t: performance.now(), from: [w.ox, w.oy, w.R], drop: CFG.drop }); if (ORBS.length > 6) ORBS.shift(); } }
-  // re-touch while an orb is pending: reopen the newest orb's wheel centred exactly on the thumb, in the reopen mode's state (no blend)
-  function reopen(x, y) { var ob = ORBS.pop(); openWheel(x, y, true); WH.stack = ob.stack; WH.wp = ob.wp; WH.orb = ob; WH.path = CFG.reopen === 'top' ? [] : CFG.reopen === 'up' ? ob.path.slice(0, -1) : ob.path.slice(); if (ob.sel) sel = ob.sel.filter(function (i) { return ents[i]; }); }
+  // context layers (inner -> outer): one per loaded leaf (its quadrant colour) then one per menu layer passed through
+  function layers(stack, path) { return stack.map(function (l) { return QCOL[l.cat]; }).concat(path.map(function (q) { return QCOL[q]; })); }
+  // lift without actuating: the wheel crossfades into its orb while it travels: straight up, a sharp arc, a zip along the top into the slot, a tiny bounce
+  function wLift() { var w = WH; WH = null; if (w.stack.length || w.path.length) { ORBS.push({ stack: w.stack, path: w.path.slice(), wp: w.wp, sel: sel.slice(), ctx: w.ctx, t: performance.now(), from: [w.ox, w.oy, w.R], drop: CFG.drop, items: nodeAt(w.path) }); if (ORBS.length > 6) ORBS.shift(); } }
+  // re-touch while an orb is pending: the wheel comes back at its previous screen position (or under the thumb: test option), no blend
+  function reopen(x, y) { var ob = ORBS.pop(), at = CFG.reopenAt === 'thumb'; openWheel(at ? x : ob.from[0], at ? y : ob.from[1], true); WH.ax = x; WH.ay = y; WH.tx = x; WH.ty = y; WH.stack = ob.stack; WH.wp = ob.wp; WH.orb = ob; WH.ctx = ob.ctx;
+    WH.path = CFG.reopen === 'top' ? [] : CFG.reopen === 'up' ? ob.path.slice(0, -1) : ob.path.slice(); if (ob.sel) sel = ob.sel.filter(function (i) { return ents[i]; }); }
   function fireOrb(ob, at) { var sv = sel; sel = ob.sel.filter(function (i) { return ents[i]; }); actuate(ob.stack, at || [orbPos(ORBS.length)[0], orbPos(0)[1], 14], false, ob.wp); sel = sv; }
-  function runLeaf(it, w) { var a = it.a;
-    if (a.indexOf('mode:') === 0) tapMode = a.split(':')[1];
+  function runLeaf(it, w) { var a = it.a, ar = a.split(':');
+    if (ar[0] === 'mode') tapMode = ar[1];
+    else if (ar[0] === 'mv') { if (ar[1] !== 'gather') send({ t: 'act', a: 'bias:' + ar[1], ids: sel }); tapMode = ar[1] === 'gather' ? 'amove' : 'move'; toast('next tap: move (' + it.n + ')'); }
     else if (a === 'selall') { sel = Object.keys(ents).map(Number).filter(function (i) { return ents[i].k === 'u' && ents[i].team === 0; }); sendSel(); }
-    else if (a.indexOf('stub:') === 0) toast(it.n + ': coming soon');
+    else if (ar[0] === 'tgt') { var T = TARGETS[+ar[2] - 1]; if (!T) { toast('no T' + ar[2] + ' yet: drag a group bubble onto TARGET'); return; } send({ t: 'act', a: 'tgt:' + ar[1], ids: sel, tids: T.ids }); toast(it.n + ' (' + sel.length + ' shapes)'); }
+    else if (ar[0] === 'stub') toast(it.n + ': coming soon');
     else send({ t: 'act', a: a, ids: sel, x: +w[0].toFixed(1), z: +w[1].toFixed(1) }); }
   // actuate a chain: burst up into gold threads through a top aperture (~0.33 s), shake the top, rolodex flicks through the stack
   function actuate(stack, geo, fromWheel, wp) { if (!stack.length) { toast('load something first'); return; } var w = WH; wp = wp || (w && w.wp);
@@ -113,20 +120,32 @@
     ROLO = { t: performance.now(), stack: stack.slice(), cnt: sel.length };
     var tp = $('top'); tp.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-3px,2px)' }, { transform: 'translate(3px,-1px)' }, { transform: 'translate(0,0)' }], { duration: 200 });
     if (fromWheel) WH = null; }
+  // ---------- node combo (3 bottom buttons): which layer the wheel opens to ----------
+  var COMBO = '';
+  function comboLayer() { if (!COMBO) return 0; var m = { A: 0, B: 1, C: 2 }; return m[COMBO[0]];   // single nodes: A top, B layer 2, C layer 3; longer combos: stub (first node decides)
+  }
+  function applyCombo(w) { var L = comboLayer(); if (!L) return; var base = LASTPATH.length ? LASTPATH : (predict(w) || { path: [0] }).path; if (!base.length) base = [0];
+    var p = base.slice(0, L); while (p.length < L) { var it = nodeAt(p), q = it.findIndex(function (n) { return n.c; }); if (q < 0) break; p.push(q); } w.path = p; }
+  // ---------- groups (auto-saved selections) + targets ----------
+  var GROUPS = [], TARGETS = [], gN = 0, eN = 0;
+  function saveGroup(ids, enemy) { var key = ids.slice().sort().join(','); if (GROUPS.some(function (g) { return g.key === key; })) return; var g = { ids: ids.slice(), key: key, enemy: !!enemy, name: enemy ? 'E' + (++eN) : 'G' + (++gN) }; GROUPS.push(g); if (GROUPS.length > 6) GROUPS.shift(); renderGroups(); }
   // ---------- pointer input (touch + mouse) ----------
-  var P = {}, G = { m: 'none' }, lastTap = { t: 0, x: 0, y: 0 }, HOLD = 450;
+  var P = {}, G = { m: 'none' }, lastTap = { t: 0, x: 0, y: 0 };
   function pts() { return Object.keys(P).map(function (k) { return P[k]; }); }
   cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   cv.addEventListener('pointerdown', function (e) { cv.setPointerCapture(e.pointerId); var x = e.clientX, y = e.clientY; P[e.pointerId] = { x: x, y: y }; closeOptIfOutside();
-    for (var oi = ORBS.length - 1; oi >= 0; oi--) { var op = orbPos(oi); if (Math.hypot(x - op[0], y - op[1]) < 20) { var ob = ORBS.splice(oi, 1)[0]; fireOrb(ob, [op[0], op[1], 14]); G = { m: 'none' }; return; } }   // quick tap on an orb = actuate it
+    for (var oi = ORBS.length - 1; oi >= 0; oi--) { var op = orbPos(oi); if (Math.hypot(x - op[0], y - op[1]) < orbR(ORBS[oi]) + 6) { var ob = ORBS.splice(oi, 1)[0]; fireOrb(ob, [op[0], op[1], 14]); G = { m: 'none' }; return; } }   // quick tap on an orb = actuate it
     if (ORBS.length && !WH && pts().length === 1 && !(e.pointerType === 'mouse' && e.button !== 0)) { var now0 = performance.now();
-      if (now0 - lastOrbTap < 250) { lastOrbTap = 0; fireOrb(ORBS.pop()); G = { m: 'none' }; return; }   // 2nd tap within 250 ms anywhere = actuate the newest orb
+      if (now0 - lastOrbTap < CFG.dbl) { lastOrbTap = 0; fireOrb(ORBS.pop()); G = { m: 'none' }; return; }   // 2nd tap within CFG.dbl ms anywhere = actuate the newest orb
       reopen(x, y); G = { m: 'wheel', x: x, y: y, t: now0, re: 1 }; return; }
     var L = pts(); if (L.length === 2 && WH && G.re) { var o2 = WH.orb; WH = null; if (o2) { o2.t = -1e9; ORBS.push(o2); } }
     if (L.length === 2 && !WH) { clearTimeout(G.h); var a = L[0], b = L[1]; G = { m: 'pinch', d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; return; }
     if (L.length > 2) return;
     if (e.pointerType === 'mouse' && e.button !== 0) { G = { m: 'pan', x: x, y: y }; return; }
-    G = { m: 'pend', x: x, y: y, t: performance.now(), path: [[x, y]] }; G.h = setTimeout(function () { if (G.m === 'pend') { G.m = 'wheel'; openWheel(G.x, G.y); } }, CFG.hold); });
+    if (COMBO) { var he = hit(x, y); if (he && he.team === 0 && he.k !== 'n') { if (sel.indexOf(he.id) < 0) { sel = [he.id]; sendSel(); } var w0 = openWheel(x, y); w0.ctx = he.k === 'b' ? SH.B[he.kind].n : U[he.ty].n; applyCombo(w0); G = { m: 'wheel', x: x, y: y, t: performance.now() }; return; } }
+    G = { m: 'pend', x: x, y: y, t: performance.now(), path: [[x, y]] }; G.h = setTimeout(function () { if (G.m !== 'pend') return; G.m = 'wheel'; var w1 = openWheel(G.x, G.y), he2 = hit(G.x, G.y);
+      if (he2 && sel.indexOf(he2.id) >= 0) { var gi = GROUPS.filter(function (g) { return !g.enemy && g.key === sel.slice().sort().join(','); })[0]; w1.ctx = (gi ? gi.name + ' \u00b7 ' : '') + sel.length + ' shapes'; }   // hold on the current selection = that group's context
+      applyCombo(w1); }, CFG.hold); });
   cv.addEventListener('pointermove', function (e) { if (!P[e.pointerId]) return; var x = e.clientX, y = e.clientY, pr = P[e.pointerId]; pr.x = x; pr.y = y;
     if (G.m === 'pend' && Math.hypot(x - G.x, y - G.y) > 9) { clearTimeout(G.h); G.m = 'lasso'; }
     if (G.m === 'lasso') { var lp = G.path[G.path.length - 1]; if (Math.hypot(x - lp[0], y - lp[1]) > 3) G.path.push([x, y]); }
@@ -136,8 +155,9 @@
   function up(e) { if (!P[e.pointerId]) return; delete P[e.pointerId]; var x = e.clientX, y = e.clientY;
     if (G.m === 'pinch') { if (!pts().length) G = { m: 'none' }; return; } clearTimeout(G.h); if (G.m === 'wheel' && !WH) { G = { m: 'none' }; return; }
     if (G.m === 'lasso') { if (G.path.length > 6) lassoSel(G.path); else tap(G.x, G.y); }
-    else if (G.m === 'pend') { var now = performance.now(); if (now - lastTap.t < 330 && Math.hypot(x - lastTap.x, y - lastTap.y) < 30) { lastTap.t = 0; dtap(x, y); } else { lastTap = { t: now, x: x, y: y }; tap(x, y); } }
-    else if (G.m === 'wheel' && WH) { if (G.re && WH.orb && performance.now() - G.t < 220 && Math.hypot(x - G.x, y - G.y) < 12) { var o3 = WH.orb; WH = null; o3.t = -1e9; ORBS.push(o3); lastOrbTap = performance.now(); } else wLift(); }
+    else if (G.m === 'pend') { var now = performance.now(); if (COMBO && !hit(x, y)) { COMBO = ''; renderNodes(); toast('combo cleared'); }
+      else if (now - lastTap.t < 330 && Math.hypot(x - lastTap.x, y - lastTap.y) < 30) { lastTap.t = 0; dtap(x, y); } else { lastTap = { t: now, x: x, y: y }; tap(x, y); } }
+    else if (G.m === 'wheel' && WH) { if (G.re && WH.orb && performance.now() - G.t < RECATCH_MS && Math.hypot(x - G.x, y - G.y) < 12) { var o3 = WH.orb; WH = null; o3.t = -1e9; ORBS.push(o3); lastOrbTap = performance.now(); } else wLift(); }
     G = { m: 'none' }; }
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   cv.addEventListener('wheel', function (e) { e.preventDefault(); zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * .0015)); }, { passive: false });
@@ -162,6 +182,7 @@
       if (e.k === 'b' && e.lvl > 1) { ctx.fillStyle = '#ffd35a'; ctx.font = '700 10px monospace'; ctx.textAlign = 'center'; ctx.fillText('\u2605'.repeat(e.lvl - 1), p[0], p[1] - r - 4); }
       if (e.hp < 100) { ctx.fillStyle = '#000a'; ctx.fillRect(p[0] - r, p[1] + r + 2, r * 2, 3); ctx.fillStyle = e.hp > 50 ? '#5f5' : e.hp > 25 ? '#fd4' : '#f44'; ctx.fillRect(p[0] - r, p[1] + r + 2, r * 2 * e.hp / 100, 3); }
       if (e.carry) { ctx.fillStyle = '#ffcc33'; ctx.beginPath(); ctx.arc(p[0] + r, p[1] - r, 2.5, 0, 7); ctx.fill(); } } });
+    if (EFL && performance.now() - EFL.t < 1500) EFL.ids.forEach(function (i) { var q = ents[i]; if (!q) return; var p2 = w2s(q.x, q.z); ctx.strokeStyle = '#ff5a5a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p2[0], p2[1], 12, 0, 7); ctx.stroke(); });
     ripples = ripples.filter(function (r) { var k = (now - r.t) / 650; if (k > 1) return false; var p = w2s(r.x, r.z); ctx.strokeStyle = r.c; ctx.globalAlpha = 1 - k; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(p[0], p[1], 5 + k * 26, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; return true; });
     if (G.m === 'lasso' && G.path.length > 1) { ctx.save(); ctx.shadowColor = SEL; ctx.shadowBlur = 10; ctx.strokeStyle = SEL; ctx.lineWidth = 2.5; ctx.setLineDash([7, 5]); ctx.lineDashOffset = -now / 30; ctx.beginPath(); G.path.forEach(function (q, i) { ctx[i ? 'lineTo' : 'moveTo'](q[0], q[1]); }); ctx.closePath(); ctx.fillStyle = 'rgba(77,255,106,.08)'; ctx.fill(); ctx.stroke(); ctx.restore(); }
     if (WH) drawWheel(now); drawFX(now);
@@ -169,39 +190,49 @@
     requestAnimationFrame(draw); }
   function inf(e) { return { isB: e.k === 'b', ty: e.ty, kind: e.kind, hpf: e.hp / 100, carry: e.carry, lvl: e.lvl }; }
   function crt(txt, x, y, sz) { var f = .75 + Math.random() * .25; ctx.font = '700 ' + sz + 'px ui-monospace,Menlo,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.shadowColor = '#22c84c'; ctx.shadowBlur = 9; ctx.fillStyle = 'rgba(61,255,110,' + f + ')'; ctx.fillText(txt, x, y); ctx.shadowBlur = 0; }
-  function ring(ox, oy, R, depth) { var g = ctx.createLinearGradient(ox - R, oy - R, ox + R, oy + R); g.addColorStop(0, GOLD); g.addColorStop(1, CRT); ctx.strokeStyle = g; ctx.lineWidth = 1.5 + depth * 3; ctx.beginPath(); ctx.arc(ox, oy, R + 10 + depth * 1.5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, (depth + .15) / 5)); ctx.stroke(); ctx.globalAlpha = .25; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(ox, oy, R + 10 + depth * 1.5, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
   function wheelBody(ox, oy, R, it, flashQ, alpha) { ctx.save(); ctx.globalAlpha = alpha; ctx.beginPath(); ctx.arc(ox, oy, R, 0, 7); ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fill(); ctx.save(); ctx.clip();
     if (flashQ >= 0) { var a0 = [Math.PI, -Math.PI / 2, 0, Math.PI / 2][flashQ]; ctx.fillStyle = 'rgba(232,184,48,.28)'; ctx.beginPath(); ctx.moveTo(ox, oy); ctx.arc(ox, oy, R, a0, a0 + Math.PI / 2); ctx.fill(); }
     ctx.globalAlpha = .07 * alpha; ctx.fillStyle = CRT; for (var sy = oy - R; sy < oy + R; sy += 3) ctx.fillRect(ox - R, sy, R * 2, 1); ctx.restore(); ctx.globalAlpha = alpha;
     ctx.strokeStyle = GOLD; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.arc(ox, oy, R, 0, 7); ctx.moveTo(ox - R, oy); ctx.lineTo(ox - R * .18, oy); ctx.moveTo(ox + R * .18, oy); ctx.lineTo(ox + R, oy); ctx.moveTo(ox, oy - R); ctx.lineTo(ox, oy - R * .18); ctx.moveTo(ox, oy + R * .18); ctx.lineTo(ox, oy + R); ctx.stroke();
     ctx.beginPath(); ctx.arc(ox, oy, R * .18, 0, 7); ctx.fillStyle = '#000'; ctx.fill(); ctx.stroke();
-    var cs = [[-1, -1], [1, -1], [1, 1], [-1, 1]]; for (var q = 0; q < 4; q++) { var cx = ox + cs[q][0] * R * .5, cy = oy + cs[q][1] * R * .5; crt(it[q].i, cx, cy - R * .07, R * (q === flashQ ? .2 : .16)); crt(it[q].n.toUpperCase(), cx, cy + R * .12, Math.max(10, R * .075)); } ctx.restore(); }
-  function drawWheel(now) { var w = WH, R = w.R, ox = w.ox, oy = w.oy, it = wItems(), depth = w.path.length + w.stack.length;
+    var cs = [[-1, -1], [1, -1], [1, 1], [-1, 1]]; for (var q = 0; q < 4 && q < it.length; q++) { var cx = ox + cs[q][0] * R * .5, cy = oy + cs[q][1] * R * .5; if (it === SH.WHEEL) { ctx.fillStyle = QCOL[q]; ctx.globalAlpha = alpha * .16; ctx.beginPath(); ctx.arc(cx, cy, R * .3, 0, 7); ctx.fill(); ctx.globalAlpha = alpha; }
+      crt(it[q].i || '\u25b8', cx, cy - R * .07, R * (q === flashQ ? .2 : .16)); crt(it[q].n.toUpperCase() + (it[q].c ? ' \u25b8' : ''), cx, cy + R * .12, Math.max(10, R * .072)); } ctx.restore(); }
+  // concentric context rings around the wheel: one per layer, coloured by the quadrant passed through
+  function ctxRings(ox, oy, R0, L, alpha) { ctx.save(); ctx.globalAlpha = alpha; L.forEach(function (c, i) { ctx.strokeStyle = c; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(ox, oy, R0 + 6 + i * 6, 0, 7); ctx.stroke(); }); ctx.restore(); }
+  function drawWheel(now) { var w = WH, R = w.R, ox = w.ox, oy = w.oy, it = wItems();
     ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(0, 0, W, H);
     wheelBody(ox, oy, R, it, w.flash >= 0 && now - w.ft < 350 ? w.flash : -1, 1);
-    crt(w.path.length ? SH.WHEEL[w.path[0]].i : '\u25c9', ox, oy, R * .12); if (w.stack.length) crt('\u00d7' + w.stack.length, ox, oy + R * .1, 10);
-    ring(ox, oy, R, depth);
-    // four edge circles: TOP actuate, BOTTOM reset, LEFT back, RIGHT AI prediction
+    crt(w.path.length ? (nodeAt(w.path.slice(0, -1))[w.path[w.path.length - 1]].i || '\u25b8') : '\u25c9', ox, oy, R * .12); if (w.stack.length) crt('\u00d7' + w.stack.length, ox, oy + R * .1, 10);
+    if (w.ctx) crt(w.ctx.toUpperCase(), ox, oy - R * .3, 11);
+    ctxRings(ox, oy, R, layers(w.stack, w.path), 1);
     var E2 = edgePts(w), pr = predict(w), lab = { top: ['\u25b2', 'GO'], bottom: ['\u21ba', 'RESET'], left: ['\u25c0', 'BACK'], right: [pr.it.i, 'AI: ' + pr.it.n.toUpperCase()] };
     Object.keys(E2).forEach(function (k) { if (k === 'right' && !CFG.ai) return; var p = E2[k], on = w.edge === k, live = k === 'top' ? w.stack.length > 0 : true; ctx.beginPath(); ctx.arc(p[0], p[1], 13, 0, 7); ctx.fillStyle = on ? 'rgba(61,255,110,.5)' : '#000'; ctx.fill(); ctx.strokeStyle = GOLD; ctx.lineWidth = 2.5; ctx.globalAlpha = live ? 1 : .45; ctx.stroke();
       if (k === 'top' && live) { ctx.shadowColor = CRT; ctx.shadowBlur = 10 + 4 * Math.sin(now / 120); ctx.stroke(); ctx.shadowBlur = 0; } crt(lab[k][0], p[0], p[1] + 1, 12); ctx.globalAlpha = 1;
-      var lx = p[0] + (k === 'left' ? -4 : k === 'right' ? 4 : 0), ly = p[1] + (k === 'top' ? -22 : k === 'bottom' ? 24 : 24); ctx.save(); crt(lab[k][1], k === 'right' ? Math.min(W - 40, lx) : k === 'left' ? Math.max(30, lx) : lx, ly, 9); ctx.restore(); });
+      var lx = p[0], ly = p[1] + (k === 'top' ? -22 : 24); crt(lab[k][1], k === 'right' ? Math.min(W - 40, lx) : k === 'left' ? Math.max(30, lx) : lx, ly, 9); });
     ctx.beginPath(); ctx.arc(w.tx, w.ty, 7, 0, 7); ctx.fillStyle = 'rgba(61,255,110,.6)'; ctx.fill();
-    // breadcrumb: path + loaded stack. bottom (portrait) / right side (landscape)
-    var crumbs = [{ i: '\u25c9' }]; if (w.path.length) crumbs.push(SH.WHEEL[w.path[0]]); w.stack.forEach(function (l) { crumbs.push({ i: l.it.i, s: 1 }); }); var land = W > H, bs = 34, n = crumbs.length;
-    crumbs.forEach(function (cb, k) { var x = land ? W - 26 : W / 2 + (k - (n - 1) / 2) * (bs + 10), y = land ? H / 2 + (k - (n - 1) / 2) * (bs + 10) : H - 30; ctx.strokeStyle = cb.s ? CRT : GOLD; ctx.lineWidth = 2; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.rect(x - bs / 2, y - bs / 2, bs, bs); ctx.fill(); ctx.stroke(); crt(cb.i, x, y, 18); }); }
-  function orbPos(i) { return [W / 2 + (i - (ORBS.length - 1) / 2) * 36, Math.round(H * .11)]; }
-  // drop paths (k 0..1): soft ease / sharper curve / plinko (sharp straight drop then a short curved ramp into the slot)
-  function dropAt(o, p, k) { var f = o.from, rx = 7 + Math.min(5, o.stack.length), x, y, e;
-    if (o.drop === 'plinko') { var k1 = .62; if (k < k1) { var q = k / k1; e = q * q; x = f[0]; y = f[1] + (p[1] + 26 - f[1]) * e; } else { var q2 = (k - k1) / (1 - k1), u = 1 - (1 - q2) * (1 - q2); x = f[0] + (p[0] - f[0]) * u; y = (p[1] + 26) + (p[1] - p[1] - 26) * u - Math.sin(u * Math.PI) * 14; } }
+    // breadcrumb: path + loaded stack. above the node buttons (portrait) / right side (landscape)
+    var crumbs = [{ i: '\u25c9' }], pp = []; w.path.forEach(function (q) { var n = nodeAt(pp)[q]; crumbs.push({ i: n.i || '\u25b8', c: QCOL[pp.length ? w.path[0] : q] }); pp.push(q); }); w.stack.forEach(function (l) { crumbs.push({ i: l.it.i, s: 1, c: QCOL[l.cat] }); });
+    var land = W > H, bs = 30, n = crumbs.length;
+    crumbs.forEach(function (cb, k) { var x = land ? W - 24 : W / 2 + (k - (n - 1) / 2) * (bs + 8), y = land ? H / 2 + (k - (n - 1) / 2) * (bs + 8) : H - 92; ctx.strokeStyle = cb.c || GOLD; ctx.lineWidth = 2; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.rect(x - bs / 2, y - bs / 2, bs, bs); ctx.fill(); ctx.stroke(); crt(cb.i, x, y, 16); }); }
+  function orbR(o) { return 16 + Math.min(12, (o.stack.length + o.path.length) * 3); }
+  function orbPos(i) { return [W / 2 + (i - (ORBS.length - 1) / 2) * 70, Math.round(H * .11)]; }
+  // drop paths (k 0..1). zip (default): straight up, sharp arc, zip along the top into the slot. soft / sharp / plinko kept from v0.3.
+  function dropAt(o, p, k) { var f = o.from, rx = orbR(o), x, y, e;
+    if (o.drop === 'zip') { var yA = Math.min(f[1], p[1] + 60); if (k < .38) { e = k / .38; e = e * e * (3 - 2 * e); x = f[0]; y = f[1] + (yA - f[1]) * e; }
+      else { var q = (k - .38) / .62; e = 1 - Math.pow(1 - q, 3); var u = 1 - e; x = u * u * f[0] + 2 * u * e * f[0] + e * e * p[0]; y = u * u * yA + 2 * u * e * p[1] + e * e * p[1]; } }
+    else if (o.drop === 'plinko') { var k1 = .62; if (k < k1) { var q1 = k / k1; e = q1 * q1; x = f[0]; y = f[1] + (p[1] + 26 - f[1]) * e; } else { var q2 = (k - k1) / (1 - k1), u2 = 1 - (1 - q2) * (1 - q2); x = f[0] + (p[0] - f[0]) * u2; y = (p[1] + 26) - 26 * u2 - Math.sin(u2 * Math.PI) * 14; } }
     else { e = o.drop === 'sharp' ? (k < .12 ? .08 * (k / .12) * (k / .12) : .08 + .92 * (1 - Math.pow(1 - (k - .12) / .88, 4))) : 1 - Math.pow(1 - k, 3); x = f[0] + (p[0] - f[0]) * e; y = f[1] + (p[1] - f[1]) * e - Math.sin(e * Math.PI) * (o.drop === 'sharp' ? 10 : 24); }
-    var rs = 1 - Math.pow(1 - Math.min(1, k * 1.4), 2); return [x, y, f[2] * (1 - rs) + rx * rs]; }
+    var rs = 1 - Math.pow(1 - Math.min(1, k * 1.25), 2); return [x, y, f[2] * (1 - rs) + rx * rs]; }
+  // orb = concentric fill from the centre outward, one ring per layer in its quadrant colour (reads like its stack)
+  function drawOrb(o, x, y, r, alpha, now, i) { var L = layers(o.stack, o.path), n = Math.max(1, L.length); ctx.save(); ctx.globalAlpha = alpha; ctx.shadowColor = CRT; ctx.shadowBlur = 6 + n * 4;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fill(); ctx.shadowBlur = 0;
+    for (var j = L.length - 1; j >= 0; j--) { ctx.beginPath(); ctx.arc(x, y, r * (j + 1) / n * .92, 0, 7); ctx.fillStyle = L[j]; ctx.globalAlpha = alpha * (.55 + .1 * Math.sin(now / 300 + i + j)); ctx.fill(); ctx.globalAlpha = alpha; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.stroke(); }
+    ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke(); ctx.restore(); }
   function drawFX(now) {
-    // parked orbs (cancelled chains) at the top edge: glow ~ loaded context
-    ORBS.forEach(function (o, i) { var p = orbPos(i), k = Math.min(1, (now - o.t) / DROP_MS), n = o.stack.length, gl = 6 + n * 6;
-      if (k < 1) { var q = dropAt(o, p, k); ctx.save(); ctx.fillStyle = 'rgba(61,255,110,.16)'; ctx.strokeStyle = 'rgba(61,255,110,.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(q[0], q[1], q[2], 0, 7); ctx.fill(); ctx.stroke(); ctx.restore(); return; }
-      var x = p[0], y = p[1], r = 7 + Math.min(5, n);
-      ctx.save(); ctx.shadowColor = CRT; ctx.shadowBlur = gl * (.8 + .2 * Math.sin(now / 200 + i)); ctx.fillStyle = 'rgba(61,255,110,' + (.35 + Math.min(.6, n * .15)) + ')'; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore(); crt(String(n), x, y + 1, 9); });
+    ORBS.forEach(function (o, i) { var p = orbPos(i), k = Math.min(1, (now - o.t) / DROP_MS);
+      if (k < 1) { var q = dropAt(o, p, k); if (o.items && k < .6) wheelBody(q[0], q[1], q[2], o.items, -1, Math.max(0, 1 - k / .6)); drawOrb(o, q[0], q[1], q[2], Math.min(1, k * 1.6), now, i); return; }
+      var land = (now - o.t - DROP_MS) / 180, bo = land < 1 ? 1 + .12 * Math.sin(land * Math.PI) * (1 - land) : 1;   // tiny secondary bounce on landing
+      drawOrb(o, p[0], p[1] - (land < 1 ? Math.sin(land * Math.PI) * 4 : 0), orbR(o) * bo, 1, now, i); });
     // actuate burst: wheel flies up + dissolves into gold threads that funnel through a small aperture at the top (~0.33 s)
     FX = FX.filter(function (f) { var k = (now - f.t) / 330; if (k > 1) return false; var ax = W / 2, ay = 4, e = k * k;
       if (f.items) { var oy = f.oy + (ay - f.oy) * e * .9, R = f.R * (1 - e * .7); wheelBody(f.ox + (ax - f.ox) * e * .5, oy, R, f.items, -1, Math.max(0, 1 - k * 1.6)); }
@@ -216,31 +247,60 @@
   // ---- always-on reopen-mode button (bottom-left) ----
   var RM = { top: 'TOP LEVEL', exact: 'EXACT MENU', up: 'ONE LEVEL UP' }, RMI = { top: '\u25c9', exact: '\u25ce', up: '\u2191' };
   var mb = document.createElement('button'); mb.id = 'rmode'; mb.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:4;width:40px;height:40px;border-radius:50%;background:#000;border:2px solid ' + GOLD + ';color:' + CRT + ';font:700 18px ui-monospace,monospace;text-shadow:0 0 6px #1a8a3a;padding:0;cursor:pointer';
-  var ml = document.createElement('div'); ml.style.cssText = 'position:fixed;left:60px;bottom:22px;z-index:4;font:700 12px ui-monospace,monospace;color:' + CRT + ';text-shadow:0 0 6px #1a8a3a;opacity:0;pointer-events:none';
+  var ml = document.createElement('div'); ml.style.cssText = 'position:fixed;left:12px;bottom:58px;z-index:4;font:700 12px ui-monospace,monospace;color:' + CRT + ';text-shadow:0 0 6px #1a8a3a;opacity:0;pointer-events:none';
   document.body.appendChild(mb); document.body.appendChild(ml);
-  function mbSync(flash) { mb.textContent = RMI[CFG.reopen]; if (flash) { ml.textContent = 'REOPEN: ' + RM[CFG.reopen]; ml.style.opacity = 1; clearTimeout(mbSync.h); mbSync.h = setTimeout(function () { ml.style.opacity = 0; }, 900); } if (window.tpSync) tpSync(); }
+  function flashLabel(t) { ml.textContent = t; ml.style.opacity = 1; clearTimeout(flashLabel.h); flashLabel.h = setTimeout(function () { ml.style.opacity = 0; }, 1100); }
+  function mbSync(flash) { mb.textContent = RMI[CFG.reopen]; if (flash) flashLabel('REOPEN: ' + RM[CFG.reopen]); if (window.tpSync) tpSync(); }
   mb.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); mb.onclick = function () { var k = ['top', 'exact', 'up']; CFG.reopen = k[(k.indexOf(CFG.reopen) + 1) % 3]; saveCfg(); mbSync(true); buzz(8); }; mbSync(false);
+  // ---- 3 node buttons (bottom centre, always visible): tap / slide across = ordered combo (15 patterns + none) ----
+  var nodes = document.createElement('div'); nodes.id = 'nodes'; nodes.style.cssText = 'position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:4;display:flex;gap:18px;touch-action:none';
+  ['A', 'B', 'C'].forEach(function (k, i) { var b = document.createElement('div'); b.dataset.n = k; b.style.cssText = 'width:42px;height:42px;border-radius:50%;background:#000;border:2px solid ' + GOLD + ';color:' + CRT + ';font:700 15px ui-monospace,monospace;text-shadow:0 0 6px #1a8a3a;display:flex;align-items:center;justify-content:center;user-select:none;cursor:pointer'; nodes.appendChild(b); });
+  document.body.appendChild(nodes);
+  function renderNodes() { Array.prototype.forEach.call(nodes.children, function (b) { var k = b.dataset.n, i = COMBO.indexOf(k); b.innerHTML = i >= 0 ? '<span style="color:#000">' + (i + 1) + '</span>' : String('ABC'.indexOf(k) + 1); b.style.background = i >= 0 ? QCOL[(i + 1) % 4] : '#000'; b.style.boxShadow = i >= 0 ? '0 0 12px ' + QCOL[(i + 1) % 4] : 'none'; }); }
+  var nseq = null; function nodeAt2(x, y) { var el = document.elementFromPoint(x, y); while (el && el !== document.body) { if (el.dataset && el.dataset.n) return el.dataset.n; el = el.parentNode; } return null; }
+  nodes.addEventListener('pointerdown', function (e) { e.stopPropagation(); nodes.setPointerCapture(e.pointerId); var k = nodeAt2(e.clientX, e.clientY); nseq = k ? [k] : []; buzz(6); });
+  nodes.addEventListener('pointermove', function (e) { if (!nseq) return; var k = nodeAt2(e.clientX, e.clientY); if (k && nseq.indexOf(k) < 0) { nseq.push(k); buzz(6); } });
+  nodes.addEventListener('pointerup', function (e) { if (!nseq) return; var s2 = nseq.join(''); nseq = null; COMBO = s2 && s2 === COMBO ? '' : s2; renderNodes();
+    var L = comboLayer(); console.log('RTS combo', COMBO || '(none)', 'layer', L); flashLabel(COMBO ? 'COMBO ' + COMBO.split('').join('\u2192') + ' \u00b7 opens ' + ['TOP', 'LAYER 2', 'LAYER 3'][L] + (COMBO.length > 1 ? ' (stub)' : '') : 'COMBO OFF'); });
+  renderNodes();
+  // ---- group bubbles (left) + TARGET box (right) ----
+  var gbox = document.createElement('div'); gbox.id = 'groups'; gbox.style.cssText = 'position:fixed;left:8px;top:64px;z-index:4;display:flex;flex-direction:column;gap:6px';
+  var tbox = document.createElement('div'); tbox.id = 'targets'; tbox.style.cssText = 'position:fixed;right:8px;top:64px;z-index:4;min-width:64px;padding:5px 6px;border:2px dashed #ff5a5a;border-radius:10px;background:#000b;font:700 11px ui-monospace,monospace;color:#ff8080;text-align:center';
+  document.body.appendChild(gbox); document.body.appendChild(tbox);
+  function renderTargets() { tbox.innerHTML = 'TARGET' + TARGETS.map(function (t, i) { return '<div data-t="' + i + '" style="margin-top:4px;padding:3px 5px;border:1.5px solid #ff5a5a;border-radius:7px;color:#ffd0d0;cursor:pointer">T' + (i + 1) + ' \u00b7 ' + t.name + ' (' + t.ids.filter(function (i2) { return ents[i2]; }).length + ')</div>'; }).join(''); }
+  tbox.addEventListener('pointerdown', function (e) { e.stopPropagation(); var el = e.target.closest('[data-t]'); if (el) { TARGETS.splice(+el.dataset.t, 1); renderTargets(); toast('target removed'); } });
+  function renderGroups() { gbox.innerHTML = ''; GROUPS.forEach(function (g) { var b = document.createElement('div'), alive = g.ids.filter(function (i) { return ents[i]; }).length; b.className = 'gb'; b.textContent = g.name; b.title = alive + ' shapes';
+      b.style.cssText = 'width:40px;height:40px;border-radius:50%;background:#000;border:2px solid ' + (g.enemy ? '#ff5a5a' : SEL) + ';color:' + (g.enemy ? '#ff9090' : CRT) + ';font:700 12px ui-monospace,monospace;display:flex;align-items:center;justify-content:center;touch-action:none;user-select:none;box-shadow:0 0 8px ' + (g.enemy ? '#ff5a5a66' : '#4dff6a55') + ';cursor:grab';
+      var d0 = null; b.addEventListener('pointerdown', function (e) { e.stopPropagation(); b.setPointerCapture(e.pointerId); d0 = { x: e.clientX, y: e.clientY, mv: false }; });
+      b.addEventListener('pointermove', function (e) { if (!d0) return; var dx = e.clientX - d0.x, dy = e.clientY - d0.y; if (Math.hypot(dx, dy) > 8) d0.mv = true; if (d0.mv) { b.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; b.style.opacity = .8; } });
+      b.addEventListener('pointerup', function (e) { if (!d0) return; var mv = d0.mv; d0 = null; b.style.transform = ''; b.style.opacity = 1; var r = tbox.getBoundingClientRect();
+        if (mv && e.clientX > r.left - 20 && e.clientX < r.right + 20 && e.clientY > r.top - 20 && e.clientY < r.bottom + 20) { TARGETS.push({ ids: g.ids.slice(), name: g.name }); if (TARGETS.length > 2) TARGETS.shift(); renderTargets(); buzz(15); toast(g.name + ' \u2192 T' + TARGETS.length); return; }
+        if (!mv) { if (g.enemy) toast(g.name + ': ' + alive + ' enemies \u00b7 drag onto TARGET'); else { sel = g.ids.filter(function (i) { return ents[i]; }); sendSel(); toast(g.name + ' selected (' + sel.length + ')'); buzz(8); } } });
+      gbox.appendChild(b); }); }
+  renderTargets(); setInterval(function () { renderTargets(); }, 1500);
   // ---- left-edge pull-over test panel ----
-  var TP = [ ['drop', 'DROP', ['soft', 'sharp', 'plinko']], ['reopen', 'REOPEN', ['top', 'exact', 'up']], ['size', 'WHEEL', ['S', 'M', 'L']], ['ai', 'AI GUESS', [true, false]],
-    ['spd', 'UNIT SPD', [.5, 1, 1.5, 2]], ['waves', 'WAVES', [true, false]], ['hold', 'HOLD MS', [300, 450, 600]] ];
+  var TP = [ ['drop', 'DROP', ['zip', 'soft', 'sharp', 'plinko']], ['reopen', 'REOPEN', ['top', 'exact', 'up']], ['reopenAt', 'REOPEN AT', ['prev', 'thumb']], ['dbl', 'DBL-TAP MS', [300, 420, 550]], ['size', 'WHEEL', ['S', 'M', 'L']], ['ai', 'AI GUESS', [true, false]],
+    ['spd', 'UNIT SPD', [.5, 1, 1.5, 2]], ['waves', 'WAVES', [true, false]], ['hold', 'HOLD MS', [300, 450, 600]], ['dcAI', 'DC \u2192 AI', [5, 15, 30, 0]], ['dcPause', 'DC PAUSE', [false, true]] ];
   var tp = document.createElement('div'), tab = document.createElement('button'); tp.id = 'tpanel';
-  tp.style.cssText = 'position:fixed;left:0;top:50%;z-index:7;transform:translate(-100%,-50%);transition:transform .12s;background:#000e;border:2px solid ' + GOLD + ';border-left:none;border-radius:0 14px 14px 0;padding:8px;display:flex;flex-direction:column;flex-wrap:wrap;gap:7px;max-height:86vh;align-content:flex-start';
-  tab.style.cssText = 'position:fixed;left:0;top:50%;z-index:7;transform:translateY(-50%);width:18px;height:46px;background:#000;border:2px solid ' + GOLD + ';border-left:none;border-radius:0 9px 9px 0;color:' + GOLD + ';font:700 12px monospace;padding:0;cursor:pointer'; tab.textContent = '\u25b6';
-  TP.forEach(function (d) { var b = document.createElement('button'); b.dataset.k = d[0]; b.style.cssText = 'width:62px;height:62px;border-radius:50%;background:#000;border:2px solid ' + GOLD + ';color:' + CRT + ';font:700 10px ui-monospace,monospace;text-shadow:0 0 5px #1a8a3a;line-height:1.25;padding:0;cursor:pointer';
+  tp.style.cssText = 'position:fixed;left:0;top:50%;z-index:7;transform:translate(-100%,-50%);transition:transform .15s;background:#000e;border:2px solid ' + GOLD + ';border-left:none;border-radius:0 14px 14px 0;padding:8px;display:flex;flex-direction:column;flex-wrap:wrap;gap:7px;max-height:86vh;align-content:flex-start';
+  tab.style.cssText = 'position:fixed;left:0;top:72%;z-index:7;transform:translateY(-50%);width:18px;height:46px;background:#000;border:2px solid ' + GOLD + ';border-left:none;border-radius:0 9px 9px 0;color:' + GOLD + ';font:700 12px monospace;padding:0;cursor:pointer'; tab.textContent = '\u25b6';
+  TP.forEach(function (d) { var b = document.createElement('button'); b.dataset.k = d[0]; b.style.cssText = 'width:62px;height:62px;border-radius:50%;background:#000;border:2px solid ' + GOLD + ';color:' + CRT + ';font:700 9.5px ui-monospace,monospace;text-shadow:0 0 5px #1a8a3a;line-height:1.25;padding:0;cursor:pointer';
     b.onclick = function () { var v = d[2], i = v.indexOf(CFG[d[0]]); CFG[d[0]] = v[(i + 1) % v.length]; saveCfg(); tpSync(); if (d[0] === 'reopen') mbSync(true); buzz(6); }; tp.appendChild(b); });
-  window.tpSync = function () { Array.prototype.forEach.call(tp.children, function (b) { var d = TP.filter(function (q) { return q[0] === b.dataset.k; })[0], v = CFG[d[0]]; b.innerHTML = d[1] + '<br><span style="color:#ffd35a">' + (v === true ? 'ON' : v === false ? 'OFF' : d[0] === 'spd' ? v + 'x' : String(v).toUpperCase()) + '</span>'; });
-    var land = innerWidth > innerHeight; tp.style.maxHeight = land ? '86vh' : '80vh'; tp.style.width = ''; };
+  window.tpSync = function () { Array.prototype.forEach.call(tp.children, function (b) { var d = TP.filter(function (q) { return q[0] === b.dataset.k; })[0], v = CFG[d[0]]; b.innerHTML = d[1] + '<br><span style="color:#ffd35a">' + (v === true ? 'ON' : v === false ? 'OFF' : d[0] === 'spd' ? v + 'x' : d[0] === 'dcAI' ? (v ? v + ' s' : 'OFF') : String(v).toUpperCase()) + '</span>'; }); };
   var tpOpen = false; function tpSet(o) { tpOpen = o; tp.style.transform = o ? 'translate(0,-50%)' : 'translate(-100%,-50%)'; tab.style.left = o ? (tp.offsetWidth - 2) + 'px' : '0'; tab.textContent = o ? '\u25c0' : '\u25b6'; }
   tab.onclick = function () { tpSet(!tpOpen); }; [tp, tab].forEach(function (el) { el.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); document.body.appendChild(el); }); tpSync(); addEventListener('resize', function () { tpSync(); tpSet(tpOpen); });
-  setTimeout(saveCfg, 1500);
+  setTimeout(saveCfg, 1500); setInterval(function () { if (lastSnap) send({ t: 'hb' }); }, 3000);
   requestAnimationFrame(draw);
-  HowTo.setup({ game: 'rts2', ready: function () { var k = document.getElementById('kjoin'); return !k || !k.offsetParent; }, steps: [
+  HowTo.setup({ game: 'rts4', ready: function () { var k = document.getElementById('kjoin'); return !k || !k.offsetParent; }, steps: [
     { say: 'Draw a loop around your blue shapes to select them', at: [.3, .35], to: [.7, .65], act: 'drag', dur: 1300 },
     { say: 'Tap the map: they attack-move there', at: [.65, .3], act: 'tap' },
     { say: 'Tap an enemy to attack it, a green crystal to gather', at: [.4, .25], act: 'tap' },
     { say: 'HOLD for the wheel: slide into a quarter, then again to load it; slide to the top dot to GO (lift = park it as an orb)', at: [.5, .55], to: [.68, .42], act: 'drag', dur: 1700 },
+    { say: 'Touch down again soon after: the wheel comes back where it was. Double-tap = fire the newest orb', at: [.5, .55], act: 'tap', dur: 300 },
+    { say: 'Selections save as G bubbles on the left. Loop enemies, drag their red bubble onto TARGET', at: [.06, .12], to: [.9, .1], act: 'drag', dur: 1300 },
+    { say: 'Bottom nodes 1-2-3: tap or slide for a combo that opens the wheel deeper. Tap blank map to clear', at: [.42, .97], to: [.58, .97], act: 'drag', dur: 900 },
     { say: 'Double-tap your group or a building for options', at: [.45, .6], act: 'tap', dur: 300 },
     { say: 'Pinch to zoom, two fingers to pan (mouse: wheel + right-drag)', at: [.5, .5], act: 'tap', hold: 900 } ] });
-  window.RTP = { V: V, w2s: w2s, s2w: s2w, get ents() { return ents; }, get sel() { return sel; }, set sel(v) { sel = v; sendSel(); }, get WH() { return WH; }, get orbs() { return ORBS; }, CFG: CFG, tpSet: function (o) { tpSet(o); }, orbPos: function (i) { return orbPos(i); }, openOpt: openOpt };
+  window.RTP = { V: V, w2s: w2s, s2w: s2w, get ents() { return ents; }, get sel() { return sel; }, set sel(v) { sel = v; sendSel(); }, get WH() { return WH; }, get orbs() { return ORBS; }, CFG: CFG, tpSet: function (o) { tpSet(o); }, orbPos: function (i) { return orbPos(i); }, openOpt: openOpt, get COMBO() { return COMBO; }, get GROUPS() { return GROUPS; }, get TARGETS() { return TARGETS; }, comboLayer: comboLayer, leafOf: leafOf };
 })();
 </script></body></html>
