@@ -133,12 +133,12 @@
       var dx = (cx - W / 2) / V.s, dy = (cy - H / 2) / V.s; cam.position.addScaledVector(right, dx).addScaledVector(up, -dy); }
     cam.zoom = z; cam.updateProjectionMatrix(); return cam;
   };
-  var AC = null; function buzz() { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); var t = AC.currentTime, o = AC.createOscillator(), o2 = AC.createOscillator(), g = AC.createGain();
+  var AC = null; function buzz() { if (root.BH_MUTE) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); var t = AC.currentTime, o = AC.createOscillator(), o2 = AC.createOscillator(), g = AC.createGain();
       o.type = 'sawtooth'; o.frequency.value = 196; o2.type = 'square'; o2.frequency.value = 203; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.18, t + .03); g.gain.setValueAtTime(.18, t + .42); g.gain.linearRampToValueAtTime(0, t + .5);
       o.connect(g); o2.connect(g); g.connect(AC.destination); o.start(t); o2.start(t); o.stop(t + .52); o2.stop(t + .52); } catch (e) {} }
   root.BubbleBuzz = buzz;
-  function whistle() { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); var t = AC.currentTime, o = AC.createOscillator(), l = AC.createOscillator(), lg = AC.createGain(), g = AC.createGain(); o.type = 'sine'; o.frequency.value = 2900; l.frequency.value = 38; lg.gain.value = 180; l.connect(lg); lg.connect(o.frequency); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.14, t + .03); g.gain.setValueAtTime(.14, t + .55); g.gain.linearRampToValueAtTime(0, t + .65); o.connect(g); g.connect(AC.destination); o.start(t); l.start(t); o.stop(t + .7); l.stop(t + .7); } catch (e) {} }
-  function ping() { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); var t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(2300, t); o.frequency.exponentialRampToValueAtTime(1800, t + .25); g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t + .3); o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + .32); } catch (e) {} }
+  function whistle() { if (root.BH_MUTE) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); var t = AC.currentTime, o = AC.createOscillator(), l = AC.createOscillator(), lg = AC.createGain(), g = AC.createGain(); o.type = 'sine'; o.frequency.value = 2900; l.frequency.value = 38; lg.gain.value = 180; l.connect(lg); lg.connect(o.frequency); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.14, t + .03); g.gain.setValueAtTime(.14, t + .55); g.gain.linearRampToValueAtTime(0, t + .65); o.connect(g); g.connect(AC.destination); o.start(t); l.start(t); o.stop(t + .7); l.stop(t + .7); } catch (e) {} }
+  function ping() { if (root.BH_MUTE) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); var t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(2300, t); o.frequency.exponentialRampToValueAtTime(1800, t + .25); g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t + .3); o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + .32); } catch (e) {} }
   function lerp(a, b, k) { return a + (b - a) * k; }
   function frameAt(F, t) { var i = 1; while (i < F.length - 1 && F[i].t < t) i++; var a = F[i - 1], b = F[i], k = Math.max(0, Math.min(1, (t - a.t) / ((b.t - a.t) || 1)));
     return { p: [lerp(a.p[0], b.p[0], k), lerp(a.p[1], b.p[1], k)], u: a.u.map(function (v, j) { return lerp(v, b.u[j], k); }), o: a.o.map(function (v, j) { return [lerp(v[0], b.o[j][0], k), lerp(v[1], b.o[j][1], k)]; }),
@@ -183,14 +183,16 @@
     var tot = st.sc[0] + st.sc[1]; if (this.sc != null && tot > this.sc && this.hist.length > 10) this.goal(st.sc[0] > this.lastSc[0] ? 0 : 1);
     this.sc = tot; this.lastSc = st.sc.slice();
     if (this.phone) { var mtg = st.mo ? st.mo.c : 0; if (st.mo) this.pmoPt = st.mo.pt; if (this.rep) { mtg = 1; this.pmoPt = [.5, this.rep.gy]; } this.pzc = this.pzc || 0; this.pzc += (mtg - this.pzc) * (1 - Math.exp(-dt * PHONE_ZIP)); }   // fast in / fast out, slow tapers; tighter going in
+    if (!this.phone) this.hlRec(st);
     var cam = this.setTop(opt.action ? st : null, dt), show = st, MO = opt.moment && !this.rep ? opt.moment : null, R = this.rep, flash = this.d.querySelector('.b3flash'), ban = this.d.querySelector('.b3ban');
     if (R && st.pg) R.F.push({ t: this.clock, p: st.p.slice(), u: st.u.slice(), o: (st.o || st.u.map(function () { return [0, 0]; })).map(function (q) { return q.slice(); }), a: (st.a || st.u.map(function () { return 0; })).slice(), c: st.c, z: st.z || 0, gc: st.gc ? st.gc.slice() : null });
     if (R) { R.t += (this.phone && R.t >= R.wait && (this.pzc || 0) < .97) ? 0 : dt; var T = R.t - R.wait;   // phones: hold the cut until the zip-zoom-in has landed
-      if (R.t < R.wait) { var k = R.t / R.wait; flash.style.opacity = Math.max(0, .85 - k * 2.5) * (1 + Math.sin(R.t * 40) * .2); ban.style.opacity = Math.min(1, R.t * 5) * (k < .85 ? 1 : (1 - k) / .15); ban.style.transform = 'scale(' + (1 + Math.max(0, .25 - R.t) * 2) + ')';
+      if (R.t < R.wait && R.hl) { var k = R.t / R.wait; flash.style.opacity = 0; ban.style.opacity = Math.min(1, R.t * 3) * (k < .75 ? 1 : (1 - k) / .25) * .85; ban.style.transform = 'scale(1)'; }
+      else if (R.t < R.wait) { var k = R.t / R.wait; flash.style.opacity = Math.max(0, .85 - k * 2.5) * (1 + Math.sin(R.t * 40) * .2); ban.style.opacity = Math.min(1, R.t * 5) * (k < .85 ? 1 : (1 - k) / .15); ban.style.transform = 'scale(' + (1 + Math.max(0, .25 - R.t) * 2) + ')';
         if (Math.random() < dt * 5) { var gy = R.team ? L - B.GY : B.GY; this.emit(.2 + Math.random() * .6, gy + (R.team ? -1 : 1) * (.1 + Math.random() * .4), .15 + Math.random() * .2, 70, R.team ? 0x9fd4ff : 0xffb3be, .5, 1.3, 1); }
         if (Math.random() < dt * 22) this.camFlash(); }
       else { ban.style.opacity = 0; flash.style.opacity = 0; var seg = null, acc = 0; for (var si = 0; si < R.segs.length; si++) { var sg = R.segs[si], dur = (sg[1] - sg[0]) / sg[2] + REP_TAIL; if (T < acc + dur) { seg = sg; break; } acc += dur; }
-        if (!seg) { this.rep = null; this.d.querySelector('.b3rep').style.opacity = 0; this.d.querySelector('.b3bars').style.opacity = 0; }
+        if (!seg) { this.rep = null; this.d.querySelector('.b3rep').style.opacity = 0; this.d.querySelector('.b3bars').style.opacity = 0; if (!R.hl && !this.phone) this.hlAdd({ k: 'goal', s: HLK.goal[0] + Math.random(), F: R.F.filter(function (f) { return f.t >= R.F[R.F.length - 1].t - HL.pre - HL.post - REP_POST; }), team: R.team, t: this.clock }); if (this.reelOn) this.reelNext(); }
         else { var ct = Math.min(seg[1], seg[0] + (T - acc) * seg[2]), fr = frameAt(R.F, R.F[0].t + ct); show = { p: fr.p, u: fr.u, o: fr.o, a: fr.a, c: fr.c, z: fr.z, gc: fr.gc, sc: st.sc, sw: -1 }; this.d.querySelector('.b3rep').style.opacity = 1; this.d.querySelector('.b3bars').style.opacity = this.phone ? 0 : 1;
           cam = this.persp; cam.aspect = W / H; cam.updateProjectionMatrix(); this.shot(seg[3], fr, R, dt, seg !== R.cur); R.cur = seg; } } }
         if (MO && !R) {   // crazy-moment camera: swoops from high over the impact point down toward ice level as time slows
@@ -209,6 +211,7 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     this.parts.forEach(function (p) { if (n >= 900) return; var f = Math.min(1, p.l / p.l0 * 1.5); pos[n * 3] = p.p.x; pos[n * 3 + 1] = p.p.y; pos[n * 3 + 2] = p.p.z; col[n * 3] = lerp(1, p.c.r, f); col[n * 3 + 1] = lerp(1, p.c.g, f); col[n * 3 + 2] = lerp(1, p.c.b, f); n++; });
     for (var z = n; z < 900; z++) pos[z * 3 + 1] = -9; this.pts.geometry.attributes.position.needsUpdate = true; this.pts.geometry.attributes.color.needsUpdate = true;
     this.pts.material.size = cam === this.ortho ? Math.max(4, this.V.s * .018) * Math.min(2, devicePixelRatio || 1) : .012; this.pts.material.sizeAttenuation = true;
+    cam = this.orbitCam(cam, R, MO, dt, W, H);
     this.markers(cam, cam === this.ortho && (this.az || 1) > 1.05);
     var mwv = st.mw || 0, pyv = st.p[1], nowv = performance.now() / 1000; this.nets.forEach(function (n, k) { var ms = n.userData.mesh; if (ms) { var w = (k ? pyv > L / 2 : pyv < L / 2) ? mwv : 0, sx = ms.scale.x < 0 ? -1 : 1; ms.scale.set(sx * (1 + w * .12 * Math.sin(nowv * 38)), 1 + w * .05 * Math.sin(nowv * 31 + 1), 1 + w * .04 * Math.sin(nowv * 27)); } });
     if ((st.ev === 'post' || st.ev === 'bar') && this.lastPing !== st) { this.lastPing = st; ping(); }
@@ -251,7 +254,7 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
   R3.prototype.goal = function (team) { var nl = this.nets[team] && this.nets[team].userData.light; if (nl) { nl.t = 4.5; nl.rep = true; }
     var F = this.hist.slice(); while (F.length > 2 && Math.hypot(F[F.length - 1].p[0] - .5, F[F.length - 1].p[1] - L / 2) < .02) F.pop();   // drop the reset frame
     var D = this.phone ? 2.0 : 3.6, t1 = F[F.length - 1].t; F = F.filter(function (f) { return f.t >= t1 - D; }); if (F.length < 4) return; D = t1 - F[0].t;
-    var ban = this.d.querySelector('.b3ban'); ban.textContent = 'GOAL!'; ban.style.color = team ? '#3aa8ff' : '#ff5a6e';
+    var ban = this.d.querySelector('.b3ban'); ban.textContent = 'GOAL!'; ban.style.fontSize = ''; ban.style.color = team ? '#3aa8ff' : '#ff5a6e';
     // angle 1: high 3/4 view 1.5x out, normal speed; angle 2: 1.2x out at 75%; angle 3: close net cam at 2/3 of the old slow-mo (.2)
     var a1 = this.phone ? 1.4 : 2.0, a2 = this.phone ? .8 : 1.2, a3 = this.phone ? .35 : .45;
     var r1 = 1, r2 = .75 / 1.1, r3 = .2 * 2 / 3 / 1.15, segs = [[Math.max(0, D - a1), D + REP_POST * r1, r1, 'top'], [Math.max(0, D - a2), D + REP_POST * r2, r2, 'side'], [Math.max(0, D - a3), D + REP_POST * r3, r3, 'net']];
@@ -284,5 +287,37 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     else { var dx = tx - F.x, dy = ty - F.y, m = Math.hypot(dx, dy), v = .5; if (m > .01) { var k = Math.min(m, v * dt) / m; F.x += dx * k; F.y += dy * k; F.hd = Math.atan2(dx, dy); } g.rotation.set(0, F.hd, 0); }
     F.x = Math.max(.04, Math.min(.96, F.x)); F.y = Math.max(.12, Math.min(L - .12, F.y)); g.position.x = F.y; g.position.z = F.x; };
   R3.prototype.replaying = function () { return !!this.rep; };
+  // ---- highlights (TV): small capped clip buffer, post-game reel ----
+  var HL = { cap: 14, pre: 3.0, post: 1.4, fps: 30, reel: 180, wait: 1.1, same: 1.2 };
+  var HLK = { goal: [10, 'GOAL'], post: [6, 'OFF THE POST'], bar: [6.5, 'OFF THE BAR'], rim: [3, 'JUST WIDE'], bigcheck: [5, 'BIG HIT'], steal: [3, 'TAKEAWAY'], poke: [2.5, 'POKE CHECK'], glove: [5, 'GLOVE SAVE'], onetimer: [5.5, 'ONE-TIMER'] };
+  R3.HL = HL; R3.HLK = HLK; root.BubbleHL = HL;
+  R3.prototype.hlRec = function (st) { this.hl = this.hl || []; this.hlP = this.hlP || []; var k = st.ev, me = this;
+    if (k && HLK[k] && k !== 'goal' && !this.reelOn && !this.rep && !(st.pz > 0)) { var lp = this.hlP[this.hlP.length - 1];
+      if (lp && this.clock - lp.t < HL.same) { if (HLK[k][0] > HLK[lp.k][0]) { lp.k = k; lp.s = HLK[k][0] + Math.random(); } }
+      else this.hlP.push({ k: k, t: this.clock, at: this.clock + HL.post, p: st.p.slice(), s: HLK[k][0] + Math.random() * 1.5 }); }
+    if (this.rep || this.reelOn) { this.hlP = this.hlP.filter(function (q) { return me.clock - q.t < 8; }); return; }
+    while (this.hlP.length && this.clock >= this.hlP[0].at) { var q = this.hlP.shift(), t0 = q.t - HL.pre, F = this.hist.filter(function (f) { return f.t >= t0; }); if (F.length < 20) continue;
+      var gy = q.p[1] < L / 2 ? B.GY : L - B.GY; this.hlAdd({ k: q.k, s: q.s, F: F, team: gy === B.GY ? 0 : 1, t: q.t }); } };
+  R3.prototype.hlAdd = function (c) { var D = [], lt = -1; c.F.forEach(function (f) { if (f.t - lt >= 1 / HL.fps - 1e-4) { D.push(f); lt = f.t; } }); c.F = D; if (D.length < 10) return;   // downsampled to HL.fps
+    var H = this.hl = this.hl || []; H.push(c); while (H.length > HL.cap) { var mi = 0; for (var i = 1; i < H.length; i++) if (H[i].s < H[mi].s) mi = i; H.splice(mi, 1); } };
+  R3.prototype.hlDur = function (c) { return c.F[c.F.length - 1].t - c.F[0].t + HL.wait; };
+  R3.prototype.startReel = function (dur) { dur = dur || HL.reel; var H = (this.hl || []).slice().sort(function (a, b) { return b.s - a.s; }), pick = [], tot = 0, me = this;
+    H.forEach(function (c) { var d = me.hlDur(c); if (tot + d <= dur || !pick.length) { pick.push(c); tot += d; } }); if (!pick.length) return false;
+    var best = pick[0]; pick = pick.slice(1).sort(function (a, b) { return a.t - b.t; }); pick.push(best);   // chronological, ending on the best
+    this.reelQ = pick; this.reelOn = true; this.reelLen = tot; this.reelNext(); return true; };
+  R3.prototype.reelNext = function () { var c = this.reelQ && this.reelQ.shift(); if (!c) { this.reelOn = false; this.reelDone = true; return; }
+    var ban = this.d.querySelector('.b3ban'); ban.textContent = HLK[c.k][1]; ban.style.color = c.k === 'goal' ? (c.team ? '#3aa8ff' : '#ff5a6e') : '#ffffffdd'; ban.style.fontSize = '7vmin';
+    var span = c.F[c.F.length - 1].t - c.F[0].t; this.rep = { F: c.F, team: c.team, t: 0, wait: HL.wait, segs: [[0, span, 1, 'top']], gy: c.team ? L - B.GY : B.GY, dir: c.team ? 1 : -1, hl: true, kind: c.k }; };
+  R3.prototype.skipReel = function () { if (!this.reelOn) return; this.reelQ = []; this.reelOn = false; this.reelDone = true; this.rep = null; var d = this.d; ['.b3rep', '.b3bars', '.b3ban', '.b3flash'].forEach(function (k) { d.querySelector(k).style.opacity = 0; }); d.querySelector('.b3ban').style.fontSize = ''; };
+  // ---- attract-mode orbit: alternating segments, slow orbit around the dome, eased in and out of the normal camera ----
+  var ORB = { onMin: 20, onMax: 40, offMin: 20, offMax: 40, speed: .07, rx: 1.7, ry: 2.4, h: 1.15, ease: .35 };
+  R3.ORB = ORB;
+  R3.prototype.orbitCam = function (cam, R, MO, dt, W, H) { var o = this.orb = this.orb || { k: 0, on: false, left: ORB.offMin, a: 0 };
+    if (!this.orbitOn) { o.on = false; o.left = ORB.offMin * .5; } else { o.left -= dt; if (o.left <= 0) { o.on = !o.on; o.left = o.on ? ORB.onMin + Math.random() * (ORB.onMax - ORB.onMin) : ORB.offMin + Math.random() * (ORB.offMax - ORB.offMin); } }
+    var want = o.on && !R && !MO ? 1 : 0; o.k += (want - o.k) * (1 - Math.exp(-dt * (R || MO ? 6 : ORB.ease))); if (o.k < .002 || cam !== this.ortho) { if (o.k < .002) o.k = 0; if (this.persp.near !== .005) { this.persp.near = .005; this.persp.updateProjectionMatrix(); } return cam; }
+    o.a += dt * ORB.speed * (.4 + .6 * o.k); var G = this.G, P3 = function (x, y, h) { return G.localToWorld(L3(x, y, h)); }, ctr = P3(.5, L / 2, 0), oc = this.ortho, pc = this.persp;
+    pc.aspect = W / H; pc.fov = 45; pc.near = .1; pc.updateProjectionMatrix(); var back = new THREE.Vector3(0, 0, 1).applyQuaternion(oc.quaternion), hh = (L / 2 + .25) / Math.tan(22.5 * Math.PI / 180) / Math.max(1, pc.aspect), top = ctr.clone().addScaledVector(back, hh);
+    var op = P3(.5 + ORB.rx * Math.sin(o.a), L / 2 + ORB.ry * Math.cos(o.a), ORB.h), e = o.k * o.k * (3 - 2 * o.k);
+    pc.position.copy(top).lerp(op, e); var q0 = oc.quaternion.clone(); pc.up.set(0, 1, 0); pc.lookAt(ctr); var q1 = pc.quaternion.clone(); pc.quaternion.copy(q0).slerp(q1, Math.min(1, e * 1.3)); return pc; };
   root.Bubble3D = R3;
 })(window);
