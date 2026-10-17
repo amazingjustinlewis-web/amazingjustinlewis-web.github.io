@@ -240,6 +240,9 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Wired: bias (4), build (barracks/tower/workshop at the wheel point), train (Brick/Orb/Ring), select army, attack-move/move mode, hold/stop, upgrade, share, auto stack, order cycle. Stubs: wall, combine tree.
 - Todo: real combine/evolve, better battle readability on TV (bigger beams/impact puffs), fog of war, phone faction choice, sound, multiple phones splitting the army.
 
+## Bubble Hockey v0.9.11 (done): how-to panel
+- Phone How to play panel (bubble/howtopanel.js): ? button + join-screen link, auto-scroll ~18 px/s (pauses 4 s on hand scroll), controls worded as coded (flick = pass, tap = shoot), Watch demo -> minikit HowTo. Feedback build bumped to v0.9.11.
+
 ## Bubble Hockey v0.9.10 (done): feedback button
 - Small "Feedback" pill on TV (top-left) and phone (top-right under ?), panel shows "Bubble Hockey build v0.9.10 (2026-10-17) - please include this build number in your feedback" + COPY/Close (bubble/feedback.js; bump BUILD/DATE there each release). Phone controls hint (#tip) made brighter.
 - [ ] Swipeable how-to pages (separate pending task); Mike needed pass/shoot explained.
