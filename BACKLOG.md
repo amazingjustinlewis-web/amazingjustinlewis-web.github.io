@@ -198,6 +198,12 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Phone: height-tinted minimap with hill shading, your dot (pulsing) + others in colour, tap ripple + dashed course line; How to play (3 steps); perf.js on both.
 - Next: unit selection/groups, obstacles/no-fly, fog of war, flier collision, pinch-zoom minimap.
 
+## Bubble Hockey v0.9.8 (done): phone puck-pointer arrows
+- pad.html puckArrows(): 6 SVG chevrons inside #rot (follows the v0.9.4 orientation lock), placed PARR.gap px outside the rink bounds from V.w2s, sine drift PARR.drift px, rotate to the puck's screen point, colour BubbleCOL[carrier team] or #f2f2f2 loose, opacity PARR.op, pointer-events none.
+- No netcode change: st.p and st.c were already in the updates (team = c < 6 ? 0 : 1).
+- Hidden during phone zoom-ins/replays and while the faceoff puck is hidden in the slot.
+- Todo: real-phone check that the side arrows don't distract; maybe fade them when the puck is near an arrow.
+
 ## Bubble Hockey v0.9.7 (done): broadcast cam, bar room, depth of field
 - TV gameplay default = gentle 3/4 broadcast camera from the near side (BCAST in view3d.js: side/h/fov/follow/k). ⚙ view: broadcast / top-down (bh-view, ?view=top). Attract orbit now eases out of whichever view is on.
 - Bar room proxy (TV only, buildRoom/ROOM): bar counter + shelf + bottles, 4 tables with seated patrons, standing patrons, crates past both table ends, pendant shades with glow sprites and floor pools. Room is unlit MeshBasic (cheap); the only added real light is a spot over the rink. Clear colour warm dark.
