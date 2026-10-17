@@ -129,6 +129,39 @@
   // pose helpers: write into tPos / tLook
   function set(p, l, kk) { tPos.copy(p); tLook.copy(l); k = kk || 8; }
   var tmp = V(0, 0, 0);
+  // v0.4.2: walk over on the ground before getting on (no more floating to a ride); a.hopT then softens the step on
+  function approach(a, dt, g, look) { if (a.apDone) { if (a.hopT < 0.7) a.hopT += dt; return true; }
+    if (!a.ap) { a.ap = { t: 0, from: pos.clone().setY(0) }; a.ap.d = Math.max(0.6, a.ap.from.distanceTo(g) / 1.6); }
+    var A = a.ap; A.t += dt; var u = ease(clamp(A.t / A.d, 0, 1)); tmp.lerpVectors(A.from, g, u); pos.set(tmp.x, 0, tmp.z);
+    set(V(tmp.x, EYE + Math.abs(Math.sin(A.t * 7)) * 0.03 * (1 - u), tmp.z), look, 5); if (u < 1) stepSounds(dt); if (A.t > A.d + 0.25) { a.apDone = true; a.hopT = 0; } return false; }
+  function hopSoft(a) { if (a.hopT !== undefined && a.hopT < 0.7) k = 4 + a.hopT * 20; }
+  // v0.4.2 playground slide: walk to the ladder, climb rung by rung, plop down at the top, slide with a speed-up, hop off at the bottom
+  function poseLadderSlide(a, dt, L) {
+    var top = W.pSlideTop, bot = W.pSlideBot, lad = W.pLadder, deck = W.pDeck, foot = V(lad.x, 0, lad.z - 0.75), RUNG = 0.35, NR = 7, SPR = 0.42;
+    a.pt += dt;
+    if (a.phase === 'start') { a.phase = 'walk'; a.pt = 0; a.from = pos.clone().setY(0); a.wd = Math.max(0.7, a.from.distanceTo(foot) / 1.6); }
+    if (a.phase === 'walk') { var uw = ease(clamp(a.pt / a.wd, 0, 1)); tmp.lerpVectors(a.from, foot, uw); pos.set(tmp.x, 0, tmp.z); set(V(tmp.x, EYE + Math.abs(Math.sin(a.pt * 7)) * 0.03 * (1 - uw), tmp.z), V(lad.x, 1.8, lad.z), 5); if (uw < 1) stepSounds(dt); if (a.pt > a.wd + 0.3) { a.phase = 'climb'; a.pt = 0; } }
+    else if (a.phase === 'climb') {   // one rung per step: quick lift, small settle bob, a soft clank
+      var sp = SPR / (1 + Math.min(L, 4) * 0.1), n = a.pt / sp, i = Math.floor(n), f = n - i, lift = (Math.min(i, NR) + (i < NR ? ease(clamp(f / 0.6, 0, 1)) : 0)) * RUNG;
+      var bob = i < NR ? -Math.sin(clamp((f - 0.6) / 0.4, 0, 1) * Math.PI) * 0.04 : 0;
+      if (i !== a.ri && i <= NR) { a.ri = i; S.step('soft', 1); if (S.pluck) S.pluck(700 + i * 40, 0.15); }
+      set(V(lad.x, EYE + lift + bob, foot.z + 0.35), V(lad.x, EYE + lift + 1.2, lad.z + 1.5), 14); pos.set(lad.x, 0, foot.z + 0.35);
+      if (i >= NR) { a.phase = 'over'; a.pt = 0; a.c0 = camPos.clone(); } }
+    else if (a.phase === 'over') {   // climb over onto the deck, crouched
+      var uo = ease(clamp(a.pt / 0.8, 0, 1)), dk = V(deck.x, deck.y + 0.75, deck.z - 0.3); tmp.lerpVectors(a.c0, dk, uo); tmp.y += Math.sin(uo * Math.PI) * 0.08;
+      set(tmp, V(bot.x, bot.y + 1, bot.z), 12); pos.set(tmp.x, 0, tmp.z); if (a.pt > 0.85) { a.phase = 'plop'; a.pt = 0; a.c0 = camPos.clone(); } }
+    else if (a.phase === 'plop') {   // shuffle to the lip and plop down to sit, then a beat at the top
+      var up = ease(clamp(a.pt / 0.45, 0, 1)), sit = V(top.x, deck.y + 0.8, top.z); tmp.lerpVectors(a.c0, sit, up); if (a.pt > 0.45) tmp.y = sit.y - Math.sin(clamp((a.pt - 0.45) / 0.25, 0, 1) * Math.PI) * 0.08;
+      if (!a.plopped && a.pt > 0.45) { a.plopped = true; S.step('soft', 2); }
+      set(tmp, V(bot.x + Math.sin(a.pt * 0.8) * 1.5, bot.y, bot.z), 10); pos.set(tmp.x, 0, tmp.z); if (a.pt > 1.6) { a.phase = 'down'; a.pt = 0; a.plopped = false; S.whee(); S.whoosh(1.5); } }
+    else if (a.phase === 'down') { var dur = 2.0 / (1 + Math.min(L, 5) * 0.15), u = clamp(a.pt / dur, 0, 1), uu = u * u * u * 0.35 + u * u * 0.65; tmp.lerpVectors(V(top.x, deck.y + 0.8, top.z), bot, uu); set(tmp, V(bot.x, bot.y - 0.6, bot.z + 6), 22); pos.set(tmp.x, 0, tmp.z); tRoll = Math.sin(u * 9) * 0.04; if (u >= 1) { a.phase = 'hop'; a.pt = 0; } }
+    else if (a.phase === 'hop') {   // hop off the end and land standing
+      var uh = clamp(a.pt / 0.55, 0, 1), land = V(bot.x, EYE, bot.z + 1.3); tmp.lerpVectors(bot, land, ease(uh)); tmp.y += Math.sin(uh * Math.PI) * 0.35; if (uh >= 1) tmp.y -= Math.sin(clamp((a.pt - 0.55) / 0.2, 0, 1) * Math.PI) * 0.1;
+      if (!a.landed && uh >= 1) { a.landed = true; S.step('dirt', 2); S.giggle && S.giggle(0.5); }
+      set(tmp, V(bot.x, EYE, bot.z + 7), 16); pos.set(tmp.x, 0, tmp.z);
+      if (a.pt > 1.2) { a.landed = false; if (a.q > 0) { a.q--; a.phase = 'start'; a.pt = 0; } else { a.phase = 'rest'; a.pt = 0; } } }
+    else { set(V(bot.x, EYE, bot.z + 1.3), V(bot.x + Math.sin(a.t * 0.2) * 4, EYE, bot.z + 6), 2); pos.set(bot.x, 0, bot.z + 1.3); }
+  }
   function poseAct(a, dt) {
     a.t += dt;
     if (st.t - a.last > (a.id.indexOf('b_') === 0 ? 4 : 7) && a.lvl > 0) { a.lvl = Math.max(0, a.lvl - 1); a.last = st.t; }
@@ -183,7 +216,8 @@
           if (b.t > 3.2) { b.ph = 'back'; b.t = 0; window.WALKER.shots = (window.WALKER.shots || []).concat([a.lastShot]); }
         }
         break; }
-      case 'b_slide': case 'p_slide': {
+      case 'p_slide': poseLadderSlide(a, dt, L); break;
+      case 'b_slide': {
         var top = a.id === 'b_slide' ? W.bSlideTop : W.pSlideTop, bot = a.id === 'b_slide' ? W.bSlideBot : W.pSlideBot;
         var base = a.id === 'b_slide' ? V(W.B.x + 2, W.floorY, -2) : V(W.P.x - 2.5, 0, 2.8);
         a.pt += dt;
@@ -201,10 +235,11 @@
         set(c0, V(c0.x + 0.5 + Math.sin(a.t * 0.05) * 2, c0.y + 8, c0.z + Math.cos(a.t * 0.04) * 2), 2);
         break; }
       case 'p_swing': {
+        if (!approach(a, dt, V(W.swingPivot.x, 0, W.swingPivot.z + 1.3), V(W.swingPivot.x, 1, W.swingPivot.z))) { pos.set(tPos.x, 0, tPos.z); break; }
         var amp = L === 0 ? 0.08 : Math.min(1.05, 0.2 + L * 0.15); a.amp = (a.amp || 0) + (amp - (a.amp || 0)) * dt * 0.7; a.ph += dt * 1.95;
         var ang = Math.sin(a.ph) * a.amp; W.swings[0].rotation.x = ang;
         var piv = W.swingPivot, r = 2.6; tmp.set(piv.x, piv.y - Math.cos(ang) * r + 0.75, piv.z - Math.sin(ang) * r);   // v0.3: seat z = -sin (matches rotation.x), so we move WITH the seat
-        set(tmp, V(piv.x, tmp.y - Math.sin(ang) * 6 - 0.2, tmp.z + 8), 30); st.swingDbg = { seatZ: piv.z - Math.sin(ang) * r, camZ: tmp.z }; pos.set(tmp.x, 0, tmp.z);
+        set(tmp, V(piv.x, tmp.y - Math.sin(ang) * 6 - 0.2, tmp.z + 8), 30); st.swingDbg = { seatZ: piv.z - Math.sin(ang) * r, camZ: tmp.z }; pos.set(tmp.x, 0, tmp.z); hopSoft(a);
         if (a.prevA !== undefined && a.prevA < 0 && ang >= 0 && a.amp > 0.4) S.whoosh(0.5); a.prevA = ang;
         break; }
       case 'p_climb': {
@@ -226,12 +261,13 @@
         }
         break; }
       case 'p_spin': {
+        if (!approach(a, dt, V(W.merryC.x + 2.6, 0, W.merryC.z), V(W.merryC.x, 0.8, W.merryC.z))) break;
         var spd = Math.min(L, 5) * 0.45; a.w = (a.w || 0) + (spd - (a.w || 0)) * dt * 0.6; a.ph += a.w * dt; W.merry.rotation.y = a.ph;
         var mc = W.merryC; tmp.set(mc.x + Math.cos(a.ph) * 1.3, mc.y + 1.0, mc.z - Math.sin(a.ph) * 1.3);
-        set(tmp, V(mc.x + Math.cos(a.ph) * 9, 1.0, mc.z - Math.sin(a.ph) * 9), 30); pos.set(tmp.x, 0, tmp.z);
+        set(tmp, V(mc.x + Math.cos(a.ph) * 9, 1.0, mc.z - Math.sin(a.ph) * 9), 30); pos.set(tmp.x, 0, tmp.z); hopSoft(a);
         break; }
       case 'p_seesaw': {
-        var sc = W.seesawC, pr = a.partner;
+        var sc = W.seesawC, pr = a.partner; if (!approach(a, dt, V(sc.x + 0.8, 0, sc.z - 3), V(sc.x, 0.6, sc.z - 2.2))) break;
         if (!pr) {
           pr = a.partner = { t: 0, who: buddy ? 'buddy' : 'kid' };
           if (pr.who === 'kid') { seesawKid.visible = true; pr.obj = seesawKid; pr.from = V(sc.x + 6, 0, sc.z + 5); } else { bud.held = true; pr.obj = buddy; pr.from = bud.pos.clone(); }
@@ -247,7 +283,7 @@
         else { o.position.set(seatF.x, otherY - (pr.who === 'kid' ? 0.3 : 0) + 0.05, seatF.z); o.rotation.y = Math.PI; if (o.userData.aL) { o.userData.aL.rotation.z = 0.6 + Math.sin(an * 6) * 0.4; o.userData.aR.rotation.z = -0.6 - Math.sin(an * 6) * 0.4; } }
         if (pr.who === 'buddy') bud.pos.set(o.position.x, 0, o.position.z);
         tmp.set(sc.x, sc.y + 0.9 + Math.sin(an) * 2.2, sc.z - 2.2 * Math.cos(an));   // v0.3: my seat is at local z=-2.2 -> y = +2.2 sin(an)
-        set(tmp, V(o.position.x, o.position.y + 0.9, o.position.z), 20); pos.set(tmp.x, 0, tmp.z); st.seesawDbg = { seatY: sc.y + Math.sin(an) * 2.2, camY: tmp.y, partner: pr.who, sat: sat };
+        set(tmp, V(o.position.x, o.position.y + 0.9, o.position.z), 20); pos.set(tmp.x, 0, tmp.z); hopSoft(a); st.seesawDbg = { seatY: sc.y + Math.sin(an) * 2.2, camY: tmp.y, partner: pr.who, sat: sat };
         if (a.prevB !== undefined && a.prevB > 0 && an <= 0 && a.amp2 > 0.1) S.boing(0.3); a.prevB = an;
         break; }
       case 'p_sand': poseSand(a, dt); break;
@@ -948,6 +984,6 @@
     if (fpsT > 2 && !q.has('q')) { var fps = fpsN / fpsAcc; if (fps < C.quality.downBelowFps && rung < C.quality.rungs.length - 1) { slow++; if (slow > 1) { rung++; applyQ(); slow = 0; } } else slow = 0; if (fps > C.quality.upAboveFps && rung > 0) { fast++; if (fast > 6) { rung--; applyQ(); fast = 0; } } else fast = 0; fpsAcc = fpsN = fpsT = 0; }
     requestAnimationFrame(frame);
   }
-  window.WALKER = { sky: function () { return { ev: skyEv && { kind: skyEv.kind, t: skyEv.t }, log: skyLog, night: nightAmt, lookUp: !!st.lookUp }; }, startSky: function (k) { endSky(); startSky(k); if (k === 'rainbow') { skyEv.forced = true; skyEv.dur = 25; W.rainbow.visible = true; } }, skyTap: function () { skyTap(); }, camDirY: function () { return cam.getWorldDirection(V(0, 0, 0)).y; }, spat: function () { return spatLog; }, srcs: function () { return S.srcs(); }, cheer: function (k) { cheer(k); }, fx: function () { return { sand: sandOne ? { stage: sandOne.userData.stage, parts: sandOne.userData.parts, groups: 1 } : null, castles: castles.length, deco: castles.map(function (c) { return c.userData.deco; }), mounds: mounds.length, lap: lapA, lapVis: lapPiv.visible, wave: waveH.visible, bulb: '#' + bulbM.color.getHexString() }; }, st: st, tap: tap, back: back, moment: momentTap, set: applySettings, settings: settings, playHere: playHere, started: function () { return started; }, hue: function () { return hue; }, pos: pos, W: W, weather: weather, step: function (sec) { for (var i = 0; i < sec * 30; i++) { update(1 / 30); updateKids(1 / 30); updateBuddy(1 / 30); updateWorld(1 / 30); updateMoments(1 / 30); updateFx(1 / 30); updateSound(1 / 30); } renderer.render(scene, cam); } };
+  window.WALKER = { act: function () { return st.act ? { id: st.act.id, phase: st.act.phase } : null; }, cam: function () { return [camPos.x, camPos.y, camPos.z]; }, tapId: function (id) { tap(id); }, sky: function () { return { ev: skyEv && { kind: skyEv.kind, t: skyEv.t }, log: skyLog, night: nightAmt, lookUp: !!st.lookUp }; }, startSky: function (k) { endSky(); startSky(k); if (k === 'rainbow') { skyEv.forced = true; skyEv.dur = 25; W.rainbow.visible = true; } }, skyTap: function () { skyTap(); }, camDirY: function () { return cam.getWorldDirection(V(0, 0, 0)).y; }, spat: function () { return spatLog; }, srcs: function () { return S.srcs(); }, cheer: function (k) { cheer(k); }, fx: function () { return { sand: sandOne ? { stage: sandOne.userData.stage, parts: sandOne.userData.parts, groups: 1 } : null, castles: castles.length, deco: castles.map(function (c) { return c.userData.deco; }), mounds: mounds.length, lap: lapA, lapVis: lapPiv.visible, wave: waveH.visible, bulb: '#' + bulbM.color.getHexString() }; }, st: st, tap: tap, back: back, moment: momentTap, set: applySettings, settings: settings, playHere: playHere, started: function () { return started; }, hue: function () { return hue; }, pos: pos, W: W, weather: weather, step: function (sec) { for (var i = 0; i < sec * 30; i++) { update(1 / 30); updateKids(1 / 30); updateBuddy(1 / 30); updateWorld(1 / 30); updateMoments(1 / 30); updateFx(1 / 30); updateSound(1 / 30); } renderer.render(scene, cam); } };
   requestAnimationFrame(frame);
 })();

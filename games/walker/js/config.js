@@ -1,7 +1,7 @@
 /* WALKER - shared config: rooms, the six-button pages, moments, settings defaults. */
 (function (root) {
   var C = root.WALKER_CONFIG = {
-    TITLE: 'WALKER', version: '0.4.1',
+    TITLE: 'WALKER', version: '0.4.2',
     peerPrefix: 'ztp-walker-v04-',
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }],
     liveControllerUrl: 'https://amazingjustinlewis-web.github.io/games/walker/controller.html',

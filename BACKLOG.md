@@ -134,3 +134,15 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - [x] Phone keeps awake during play: Screen Wake Lock requested on taps until held, re-acquired on visibilitychange; tiny silent looping video fallback (assets/wake.mp4) when the API is missing/refused.
 - [x] Instant tap feedback: squish + glow + 15 ms buzz on pointerdown (tabs too); repeat taps of the same choice within ~0.8 s get a soft nudge (6 ms); TV ignores a repeat while that trip/ride is still starting (still counts toward running faster).
 - [ ] Verify on Walker's actual phone/iPad (iOS wake lock in home-screen mode, vibrate is Android-only).
+
+## Walker v0.4.2 (Oct 16, 2026)
+- [x] Playground slide: walk to a new ladder at the back of the tower, climb rung by rung (lift + settle bob + clank per rung), climb over onto the deck, plop down to sit for a beat, slide with an accelerating ease, hop off and land. Tower roof raised so the sitting view fits under it.
+- [x] Same floating fix for swings, merry-go-round and seesaw: walk over on the ground first, then a softened step on. Climbing dome already walked + climbed (unchanged). Bouncy-castle slide (b_slide) still uses the old glide; water slide not checked.
+- [ ] Bouncy-castle and water slides: same walk/climb treatment.
+
+### Walker design notes (no build yet)
+- Optional follower friend: a heart with a happy face, little arms and legs. Jumps around excitedly, points things out, and lights up extra bright at happy moments (laughter, fun animals, the end of a ride).
+- NPC kids invite the player: "Come play with us?" with a big green Yes and a soft red Maybe next time. Yes leads to tag, a slide chain where everyone goes down together, and later sing-along songs.
+
+## Orbit Brawl design note (Oct 16, 2026, no build)
+- A spectator loved watching the big screen while someone played on a phone: consider a spectator-friendly TV camera (wider, smoother framing of the action for people watching rather than playing).

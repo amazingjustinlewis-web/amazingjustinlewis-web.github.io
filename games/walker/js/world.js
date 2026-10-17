@@ -90,9 +90,13 @@
     var chips = mesh(new T.CircleGeometry(14, 40), M('#e7b98a'), 0, 0.02, 0, { parent: pg }); chips.rotation.x = -Math.PI / 2; chips.receiveShadow = true;
     var red = M('#ff7a6b'), wood = M('#c99a6b'), metal = M('#8fb8ff');
     // slide tower
-    [[-5, -7], [-3, -7], [-5, -5], [-3, -5]].forEach(function (p) { mesh(new T.CylinderGeometry(0.1, 0.1, 3, 8), wood, p[0], 1.5, p[1], { parent: pg }); });
-    mesh(new T.BoxGeometry(2.2, 0.15, 2.2), wood, -4, 2.5, -6, { parent: pg, shadow: true }); var roof = mesh(new T.ConeGeometry(1.8, 1.2, 4), red, -4, 3.9, -6, { parent: pg }); roof.rotation.y = Math.PI / 4;
+    [[-5, -7], [-3, -7], [-5, -5], [-3, -5]].forEach(function (p) { mesh(new T.CylinderGeometry(0.1, 0.1, 4, 8), wood, p[0], 2, p[1], { parent: pg }); });
+    mesh(new T.BoxGeometry(2.2, 0.15, 2.2), wood, -4, 2.5, -6, { parent: pg, shadow: true }); var roof = mesh(new T.ConeGeometry(1.8, 1.2, 4), red, -4, 4.6, -6, { parent: pg });   // v0.4.2: roof raised so a sitting kid fits under it roof.rotation.y = Math.PI / 4;
     var ps = mesh(new T.BoxGeometry(1.1, 0.12, 6), M('#ffb347'), -4, 1.35, -2.1, { parent: pg, shadow: true }); ps.rotation.x = 0.4;
+    // v0.4.2: a ladder at the back of the slide tower (you climb it now instead of floating up)
+    [-4.45, -3.55].forEach(function (x) { mesh(new T.CylinderGeometry(0.06, 0.06, 2.9, 8), metal, x, 1.45, -7.35, { parent: pg }); });
+    for (var rg = 0; rg < 7; rg++) { var rung = mesh(new T.CylinderGeometry(0.045, 0.045, 0.9, 8), metal, -4, 0.35 + rg * 0.35, -7.35, { parent: pg }); rung.rotation.z = Math.PI / 2; }
+    W.pLadder = new T.Vector3(P.x - 4, 0, P.z - 7.35); W.pDeck = new T.Vector3(P.x - 4, 2.58, P.z - 6);
     W.pSlideTop = new T.Vector3(P.x - 4, 3.6, P.z - 5.2); W.pSlideBot = new T.Vector3(P.x - 4, 1.0, P.z + 1.2);
     // swings
     var sw = new T.Group(); sw.position.set(4, 0, -6); pg.add(sw);
