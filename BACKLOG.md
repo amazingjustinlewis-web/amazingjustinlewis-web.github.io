@@ -214,7 +214,7 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 
 ## Bubble Hockey v0.9.9 (done): triangle puck pointers
 - pad.html PARR: 8 narrow SVG triangles (2 per edge incl. bottom), tip at the anchor point, rotate to the puck centre; length * (1 + .5 * nearness), brightness 0.8-1.2 by nearness (nearness = 1 - dist / rink diagonal).
-- Colour: BubbleCOL[team] of the carrier; loose keeps lastTeam; '#e8e8e8' before first possession. Player ring/token colours untouched.
+- Colour: BubbleCOL[team] of the carrier; loose keeps lastTeam at opacity * PARR.loose (.7, instant snap); '#e8e8e8' before first possession. Player ring/token colours untouched.
 
 ## Bubble Hockey v0.9.8 (done): phone puck-pointer arrows
 - pad.html puckArrows(): 6 SVG chevrons inside #rot (follows the v0.9.4 orientation lock), placed PARR.gap px outside the rink bounds from V.w2s, sine drift PARR.drift px, rotate to the puck's screen point, colour BubbleCOL[carrier team] or #f2f2f2 loose, opacity PARR.op, pointer-events none.
