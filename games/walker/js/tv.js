@@ -102,6 +102,9 @@
   }
   function tap(id) {
     S.init(); hideStart(); st.lastTap = st.t; st.idle = 0; st.energy += 1; st.taps.push(st.t);
+    // v0.4.1: a repeat of the same choice while that trip or ride is still starting counts as eager tapping (runs faster) but doesn't restart it
+    var rep = st.lastTapId === id && st.t - (st.lastTapIdT || -9) < 1.2; st.lastTapId = id; st.lastTapIdT = st.t;
+    if (rep && id !== 'buddy' && id !== 'r_car' && (st.mode === 'travel' || (st.act && st.act.id === id && st.act.t < .8))) return;
     if (id === 'b_kids') waveT = 1.7;   // v0.3: a little hand waves every time
     if (st.act && st.act.id === 'r_coaster' && (st.act.phase === 'board' || st.act.phase === 'ride' || st.act.dropT !== undefined) && id !== 'r_coaster' && id !== 'buddy' && id !== 'r_car') return coasterNudge(st.act, id);
     if (id === 'buddy') return buddyTap();

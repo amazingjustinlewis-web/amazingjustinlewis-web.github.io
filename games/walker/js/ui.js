@@ -16,7 +16,7 @@
     C.pages.forEach(function (p) {
       if (p.id === 'home') return;   // v0.3: no home tab, the category tabs are the way round
       var t = el('button', 'wtab', p.icon); t.style.setProperty('--c', p.border); t.dataset.page = p.id; t.setAttribute('aria-label', p.name);
-      t.onclick = function () { self.manualAt = Date.now(); self.show(p.id); };
+      t.addEventListener('pointerdown', function (ev) { ev.preventDefault(); if (self.page === p.id) { self.pulse(t, true); return; } self.pulse(t); self.manualAt = Date.now(); self.show(p.id); });
       self.tabs.appendChild(t);
     });
     this.gear = el('button', 'wtab wgear', '\u2699\uFE0F'); this.gear.setAttribute('aria-label', 'Settings'); this.gear.onclick = function () { self.toggleSettings(); }; this.tabs.appendChild(this.gear);
@@ -25,7 +25,10 @@
     this.setBox = el('div', 'wset hidden'); box.appendChild(this.setBox);
     this.show('home'); this.buildSettings();
   }
-  Pad.prototype.pulse = function (b) { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); if (navigator.vibrate) try { navigator.vibrate(12); } catch (e) {} };
+  // v0.4.1: instant feedback on touch: squish + glow + short buzz. A repeat tap of the same choice while it is still starting only gets a soft nudge.
+  var TAP = { buzz: 15, ackBuzz: 6, hold: 800, pageHold: 450 };
+  Pad.prototype.pulse = function (b, soft) { var c = soft ? 'ack' : 'pop'; b.classList.remove('pop', 'ack'); void b.offsetWidth; b.classList.add(c); if (navigator.vibrate) try { navigator.vibrate(soft ? TAP.ackBuzz : TAP.buzz); } catch (e) {} };
+  Pad.prototype.busy = function (id, ms) { var n = Date.now(), l = this.lastTap || (this.lastTap = {}), r = l[id] && n - l[id] < ms; if (!r) l[id] = n; return !!r; };   // window runs from the first tap; repeats inside it still reach the TV (eager taps run faster) but only get a soft nudge here
   Pad.prototype.show = function (id) {
     var self = this, p = C.pages.filter(function (x) { return x.id === id; })[0]; if (!p) return;
     this.page = id; this.box.style.setProperty('--border', p.border);
@@ -33,7 +36,7 @@
     this.grid.innerHTML = '';
     p.buttons.forEach(function (b) {
       var e = el('button', 'wbtn', '<span>' + b.pic + '</span>'); e.style.setProperty('--c', b.color); e.dataset.id = b.id; e.setAttribute('aria-label', b.say || b.id);
-      e.addEventListener('pointerdown', function (ev) { ev.preventDefault(); self.pulse(e); self.o.send({ t: 'tap', id: b.id }); if (b.page) { self.manualAt = Date.now(); setTimeout(function () { self.show(b.page); }, 180); } });
+      e.addEventListener('pointerdown', function (ev) { ev.preventDefault(); var again = self.busy(b.id, b.page ? TAP.pageHold : TAP.hold); self.pulse(e, again); if (again && b.page) return; self.o.send({ t: 'tap', id: b.id, again: again ? 1 : 0 }); if (again) return; if (b.page) { self.manualAt = Date.now(); setTimeout(function () { self.show(b.page); }, 180); } });
       self.grid.appendChild(e);
     });
   };

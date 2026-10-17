@@ -127,3 +127,8 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - [ ] Bubble Hockey: tune goalie depth vs scoring rate with real players; human goalie lunge/check animation polish; wild-puck bounce feel review.
 - [ ] Bubble Hockey: zone faceoffs - players line up around the zone dot (they currently coast to their usual slot spots); serve-slot pop visual at the zone dots.
 - [ ] Bubble Hockey: real glove-hand side per goalie model (current glove save is a proxy: hard shot to one side, ~30% chance).
+
+## Walker v0.4.1 (Oct 16, 2026)
+- [x] Phone keeps awake during play: Screen Wake Lock requested on taps until held, re-acquired on visibilitychange; tiny silent looping video fallback (assets/wake.mp4) when the API is missing/refused.
+- [x] Instant tap feedback: squish + glow + 15 ms buzz on pointerdown (tabs too); repeat taps of the same choice within ~0.8 s get a soft nudge (6 ms); TV ignores a repeat while that trip/ride is still starting (still counts toward running faster).
+- [ ] Verify on Walker's actual phone/iPad (iOS wake lock in home-screen mode, vibrate is Android-only).

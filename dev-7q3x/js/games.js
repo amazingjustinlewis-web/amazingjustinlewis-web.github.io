@@ -22,7 +22,7 @@ window.DEV_GAMES = [
   { id: 'mechopen', name: 'Iron Stride: Cockpit', ver: 'v0.5-dev', url: 'mech-open/index.html', img: 'mech-open/shot.png', tag: 'First-person open world \u00b7 placeholder name' },
   { id: 'rescue', name: 'Red Deer Rescue', ver: 'v0.2', url: '../games/rescue/index.html', img: '../games/rescue/shots/cover-card.webp', tag: 'Hero crawler \u00b7 pick a hero \u00b7 Francis the giant pig' },
   { id: 'rdr', name: 'Red Deer Rich', ver: 'v0.8', url: '../games/red-deer-rich/index.html', img: '../assets/img/red-deer-rich/cover-card.webp', tag: 'Board game \u00b7 phones' },
-  { id: 'walker', name: 'Walker', ver: 'v0.4', url: '../games/walker/index.html', img: '../assets/img/walker/cover-card.webp', tag: 'Calm play world' },
+  { id: 'walker', name: 'Walker', ver: 'v0.4.1', url: '../games/walker/index.html', img: '../assets/img/walker/cover-card.webp', tag: 'Calm play world' },
   { id: 'space', name: 'Drift Signal', ver: 'v0.4', url: '../games/space/index.html', img: '../assets/img/space/cover-card.webp', tag: 'Space crew' },
   { id: 'mech', name: 'Iron Stride', ver: 'v0.4', url: '../games/mech/index.html', img: '../assets/img/mech/cover-card.webp', tag: 'Mech \u00b7 gyro aim' },
   { id: 'zt', name: 'Zombie Tiles', ver: 'v0.5', url: '../games/zombie-tiles/index.html', img: '../assets/img/zombie-tiles/cover-card.webp', tag: 'Tile game \u00b7 phones' },

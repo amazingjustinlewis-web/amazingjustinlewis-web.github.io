@@ -4,12 +4,20 @@
   var net = null, dot = document.getElementById('dot'), wake = null;
   var pad = new WalkerPad(document.getElementById('pad'), { send: function (m) { if (net) net.send(m); }, onSetting: function (k) { if (k === 'awake') applyWake(); } });
   window.WALKER_PAD = pad;
+  // v0.4.1: keep the phone awake during play. Screen Wake Lock, (re)requested on every tap until we hold it and again when the page comes back;
+  // if the API is missing or refuses (older iOS, home-screen apps), fall back to a tiny silent looping video started from a tap.
+  var vid = null;
+  function fallbackOn() { try { if (!vid) { vid = document.createElement('video'); vid.src = 'assets/wake.mp4'; vid.muted = true; vid.loop = true; vid.setAttribute('playsinline', ''); vid.setAttribute('muted', ''); vid.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:0;top:0'; document.body.appendChild(vid); } var pr = vid.play(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {} }
+  function fallbackOff() { if (vid) try { vid.pause(); } catch (e) {} }
   function applyWake() {
-    if (pad.s.awake && 'wakeLock' in navigator) { if (!wake) navigator.wakeLock.request('screen').then(function (w) { wake = w; w.addEventListener('release', function () { wake = null; }); }).catch(function () {}); }
-    else if (!pad.s.awake && wake) { wake.release(); wake = null; }
+    if (!pad.s.awake) { if (wake) { wake.release(); wake = null; } fallbackOff(); return; }
+    if (document.visibilityState !== 'visible') return;
+    if ('wakeLock' in navigator) { if (!wake) navigator.wakeLock.request('screen').then(function (w) { wake = w; fallbackOff(); w.addEventListener('release', function () { wake = null; }); }).catch(function () { fallbackOn(); }); }
+    else fallbackOn();
   }
+  window.WALKER_WAKE = function () { return { lock: !!wake, video: !!(vid && !vid.paused) }; };
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') applyWake(); });
-  document.addEventListener('pointerdown', applyWake, { once: true });
+  document.addEventListener('pointerdown', function () { if (!wake) applyWake(); }, true);
   var lk = document.getElementById('linking'), linked = false, t0 = 0, watch = null;
   function lkShow(msg, sub, retry) { lk.classList.remove('hide'); document.getElementById('lkMsg').textContent = msg; document.getElementById('lkSub').textContent = sub || ''; document.getElementById('lkRetry').classList.toggle('hide', !retry); }
   function confirmed() { if (!linked) { linked = true; lk.classList.add('hide'); clearInterval(watch); } }
