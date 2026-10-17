@@ -31,9 +31,9 @@
   var DIAG = { on: /[?&]diag=1/.test(location.search), n: 0, t0: 0, hz: 0, last: 0, bytes: 0, types: {}, err: '', vis: 0, fit: 0, need: 0 };
   addEventListener('resize', size); size();
   // ---------- state from the TV ----------
-  var ents = {}, res = 0, sel = [], tapMode = 'amove', ripples = [], me = null, lastSnap = 0;
+  var ents = {}, res = 0, sel = [], tapMode = 'move', ripples = [], me = null, lastSnap = 0;
   function onSnap(m) { var seen = {}, nowS = performance.now(); res = m.r; if (DIAG.last) DIAG.hz = DIAG.hz * .8 + 200 / Math.max(1, nowS - DIAG.last); DIAG.last = lastSnap = nowS; DIAG.n++; if (DIAG.n % 10 === 1) try { DIAG.bytes = JSON.stringify(m).length; } catch (er) {}
-    m.u.forEach(function (q) { var e = ents[q[0]] || (ents[q[0]] = { id: q[0], k: 'u', x: q[3], z: q[4] }); e.ty = q[1]; e.team = q[2]; e.tx = q[3]; e.tz = q[4]; e.hp = q[5]; e.carry = q[6]; e.bias = q[7]; seen[q[0]] = 1; });
+    m.u.forEach(function (q) { var e = ents[q[0]] || (ents[q[0]] = { id: q[0], k: 'u', x: q[3], z: q[4] }); e.ty = q[1]; e.team = q[2]; e.tx = q[3]; e.tz = q[4]; e.hp = q[5]; e.carry = q[6]; e.bias = q[7]; e.idle = q[8]; seen[q[0]] = 1; });
     m.b.forEach(function (q) { var e = ents[q[0]] || (ents[q[0]] = { id: q[0], k: 'b', x: q[3], z: q[4] }); e.kind = q[1]; e.team = q[2]; e.tx = q[3]; e.tz = q[4]; e.hp = q[5]; e.lvl = q[6]; e.pulse = q[7]; e.ra = q[8] || 0; seen[q[0]] = 1; });
     m.n.forEach(function (q) { var e = ents[q[0]] || (ents[q[0]] = { id: q[0], k: 'n', x: q[1], z: q[2] }); e.tx = q[1]; e.tz = q[2]; e.amt = q[3]; seen[q[0]] = 1; });
     Object.keys(ents).forEach(function (k) { if (!seen[k]) delete ents[k]; }); var n0 = sel.length; sel = sel.filter(function (i) { return ents[i]; }); if (sel.length !== n0) sendSel();
@@ -53,14 +53,14 @@
   // v0.4.1: tap and double-tap are distinct. A single tap waits CFG.tap2 ms (a faint ring shows at once) so a double-tap never also fires the single action.
   //  tap: own thing = select it; enemy = attack it; crystal = gather; empty = go (tap mode)
   //  double-tap: own building = options; own unit in selection = group options, else select all on-screen of that shape; enemy = focus fire it + its pack; empty = attack-move sweep into the area
-  function tap(px, py) { var e = hit(px, py), w = s2w(px, py);
+  function tap(px, py) { var e = hit(px, py), w = s2w(px, py); if (!e) endAdd();
     if (e && e.team === 0 && e.k !== 'n') { if (sel.indexOf(e.id) < 0) { sel = [e.id]; sendSel(); buzz(8); } return; }
     if (!sel.length) { ripples.push({ x: w[0], z: w[1], t: performance.now(), c: '#ffffff' }); return; }
     var col = e ? (e.k === 'n' ? '#55ff88' : '#ff4444') : (tapMode === 'move' ? '#9cf' : CRT); ripples.push({ x: e ? e.x : w[0], z: e ? e.z : w[1], t: performance.now(), c: col });
-    send({ t: 'go', ids: sel, x: +w[0].toFixed(1), z: +w[1].toFixed(1), tg: e ? e.id : 0, mode: tapMode }); buzz(12); if (tapMode === 'move') tapMode = 'amove'; }
+    send({ t: 'go', ids: sel, x: +w[0].toFixed(1), z: +w[1].toFixed(1), tg: e ? e.id : 0, mode: tapMode }); buzz(12); tapMode = 'move'; }   // v0.5: single tap = move; the wheel's Attack-move arms one attack-move tap
   function dtap(px, py) { var e = hit(px, py), w = s2w(px, py);
     if (e && e.team === 0 && e.k === 'b') { sel = [e.id]; sendSel(); openOpt(e); return; }
-    if (e && e.team === 0 && e.k === 'u') { if (sel.indexOf(e.id) >= 0 && sel.length > 1) { openOpt(e); return; } sel = Object.keys(ents).map(Number).filter(function (i) { var q = ents[i], p2 = w2s(q.x, q.z); return q.k === 'u' && q.team === 0 && q.ty === e.ty && p2[0] > 0 && p2[0] < W && p2[1] > 0 && p2[1] < H; }); sendSel(); buzz(15); toast(sel.length + ' ' + U[e.ty].n + (sel.length > 1 ? 's' : '') + ' selected'); if (sel.length > 1) saveGroup(sel.slice(), false); return; }
+    if (e && e.team === 0 && e.k === 'u') { if (sel.indexOf(e.id) >= 0) { openOpt(e); var tr = $('tree'); if (tr.style.display !== 'block') $('o5').onclick(); return; } /* double-tap the selected group = options + combine tree */ sel = Object.keys(ents).map(Number).filter(function (i) { var q = ents[i], p2 = w2s(q.x, q.z); return q.k === 'u' && q.team === 0 && q.ty === e.ty && p2[0] > 0 && p2[0] < W && p2[1] > 0 && p2[1] < H; }); sendSel(); buzz(15); toast(sel.length + ' ' + U[e.ty].n + (sel.length > 1 ? 's' : '') + ' selected'); if (sel.length > 1) saveGroup(sel.slice(), false); return; }
     if (!sel.length) { tap(px, py); return; }
     if (e && e.k !== 'n' && e.team !== 0) { send({ t: 'act', a: 'focus', ids: sel, tg: e.id }); ripples.push({ x: e.x, z: e.z, t: performance.now(), c: '#ff4444', big: 1 }); buzz([10, 40, 10]); toast('focus fire'); return; }
     if (e && e.k === 'n') { tap(px, py); return; }
@@ -81,9 +81,20 @@
     for (var i = 0; i < 8; i++) if (Math.hypot(x - G2.h[i].x, y - G2.h[i].y) < (G2.h[i].big ? 15 : 11)) return 'rot'; if (Math.hypot(x - G2.cx, y - G2.cy) < G2.r + 6) return 'body'; return ''; }
   function placeConfirm() { var g = PLACE; PLACE = null; send({ t: 'act', a: 'build:' + g.kind, ids: sel, x: +g.x.toFixed(1), z: +g.z.toFixed(1), rot: +g.ra.toFixed(3) }); buzz([8, 30, 8]); toast(SH.B[g.kind].n + ' placed'); PLACE = PQ.shift() || null; }
   function inPoly(P, x, y) { var ins = false; for (var i = 0, j = P.length - 1; i < P.length; j = i++) { var a = P[i], b = P[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) ins = !ins; } return ins; }
+  // v0.5: closed lasso (ends near its start) = replace selection; open lasso (ends far away, closed by a straight edge) = ADD mode: later lassos add until a closed lasso or a blank tap
+  var ADDM = false;
   function lassoSel(P) { var us = [], bs = [], en = []; for (var k in ents) { var e = ents[k]; if (e.k === 'n') continue; var p = w2s(e.x, e.z); if (!inPoly(P, p[0], p[1])) continue; if (e.team === 0) (e.k === 'u' ? us : bs).push(e.id); else en.push(e.id); }
+    var a = P[0], z = P[P.length - 1], x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; P.forEach(function (q) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); });
+    var closed = Math.hypot(z[0] - a[0], z[1] - a[1]) < Math.max(36, .22 * Math.hypot(x1 - x0, y1 - y0));
     if (!us.length && !bs.length && en.length) { saveGroup(en, true); EFL = { ids: en, t: performance.now() }; buzz(15); toast(en.length + ' enemies marked \u00b7 drag the red bubble onto TARGET'); return; }   // lasso on enemies = enemy group (for targets)
-    sel = us.length ? us.concat(bs) : bs; sendSel(); if (sel.length) { buzz(15); toast(sel.length + ' selected'); if (us.length) saveGroup(us, false); } }
+    var got = us.length ? us.concat(bs) : bs;
+    if (closed) { if (ADDM && !got.length) { endAdd(); return; } sel = got; ADDM = false; }
+    else if (ADDM) { got.forEach(function (i) { if (sel.indexOf(i) < 0) sel.push(i); }); }
+    else { sel = got; ADDM = true; }
+    sendSel(); addInd(); buzz(ADDM ? [6, 30, 6] : 15); toast(sel.length + ' selected' + (ADDM ? ' \u00b7 ADDING (closed loop or blank tap ends)' : ''));
+    if (!ADDM && sel.length) saveGroup(sel.filter(function (i) { return ents[i] && ents[i].k === 'u'; }), false); }
+  function endAdd() { if (!ADDM) return; ADDM = false; addInd(); var us2 = sel.filter(function (i) { return ents[i] && ents[i].k === 'u'; }); if (us2.length) saveGroup(us2, false); }
+  function addInd() { var el = $('addm'); if (!el) { el = document.createElement('div'); el.id = 'addm'; el.textContent = '+ ADD'; el.style.cssText = 'position:fixed;left:50%;top:30px;transform:translateX(-50%);z-index:4;font:700 11px ui-monospace,monospace;color:#4dff6a;border:1.5px dashed #4dff6a;border-radius:9px;padding:2px 8px;background:#000a;pointer-events:none'; document.body.appendChild(el); } el.style.display = ADDM ? 'block' : 'none'; }
   var EFL = null;
   // ---------- option panel (double-tap) ----------
   var optE = null;
@@ -137,10 +148,18 @@
   // re-touch while an orb is pending: the wheel comes back at its previous screen position (or under the thumb: test option), no blend
   function reopen(x, y) { var ob = ORBS.pop(), at = CFG.reopenAt === 'thumb'; openWheel(at ? x : ob.from[0], at ? y : ob.from[1], true); WH.ax = x; WH.ay = y; WH.tx = x; WH.ty = y; WH.stack = ob.stack; WH.wp = ob.wp; WH.orb = ob; WH.ctx = ob.ctx;
     WH.path = CFG.reopen === 'top' ? [] : CFG.reopen === 'up' ? ob.path.slice(0, -1) : ob.path.slice(); if (ob.sel) sel = ob.sel.filter(function (i) { return ents[i]; }); }
-  function fireOrb(ob, at) { var sv = sel; sel = ob.sel.filter(function (i) { return ents[i]; }); actuate(ob.stack, at || [orbPos(ORBS.length)[0], orbPos(0)[1], 14], false, ob.wp); sel = sv; }
+  function fireOrb(ob, at, wp, ids) { var sv = sel; sel = (ids || ob.sel).filter(function (i) { return ents[i]; }); actuate(ob.stack, at || [orbPos(ORBS.length)[0], orbPos(0)[1], 14], false, wp || ob.wp); sel = sv; }
+  // v0.5 orb drops. Rule (simple, documented): GROUP onto ORB = ASSIGN (that group runs the chain now, replacing its orders);
+  // ORB onto GROUP = QUEUE (chain waits on that bubble and runs when most of the group is idle); ORB onto MAP = run it there (current selection, else the orb's own)
+  function orbDrop(ob, x, y) { var i = ORBS.indexOf(ob); if (i < 0) return; var el = document.elementFromPoint(x, y), gb = el && el.closest && el.closest('.gb');
+    if (gb) { var g = GROUPS.filter(function (q) { return q.name === gb.textContent.replace(/\+\d+$/, ''); })[0]; if (g && !g.enemy) { ORBS.splice(i, 1); (g.queue || (g.queue = [])).push(ob); renderGroups(); buzz(15); toast('queued on ' + g.name + ' (' + g.queue.length + ')'); return; } }
+    if (Math.abs(y - orbPos(0)[1]) < 40) return;   // dropped back in the orb row: nothing
+    ORBS.splice(i, 1); var w = s2w(x, y); ripples.push({ x: w[0], z: w[1], t: performance.now(), c: GOLD, big: 1 }); fireOrb(ob, [x, y, 14], w, sel.length ? sel : null); }
+  setInterval(function () { GROUPS.forEach(function (g) { if (!g.queue || !g.queue.length) return; var al = g.ids.filter(function (i) { return ents[i]; }); if (!al.length) { g.queue = []; renderGroups(); return; }
+    var idle = al.filter(function (i) { return ents[i].idle; }).length; if (idle / al.length >= .7) { var ob = g.queue.shift(); fireOrb(ob, [24, 90 + GROUPS.indexOf(g) * 46, 14], null, al); renderGroups(); toast(g.name + ': queued order runs'); } }); }, 800);
   function runLeaf(it, w) { var a = it.a, ar = a.split(':');
     if (ar[0] === 'mode') tapMode = ar[1];
-    else if (ar[0] === 'mv') { if (ar[1] !== 'gather') send({ t: 'act', a: 'bias:' + ar[1], ids: sel }); tapMode = ar[1] === 'gather' ? 'amove' : 'move'; toast('next tap: move (' + it.n + ')'); }
+    else if (ar[0] === 'mv') { if (ar[1] !== 'gather') send({ t: 'act', a: 'bias:' + ar[1], ids: sel }); tapMode = 'move'; toast('next tap: move (' + it.n + ')'); }
     else if (a === 'selall') { sel = Object.keys(ents).map(Number).filter(function (i) { return ents[i].k === 'u' && ents[i].team === 0; }); sendSel(); }
     else if (ar[0] === 'tgt') { var T = TARGETS[+ar[2] - 1]; if (!T) { toast('no T' + ar[2] + ' yet: drag a group bubble onto TARGET'); return; } send({ t: 'act', a: 'tgt:' + ar[1], ids: sel, tids: T.ids }); toast(it.n + ' (' + sel.length + ' shapes)'); }
     else if (ar[0] === 'build' && SH.B[ar[1]]) { var ng = { kind: ar[1], x: w[0], z: w[1], ra: 0 }; if (PLACE) { ng.x += 6; PQ.push(ng); toast(SH.B[ar[1]].n + ' queued'); return; } PLACE = ng; toast('place the ' + SH.B[ar[1]].n + ': drag, rotate, ✔'); }
@@ -168,7 +187,8 @@
   cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   cv.addEventListener('pointerdown', function (e) { cv.setPointerCapture(e.pointerId); var x = e.clientX, y = e.clientY; P[e.pointerId] = { x: x, y: y }; closeOptIfOutside();
     if (PLACE && pts().length === 1) { var gh = ghostHit(x, y); if (gh) { var G2 = ghostGeo(); G = { m: 'ghost', part: gh, x: x, y: y, mv: false, ox: G2.cx - x, oy: G2.cy - y, a0: Math.atan2(x - G2.cx, y - G2.cy), r0: PLACE.ra }; return; } }
-    for (var oi = ORBS.length - 1; oi >= 0; oi--) { var op = orbPos(oi); if (Math.hypot(x - op[0], y - op[1]) < orbR(ORBS[oi]) + 6) { var ob = ORBS.splice(oi, 1)[0]; fireOrb(ob, [op[0], op[1], 14]); G = { m: 'none' }; return; } }   // quick tap on an orb = actuate it
+    for (var oi = ORBS.length - 1; oi >= 0; oi--) { var op = orbPos(oi); if (Math.hypot(x - op[0], y - op[1]) < orbR(ORBS[oi]) + 6) { var ob = ORBS[oi];   // v0.5: tap = fire, press+hold = reopen its wheel, drag = drop it somewhere
+        G = { m: 'orb', ob: ob, x: x, y: y, t: performance.now() }; G.h = setTimeout(function () { if (G.m !== 'orb') return; var i2 = ORBS.indexOf(G.ob); if (i2 < 0) return; ORBS.splice(i2, 1); ORBS.push(G.ob); reopen(G.x, G.y); G = { m: 'wheel', x: G.x, y: G.y, t: 0, re: 1 }; buzz(20); }, CFG.hold); return; } }   // quick tap on an orb = actuate it
     if (ORBS.length && !WH && pts().length === 1 && !(e.pointerType === 'mouse' && e.button !== 0)) { var now0 = performance.now();
       if (now0 - lastOrbTap < CFG.dbl) { lastOrbTap = 0; fireOrb(ORBS.pop()); G = { m: 'none' }; return; }   // 2nd tap within CFG.dbl ms anywhere = actuate the newest orb
       reopen(x, y); G = { m: 'wheel', x: x, y: y, t: now0, re: 1 }; return; }
@@ -184,12 +204,16 @@
     if (G.m === 'pend' && Math.hypot(x - G.x, y - G.y) > 9) { clearTimeout(G.h); G.m = 'lasso'; }
     if (G.m === 'lasso') { var lp = G.path[G.path.length - 1]; if (Math.hypot(x - lp[0], y - lp[1]) > 3) G.path.push([x, y]); }
     else if (G.m === 'wheel' && WH) wMove(x, y);
+    else if (G.m === 'orb' && Math.hypot(x - G.x, y - G.y) > 12) { clearTimeout(G.h); G.m = 'orbdrag'; G.ob.drag = { x: x, y: y }; }
+    else if (G.m === 'orbdrag') { G.ob.drag = { x: x, y: y }; }
     else if (G.m === 'ghost') { if (Math.hypot(x - G.x, y - G.y) > 6) G.mv = true; if (!G.mv) return; var G3 = ghostGeo();
       if (G.part === 'body') { var wp2 = s2w(x + G.ox, y + G.oy + 12); PLACE.x = wp2[0]; PLACE.z = wp2[1]; } else if (G.part === 'rot') PLACE.ra = G.r0 + Math.atan2(x - G3.cx, y - G3.cy) - G.a0; }
     else if (G.m === 'pan') { V.cx += (x - G.x) / V.s; V.cz += (y - G.y) / V.s; G.x = x; G.y = y; }
     else if (G.m === 'pinch') { var L = pts(); if (L.length < 2) return; var a = L[0], b = L[1], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2; V.cx += (mx - G.mx) / V.s; V.cz += (my - G.my) / V.s; zoomAt(mx, my, d / G.d); G.d = d; G.mx = mx; G.my = my; } });
   function up(e) { if (!P[e.pointerId]) return; delete P[e.pointerId]; var x = e.clientX, y = e.clientY;
     if (G.m === 'pinch') { if (!pts().length) G = { m: 'none' }; return; } clearTimeout(G.h);
+    if (G.m === 'orb') { var ob3 = G.ob, i3 = ORBS.indexOf(ob3); G = { m: 'none' }; if (i3 >= 0) { var op3 = orbPos(i3); ORBS.splice(i3, 1); fireOrb(ob3, [op3[0], op3[1], 14]); } return; }
+    if (G.m === 'orbdrag') { var od = G.ob; delete od.drag; G = { m: 'none' }; orbDrop(od, x, y); return; }
     if (G.m === 'ghost') { var gp = G.part, mv = G.mv; G = { m: 'none' }; if (!PLACE) return; if (gp === 'ok' || (gp === 'body' && !mv)) placeConfirm(); else if (gp === 'no') { PLACE = PQ.shift() || null; toast('build cancelled'); } else if (gp === 'cam' || (gp === 'rot' && !mv)) { PLACE.ra = 0; buzz(8); } return; } if (G.m === 'wheel' && !WH) { G = { m: 'none' }; return; }
     if (G.m === 'lasso') { if (G.path.length > 6) lassoSel(G.path); else tap(G.x, G.y); }
     else if (G.m === 'pend') { var now = performance.now(); if (COMBO && !hit(x, y)) { COMBO = ''; renderNodes(); toast('combo cleared'); }
@@ -223,7 +247,7 @@
     } catch (er) { DIAG.err = 'draw: ' + er.message; } DIAG.vis = visN;
     if (EFL && performance.now() - EFL.t < 1500) EFL.ids.forEach(function (i) { var q = ents[i]; if (!q) return; var p2 = w2s(q.x, q.z); ctx.strokeStyle = '#ff5a5a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p2[0], p2[1], 12, 0, 7); ctx.stroke(); });
     ripples = ripples.filter(function (r) { var k = (now - r.t) / 650; if (k > 1) return false; var p = w2s(r.x, r.z); ctx.strokeStyle = r.c; ctx.globalAlpha = 1 - k; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(p[0], p[1], r.big ? 8 + k * 64 : r.small ? 3 + k * 10 : 5 + k * 26, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; return true; });
-    if (G.m === 'lasso' && G.path.length > 1) { ctx.save(); ctx.shadowColor = SEL; ctx.shadowBlur = 10; ctx.strokeStyle = SEL; ctx.lineWidth = 2.5; ctx.setLineDash([7, 5]); ctx.lineDashOffset = -now / 30; ctx.beginPath(); G.path.forEach(function (q, i) { ctx[i ? 'lineTo' : 'moveTo'](q[0], q[1]); }); ctx.closePath(); ctx.fillStyle = 'rgba(77,255,106,.08)'; ctx.fill(); ctx.stroke(); ctx.restore(); }
+    if (G.m === 'lasso' && G.path.length > 1) { ctx.save(); if (ADDM) ctx.setLineDash([7, 5]); ctx.shadowColor = SEL; ctx.shadowBlur = 10; ctx.strokeStyle = SEL; ctx.lineWidth = 2.5; ctx.setLineDash([7, 5]); ctx.lineDashOffset = -now / 30; ctx.beginPath(); G.path.forEach(function (q, i) { ctx[i ? 'lineTo' : 'moveTo'](q[0], q[1]); }); ctx.closePath(); ctx.fillStyle = 'rgba(77,255,106,.08)'; ctx.fill(); ctx.stroke(); ctx.restore(); }
     if (PLACE) drawGhost(now); if (WH) drawWheel(now); drawFX(now); diagTick(now);
     $('top').textContent = '\u25c6 ' + res + '  \u00b7  ' + sel.length + ' sel  \u00b7  tap = ' + (tapMode === 'move' ? 'move' : 'attack-move') + (lastSnap && now - lastSnap > 2000 ? '  \u00b7  (no TV)' : '');
     requestAnimationFrame(draw); }
@@ -268,7 +292,7 @@
     for (var j = L.length - 1; j >= 0; j--) { ctx.beginPath(); ctx.arc(x, y, r * (j + 1) / n * .92, 0, 7); ctx.fillStyle = L[j]; ctx.globalAlpha = alpha * (.55 + .1 * Math.sin(now / 300 + i + j)); ctx.fill(); ctx.globalAlpha = alpha; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.stroke(); }
     ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke(); ctx.restore(); }
   function drawFX(now) {
-    ORBS.forEach(function (o, i) { var p = orbPos(i), k = Math.min(1, (now - o.t) / DROP_MS);
+    ORBS.forEach(function (o, i) { if (o.drag) { drawOrb(o, o.drag.x, o.drag.y, orbR(o) * 1.15, .9, now, i); return; } var p = orbPos(i), k = Math.min(1, (now - o.t) / DROP_MS);
       if (k < 1) { var q = dropAt(o, p, k); if (o.items && k < .6) wheelBody(q[0], q[1], q[2], o.items, -1, Math.max(0, 1 - k / .6)); drawOrb(o, q[0], q[1], q[2], Math.min(1, k * 1.6), now, i); return; }
       var land = (now - o.t - DROP_MS) / 180, bo = land < 1 ? 1 + .12 * Math.sin(land * Math.PI) * (1 - land) : 1;   // tiny secondary bounce on landing
       drawOrb(o, p[0], p[1] - (land < 1 ? Math.sin(land * Math.PI) * 4 : 0), orbR(o) * bo, 1, now, i); });
@@ -315,12 +339,13 @@
   document.body.appendChild(gbox); document.body.appendChild(tbox);
   function renderTargets() { tbox.innerHTML = 'TARGET' + TARGETS.map(function (t, i) { return '<div data-t="' + i + '" style="margin-top:4px;padding:3px 5px;border:1.5px solid #ff5a5a;border-radius:7px;color:#ffd0d0;cursor:pointer">T' + (i + 1) + ' \u00b7 ' + t.name + ' (' + t.ids.filter(function (i2) { return ents[i2]; }).length + ')</div>'; }).join(''); }
   tbox.addEventListener('pointerdown', function (e) { e.stopPropagation(); var el = e.target.closest('[data-t]'); if (el) { TARGETS.splice(+el.dataset.t, 1); renderTargets(); toast('target removed'); } });
-  function renderGroups() { gbox.innerHTML = ''; GROUPS.forEach(function (g) { var b = document.createElement('div'), alive = g.ids.filter(function (i) { return ents[i]; }).length; b.className = 'gb'; b.textContent = g.name; b.title = alive + ' shapes';
+  function renderGroups() { gbox.innerHTML = ''; GROUPS.forEach(function (g) { var b = document.createElement('div'), alive = g.ids.filter(function (i) { return ents[i]; }).length; b.className = 'gb'; b.textContent = g.name + (g.queue && g.queue.length ? '+' + g.queue.length : ''); b.title = alive + ' shapes';
       b.style.cssText = 'width:40px;height:40px;border-radius:50%;background:#000;border:2px solid ' + (g.enemy ? '#ff5a5a' : SEL) + ';color:' + (g.enemy ? '#ff9090' : CRT) + ';font:700 12px ui-monospace,monospace;display:flex;align-items:center;justify-content:center;touch-action:none;user-select:none;box-shadow:0 0 8px ' + (g.enemy ? '#ff5a5a66' : '#4dff6a55') + ';cursor:grab';
       var d0 = null; b.addEventListener('pointerdown', function (e) { e.stopPropagation(); b.setPointerCapture(e.pointerId); d0 = { x: e.clientX, y: e.clientY, mv: false }; });
       b.addEventListener('pointermove', function (e) { if (!d0) return; var dx = e.clientX - d0.x, dy = e.clientY - d0.y; if (Math.hypot(dx, dy) > 8) d0.mv = true; if (d0.mv) { b.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; b.style.opacity = .8; } });
       b.addEventListener('pointerup', function (e) { if (!d0) return; var mv = d0.mv; d0 = null; b.style.transform = ''; b.style.opacity = 1; var r = tbox.getBoundingClientRect();
         if (mv && e.clientX > r.left - 20 && e.clientX < r.right + 20 && e.clientY > r.top - 20 && e.clientY < r.bottom + 20) { TARGETS.push({ ids: g.ids.slice(), name: g.name }); if (TARGETS.length > 2) TARGETS.shift(); renderTargets(); buzz(15); toast(g.name + ' \u2192 T' + TARGETS.length); return; }
+        if (mv && !g.enemy) { for (var oi = 0; oi < ORBS.length; oi++) { var op = orbPos(oi); if (Math.hypot(e.clientX - op[0], e.clientY - op[1]) < orbR(ORBS[oi]) + 14) { var ob = ORBS.splice(oi, 1)[0]; fireOrb(ob, [op[0], op[1], 14], null, g.ids); buzz([8, 30, 8]); toast(g.name + ' assigned: ' + ob.stack.map(function (l) { return l.it.n; }).join(' \u2192 ')); return; } } }
         if (!mv) { if (g.enemy) toast(g.name + ': ' + alive + ' enemies \u00b7 drag onto TARGET'); else { sel = g.ids.filter(function (i) { return ents[i]; }); sendSel(); toast(g.name + ' selected (' + sel.length + ')'); buzz(8); } } });
       gbox.appendChild(b); }); }
   renderTargets(); setInterval(function () { renderTargets(); }, 1500);
@@ -354,6 +379,21 @@
       'css ' + W + 'x' + H + '  dpr ' + dpr + ' (dev ' + (devicePixelRatio || 1).toFixed(2) + ')  canvas ' + cv.width + 'x' + cv.height + '\n' +
       'msgs ' + (ty || '-') + '\n' + (DIAG.err ? 'ERR ' + DIAG.err : 'no errors'); }
   addEventListener('error', function (e) { DIAG.err = (e.message || 'error') + ' @' + (e.lineno || '?'); });
+  // ---- v0.5 play style: top level = average style; NUANCE = finer layers (reach + retreat wired, the rest stubbed) ----
+  var STY = Object.assign({ bias: 'balanced', ag: 1, rt: 0, work: .5, scout: .1 }, JSON.parse(localStorage.getItem('rts5-style') || '{}'));
+  function sendStyle() { localStorage.setItem('rts5-style', JSON.stringify(STY)); send({ t: 'act', a: 'style', ids: [], bias: STY.bias, ag: STY.ag, rt: STY.rt, work: STY.work, scout: STY.scout }); }
+  var sb = document.createElement('button'); sb.id = 'stylebtn'; sb.textContent = '\u2699'; sb.style.cssText = mb.style.cssText; sb.style.bottom = '62px'; document.body.appendChild(sb);
+  var sp = document.createElement('div'); sp.id = 'style'; sp.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:8;display:none;background:#000;border:2px solid ' + GOLD + ';border-radius:14px;padding:12px;font:700 12px ui-monospace,monospace;color:' + CRT + ';text-align:center;width:min(86vw,340px)'; document.body.appendChild(sp);
+  var STYS = [['balanced', 'BALANCED'], ['greedy', 'GREEDY'], ['protective', 'PROTECTIVE'], ['bold', 'BOLD'], ['careful', 'CAREFUL']], NU = [['ag', 'REACH', [.7, 1, 1.3], ['short', 'normal', 'long']], ['rt', 'RETREAT AT', [0, .3, .5], ['never', '30% hp', '50% hp']], ['work', 'WORKER SHARE (stub)', [.3, .5, .7], ['low', 'mid', 'high']], ['scout', 'SCOUT SHARE (stub)', [0, .1, .25], ['none', 'some', 'lots']]];
+  function btn(t, on) { return '<button style="margin:3px;padding:7px 9px;background:' + (on ? GOLD : '#000') + ';color:' + (on ? '#000' : CRT) + ';border:1.5px solid ' + GOLD + ';border-radius:8px;font:700 11px ui-monospace,monospace">' + t + '</button>'; }
+  function renderStyle() { sp.innerHTML = '<div style="color:' + GOLD + ';margin-bottom:6px">DEFAULT PLAY STYLE</div><div id="sty1">' + STYS.map(function (q) { return btn(q[1], STY.bias === q[0]); }).join('') + '</div>' +
+      '<details id="nu" style="margin-top:8px;text-align:left"' + (sp.dataset.nu ? ' open' : '') + '><summary style="cursor:pointer;color:' + GOLD + '">NUANCE \u25b8</summary>' + NU.map(function (n, ni) { return '<div style="margin-top:6px">' + n[1] + '<br><span data-n="' + ni + '">' + n[2].map(function (v, vi) { return btn(n[3][vi], STY[n[0]] === v); }).join('') + '</span></div>'; }).join('') + '</details><div>' + btn('CLOSE', false) + '</div>';
+    sp.querySelectorAll('#sty1 button').forEach(function (b2, i) { b2.onclick = function () { STY.bias = STYS[i][0]; sendStyle(); renderStyle(); }; });
+    sp.querySelectorAll('[data-n]').forEach(function (s2) { var n = NU[+s2.dataset.n]; s2.querySelectorAll('button').forEach(function (b2, vi) { b2.onclick = function () { STY[n[0]] = n[2][vi]; sendStyle(); sp.dataset.nu = '1'; renderStyle(); }; }); });
+    sp.lastChild.firstChild.onclick = function () { sp.style.display = 'none'; }; }
+  sb.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); sp.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+  sb.onclick = function () { renderStyle(); sp.style.display = sp.style.display === 'block' ? 'none' : 'block'; };
+  setTimeout(sendStyle, 1700);
   setTimeout(saveCfg, 1500); setInterval(function () { if (lastSnap) send({ t: 'hb' }); }, 3000);
   requestAnimationFrame(draw);
   HowTo.setup({ game: 'rts4', ready: function () { var k = document.getElementById('kjoin'); return !k || !k.offsetParent; }, steps: [
@@ -366,6 +406,6 @@
     { say: 'Bottom nodes 1-2-3: tap or slide for a combo that opens the wheel deeper. Tap blank map to clear', at: [.42, .97], to: [.58, .97], act: 'drag', dur: 900 },
     { say: 'Double-tap your group or a building for options', at: [.45, .6], act: 'tap', dur: 300 },
     { say: 'Pinch to zoom, two fingers to pan (mouse: wheel + right-drag)', at: [.5, .5], act: 'tap', hold: 900 } ] });
-  window.RTP = { V: V, w2s: w2s, s2w: s2w, get ents() { return ents; }, get sel() { return sel; }, set sel(v) { sel = v; sendSel(); }, get WH() { return WH; }, get orbs() { return ORBS; }, CFG: CFG, tpSet: function (o) { tpSet(o); }, orbPos: function (i) { return orbPos(i); }, openOpt: openOpt, DIAG: DIAG, get PLACE() { return PLACE; }, get ROLOS() { return ROLOS; }, ghostGeo: function () { return ghostGeo(); }, findMine: findMine, actuate: function (st) { actuate(st, [W / 2, H / 2, 100], false, [0, 0]); }, get COMBO() { return COMBO; }, get GROUPS() { return GROUPS; }, get TARGETS() { return TARGETS; }, comboLayer: comboLayer, leafOf: leafOf };
+  window.RTP = { V: V, w2s: w2s, s2w: s2w, get ents() { return ents; }, get sel() { return sel; }, set sel(v) { sel = v; sendSel(); }, get WH() { return WH; }, get orbs() { return ORBS; }, CFG: CFG, tpSet: function (o) { tpSet(o); }, orbPos: function (i) { return orbPos(i); }, openOpt: openOpt, DIAG: DIAG, get PLACE() { return PLACE; }, get ROLOS() { return ROLOS; }, get ADDM() { return ADDM; }, STY: STY, ghostGeo: function () { return ghostGeo(); }, findMine: findMine, actuate: function (st) { actuate(st, [W / 2, H / 2, 100], false, [0, 0]); }, get COMBO() { return COMBO; }, get GROUPS() { return GROUPS; }, get TARGETS() { return TARGETS; }, comboLayer: comboLayer, leafOf: leafOf };
 })();
 </script></body></html>

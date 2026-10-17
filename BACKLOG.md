@@ -198,6 +198,14 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Phone: height-tinted minimap with hill shading, your dot (pulsing) + others in colour, tap ripple + dashed course line; How to play (3 steps); perf.js on both.
 - Next: unit selection/groups, obstacles/no-fly, fog of war, flier collision, pinch-zoom minimap.
 
+## RTS v0.5 (done)
+- Taps: tapMode default 'move' (one-shot amove from wheel Attack-move); double-tap empty = 'sweep' attack-move; double-tap selected unit = openOpt + combine tree.
+- Orbs: pointerdown on orb -> G.m 'orb'; hold CFG.hold -> reopen that orb (moved to newest); move >12 px -> 'orbdrag' (o.drag drawn under finger); up = fire. orbDrop(): over .gb bubble -> g.queue (own groups only); in the orb row -> nothing; else fire with wp = drop point, ids = sel or orb's sel.
+- Order-of-drop rule: GROUP->ORB = ASSIGN now (replaces orders); ORB->GROUP = QUEUE (800 ms poll, fires when >=70% of alive group units are idle; snapshot unit q[8] = idle). Gatherers count as busy.
+- Lasso: closed if end-start < max(36 px, 22% of bbox diagonal). Open -> ADDM (first open replaces, then adds); closed or blank tap ends (blank tap still moves); an empty closed loop in ADDM just ends it. Group auto-save when not adding / on end.
+- Style: phone rts5-style {bias, ag, rt, work, scout} -> act 'style'; TV STYLE: default bias for new + still-default units, ag scales aggro range, rt = retreat hp. work/scout stubbed.
+- Todo: orbs still block map lasso/taps while pending (touch reopens newest); queue on enemy groups unsupported.
+
 ## RTS v0.4.1 (done)
 - Pixel 'no markers' bug: NOT reproduced (headless Pixel 7 emulation over real PeerJS from a laptop-style host shows markers, ~1 KB snaps at ~5 Hz). Hardened likely causes: size() from visualViewport fallback + min 1px + DPR re-read on resize/orientation; V.s guard; NaN position guard; try/catch around snapshot + entity draw (error kept in DIAG.err); onMsg accepts JSON strings; pad sends {t:'need'} when no snap for 2.5 s -> TV snap(p) to that phone; TV sets p.on=true on any message (stale onClose used to stop snapshots silently); auto findMine() once if none of ours on screen. DIAG overlay: snaps/Hz/age/KB, ent counts, on-screen count, view, css/dpr/canvas, msg types, last error, FIND MY SHAPES. Ask Justin for a DIAG screenshot from the Pixel.
 - Rolodex stack: ROLOS[], RO_OPEN 60 ms linear vertical open, RO_PER 70 ms, RO_HOLD 380; slots stack upward from bottom-right, y eases to slot (drop together).
