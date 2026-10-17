@@ -7,6 +7,8 @@
     bus: { name: 'Bus', mass: 7000, size: [10, 3, 2.6], spd: 0.82, spin: 0.45, fr: 0.05 } };
   var SCORE = { crate: 100, tower: 400, air: 60, flip: 500 }, RUN = { maxT: 11, stillV: 0.7, stillT: 1.2, speedMin: 18, speedMax: 44, yawMax: 0.45 };
   var START = [-42, 0];
+  // v0.2 off-road: the runway is |z| < ROAD.hw between x0..x1 (ramps count as road). On dirt vehicles dig in: drag, sideways grip, slip -> roll torque.
+  var ROAD = { hw: 4.5, x0: -50, x1: 80 }, DIRT = { drag: 7, grip: 5, roll: 0.55, rollMin: 3, sink: 0.12 };
   function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   function genLevel(seed) { var R = rng(seed), L = { seed: seed, ramps: [], crates: [], start: START };
     var x = -12 + R() * 10, h = 1.8 + R() * 1.6, len = 7 + R() * 4; L.ramps.push({ x: x, z: (R() - .5) * 4, len: len, w: 7, h: h });
@@ -29,9 +31,16 @@
     var yaw = Math.max(-RUN.yawMax, Math.min(RUN.yawMax, o.yaw || 0)), sp = Math.max(RUN.speedMin, Math.min(RUN.speedMax, o.speed || 30)) * V.spd; b.position.set(START[0], s[1] / 2 + 0.05, START[1] + (o.z || 0)); b.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -yaw);
     b.velocity.set(Math.cos(yaw) * sp, 0, Math.sin(yaw) * sp); b.linearDamping = 0.01; b.angularDamping = 0.05; b.allowSleep = false; this.w.addBody(b); this.veh = b;
     this.run = { V: V, veh: o.veh, t: 0, air: 0, airNow: false, flipAcc: 0, flips: 0, still: 0, took: false, rec: [], done: false, ground: true, maxAir: 0, yaw: yaw, speed: sp }; };
-  World.prototype.grounded = function () { var v = this.veh, w = this.w, n = 0; for (var i = 0; i < w.contacts.length; i++) { var c = w.contacts[i]; if (c.bi === v || c.bj === v) { var o = c.bi === v ? c.bj : c.bi; if (o.mass === 0) return true; n++; } } return false; };
+  World.prototype.grounded = function () { var v = this.veh, w = this.w, g = false, onG = false; for (var i = 0; i < w.contacts.length; i++) { var c = w.contacts[i]; if (c.bi === v || c.bj === v) { var o = c.bi === v ? c.bj : c.bi; if (o.mass === 0) { g = true; if (o === this.ground) onG = true; } } } this.onGround = onG; return g; };
+  World.prototype.offRoad = function () { var p = this.veh.position; return this.onGround && (Math.abs(p.z) > ROAD.hw || p.x < ROAD.x0 || p.x > ROAD.x1); };
   World.prototype.step = function (dt) { var R = this.run; this.w.step(1 / 60, dt, 4); if (!R || R.done) return; var v = this.veh; R.t += dt;
-    var gr = this.grounded(); if (!gr) { R.air += dt; if (!R.took && v.position.y > 0.8) { R.took = true; var lat = new CANNON.Vec3(0, 0, 1); v.quaternion.vmult(lat, lat); v.angularVelocity.vadd(lat.scale(R.V.spin * (0.7 + Math.random() * 0.6)), v.angularVelocity); } var ax = new CANNON.Vec3(0, 0, 1), ax2 = new CANNON.Vec3(1, 0, 0); v.quaternion.vmult(ax, ax); v.quaternion.vmult(ax2, ax2); R.flipAcc += Math.abs(v.angularVelocity.dot(ax)) * dt + Math.abs(v.angularVelocity.dot(ax2)) * dt * 0.6; } else { R.flips += Math.floor(R.flipAcc / (Math.PI * 2) + 0.15); R.flipAcc = 0; }
+    var gr = this.grounded(); R.dirt = gr && this.offRoad();
+    if (R.dirt) { var vel = v.velocity, hs = Math.hypot(vel.x, vel.z); if (hs > 0.05) { var dv = Math.min(hs, DIRT.drag * dt) / hs; vel.x -= vel.x * dv; vel.z -= vel.z * dv; }
+      var rt = new CANNON.Vec3(0, 0, 1), fw = new CANNON.Vec3(1, 0, 0); v.quaternion.vmult(rt, rt); v.quaternion.vmult(fw, fw); var vl = vel.dot(rt), kk = Math.min(1, DIRT.grip * dt);
+      vel.x -= rt.x * vl * kk; vel.z -= rt.z * vl * kk;   // sideways grip...
+      if (Math.abs(vl) > DIRT.rollMin) { R.rollK = R.rollK || (0.5 + Math.random()); v.angularVelocity.vadd(fw.scale(-Math.sign(vl) * (Math.abs(vl) - DIRT.rollMin) * DIRT.roll * R.rollK * (1 + hs / 25) * dt * 6 / Math.sqrt(R.V.mass / 1300)), v.angularVelocity); }   // ...and a slide that digs in can trip it over
+      R.dirtT = (R.dirtT || 0) + dt; }
+    if (!gr) { R.air += dt; if (!R.took && v.position.y > 0.8) { R.took = true; var lat = new CANNON.Vec3(0, 0, 1); v.quaternion.vmult(lat, lat); v.angularVelocity.vadd(lat.scale(R.V.spin * (0.7 + Math.random() * 0.6)), v.angularVelocity); } var ax = new CANNON.Vec3(0, 0, 1), ax2 = new CANNON.Vec3(1, 0, 0); v.quaternion.vmult(ax, ax); v.quaternion.vmult(ax2, ax2); R.flipAcc += Math.abs(v.angularVelocity.dot(ax)) * dt + Math.abs(v.angularVelocity.dot(ax2)) * dt * 0.6; } else { R.flips += Math.floor(R.flipAcc / (Math.PI * 2) + 0.15); R.flipAcc = 0; }
     var sp = v.velocity.length(); R.still = sp < RUN.stillV && R.t > 2 ? R.still + dt : 0;
     // record for replays (30 fps)
     if (!R.lastRec || R.t - R.lastRec >= 1 / 30) { R.lastRec = R.t; var bs = [v].concat(this.crates), f = new Float32Array(bs.length * 7); bs.forEach(function (b, k) { f.set([b.position.x, b.position.y, b.position.z, b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w], k * 7); }); R.rec.push(f); }
@@ -39,5 +48,5 @@
   World.prototype.smashed = function () { var n = 0, top = 0; this.crates.forEach(function (b) { var d = b.position.vsub(b.p0).length(), up = new CANNON.Vec3(0, 1, 0); b.quaternion.vmult(up, up); if (d > 0.8 || up.y < 0.85) n++; top = Math.max(top, b.p0.y); }); return n; };
   World.prototype.finish = function () { var R = this.run; if (R.flipAcc) R.flips += Math.floor(R.flipAcc / (Math.PI * 2) + 0.15); R.done = true; R.crates = this.smashed(); R.towerDown = R.crates >= this.crates.length * 0.6;
     R.score = Math.round(R.crates * SCORE.crate + (R.towerDown ? SCORE.tower : 0) + R.air * SCORE.air + R.flips * SCORE.flip); };
-  root.Stunt = { VEH: VEH, SCORE: SCORE, RUN: RUN, genLevel: genLevel, World: World, START: START };
+  root.Stunt = { ROAD: ROAD, DIRT: DIRT, VEH: VEH, SCORE: SCORE, RUN: RUN, genLevel: genLevel, World: World, START: START };
 })(window);

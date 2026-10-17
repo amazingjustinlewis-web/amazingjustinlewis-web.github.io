@@ -155,6 +155,8 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 
 ## Stunt Smash v0.1 (Oct 16, 2026, dev only: /dev-7q3x/stunt/)
 - [x] Random level per round (1-2 kicker ramps, crate tower/wall/pile), phone top-down map: draw a line (direction from start, clamped +-26 deg), vehicle pick (bike 250 kg flips / car 1300 kg / bus 7000 kg smash), speed slider, GO. cannon.js 0.6.2 box physics on the TV; score = 100/crate + 400 total wreck + 60/s air + 500/flip. Turn rotation, chase cam, slow-mo (0.3x) orbit replay of the round's best crash, tap to skip.
+- [x] v0.2: aim drag reach -> launch strength (DRAGSPD 30..125 m -> 18..44, slider live); dirt off-road (ROAD/DIRT: drag 7 m/s2, sideways grip, slip -> roll torque scaled by speed and mass, 0.12 m visual sink, Points dirt spray); queue next shot during other runs/replays (auto-launch 1.4 s into your turn); GO launch FX (glow, full-screen flash, fade to 'Observe display screen', returns after a beat or when you're next).
+- [ ] Tune dirt roll odds on real play; tapping the near-black screen during the replay skips it (maybe make that clearer).
 - [ ] Next: curved drawn paths (steer along the line), real wheels/suspension, more obstacle kinds (loops, gaps, explosive barrels), sounds, per-round leaderboard card.
 
 ## Mini golf idea (note only, Oct 16, 2026)
