@@ -1,0 +1,154 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mocap Studio v0.1</title>
+<style>
+:root{--g:#e8b830;--c:#3dff6e;--bg:#0b0b0d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#ddd;font:14px/1.4 system-ui,Segoe UI,sans-serif;display:flex;height:100vh;overflow:hidden}
+#stage{flex:1;position:relative;background:#000;display:flex;align-items:center;justify-content:center}
+#stage video,#stage canvas{position:absolute;max-width:100%;max-height:100%}
+.mir{transform:scaleX(-1)}
+#hud{position:absolute;left:10px;top:8px;font:600 13px ui-monospace,monospace;color:var(--c);text-shadow:0 0 4px #000;white-space:pre;pointer-events:none}
+#big{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 22vh system-ui;color:var(--g);text-shadow:0 0 30px #000;pointer-events:none}
+#rec{position:absolute;right:12px;top:10px;font:700 15px system-ui;color:#f44;display:none}
+#side{width:340px;background:#141418;border-left:2px solid var(--g);padding:12px;overflow:auto}
+h1{font-size:17px;margin:0 0 8px;color:var(--g)}h2{font-size:13px;margin:14px 0 6px;color:var(--g);text-transform:uppercase;letter-spacing:.06em}
+label{display:flex;justify-content:space-between;align-items:center;margin:4px 0;gap:8px}
+select,input{background:#000;color:#eee;border:1px solid #555;border-radius:5px;padding:3px 5px;font:inherit}input[type=number]{width:70px}
+button{background:#000;color:var(--g);border:1.5px solid var(--g);border-radius:7px;padding:6px 10px;font:600 13px system-ui;cursor:pointer;margin:2px 0}
+button.go{background:var(--g);color:#000;width:100%;padding:10px;font-size:16px}button:disabled{opacity:.4;cursor:default}
+.take{border:1px solid #333;border-radius:8px;padding:6px;margin:6px 0;background:#0e0e11}.take input{width:100%}.take small{color:#999}
+#bars{position:absolute;right:10px;bottom:10px;width:190px;font:11px ui-monospace,monospace;color:#ccc;pointer-events:none}
+#bars div{display:flex;align-items:center;gap:4px}#bars i{display:block;height:7px;background:var(--c)}
+#log{font:11px ui-monospace,monospace;color:#8a8;white-space:pre-wrap;max-height:120px;overflow:auto}
+</style></head><body>
+<div id="stage"><video id="vid" class="mir" playsinline muted></video><canvas id="ov" class="mir"></canvas><div id="hud">Mocap Studio v0.1 - press START CAMERA</div><div id="big"></div><div id="rec">&#9679; REC</div><div id="bars"></div></div>
+<div id="side">
+<h1>Mocap Studio v0.1</h1>
+<label>Station <select id="mode"><option value="body">BODY (full-body pose)</option><option value="face">FACE + VOICE</option><option value="both">BOTH (one camera sees all)</option></select></label>
+<label>Camera <select id="cam"></select></label>
+<label>Mic <select id="mic"></select></label>
+<label>Pose model <select id="pmodel"><option value="full">full (faster)</option><option value="heavy">heavy (best)</option></select></label>
+<label>Resolution <select id="res"><option value="1280x720">1280x720</option><option value="1920x1080">1920x1080</option><option value="640x480">640x480</option></select></label>
+<button id="startcam" class="go">START CAMERA</button>
+<h2>Take</h2>
+<label>Name <input id="tname" value="take"></label>
+<label>Countdown (s) <input id="cd" type="number" min="0" max="10" value="3"></label>
+<label>Pre-roll capture (s) <input id="pre" type="number" min="0" max="5" step=".5" value="1"></label>
+<label>Auto-stop after (s, 0=off) <input id="auto" type="number" min="0" max="600" value="0"></label>
+<label>Countdown voice <select id="voice"><option value="speech">spoken (3,2,1,action)</option><option value="beep">beeps</option><option value="off">silent</option></select></label>
+<label>Record audio <select id="aud"><option value="auto">FACE/BOTH only</option><option value="on">always</option><option value="off">never</option></select></label>
+<label>Smoothing (one-euro) <select id="smooth"><option value="0">off (raw, smooth in Blender)</option><option value="1">light</option><option value="2">strong</option></select></label>
+<button id="recbtn" class="go" disabled>RECORD (space)</button>
+<small style="color:#999">Space = start / stop &middot; Esc = cancel countdown</small>
+<h2>Takes</h2><div id="takes"></div>
+<h2>Log</h2><div id="log"></div>
+</div>
+<script type="module">
+const MPV = '0.10.14';
+const $ = id => document.getElementById(id);
+const S = JSON.parse(localStorage.getItem('mocap-cfg') || '{}');
+['mode','pmodel','res','cd','pre','auto','voice','aud','smooth','tname'].forEach(k => { const el = $(k); if (S[k] != null) el.value = S[k]; el.addEventListener('change', () => { S[k] = el.value; localStorage.setItem('mocap-cfg', JSON.stringify(S)); }); });
+function log(s) { $('log').textContent = (new Date().toLocaleTimeString() + ' ' + s + '\n' + $('log').textContent).slice(0, 4000); console.log('[mocap]', s); }
+window.addEventListener('error', e => log('ERROR ' + e.message));
+const BS_NAMES = ['_neutral','browDownLeft','browDownRight','browInnerUp','browOuterUpLeft','browOuterUpRight','cheekPuff','cheekSquintLeft','cheekSquintRight','eyeBlinkLeft','eyeBlinkRight','eyeLookDownLeft','eyeLookDownRight','eyeLookInLeft','eyeLookInRight','eyeLookOutLeft','eyeLookOutRight','eyeLookUpLeft','eyeLookUpRight','eyeSquintLeft','eyeSquintRight','eyeWideLeft','eyeWideRight','jawForward','jawLeft','jawOpen','jawRight','mouthClose','mouthDimpleLeft','mouthDimpleRight','mouthFrownLeft','mouthFrownRight','mouthFunnel','mouthLeft','mouthLowerDownLeft','mouthLowerDownRight','mouthPressLeft','mouthPressRight','mouthPucker','mouthRight','mouthRollLower','mouthRollUpper','mouthShrugLower','mouthShrugUpper','mouthSmileLeft','mouthSmileRight','mouthStretchLeft','mouthStretchRight','mouthUpperUpLeft','mouthUpperUpRight','noseSneerLeft','noseSneerRight'];
+// ---------- one-euro filter ----------
+class OneEuro { constructor(minCut, beta) { this.mc = minCut; this.b = beta; this.x = null; this.dx = 0; this.t = 0; }
+  a(cut, dt) { const r = 2 * Math.PI * cut * dt; return r / (r + 1); }
+  f(x, t) { if (this.x === null) { this.x = x; this.t = t; return x; } const dt = Math.max(1e-3, t - this.t); this.t = t; const dx = (x - this.x) / dt; this.dx += this.a(1, dt) * (dx - this.dx); const cut = this.mc + this.b * Math.abs(this.dx); this.x += this.a(cut, dt) * (x - this.x); return this.x; } }
+let filters = {}; function filt(key, x, t) { const lv = +$('smooth').value; if (!lv) return x; const F = filters[key] || (filters[key] = new OneEuro(lv === 1 ? 1.5 : .6, lv === 1 ? .3 : .05)); return F.f(x, t); }
+// ---------- devices ----------
+async function listDevices() { try { const d = await navigator.mediaDevices.enumerateDevices(); const fill = (sel, kind) => { const cur = sel.value; sel.innerHTML = ''; d.filter(x => x.kind === kind).forEach((x, i) => { const o = document.createElement('option'); o.value = x.deviceId; o.textContent = x.label || (kind + ' ' + (i + 1)); sel.appendChild(o); }); if (cur) sel.value = cur; }; fill($('cam'), 'videoinput'); fill($('mic'), 'audioinput'); } catch (e) { log('devices: ' + e.message); } }
+listDevices();
+// ---------- MediaPipe ----------
+let vision, pose = null, face = null, mp;
+async function loadModels() { mp = await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MPV}/vision_bundle.mjs`);
+  vision = await mp.FilesetResolver.forVisionTasks(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MPV}/wasm`);
+  const mode = $('mode').value, mk = async (Cls, opts) => { for (const delegate of ['GPU', 'CPU']) { try { const r = await Cls.createFromOptions(vision, Object.assign({ baseOptions: { modelAssetPath: opts.url, delegate }, runningMode: 'VIDEO' }, opts.o)); log(opts.n + ' loaded (' + delegate + ')'); return r; } catch (e) { log(opts.n + ' ' + delegate + ' failed: ' + e.message); } } return null; };
+  pose = face = null;
+  if (mode !== 'face') pose = await mk(mp.PoseLandmarker, { n: 'pose ' + $('pmodel').value, url: `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${$('pmodel').value}/float16/latest/pose_landmarker_${$('pmodel').value}.task`, o: { numPoses: 1, minPoseDetectionConfidence: .5, minTrackingConfidence: .5 } });
+  if (mode !== 'body') face = await mk(mp.FaceLandmarker, { n: 'face', url: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task', o: { numFaces: 1, outputFaceBlendshapes: true, outputFacialTransformationMatrixes: true } }); }
+// ---------- camera / mic ----------
+const vid = $('vid'), ov = $('ov'), g = ov.getContext('2d'); let camStream = null, micStream = null, actx = null, running = false;
+async function startCam() { $('startcam').disabled = true; try {
+    const [w, h] = $('res').value.split('x').map(Number), devId = $('cam').value;
+    camStream = await navigator.mediaDevices.getUserMedia({ video: Object.assign({ width: { ideal: w }, height: { ideal: h }, frameRate: { ideal: 30 } }, devId ? { deviceId: { exact: devId } } : {}), audio: false });
+    vid.srcObject = camStream; await vid.play(); await listDevices(); log('camera ' + vid.videoWidth + 'x' + vid.videoHeight);
+    $('hud').textContent = 'loading MediaPipe models...'; await loadModels();
+    running = true; $('recbtn').disabled = false; $('startcam').textContent = 'RESTART CAMERA / RELOAD MODELS'; $('startcam').disabled = false; requestAnimationFrame(loop);
+  } catch (e) { log('camera/models failed: ' + e.message); $('hud').textContent = 'ERROR: ' + e.message; $('startcam').disabled = false; } }
+$('startcam').onclick = () => { running = false; if (camStream) camStream.getTracks().forEach(t => t.stop()); startCam(); };
+$('mode').addEventListener('change', () => { if (running) { running = false; loadModels().then(() => { running = true; requestAnimationFrame(loop); }); } });
+// ---------- audio capture (PCM -> WAV, plus WebM/Opus) ----------
+const WORKLET = `class Cap extends AudioWorkletProcessor{process(i){const c=i[0];if(c&&c[0])this.port.postMessage(c[0].slice(0));return true}}registerProcessor('cap',Cap)`;
+let pcm = [], pcmOn = false, pcmT0 = 0, mrec = null, mchunks = [], audioSR = 48000;
+async function startAudio() { const devId = $('mic').value;
+  micStream = await navigator.mediaDevices.getUserMedia({ audio: Object.assign({ echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 }, devId ? { deviceId: { exact: devId } } : {}) });
+  actx = actx || new AudioContext(); if (actx.state === 'suspended') await actx.resume(); audioSR = actx.sampleRate;
+  if (!startAudio.ok) { await actx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }))); startAudio.ok = true; }
+  const src = actx.createMediaStreamSource(micStream), node = new AudioWorkletNode(actx, 'cap'); node.port.onmessage = e => { if (pcmOn) { if (!pcm.length) pcmT0 = performance.now() - e.data.length / audioSR * 1000; pcm.push(e.data); } };
+  src.connect(node); const mute = actx.createGain(); mute.gain.value = 0; node.connect(mute).connect(actx.destination); startAudio.node = node;
+  try { mrec = new MediaRecorder(micStream, { mimeType: 'audio/webm;codecs=opus' }); mrec.ondataavailable = e => mchunks.push(e.data); } catch (e) { mrec = null; } }
+function stopAudio() { pcmOn = false; if (mrec && mrec.state !== 'inactive') mrec.stop(); if (micStream) micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+function wav(chunks, sr) { const n = chunks.reduce((a, c) => a + c.length, 0), buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf); const ws = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  ws(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); ws(8, 'WAVE'); ws(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); ws(36, 'data'); v.setUint32(40, n * 2, true);
+  let o = 44; for (const c of chunks) for (let i = 0; i < c.length; i++, o += 2) v.setInt16(o, Math.max(-1, Math.min(1, c[i])) * 32767, true); return new Blob([buf], { type: 'audio/wav' }); }
+// ---------- countdown ----------
+function beep(f, d) { try { actx = actx || new AudioContext(); const o = actx.createOscillator(), gg = actx.createGain(); o.frequency.value = f; gg.gain.value = .25; o.connect(gg).connect(actx.destination); o.start(); o.stop(actx.currentTime + d); } catch (e) {} }
+function say(t, final) { const v = $('voice').value; if (v === 'speech' && window.speechSynthesis) { const u = new SpeechSynthesisUtterance(t); u.rate = 1.15; speechSynthesis.cancel(); speechSynthesis.speak(u); } else if (v !== 'off') beep(final ? 1320 : 880, final ? .35 : .12); }
+// ---------- recording ----------
+let state = 'idle', take = null, cdTimer = null, autoTimer = null, T0 = 0, takes = [];
+const wantAudio = () => $('aud').value === 'on' || ($('aud').value === 'auto' && $('mode').value !== 'body');
+async function startTake() { if (state !== 'idle') return; state = 'count'; filters = {};
+  const cd = Math.max(0, +$('cd').value || 0), pre = Math.max(0, Math.min(cd || 0, +$('pre').value || 0)), au = wantAudio();
+  if (au) { try { await startAudio(); } catch (e) { log('mic failed: ' + e.message); } }
+  take = { format: 'ztp-mocap', version: 1, name: $('tname').value.trim() || 'take', mode: $('mode').value, created: new Date().toISOString(), clock: 'seconds from ACTION (negative = pre-roll)', preroll: pre,
+    video: { w: vid.videoWidth, h: vid.videoHeight, mirroredPreview: true }, pose_model: pose ? $('pmodel').value : null, smoothing: +$('smooth').value, blendshape_names: BS_NAMES, landmark_set: 'mediapipe-pose-33 world (m, hip-centred, y down)', frames: [], audio: null };
+  let n = cd; const tick = () => { if (state !== 'count') return; const remain = n;
+    if (remain <= pre && !take.capturing) beginCapture(au);
+    if (remain > 0) { $('big').textContent = remain; say(String(remain)); n--; cdTimer = setTimeout(tick, 1000); }
+    else { $('big').textContent = 'ACTION'; say('action', true); T0 = performance.now() - 0; take.t0_wall = Date.now(); take.T0 = T0; if (!take.capturing) beginCapture(au); state = 'rec'; $('rec').style.display = 'block'; setTimeout(() => { if ($('big').textContent === 'ACTION') $('big').textContent = ''; }, 700);
+      const a = +$('auto').value; if (a > 0) autoTimer = setTimeout(stopTake, a * 1000); } };
+  // capture starts pre seconds before ACTION; T0 provisional until ACTION
+  T0 = performance.now() + cd * 1000; tick(); }
+function beginCapture(au) { take.capturing = true; if (au && micStream) { pcm = []; pcmOn = true; mchunks = []; if (mrec) mrec.start(250); take.audio_req = true; } }
+function cancelTake() { clearTimeout(cdTimer); clearTimeout(autoTimer); state = 'idle'; $('big').textContent = ''; $('rec').style.display = 'none'; stopAudio(); take = null; log('cancelled'); }
+async function stopTake() { if (state === 'count') return cancelTake(); if (state !== 'rec') return; clearTimeout(autoTimer); state = 'idle'; $('rec').style.display = 'none'; say('cut', true);
+  const t = take; delete t.capturing; let wavB = null, webmB = null;
+  if (t.audio_req) { pcmOn = false; await new Promise(r => setTimeout(r, 120)); if (mrec && mrec.state !== 'inactive') { await new Promise(r => { mrec.onstop = r; mrec.stop(); }); webmB = new Blob(mchunks, { type: 'audio/webm' }); }
+    wavB = wav(pcm, audioSR); t.audio = { wav: t.name + '.wav', webm: webmB ? t.name + '.webm' : null, sampleRate: audioSR, offset: +((pcmT0 - T0) / 1000).toFixed(4), seconds: +(pcm.reduce((a, c) => a + c.length, 0) / audioSR).toFixed(3), note: 'offset = time of the first audio sample on the take clock (s); place the strip at that time' }; }
+  delete t.audio_req; stopAudio();
+  const fr = t.frames; t.duration = fr.length ? +(fr[fr.length - 1].t - fr[0].t).toFixed(3) : 0; t.fps_est = fr.length > 1 ? +((fr.length - 1) / t.duration).toFixed(2) : 0;
+  takes.unshift({ t, wavB, webmB }); renderTakes(); log('take "' + t.name + '": ' + fr.length + ' frames, ' + t.duration + ' s, ~' + t.fps_est + ' fps' + (wavB ? ', audio ' + t.audio.seconds + ' s' : ''));
+  const m = $('tname').value.match(/^(.*?)(\d+)$/); $('tname').value = m ? m[1] + String(+m[2] + 1).padStart(m[2].length, '0') : $('tname').value + '_02'; S.tname = $('tname').value; localStorage.setItem('mocap-cfg', JSON.stringify(S)); take = null; }
+$('recbtn').onclick = () => state === 'idle' ? startTake() : stopTake();
+addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' && e.target.type !== 'number') return; if (e.code === 'Space') { e.preventDefault(); if (running) state === 'idle' ? startTake() : stopTake(); } if (e.code === 'Escape' && state === 'count') cancelTake(); });
+function dl(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+function renderTakes() { const box = $('takes'); box.innerHTML = ''; takes.forEach((T, i) => { const d = document.createElement('div'); d.className = 'take';
+    d.innerHTML = `<input value="${T.t.name}"><small>${T.t.mode} · ${T.t.frames.length} frames · ${T.t.duration}s · ~${T.t.fps_est} fps${T.wavB ? ' · audio' : ''}</small><br>`;
+    const inp = d.querySelector('input'); inp.onchange = () => { T.t.name = inp.value.trim() || T.t.name; if (T.t.audio) { T.t.audio.wav = T.t.name + '.wav'; if (T.t.audio.webm) T.t.audio.webm = T.t.name + '.webm'; } };
+    const b = (txt, fn) => { const x = document.createElement('button'); x.textContent = txt; x.onclick = fn; d.appendChild(x); d.appendChild(document.createTextNode(' ')); };
+    b('JSON', () => dl(new Blob([JSON.stringify(T.t)], { type: 'application/json' }), T.t.name + '.json'));
+    if (T.wavB) b('WAV', () => dl(T.wavB, T.t.name + '.wav')); if (T.webmB) b('WebM', () => dl(T.webmB, T.t.name + '.webm'));
+    b('all', () => { dl(new Blob([JSON.stringify(T.t)], { type: 'application/json' }), T.t.name + '.json'); if (T.wavB) setTimeout(() => dl(T.wavB, T.t.name + '.wav'), 300); });
+    b('\u2715', () => { if (confirm('Delete take ' + T.t.name + '?')) { takes.splice(i, 1); renderTakes(); } }); box.appendChild(d); }); }
+// ---------- main loop ----------
+let lastT = -1, fpsC = 0, fpsT = performance.now(), fps = 0, du = null;
+function loop() { if (!running) return; requestAnimationFrame(loop); if (vid.readyState < 2 || vid.currentTime === lastT) return; lastT = vid.currentTime;
+  const now = performance.now(), ts = Math.round(now); if (ov.width !== vid.videoWidth) { ov.width = vid.videoWidth; ov.height = vid.videoHeight; }
+  const box = vid.getBoundingClientRect(); ov.style.width = box.width + 'px'; ov.style.height = box.height + 'px';
+  g.clearRect(0, 0, ov.width, ov.height); du = du || new mp.DrawingUtils(g); let fr = null; const capturing = take && take.capturing, ts2 = (now - T0) / 1000;
+  if (capturing) fr = { t: +ts2.toFixed(4) };
+  if (pose) { const r = pose.detectForVideo(vid, ts); if (r.landmarks && r.landmarks[0]) { du.drawConnectors(r.landmarks[0], mp.PoseLandmarker.POSE_CONNECTIONS, { color: '#e8b830', lineWidth: 3 }); du.drawLandmarks(r.landmarks[0], { color: '#3dff6e', radius: 3 }); }
+    if (fr && r.worldLandmarks && r.worldLandmarks[0]) { const W = r.worldLandmarks[0], L = r.landmarks[0];
+      fr.pose = W.map((p, i) => [+filt('p' + i + 'x', p.x, ts2).toFixed(4), +filt('p' + i + 'y', p.y, ts2).toFixed(4), +filt('p' + i + 'z', p.z, ts2).toFixed(4), +(p.visibility ?? 1).toFixed(3)]);
+      const hx = (L[23].x + L[24].x) / 2, hy = (L[23].y + L[24].y) / 2; fr.hip2d = [+hx.toFixed(4), +hy.toFixed(4), +L[23].x.toFixed(4), +L[24].x.toFixed(4)]; } } /* hip2d = image-normalised hip centre + L/R hip x (root-motion scale) */
+  if (face) { const r = face.detectForVideo(vid, ts); if (r.faceLandmarks && r.faceLandmarks[0]) { du.drawConnectors(r.faceLandmarks[0], mp.FaceLandmarker.FACE_LANDMARKS_CONTOURS, { color: '#3dff6e', lineWidth: 1 }); }
+    if (r.faceBlendshapes && r.faceBlendshapes[0]) { const C = r.faceBlendshapes[0].categories; drawBars(C);
+      if (fr) { fr.bs = BS_NAMES.map((n, i) => { const c = C[i]; return +filt('b' + i, c ? c.score : 0, ts2).toFixed(3); }); const M = r.facialTransformationMatrixes && r.facialTransformationMatrixes[0]; if (M) fr.head = Array.from(M.data).map(v => +v.toFixed(4)); } } }
+  if (fr && (fr.pose || fr.bs)) take.frames.push(fr);
+  fpsC++; if (now - fpsT > 500) { fps = fpsC * 1000 / (now - fpsT); fpsC = 0; fpsT = now; }
+  $('hud').textContent = `${$('mode').value.toUpperCase()}  ${fps.toFixed(1)} fps  ${vid.videoWidth}x${vid.videoHeight}` + (take && take.capturing ? `\nREC ${ts2.toFixed(1)} s  ${take.frames.length} frames` : '') + (pose ? '' : '') ; }
+const BARS = ['jawOpen', 'eyeBlinkLeft', 'eyeBlinkRight', 'mouthPucker', 'mouthFunnel', 'mouthSmileLeft', 'browInnerUp', 'mouthClose'];
+function drawBars(C) { const m = {}; C.forEach(c => m[c.categoryName] = c.score); $('bars').innerHTML = BARS.map(n => `<div><span style="width:95px">${n}</span><i style="width:${Math.round((m[n] || 0) * 90)}px"></i></div>`).join(''); }
+window.MOCAP = { get takes() { return takes; }, get state() { return state; }, get running() { return running; }, startTake, stopTake, get pose() { return !!pose; }, get face() { return !!face; } };
+log('ready - choose station, then START CAMERA');
+</script></body></html>

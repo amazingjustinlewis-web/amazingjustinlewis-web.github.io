@@ -198,6 +198,11 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Phone: height-tinted minimap with hill shading, your dot (pulsing) + others in colour, tap ripple + dashed course line; How to play (3 steps); perf.js on both.
 - Next: unit selection/groups, obstacles/no-fly, fog of war, flier collision, pinch-zoom minimap.
 
+## Mocap Studio v0.1 (tool, /dev-7q3x/mocap/)
+- Single page: MediaPipe Tasks vision 0.10.14 from jsDelivr (Pose Landmarker full/heavy + world landmarks, Face Landmarker with blendshapes + facial matrix), GPU delegate with CPU fallback. Stations BODY / FACE+VOICE / BOTH; spoken or beep countdown, pre-roll capture, Space start/stop, Esc cancel, auto-stop; optional one-euro smoothing; take list with rename + JSON/WAV/WebM download. Audio: AudioWorklet PCM -> WAV + MediaRecorder WebM, offset measured on the take clock (seconds from ACTION).
+- Format 'ztp-mocap' v1 (see README in D:\AI\Mocap). Blender importer + synthetic test live in /workspace/mocap/pkg (not in this repo).
+- Todo: hands/fingers (Hand Landmarker), multi-camera fusion, in-page playback of a take, foot-contact flags.
+
 ## RTS v0.5 (done)
 - Taps: tapMode default 'move' (one-shot amove from wheel Attack-move); double-tap empty = 'sweep' attack-move; double-tap selected unit = openOpt + combine tree.
 - Orbs: pointerdown on orb -> G.m 'orb'; hold CFG.hold -> reopen that orb (moved to newest); move >12 px -> 'orbdrag' (o.drag drawn under finger); up = fire. orbDrop(): over .gb bubble -> g.queue (own groups only); in the orb row -> nothing; else fire with wp = drop point, ids = sel or orb's sel.
