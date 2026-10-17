@@ -14,7 +14,7 @@ window.DEV_GAMES = [
   { id: 'stack', name: 'Stack Attack', ver: 'v0.2.1', url: 'stack/index.html', img: 'stack/shot.jpg', tag: '3D tower build vs 2 bots, then disaster' },
   { id: 'buddy', name: 'Balloon Buddy', ver: 'v0.1.1', url: 'buddy/index.html', img: 'buddy/shot.jpg', tag: 'Silly word guessing \u00b7 pop the balloons' },
   { id: 'orbit', name: 'Orbit Brawl', ver: 'v0.7', url: 'orbit/index.html', img: 'orbit/shot.jpg', tag: 'Phone cockpit space dogfight \u00b7 2\u201320 pilots \u00b7 TV = live cinematic cam' },
-  { id: 'bubble', name: 'Bubble Hockey', ver: 'v0.9.3', url: 'bubble/index.html', img: 'bubble/shot.jpg', tag: 'Table-top rod hockey \u00b7 drag, dangle, flick to pass' },
+  { id: 'bubble', name: 'Bubble Hockey', ver: 'v0.9.4', url: 'bubble/index.html', img: 'bubble/shot.jpg', tag: 'Table-top rod hockey \u00b7 drag, dangle, flick to pass' },
   { id: 'foosball', name: 'Foosball', ver: 'v0.1', url: 'foosball/index.html', img: 'foosball/shot.png', tag: 'Table foosball \u00b7 slide rods, kick, pass, trick shots' },
   { id: 'lostsock', name: 'Lost Sock', ver: 'v0.3', url: 'lostsock/index.html', img: 'lostsock/shot.png', tag: 'Sock artillery \u00b7 phones \u00b7 WIP' },
   { id: 'derby', name: 'Demolition Derby', ver: 'v0.4.2-dev', url: 'derby/index.html', img: 'derby/shot.png', tag: 'Car smash + Race mode \u00b7 phones \u00b7 play on a phone screen' },

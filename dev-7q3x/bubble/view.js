@@ -71,7 +71,7 @@
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
   // touch -> intents. send(m) gets {t:'grab',i} {t:'drag',x,y} {t:'rel'} {t:'tap'} {t:'flick',dx,dy,sp} in rink coords
   function Gestures(el, V, getSt, send) {
-    function pick(X, Y) { var w = V.pick && V.pick(X, Y); return w || V.s2w(X, Y); }
+    function pick(X, Y) { if (V.unrot) { var u = V.unrot(X, Y); X = u[0]; Y = u[1]; } var w = V.pick && V.pick(X, Y); return w || V.s2w(X, Y); }
     var id = null, pts = [], t0 = 0, start = null, goalieT = null, gv = null, GSWIPE = 1.1;   // strip finger speed (rink widths/s) that triggers a goalie reach
     // goalie strip spans 2x the net, centred; finger travel maps 2:1 so the strip ends put the goalie a hair past each post
     function gmap(x) { var k = (B.GW + .006) / (2 * B.GW); return .5 + Math.max(-2 * B.GW, Math.min(2 * B.GW, x - .5)) * k; }

@@ -28,7 +28,9 @@
     function paint() { h.qrEls.forEach(function (el) { if (h.status !== 'online') { el.innerHTML = '<div class="kq">connecting\u2026</div>'; return; } el.innerHTML = '<div class="kqr">' + qrSvg(padUrl()) + '</div><div class="kcode">' + h.code + '</div>'; }); if (o.onStatus) o.onStatus(h.status, h.code); }
     h.qr = function (el) { h.qrEls.push(el); paint(); };
     h.padUrl = padUrl;
-    function byConn(c) { return h.players.filter(function (p) { return p.conn === c; })[0]; }
+    function byConn(c) { return h.players.filter(function (p) { return p.conn === c || p.fast === c; })[0]; }
+    h.sendFast = function (p, m) { if (p && p.fast && p.fast.open && p.on) { try { p.fast.send(m); } catch (e) {} } else h.send(p, m); };   // latest-wins traffic (unordered channel when the pad opened one)
+    h.allFast = function (m) { h.players.forEach(function (p) { h.sendFast(p, m); }); };
     h.send = function (p, m) { if (p && p.conn && p.on) try { p.conn.send(m); } catch (e) {} };
     h.all = function (m) { h.players.forEach(function (p) { h.send(p, m); }); };
     h.addLocal = function (name, recv) {   // a player on this very screen (phone-only play)
@@ -39,6 +41,7 @@
       onStatus: function (s, code) { h.status = s; if (code) h.code = code; paint(); },
       onMessage: function (conn, d) {
         if (!d || d.t === 'ping') return;
+        if (d.t === 'hi2') { var pf = h.players.filter(function (x) { return x.tok === d.tok; })[0]; if (pf) pf.fast = conn; return; }
         if (d.t === 'hi') {
           var p = h.players.filter(function (x) { return x.tok === d.tok; })[0];
           if (!p) {
@@ -51,7 +54,7 @@
         }
         var q = byConn(conn); if (q && o.onMsg) o.onMsg(q, d);
       },
-      onClose: function (conn) { var p = byConn(conn); if (p) { p.on = false; if (o.onLeave) o.onLeave(p); } }
+      onClose: function (conn) { var p = byConn(conn); if (p && p.fast === conn && p.conn !== conn) { p.fast = null; return; } if (p) { p.on = false; if (o.onLeave) o.onLeave(p); } }
     });
     h.code = h.net.code;
     root.addEventListener('message', function (e) { var d = e.data; if (e.source !== root.parent || !d || d.ztp !== 'qr' || !d.url) return; root.ZTP_QR = d.url; paint(); try { root.parent.postMessage({ ztp: 'qrok' }, '*'); } catch (x) {} });
@@ -62,9 +65,10 @@
     var c = { room: (Q.get('room') || '').toUpperCase(), name: Q.get('name') || localStorage.getItem('ztp-mini-name') || '' };
     c.setName = function (n) { c.name = (n || '').slice(0, 12); localStorage.setItem('ztp-mini-name', c.name); if (c.cl) c.cl.send({ t: 'hi', tok: tok, name: c.name }); };
     c.send = function (m) { return c.cl ? c.cl.send(m) : false; };
+    c.sendFast = function (m) { return c.cl ? (c.cl.sendFast ? c.cl.sendFast(m) : c.cl.send(m)) : false; };
     c.connect = function (room) {
       c.room = room.toUpperCase(); var mk = LOCAL ? root.LSNet.LocalClient : root.LSNet.Client;
-      c.cl = new mk({ code: c.room, onOpen: function () { c.cl.send({ t: 'hi', tok: tok, name: c.name || 'Player' }); }, onMessage: function (m) { if (o.onMsg) o.onMsg(m); }, onStatus: function (s, d) { if (o.onStatus) o.onStatus(s, d); } });
+      c.cl = new mk({ code: c.room, onOpen: function () { c.cl.send({ t: 'hi', tok: tok, name: c.name || 'Player' }); if (o.fast && c.cl.openFast) c.cl.openFast({ t: 'hi2', tok: tok }); }, onMessage: function (m) { if (o.onMsg) o.onMsg(m); }, onStatus: function (s, d) { if (o.onStatus) o.onStatus(s, d); } });
     };
     if (c.room) c.connect(c.room);
     return c;

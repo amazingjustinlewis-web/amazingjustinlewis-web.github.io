@@ -221,7 +221,7 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     this.lastCam = cam; this.gl.render(this.scene, cam);
   };
   // screen -> rink through whatever camera drew the last frame (keeps touches right while zoomed)
-  R3.prototype.toRink = function (X, Y) { var cam = this.lastCam; if (!cam) return null; var r = this.cv.getBoundingClientRect(), nd = new THREE.Vector2((X - r.left) / r.width * 2 - 1, -((Y - r.top) / r.height) * 2 + 1), rc = this.rc || (this.rc = new THREE.Raycaster());
+  R3.prototype.toRink = function (X, Y) { var cam = this.lastCam; if (!cam) return null; var r = this.V.unrot ? { left: 0, top: 0, width: this.cv.clientWidth, height: this.cv.clientHeight } : this.cv.getBoundingClientRect(), nd = new THREE.Vector2((X - r.left) / r.width * 2 - 1, -((Y - r.top) / r.height) * 2 + 1), rc = this.rc || (this.rc = new THREE.Raycaster());
     rc.setFromCamera(nd, cam); var o = rc.ray.origin, d = rc.ray.direction; if (Math.abs(d.y) < 1e-6) return null; var t = -o.y / d.y, w = o.clone().addScaledVector(d, t), l = this.G.worldToLocal(w); return [l.z, l.x]; };
   var TRAIL = { n: 40, w: .0075, life: .11, lifeK: .05, minSp: .35 };
   R3.prototype.ribbon = function (pp, h, vis, dt) { var T = this.rib; if (!T) { var g = new THREE.BufferGeometry(), N = TRAIL.n, idx = [];

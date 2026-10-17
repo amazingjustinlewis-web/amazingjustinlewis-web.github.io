@@ -122,6 +122,12 @@
     this.conn = null; this.peer = null;
   };
   Client.prototype.send = function (m) { try { if (this.conn && this.conn.open) { this.conn.send(m); return true; } } catch (e) {} return false; };
+  // opt-in second channel for high-rate, latest-wins traffic: unordered (PeerJS reliable:false). Falls back to the reliable channel until it opens.
+  Client.prototype.openFast = function (hello) { var self = this; if (!this.peer || (this.fast && this.fast.open)) return; try { if (this.fast) this.fast.close(); } catch (e) {}
+    var f = this.fast = this.peer.connect(C.peerPrefix + this.code, { reliable: false, label: 'fast' });
+    f.on('open', function () { try { f.send(hello); } catch (e) {} }); f.on('data', function (d) { self.lastHeard = Date.now(); if (self.o.onMessage) self.o.onMessage(d); });
+    f.on('close', function () { if (self.fast === f) self.fast = null; }); f.on('error', function () { if (self.fast === f) self.fast = null; }); };
+  Client.prototype.sendFast = function (m) { try { if (this.fast && this.fast.open) { this.fast.send(m); return true; } } catch (e) {} return this.send(m); };
 
 
   // ---------------------------------------------------------------- local transport (tests / same-browser demo): BroadcastChannel
@@ -158,6 +164,7 @@
     this.ping = setInterval(function () { if (self.status === 'online') self.send({ t: 'ping' }); }, 4000);   // same heartbeat as the PeerJS client
     if (typeof window !== 'undefined') window.addEventListener('beforeunload', function () { self.bc.postMessage({ k: 'bye', cid: self.cid }); });
   }
+  LocalClient.prototype.openFast = function () {}; LocalClient.prototype.sendFast = function (d) { return this.send(d); };
   LocalClient.prototype.send = function (d) { if (this.status !== 'online') return false; this.bc.postMessage({ k: 'data', cid: this.cid, d: d }); return true; };
   LocalClient.prototype.reconnect = function () {};
   LocalClient.prototype.destroy = function () { clearInterval(this.ping); this.bc.postMessage({ k: 'bye', cid: this.cid }); this.bc.close(); };
