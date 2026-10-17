@@ -45,6 +45,12 @@
   gear.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); gear.onclick = function () { CM.on = !CM.on; localStorage.setItem('bh-slowmo', CM.on ? '1' : '0'); gearTxt(); };
   var wildOn = localStorage.getItem('bh-wild') !== '0', wg = document.createElement('button'); wg.style.cssText = gear.style.cssText; wg.style.bottom = '6.5vh'; function wgTxt() { wg.textContent = '\u2699 wild puck: ' + (wildOn ? 'on' : 'off'); } wgTxt(); document.body.appendChild(wg);
   wg.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); wg.onclick = function () { wildOn = !wildOn; localStorage.setItem('bh-wild', wildOn ? '1' : '0'); wgTxt(); sim.wild = wildOn; }; sim.wild = wildOn;
+  // v0.9.7: ⚙ view (broadcast default / top-down) and ⚙ depth of field (TV only)
+  var qs = new URLSearchParams(location.search), viewMode = qs.get('view') || localStorage.getItem('bh-view') || 'bcast', dofOn = qs.get('dof') ? qs.get('dof') !== '0' : localStorage.getItem('bh-dof') !== '0';
+  function mkBtn(bot, txt, fn) { var b = document.createElement('button'); b.style.cssText = gear.style.cssText; b.style.bottom = bot; b.textContent = txt(); document.body.appendChild(b); b.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); b.onclick = function () { fn(); b.textContent = txt(); }; return b; }
+  var vb = mkBtn('10vh', function () { return '\u2699 view: ' + (viewMode === 'bcast' ? 'broadcast' : 'top-down'); }, function () { viewMode = viewMode === 'bcast' ? 'top' : 'bcast'; localStorage.setItem('bh-view', viewMode); });
+  var db = mkBtn('13.5vh', function () { return '\u2699 depth of field: ' + (dofOn ? (R3 && R3.dof && !R3.dof.ok ? 'auto-off' : 'on') : 'off'); }, function () { dofOn = !dofOn; localStorage.setItem('bh-dof', dofOn ? '1' : '0'); if (R3 && R3.dof) R3.dof.ok = true; });
+  setInterval(function () { if (R3) { R3.camMode = viewMode; R3.dofOn = dofOn; } }, 250);
   window.BHCM = CM;
   var last = 0, sendT = 0;
   // v0.9.4 netcode: TV -> phones sends only fields that changed (keyframe every NET.key s for loss/joins), on the unordered fast channel;

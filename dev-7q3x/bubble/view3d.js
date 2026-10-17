@@ -13,7 +13,8 @@
     var sc = this.scene = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xffffff, 0x445066, .55)); var dl = new THREE.DirectionalLight(0xffffff, .55); dl.position.set(.6, 3, 1.2); sc.add(dl);
     var G = this.G = new THREE.Group(); sc.add(G); if (this.phone) G.scale.z = -1;
     this.ortho = new THREE.OrthographicCamera(0, 1, 0, -1, .01, 50); this.persp = new THREE.PerspectiveCamera(52, 1, .005, 40);
-    this.build(); this.hist = []; this.clock = 0; this.rep = null; this.sc = null; this.fw = []; this.trail = [];
+    this.build(); if (!this.phone) { this.buildRoom(); this.bc = new THREE.PerspectiveCamera(38, 16 / 9, .02, 60); this.dof = new DOF(g); }
+    this.camMode = 'bcast'; this.dofOn = true; this.hist = []; this.clock = 0; this.rep = null; this.sc = null; this.fw = []; this.trail = [];
     this.dom(); this.held = -1;
   }
   function L3(x, y, h) { return new THREE.Vector3(y, h || 0, x); }   // rink -> group-local
@@ -213,15 +214,19 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     var P = this.parts, n = 0, pos = this.pPos, col = this.pCol; this.parts = P.filter(function (p) { p.l -= dt; if (p.l <= 0) return false; p.v.y -= p.g * .9 * dt; p.p.addScaledVector(p.v, dt); return true; });
     this.parts.forEach(function (p) { if (n >= 900) return; var f = Math.min(1, p.l / p.l0 * 1.5); pos[n * 3] = p.p.x; pos[n * 3 + 1] = p.p.y; pos[n * 3 + 2] = p.p.z; col[n * 3] = lerp(1, p.c.r, f); col[n * 3 + 1] = lerp(1, p.c.g, f); col[n * 3 + 2] = lerp(1, p.c.b, f); n++; });
     for (var z = n; z < 900; z++) pos[z * 3 + 1] = -9; this.pts.geometry.attributes.position.needsUpdate = true; this.pts.geometry.attributes.color.needsUpdate = true;
-    this.pts.material.size = cam === this.ortho ? Math.max(4, this.V.s * .018) * Math.min(2, devicePixelRatio || 1) : .012; this.pts.material.sizeAttenuation = true;
+    if (!this.phone && this.bc && this.camMode === 'bcast' && cam === this.ortho) cam = this.bcastCam(st, dt, W, H);
     cam = this.orbitCam(cam, R, MO, dt, W, H);
+    this.pts.material.size = cam === this.ortho ? Math.max(4, this.V.s * .018) * Math.min(2, devicePixelRatio || 1) : .012; this.pts.material.sizeAttenuation = true;
     this.markers(cam, cam === this.ortho && (this.az || 1) > 1.05);
     var mwv = st.mw || 0, pyv = st.p[1], nowv = performance.now() / 1000; this.nets.forEach(function (n, k) { var ms = n.userData.mesh; if (ms) { var w = (k ? pyv > L / 2 : pyv < L / 2) ? mwv : 0, sx = ms.scale.x < 0 ? -1 : 1; ms.scale.set(sx * (1 + w * .12 * Math.sin(nowv * 38)), 1 + w * .05 * Math.sin(nowv * 31 + 1), 1 + w * .04 * Math.sin(nowv * 27)); } });
     if ((st.ev === 'post' || st.ev === 'bar') && this.lastPing !== st) { this.lastPing = st; ping(); }
     if (st.wh != null && this.lastWh != null && st.wh !== this.lastWh) whistle(); this.lastWh = st.wh;
     var rep = !!this.rep; this.nets.forEach(function (n) { var l = n.userData.light; if (!l) return; if (l.t > 0) l.t -= dt; if (!rep) l.rep = false; l.on = l.t > 0 || l.rep;
       var k = l.on ? .75 + .25 * Math.sin(performance.now() / 90) : 0; l.dome.material.color.setHex(l.on ? 0xff3030 : 0x551018); l.spin.rotation.y += dt * 9; l.spin.children.forEach(function (b) { b.children[0].material.opacity = k * .8; }); l.halo.material.opacity = k * .9; });
-    this.lastCam = cam; this.gl.render(this.scene, cam);
+    this.lastCam = cam; var dS = 0, D = this.dof; if (D && D.ok && this.dofOn && cam.isPerspectiveCamera) dS = R ? (R.hl ? DOFK.reel : DOFK.replay) : MO ? DOFK.replay * .7 : DOFK.live;
+    this.dofS = (this.dofS || 0) + (dS - (this.dofS || 0)) * Math.min(1, dt * 4);
+    if (D && this.dofS > .03) { var fp = R && R.ls ? R.ls.p : MO && this.mls ? this.mls.p : (this.focusPt || this.puck.getWorldPosition(new THREE.Vector3())); D.render(this.scene, cam, this.dofS, cam.position.distanceTo(fp), dt); }
+    else this.gl.render(this.scene, cam);
   };
   // screen -> rink through whatever camera drew the last frame (keeps touches right while zoomed)
   R3.prototype.toRink = function (X, Y) { var cam = this.lastCam; if (!cam) return null; var r = this.V.unrot ? { left: 0, top: 0, width: this.cv.clientWidth, height: this.cv.clientHeight } : this.cv.getBoundingClientRect(), nd = new THREE.Vector2((X - r.left) / r.width * 2 - 1, -((Y - r.top) / r.height) * 2 + 1), rc = this.rc || (this.rc = new THREE.Raycaster());
@@ -332,10 +337,50 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
   R3.ORB = ORB;
   R3.prototype.orbitCam = function (cam, R, MO, dt, W, H) { var o = this.orb = this.orb || { k: 0, on: false, left: ORB.offMin, a: 0 };
     if (!this.orbitOn) { o.on = false; o.left = ORB.offMin * .5; } else { o.left -= dt; if (o.left <= 0) { o.on = !o.on; o.left = o.on ? ORB.onMin + Math.random() * (ORB.onMax - ORB.onMin) : ORB.offMin + Math.random() * (ORB.offMax - ORB.offMin); } }
-    var want = o.on && !R && !MO ? 1 : 0; o.k += (want - o.k) * (1 - Math.exp(-dt * (R || MO ? 6 : ORB.ease))); if (o.k < .002 || cam !== this.ortho) { if (o.k < .002) o.k = 0; if (this.persp.near !== .005) { this.persp.near = .005; this.persp.updateProjectionMatrix(); } return cam; }
-    o.a += dt * ORB.speed * (.4 + .6 * o.k); var G = this.G, P3 = function (x, y, h) { return G.localToWorld(L3(x, y, h)); }, ctr = P3(.5, L / 2, 0), oc = this.ortho, pc = this.persp;
-    pc.aspect = W / H; pc.fov = 45; pc.near = .1; pc.updateProjectionMatrix(); var back = new THREE.Vector3(0, 0, 1).applyQuaternion(oc.quaternion), hh = (L / 2 + .25) / Math.tan(22.5 * Math.PI / 180) / Math.max(1, pc.aspect), top = ctr.clone().addScaledVector(back, hh);
+    var want = o.on && !R && !MO ? 1 : 0; o.k += (want - o.k) * (1 - Math.exp(-dt * (R || MO ? 6 : ORB.ease))); if (o.k < .002 || (cam !== this.ortho && cam !== this.bc)) { if (o.k < .002) o.k = 0; if (this.persp.near !== .005) { this.persp.near = .005; this.persp.updateProjectionMatrix(); } return cam; }
+    o.a += dt * ORB.speed * (.4 + .6 * o.k); var G = this.G, P3 = function (x, y, h) { return G.localToWorld(L3(x, y, h)); }, ctr = P3(.5, L / 2, 0), oc = cam, pc = this.persp;
+    pc.aspect = W / H; pc.fov = 45; pc.near = .1; pc.updateProjectionMatrix(); var back = new THREE.Vector3(0, 0, 1).applyQuaternion(oc.quaternion), hh = (L / 2 + .25) / Math.tan(22.5 * Math.PI / 180) / Math.max(1, pc.aspect), top = cam === this.bc ? cam.position.clone() : ctr.clone().addScaledVector(back, hh);
     var op = P3(.5 + ORB.rx * Math.sin(o.a), L / 2 + ORB.ry * Math.cos(o.a), ORB.h), e = o.k * o.k * (3 - 2 * o.k);
     pc.position.copy(top).lerp(op, e); var q0 = oc.quaternion.clone(); pc.up.set(0, 1, 0); pc.lookAt(ctr); var q1 = pc.quaternion.clone(); pc.quaternion.copy(q0).slerp(q1, Math.min(1, e * 1.3)); return pc; };
+  // ---- v0.9.7 bar room proxy (TV): boxes around the table, warm dim lights; the rink keeps the brightest light ----
+  var ROOM = { floor: -1.5, w: 26, d: 20, h: 5.5, warm: 0xffb36b, rink: .5 };   // game units (1 = .62 m); room is unlit MeshBasic (baked warm shading) so it costs ~nothing per pixel
+  R3.prototype.buildRoom = function () { var G = this.G, R = new THREE.Group(), M = function (c) { return new THREE.MeshBasicMaterial({ color: c }); }, cx = L / 2, cz = .5, F = ROOM.floor;
+    function box(w, h, d, x, y, z, c) { var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M(c)); m.position.set(cx + x, y, cz + z); R.add(m); return m; }
+    function person(x, z, c, sit) { var hgt = sit ? 2.1 : 2.8, b = new THREE.Mesh(new THREE.CylinderGeometry(.3, .36, hgt * .62, 8), M(c)); b.position.set(cx + x, F + hgt * .31 + (sit ? .7 : 0), cz + z); R.add(b); var hd = new THREE.Mesh(new THREE.SphereGeometry(.2, 10, 8), M(0x4a3428)); hd.position.set(cx + x, F + hgt * .62 + .2 + (sit ? .7 : 0), cz + z); R.add(hd); }
+    var fl = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.w, ROOM.d), M(0x1e130c)); fl.rotation.x = -Math.PI / 2; fl.position.set(cx, F, cz); R.add(fl);
+    [[0, ROOM.d / 2, ROOM.w, 0], [0, -ROOM.d / 2, ROOM.w, 0], [ROOM.w / 2, 0, ROOM.d, 1], [-ROOM.w / 2, 0, ROOM.d, 1]].forEach(function (q) { var wl = new THREE.Mesh(new THREE.PlaneGeometry(q[2], ROOM.h), M(0x2a1a12)); wl.position.set(cx + q[0], F + ROOM.h / 2, cz + q[1]); wl.rotation.y = q[3] ? (q[0] > 0 ? -Math.PI / 2 : Math.PI / 2) : (q[1] > 0 ? Math.PI : 0); R.add(wl); });
+    box(1, 1.2, 1, -L / 2 - 2.2, F + .6, .4, 0x1c1a1e); box(1, 1.2, 1, L / 2 + 2.2, F + .6, -.5, 0x1c1a1e); person(-L / 2 - 3.4, -.6, 0x3a3a4a, false); person(L / 2 + 3.6, 1.0, 0x4a3030, false);   // stools / crates past both ends of the table
+    box(11, 1.8, 1.1, 0, F + .9, 7.5, 0x3a2010); box(11.3, .1, 1.4, 0, F + 1.85, 7.5, 0x6a3c1c); box(11, 3, .5, 0, F + 3.2, 9.6, 0x1e120a);   // bar counter, top, back shelf
+    for (var k = -3; k <= 3; k++) box(.25, .6, .25, k * 1.4, F + 2.6, 9.25, [0x3d7a3a, 0x9a5a20, 0x5a2a6a][(k + 3) % 3]);   // bottles
+    [[-6, -5.5], [6.5, -5.8], [-8, 3], [8, 3.4]].forEach(function (t, i) { box(1.6, .08, 1.6, t[0], F + 1.2, t[1], 0x4a2e18); box(.16, 1.2, .16, t[0], F + .6, t[1], 0x1a100a); person(t[0] + 1.2, t[1] + .3, [0x5a5f7a, 0x7a4a4a, 0x4a6a5a, 0x6a5a3a][i], true); });
+    [[-3, 6.4, 0x3a3448], [-.5, 6.5, 0x483c2a], [2.4, 6.3, 0x2c3440], [-4.5, -7, 0x382c2c], [4.8, -6.8, 0x2c2c3c]].forEach(function (q) { person(q[0], q[1], q[2], false); });
+    // warm dim lamps (pendants over tables + bar); a cooler bright light over the rink itself
+    var glowM = new THREE.SpriteMaterial({ map: dotTex('rgba(255,170,90,1)'), color: ROOM.warm, transparent: true, opacity: .35, depthWrite: false, blending: THREE.AdditiveBlending });
+    [[-3, 7.5], [3, 7.5], [-6, -5.5], [6.5, -5.8], [-8, 3], [8, 3.4]].forEach(function (q) { var sh = new THREE.Mesh(new THREE.ConeGeometry(.4, .35, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffb860, side: THREE.DoubleSide })); sh.position.set(cx + q[0], F + 4.2, cz + q[1]); R.add(sh); var gw = new THREE.Sprite(glowM); gw.scale.set(3, 3, 1); gw.position.copy(sh.position); gw.position.y -= .3; R.add(gw); var pool = new THREE.Mesh(new THREE.CircleGeometry(1.4, 20), new THREE.MeshBasicMaterial({ color: 0x5a3a20, transparent: true, opacity: .5, depthWrite: false })); pool.rotation.x = -Math.PI / 2; pool.position.set(cx + q[0], F + .01, cz + q[1]); R.add(pool); });
+    var sp = new THREE.SpotLight(0xf4f8ff, ROOM.rink, 6, .7, .6, 1); sp.position.set(cx, 2.4, cz); sp.target.position.set(cx, 0, cz); R.add(sp); R.add(sp.target);   // the one extra real light: over the rink
+    G.add(R); this.room = R; this.scene.children.forEach(function (o) { if (o.isHemisphereLight) { o.intensity = .42; o.groundColor.setHex(0x3a2a20); } }); this.gl.setClearColor(0x120a06); };
+  // ---- v0.9.7 broadcast camera (TV default): gentle 3/4 view from the near side, low enough that puck lift reads ----
+  var BCAST = { side: -.62, h: .62, back: 0, fov: 40, follow: .55, across: .25, k: 1.1, look: -.04 };
+  R3.BCAST = BCAST;
+  R3.prototype.bcastCam = function (st, dt, W, H) { var c = this.bc, G = this.G, b = this.bcs = this.bcs || { y: L / 2, x: .5 };
+    var py = st.p[1], px = st.p[0], ty = L / 2 + (py - L / 2) * BCAST.follow, tx = .5 + (px - .5) * BCAST.across, k = 1 - Math.exp(-dt * BCAST.k); b.y += (ty - b.y) * k; b.x += (tx - b.x) * k;
+    var pos = G.localToWorld(L3(BCAST.side, b.y, BCAST.h)), look = G.localToWorld(L3(b.x, b.y, BCAST.look)); c.aspect = W / H; c.fov = BCAST.fov; c.updateProjectionMatrix(); c.position.copy(pos); c.up.set(0, 1, 0); c.lookAt(look); this.focusPt = G.localToWorld(L3(px, py, .02)); return c; };
+  // ---- v0.9.7 depth of field: one extra pass (scene -> RT with depth, then a 16-tap disk blur scaled by circle of confusion) ----
+  var DOFK = { live: 0, replay: 1, reel: 1, maxPx: 7, range: .35, slowMs: 45, slowFor: 4 };
+  R3.DOFK = DOFK;
+  function DOF(gl) { this.gl = gl; this.rt = null; var q = this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({ depthTest: false, depthWrite: false,
+      uniforms: { tC: { value: null }, tD: { value: null }, near: { value: .01 }, far: { value: 40 }, focus: { value: 1 }, range: { value: DOFK.range }, maxB: { value: 0 }, res: { value: new THREE.Vector2(1, 1) } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
+      fragmentShader: 'uniform sampler2D tC; uniform sampler2D tD; uniform float near, far, focus, range, maxB; uniform vec2 res; varying vec2 vUv;' +
+        'float lin(float d){ return near * far / (far - d * (far - near)); } float coc(vec2 uv){ return clamp(abs(lin(texture2D(tD, uv).x) - focus) / (range * focus), 0., 1.) * maxB; }' +
+        'void main(){ float c0 = coc(vUv); vec4 acc = texture2D(tC, vUv); float wsum = 1.; if (c0 > .5) { for (int i = 0; i < 16; i++) { float fi = float(i); float r = sqrt((fi + .5) / 16.) * c0; float a = fi * 2.39996; vec2 o = vec2(cos(a), sin(a)) * r / res; float cs = coc(vUv + o); float w = smoothstep(0., 1., cs / max(r, .5) + .2); acc += texture2D(tC, vUv + o) * w; wsum += w; } }' +
+        ' gl_FragColor = acc / wsum; }' }));
+    this.sc = new THREE.Scene(); this.sc.add(q); this.oc = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1); this.slow = 0; this.ok = true; }
+  DOF.prototype.render = function (scene, cam, strength, focus, dt) { var gl = this.gl, sz = gl.getDrawingBufferSize(new THREE.Vector2());
+    if (!this.rt || this.rt.width !== sz.x || this.rt.height !== sz.y) { if (this.rt) this.rt.dispose(); this.rt = new THREE.WebGLRenderTarget(sz.x, sz.y); this.rt.depthTexture = new THREE.DepthTexture(sz.x, sz.y); this.rt.depthTexture.type = THREE.UnsignedIntType; }
+    var u = this.quad.material.uniforms; u.tC.value = this.rt.texture; u.tD.value = this.rt.depthTexture; u.near.value = cam.near; u.far.value = cam.far; u.focus.value = Math.max(.02, focus); u.maxB.value = DOFK.maxPx * strength * (sz.y / 1080); u.res.value.set(sz.x, sz.y);
+    gl.setRenderTarget(this.rt); gl.render(scene, cam); gl.setRenderTarget(null); gl.render(this.sc, this.oc);
+    // weak-device fallback: if frames stay slow with DOF on, switch it off for the session
+    if (dt > DOFK.slowMs / 1000) this.slow += dt; else this.slow = Math.max(0, this.slow - dt * .5); if (this.slow > DOFK.slowFor) { this.ok = false; console.warn('Bubble: DOF auto-off (slow frames)'); } };
   root.Bubble3D = R3;
 })(window);

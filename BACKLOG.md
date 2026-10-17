@@ -198,6 +198,13 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Phone: height-tinted minimap with hill shading, your dot (pulsing) + others in colour, tap ripple + dashed course line; How to play (3 steps); perf.js on both.
 - Next: unit selection/groups, obstacles/no-fly, fog of war, flier collision, pinch-zoom minimap.
 
+## Bubble Hockey v0.9.7 (done): broadcast cam, bar room, depth of field
+- TV gameplay default = gentle 3/4 broadcast camera from the near side (BCAST in view3d.js: side/h/fov/follow/k). ⚙ view: broadcast / top-down (bh-view, ?view=top). Attract orbit now eases out of whichever view is on.
+- Bar room proxy (TV only, buildRoom/ROOM): bar counter + shelf + bottles, 4 tables with seated patrons, standing patrons, crates past both table ends, pendant shades with glow sprites and floor pools. Room is unlit MeshBasic (cheap); the only added real light is a spot over the rink. Clear colour warm dark.
+- Depth of field (DOF/DOFK): scene -> render target with depth -> 16-tap CoC disk blur. Full on replays + reel, 0.7 on slow-mo moments, off live (DOFK.live). ⚙ depth of field (bh-dof, ?dof=0). Auto-off for the session if frames stay >45 ms for 4 s. Phones never build it.
+- Fixed: particle size used the ortho pixel size whenever the 3D cam was swapped in after the size update (giant pink fireworks blob in orbit/wide views).
+- Todo: let Justin tune BCAST height/follow on the real TV; real bar model later; DOF focus on replay 'top' angle is mostly in-focus (by design); consider half-res DOF target if TV GPU struggles.
+
 ## Bubble Hockey v0.9.6 (done) + skater poses
 - /workspace/hockey/player_skater_poses.glb: from Justin's Faceoff.blend / glide.blend, evaluated deform-bone poses (IK/constraints baked) as single-frame actions 'faceoff' and 'glide' on the v03 armature; 23 deform joints, same meshes. Working file player_skater_v03_poses.blend (deform constraints removed, actions as NLA tracks). Previews pose_faceoff.png / pose_glide.png.
 - Game: bubble/player_skater.glb loaded on the TV for the 10 skaters (goalies keep the padded proxy); AnimationMixer per skater, glide weight 1 in play, blends to faceoff while st.pz > 0 (SKATER.blendIn / blendOut), back on the drop. Jersey material tinted to team colour; model stick turns white on a swing; proxy stick only appears during lunges. ?noskaters = proxy; phones keep the proxy unless ?skaters=1.
