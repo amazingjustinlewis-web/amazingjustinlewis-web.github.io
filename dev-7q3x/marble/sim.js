@@ -3,6 +3,8 @@
   'use strict';
   var DS = 0.25;                       // sample spacing (m)
   var PHYS = { g: 16, r: 0.5, rest: 0.12, fric: 0.06, steer: 15, push: 4, air: 0.25, boost: 26, railH: 0.9, hit: 0.95, bump: 1.6, maxV: 42, respawn: 1.4, offDist: 9, offY: 10 };
+  // jump: tap = small hop, hold charges up to a big jump (charge 0..1 sent by the phone); only when grounded (+ brief coyote time), cooldown after
+  var JUMP = { small: 4.5, big: 12, coyote: 0.12, cool: 0.7, gate: false };
   var RACE = { count: 3.2, after: 25, results: 9 };
   function V(x, y, z) { return [x, y, z]; }
   function add(a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; } function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
@@ -51,10 +53,16 @@
   // ---------- sim ----------
   function Sim() { this.tr = build(); this.m = []; this.phase = 'lobby'; this.t = 0; this.cd = 0; this.order = []; this.gateOpen = false; this.ev = []; }
   Sim.prototype.slot = function (k, i0) { var s = this.tr.S[i0], n = Math.max(1, this.m.length), w = s.w - 1.4, l = n === 1 ? 0 : -w / 2 + w * (k / (n - 1)); return add(add(s.p, mul(s.B, l)), mul(s.N, PHYS.r)); };
-  Sim.prototype.add = function (id, col, name) { var m = { id: id, col: col, name: name || 'Player', p: [0, 0, 0], v: [0, 0, 0], i: 4, in: [0, 0], cp: 4, dead: 0, fin: 0, ground: false, air: 0, spin: [0, 0, 0] }; this.m.push(m); this.lineUp(); return m; };
+  Sim.prototype.add = function (id, col, name) { var m = { id: id, col: col, name: name || 'Player', p: [0, 0, 0], v: [0, 0, 0], i: 4, in: [0, 0], chg: 0, jcool: 0, cp: 4, dead: 0, fin: 0, ground: false, air: 0, spin: [0, 0, 0] }; this.m.push(m); this.lineUp(); return m; };
   Sim.prototype.remove = function (id) { this.m = this.m.filter(function (m) { return m.id !== id; }); if (this.phase === 'lobby') this.lineUp(); };
   Sim.prototype.lineUp = function () { var me = this; this.m.forEach(function (m, k) { m.i = 4 + (k % 2) * 4; m.p = me.slot(k, Math.round((k % 2 ? 4 : 6) / DS)); m.v = [0, 0, 0]; m.fin = 0; m.dead = 0; m.cp = m.i; m.place = 0; }); };
   Sim.prototype.input = function (id, x, y) { var m = this.m.filter(function (q) { return q.id === id; })[0]; if (m) { m.in[0] = Math.max(-1, Math.min(1, x)); m.in[1] = Math.max(-1, Math.min(1, y)); } };
+  Sim.prototype.charge = function (id, c) { var m = this.m.filter(function (q) { return q.id === id; })[0]; if (m) m.chg = Math.max(0, Math.min(1, +c || 0)); };
+  Sim.prototype.jump = function (id, pw) { var m = this.m.filter(function (q) { return q.id === id; })[0]; if (!m) return false; m.chg = 0;
+    if (m.dead > 0 || m.fin || m.jcool > 0 || !(m.ground || m.air < JUMP.coyote)) return false;
+    if (!JUMP.gate && (this.phase === 'count')) return false;
+    var S = this.tr.S, s = S[m.i], p = Math.max(0, Math.min(1, +pw || 0)), vn = dot(m.v, s.N); if (vn < 0) m.v = sub(m.v, mul(s.N, vn));
+    m.v = add(m.v, mul(s.N, JUMP.small + (JUMP.big - JUMP.small) * p)); m.jcool = JUMP.cool; m.ground = false; m.air = JUMP.coyote; this.ev.push('jump:' + m.id); return true; };
   Sim.prototype.start = function () { if (this.phase !== 'lobby' && this.phase !== 'results') return; this.lineUp(); this.phase = 'count'; this.cd = RACE.count; this.gateOpen = false; this.order = []; this.t = 0; this.ev.push('count'); };
   Sim.prototype.near = function (m) { var S = this.tr.S, best = m.i, bd = 1e9, lo = Math.max(0, m.i - 14), hi = Math.min(S.length - 1, m.i + 14);
     for (var i = lo; i <= hi; i++) { var d = sub(m.p, S[i].p), q = dot(d, d); if (q < bd) { bd = q; best = i; } } m.i = best; return Math.sqrt(bd); };
@@ -69,7 +77,7 @@
     var held = this.phase === 'lobby' || this.phase === 'count';
     this.m.forEach(function (m) {
       if (m.dead > 0) { m.dead -= dt; if (m.dead <= 0) me.respawn(m); return; }
-      var s = S[m.i];
+      var s = S[m.i]; if (m.jcool > 0) m.jcool -= dt;
       m.v[1] -= P.g * dt;
       var ctl = m.ground ? 1 : P.air, sideFlat = nrm([s.B[0], 0, s.B[2]]);
       if (!m.fin) { m.v = add(m.v, mul(s.B, m.in[0] * P.steer * ctl * dt)); m.v = add(m.v, mul(s.T, m.in[1] * P.push * ctl * dt)); }
@@ -103,5 +111,5 @@
     var list = this.m.slice().sort(function (x, y) { if (x.fin && y.fin) return x.fin - y.fin; if (x.fin) return -1; if (y.fin) return 1; return y.i - x.i; }); list.forEach(function (m, k) { m.place = k + 1; });
   };
   Sim.prototype.prog = function (m) { return Math.min(1, m.i / this.tr.fin); };
-  root.Marble = { Sim: Sim, PHYS: PHYS, RACE: RACE, build: build, util: { add: add, sub: sub, mul: mul, dot: dot, cross: cross, len: len, nrm: nrm } };
+  root.Marble = { JUMP: JUMP, Sim: Sim, PHYS: PHYS, RACE: RACE, build: build, util: { add: add, sub: sub, mul: mul, dot: dot, cross: cross, len: len, nrm: nrm } };
 })(typeof window !== 'undefined' ? window : global);

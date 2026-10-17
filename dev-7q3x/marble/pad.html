@@ -9,10 +9,15 @@
 #dz{position:absolute;left:50%;top:50%;border-radius:50%;border:2px dashed #fff5;transform:translate(-50%,-50%)}
 .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}.row .btn{min-width:42vw}#allow{background:#ffd23f;color:#222}#go{background:#5fdc7a;color:#062}
 #hint{font-size:13px;opacity:.7;text-align:center;max-width:90%}
-#rot.land #ui{flex-direction:row;flex-wrap:wrap;align-content:center;gap:12px 24px}#rot.land #pad{width:min(calc(var(--H) * .7),calc(var(--W) * .42));height:min(calc(var(--H) * .7),calc(var(--W) * .42))}#rot.land .row .btn{min-width:20%}#rot.land #hint{width:100%}#ori{background:#3d4c78;color:#fff}</style></head><body>
-<div id="rot"><div id="ui"><div id="place">–<small id="sub">Waiting at the gate</small></div><div id="pad"><div id="dz"></div><div id="dot"></div></div>
+#rot.land #ui{flex-direction:row;flex-wrap:wrap;align-content:center;gap:12px 24px}#rot.land #pad{width:min(calc(var(--H) * .7),calc(var(--W) * .42));height:min(calc(var(--H) * .7),calc(var(--W) * .42))}#rot.land .row .btn{min-width:20%}#rot.land #hint{width:100%}#ori{background:#3d4c78;color:#fff}
+#ring{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;pointer-events:none;opacity:0;transition:opacity .15s;z-index:20;
+ background:conic-gradient(var(--rc,#ffd24a) calc(var(--p,0) * 1turn),#fff2 0);-webkit-mask:radial-gradient(circle,#0000 52%,#000 54%,#000 68%,#0000 70%);mask:radial-gradient(circle,#0000 52%,#000 54%,#000 68%,#0000 70%);filter:drop-shadow(0 0 calc(var(--p,0) * 14px) var(--rc,#ffd24a))}
+#ring.on{opacity:1}#ring.pop{animation:rpop .35s ease-out forwards}@keyframes rpop{to{transform:scale(1.6);opacity:0}}
+#arw{position:absolute;left:50%;top:50%;height:8px;margin-top:-4px;transform-origin:0 50%;border-radius:4px;pointer-events:none;opacity:.6;width:0}
+#arw:after{content:'';position:absolute;right:-10px;top:-6px;border-left:14px solid var(--ac,#7be38f);border-top:10px solid #0000;border-bottom:10px solid #0000}</style></head><body>
+<div id="rot"><div id="ui"><div id="place">–<small id="sub">Waiting at the gate</small></div><div id="pad"><div id="dz"></div><div id="arw"></div><div id="dot"></div></div>
 <div class="row"><button class="btn" id="allow">Tap to allow tilt</button><button class="btn" id="cal">⟲ Recalibrate</button><button class="btn" id="ori">▯ Portrait</button><button class="btn" id="go">START</button></div>
-<div id="hint">Hold the phone flat-ish and tilt to steer · forward = faster · no tilt sensor? drag the ball</div></div></div><div class="st" id="st"></div>
+<div id="hint">Tilt to steer · forward = faster · tap anywhere = hop · hold, then let go = big jump</div><div id="ring"></div></div></div><div class="st" id="st"></div>
 <script>window.MINI = 'marble';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../minikit/howto.js"></script>
 <script>
 (function () {
@@ -47,7 +52,9 @@
     if (MODE === 'land') { if (LDIR === 90) { lr = b; fb = -g; } else { lr = -b; fb = g; } } raw = [lr, fb]; if (!touch) update(); }
   function update() { var x, y; if (touch) { x = touch[0]; y = touch[1]; } else if (raw) { x = shape(raw[0] - zero[0]); y = shape(-(raw[1] - zero[1])); } else { x = 0; y = 0; }
     sm[0] += (x - sm[0]) * (touch ? 1 : TILT.smooth); sm[1] += (y - sm[1]) * (touch ? 1 : TILT.smooth); out = [Math.round(sm[0] * 100) / 100, Math.round(sm[1] * 100) / 100];
-    $('dot').style.transform = 'translate(' + (out[0] * 140) + '%,' + (-out[1] * 140) + '%)'; }
+    $('dot').style.transform = 'translate(' + (out[0] * 140) + '%,' + (-out[1] * 140) + '%)'; miniArrow(); }
+  function miniArrow() { var a = $('arw'), k = Math.min(1, Math.hypot(out[0], out[1])), c = k < .6 ? mix('#7be38f', '#ffd24a', k / .6) : mix('#ffd24a', '#ff6a1a', (k - .6) / .4); a.style.width = (k > .04 ? k * 44 : 0) + '%'; a.style.transform = 'rotate(' + Math.atan2(-out[1], out[0]) + 'rad)'; a.style.background = c; a.style.setProperty('--ac', c); a.style.boxShadow = k > .8 ? '0 0 12px ' + c : 'none'; }
+  function mix(a, b, t) { var A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16), r = function (sh) { return Math.round(((A >> sh) & 255) * (1 - t) + ((B >> sh) & 255) * t); }; return 'rgb(' + r(16) + ',' + r(8) + ',' + r(0) + ')'; }
   function calibrate() { if (raw) zero = raw.slice(); sm = [0, 0]; update(); if (navigator.vibrate) navigator.vibrate(15); }
   function listen() { window.addEventListener('deviceorientation', onOri); setTimeout(function () { if (raw) calibrate(); }, 400); }
   var needPerm = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
@@ -58,19 +65,42 @@
   // touch-drag fallback (desktop testing / no sensor)
   var pad = $('pad'); function padBox() { var x = 0, y = 0, el = pad; while (el && el !== rot) { x += el.offsetLeft; y += el.offsetTop; el = el.offsetParent; } return { cx: x + pad.offsetWidth / 2, cy: y + pad.offsetHeight / 2, r: pad.offsetWidth / 2 }; }
   function tp(e) { var q = unrot(e.clientX, e.clientY), r = padBox(), x = (q[0] - r.cx) / r.r, y = -(q[1] - r.cy) / r.r, m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; } touch = [x, y]; update(); }
-  pad.addEventListener('pointerdown', function (e) { pad.setPointerCapture(e.pointerId); tp(e); }); pad.addEventListener('pointermove', function (e) { if (touch) tp(e); });
+  pad.addEventListener('pointerdown', function (e) { if (gotSensor) return; pad.setPointerCapture(e.pointerId); tp(e); }); pad.addEventListener('pointermove', function (e) { if (touch) tp(e); });
   function rel() { touch = null; sm = [0, 0]; update(); } pad.addEventListener('pointerup', rel); pad.addEventListener('pointercancel', rel);
   document.addEventListener('pointerdown', lockOri, { once: true }); layout();
   // send: only when changed, at most TILT.hz; a rare keepalive otherwise
   setInterval(function () { if (!touch && raw) update(); var n = Date.now(), ch = Math.abs(out[0] - lastSent[0]) > 0.015 || Math.abs(out[1] - lastSent[1]) > 0.015; if (ch || n - lastT > 2000) { c.send({ t: 'tilt', x: out[0], y: out[1] }); lastSent = out.slice(); lastT = n; } }, 1000 / TILT.hz);
-  window.MRP = { unrot: unrot, get ph() { return ph; }, get mode() { return MODE; }, get rotR() { return rotR; }, get out() { return out; }, setTouch: function (x, y) { touch = x == null ? null : [x, y]; update(); } };
+  // ---- v0.2 wake lock (Walker v0.4.1 approach): request on every tap until held, again on visibilitychange; silent looping video fallback
+  var wake = null, vid = null;
+  function vidOn() { try { if (!vid) { vid = document.createElement('video'); vid.src = 'wake.mp4'; vid.muted = true; vid.loop = true; vid.setAttribute('playsinline', ''); vid.setAttribute('muted', ''); vid.style.cssText = 'position:fixed;width:1px;height:1px;opacity:.01;pointer-events:none;left:0;top:0'; document.body.appendChild(vid); } var p = vid.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {} }
+  function vidOff() { if (vid) try { vid.pause(); } catch (e) {} }
+  function applyWake() { if (wake) return; if ('wakeLock' in navigator) navigator.wakeLock.request('screen').then(function (w) { wake = w; vidOff(); w.addEventListener('release', function () { wake = null; }); }).catch(function () { vidOn(); }); else vidOn(); }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { wake = null; applyWake(); } });
+  document.addEventListener('pointerdown', function () { if (!wake) applyWake(); }, true);
+  // ---- v0.2 jump: tap anywhere (not on buttons / not steering) = hop; press-and-hold charges, releases on lift
+  var JPAD = { tapMs: 180, fullMs: 900, moveCancel: 18, sendHz: 12, cool: 700 };
+  var jp = null, jLast = 0, ring = $('ring');
+  function jumpable(e) { var t = e.target; if (!t || !t.closest) return false; if (t.closest('button,.btn,input,a,#kjoin,.ht-l,.ht-q')) return false; if (!gotSensor && t.closest('#pad')) return false; return $('ui').style.display === 'flex'; }
+  function jpow(now) { return Math.max(0, Math.min(1, (now - jp.t0 - JPAD.tapMs) / (JPAD.fullMs - JPAD.tapMs))); }
+  function ringAt(q) { ring.style.left = q[0] + 'px'; ring.style.top = q[1] + 'px'; }
+  document.addEventListener('pointerdown', function (e) { if (jp || !jumpable(e)) return; if (Date.now() - jLast < JPAD.cool * .5) return; var q = unrot(e.clientX, e.clientY); jp = { id: e.pointerId, t0: performance.now(), q: q, sent: 0, c: 0 }; ringAt(q); ring.classList.remove('pop'); ring.style.setProperty('--p', 0); });
+  document.addEventListener('pointermove', function (e) { if (!jp || e.pointerId !== jp.id) return; var q = unrot(e.clientX, e.clientY); if (Math.hypot(q[0] - jp.q[0], q[1] - jp.q[1]) > JPAD.moveCancel * 4) { jcancel(); } });
+  function jcancel() { if (!jp) return; if (jp.c > 0) c.send({ t: 'jc', c: 0 }); jp = null; ring.classList.remove('on'); }
+  function jtick() { if (jp) { var n = performance.now(), p = jpow(n); if (p > 0) { ring.classList.add('on'); ring.style.setProperty('--p', p.toFixed(3)); ring.style.setProperty('--rc', p < .6 ? mix('#7be38f', '#ffd24a', p / .6) : mix('#ffd24a', '#ff6a1a', (p - .6) / .4)); if (n - jp.sent > 1000 / JPAD.sendHz) { jp.sent = n; jp.c = p; c.send({ t: 'jc', c: +p.toFixed(2) }); } if (p >= 1 && !jp.full) { jp.full = 1; if (navigator.vibrate) navigator.vibrate(20); } } } requestAnimationFrame(jtick); }
+  requestAnimationFrame(jtick);
+  function jup(e) { if (!jp || e.pointerId !== jp.id) return; var p = jpow(performance.now()); jp = null; jLast = Date.now(); c.send({ t: 'jump', p: +p.toFixed(2) }); if (navigator.vibrate) navigator.vibrate(p > .5 ? 30 : 12); ring.style.setProperty('--p', Math.max(p, .25)); ring.classList.add('on'); ring.classList.add('pop'); setTimeout(function () { ring.classList.remove('on'); ring.classList.remove('pop'); }, 360); }
+  document.addEventListener('pointerup', jup); document.addEventListener('pointercancel', function (e) { if (jp && e.pointerId === jp.id) jcancel(); });
+  window.MRP = { wake: function () { return { lock: !!wake, video: !!(vid && !vid.paused) }; }, unrot: unrot, get ph() { return ph; }, get mode() { return MODE; }, get rotR() { return rotR; }, get out() { return out; }, setTouch: function (x, y) { touch = x == null ? null : [x, y]; update(); } };
   // How to play (shared minikit/howto.js). Finger demos drive the real tilt dot via the touch path, but only outside a race.
   function demoTilt(p) { if (ph === 'race' || ph === 'count') return; var r = padBox(), q = $('rot').getBoundingClientRect(), x = (p[0] + q.left - r.cx) / r.r, y = -(p[1] + q.top - r.cy) / r.r, m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; } touch = [x, y]; update(); }
+  function demoRing(p, pop, q) { if (q) ringAt(q); else if (!ring.classList.contains('on')) ringAt([rot.clientWidth / 2, rot.clientHeight * .88]); ring.style.setProperty('--p', p); ring.style.setProperty('--rc', p < .6 ? mix('#7be38f', '#ffd24a', p / .6) : mix('#ffd24a', '#ff6a1a', (p - .6) / .4)); ring.classList.add('on'); if (pop) { ring.classList.add('pop'); setTimeout(function () { ring.classList.remove('on'); ring.classList.remove('pop'); }, 360); } }
   function demoOff() { if (touch && HowTo.playing && !padDown) { touch = null; sm = [0, 0]; update(); } }
   var padDown = false; pad.addEventListener('pointerdown', function () { padDown = true; }); addEventListener('pointerup', function () { padDown = false; });
   HowTo.setup({ game: 'marble', root: $('rot'), ready: function () { var k = document.getElementById('kjoin'); return !k || !k.offsetParent; }, steps: [
     { say: 'Tilt your phone left or right to steer your marble', at: '#pad', to: '#pad', act: 'drag', dur: 2200, wiggle: 1.5, wiggleAmp: 70, onMove: demoTilt, onEnd: demoOff },
     { say: 'Tilt it forward to roll faster, back to brake', at: '#pad@0.5,0.62', to: '#pad@0.5,0.2', act: 'drag', dur: 1400, onMove: demoTilt, onEnd: demoOff },
+    { say: 'Tap anywhere for a little hop', at: [.5, .9], act: 'tap', onEnd: function () { demoRing(.25, true); } },
+    { say: 'Press and hold to charge a big jump... let go to launch!', at: [.5, .88], act: 'hold', dur: 1300, onMove: function (p, t) { demoRing(t, false, p); }, onEnd: function () { demoRing(1, true); } },
     { say: 'Hold it however feels comfy, then tap Calibrate to zero the tilt', at: '#cal', act: 'tap' },
     { say: 'Portrait or landscape? Pick it here before the race - it stays put after', at: '#ori', act: 'tap' },
     { say: 'No tilt sensor? Just drag the ball', at: '#pad@0.5,0.5', to: '#pad@0.8,0.3', act: 'drag', dur: 1100, onMove: demoTilt, onEnd: demoOff } ] });

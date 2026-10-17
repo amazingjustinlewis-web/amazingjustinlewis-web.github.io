@@ -175,3 +175,10 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Auto-plays once per game (localStorage ht-seen-<game>) after the join card is gone; ? button top-right replays; Skip button or tap anywhere skips.
 - Bubble: drag a player, stick aim, flick pass, tap shot, goalie strip. Marble: steer (moves the real tilt dot, not during a race), forward/back, Calibrate, Portrait/Landscape, drag fallback.
 - Next: wire into Foosball, Stunt Smash, Walker; per-game caption position (Marble's caption overlaps the 'Ready' title a little); a real local mini-sim result for Bubble instead of sprites.
+
+## Marble Rush v0.2 (done)
+- Wake lock on pad.html (Walker v0.4.1 approach: request on every tap until held, re-request on visibilitychange, muted looping wake.mp4 fallback). MRP.wake() reports state.
+- Jump: tap anywhere outside buttons = hop; press-and-hold charges (ring fills green->gold->orange), launches on lift. Phone sends {t:'jc',c} while charging (12 Hz) and {t:'jump',p}. Sim: JUMP {small, big, coyote, cool, gate} - grounded (+coyote) only, cooldown, not during countdown. Pad JPAD {tapMs, fullMs, moveCancel, sendHz}. Without a tilt sensor the pad circle stays drag-to-steer (jump elsewhere); with a sensor the whole screen can jump.
+- TV: half-transparent tilt-force arrow per marble along the track's steer/push axes (B*x + T*y), length ~ tilt (ARROW constants), green -> gold -> fiery orange, pulses near max; additive charge glow halo + emissive tint (GLOW). Phone: mini arrow from the tilt dot centre.
+- How to play: added 'Tap anywhere for a little hop' and 'Press and hold to charge a big jump'.
+- Next: jump-over shortcuts/gaps designed for jumping, landing squash, arrow only for local view option, sound.
