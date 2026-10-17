@@ -1,0 +1,34 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><meta name="robots" content="noindex, nofollow">
+<title>RTS Flight Test</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>body{background:#0b1430;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}#ui{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+#map{border-radius:14px;box-shadow:0 0 30px #0009;border:4px solid var(--c,#fff)}#hint{color:#fff;opacity:.7;font-size:14px;text-align:center}#who{color:#fff;font-weight:700;font-size:20px}</style></head><body>
+<div id="ui"><div id="who">Your flier</div><canvas id="map"></canvas><div id="hint">Tap the map to fly there</div></div><div class="st" id="st"></div>
+<script>window.MINI = 'rts';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/perf.js"></script><script src="../minikit/net.js"></script><script src="../minikit/howto.js"></script><script src="terrain.js"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, T = Terrain, me = null, myCol = '#fff', dots = [], ripples = [], dest = null;
+  var cv = $('map'), ctx = cv.getContext('2d'), bg = document.createElement('canvas'), SZ = 0, dpr = Math.min(2, devicePixelRatio || 1);
+  // world <-> map: TV camera looks toward +z, so map up = +z and map right = -x (matches what you see on the TV)
+  function w2m(x, z) { return [(.5 - x / T.SIZE) * SZ, (.5 - z / T.SIZE) * SZ]; }
+  function m2w(px, py) { return [(.5 - px / SZ) * T.SIZE, (.5 - py / SZ) * T.SIZE]; }
+  function bake() { SZ = Math.floor(Math.min(innerWidth * .94, innerHeight * .78)); cv.width = bg.width = SZ * dpr; cv.height = bg.height = SZ * dpr; cv.style.width = cv.style.height = SZ + 'px';
+    var n = 128, b = bg.getContext('2d'), img = b.createImageData(n, n); for (var j = 0; j < n; j++) for (var i = 0; i < n; i++) { var w = m2w((i + .5) / n * SZ, (j + .5) / n * SZ), y = T.h(w[0], w[1]), yE = T.h(w[0] - 1.5, w[1] + 1.5), c = T.col(y), sh = Math.max(-30, Math.min(30, (y - yE) * 12)), k = (j * n + i) * 4; img.data[k] = c[0] + sh; img.data[k + 1] = c[1] + sh; img.data[k + 2] = c[2] + sh; img.data[k + 3] = 255; }
+    var tc = document.createElement('canvas'); tc.width = tc.height = n; tc.getContext('2d').putImageData(img, 0, 0); b.imageSmoothingEnabled = true; b.drawImage(tc, 0, 0, bg.width, bg.height); }
+  bake(); addEventListener('resize', function () { setTimeout(bake, 50); });
+  function draw(t) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.drawImage(bg, 0, 0, SZ, SZ);
+    if (dest) { var d = w2m(dest[0], dest[1]); ctx.strokeStyle = myCol; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); var md = dots.filter(function (q) { return q[0] === me; })[0]; if (md) { var a = w2m(md[1], md[2]); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(d[0], d[1]); ctx.stroke(); } ctx.setLineDash([]); ctx.beginPath(); ctx.arc(d[0], d[1], 5, 0, 7); ctx.stroke(); }
+    ripples = ripples.filter(function (r) { var k = (t - r.t) / 700; if (k > 1) return false; ctx.strokeStyle = 'rgba(255,255,255,' + (1 - k) + ')'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(r.x, r.y, 6 + k * 34, 0, 7); ctx.stroke(); return true; });
+    dots.forEach(function (q) { var p = w2m(q[1], q[2]), mine = q[0] === me; ctx.fillStyle = q[3]; ctx.strokeStyle = '#fff'; ctx.lineWidth = mine ? 3 : 1.5; ctx.beginPath(); ctx.arc(p[0], p[1], mine ? 8 + Math.sin(t / 200) * 1.2 : 5, 0, 7); ctx.fill(); ctx.stroke(); });
+    requestAnimationFrame(draw); }
+  requestAnimationFrame(draw);
+  var c = Kit.pad({ onMsg: function (m) { if (m.t === 'you') { me = m.id; myCol = m.col; document.body.style.setProperty('--c', m.col); $('ui').style.display = 'flex'; $('who').style.color = m.col; } else if (m.t === 'p') { dots = m.a; var md = dots.filter(function (q) { return q[0] === me; })[0]; if (md && !md[4]) dest = null; } },
+    onStatus: function (s) { $('st').textContent = s === 'online' ? '' : s; } });
+  Kit.joinCard('RTS FLIGHT TEST', c);
+  cv.addEventListener('pointerdown', function (e) { var r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, w = m2w(px, py); ripples.push({ x: px, y: py, t: performance.now() }); dest = w; c.send({ t: 'go', x: +w[0].toFixed(2), z: +w[1].toFixed(2) }); if (navigator.vibrate) navigator.vibrate(10); });
+  HowTo.setup({ game: 'rts', ready: function () { var k = document.getElementById('kjoin'); return !k || !k.offsetParent; }, steps: [
+    { say: 'This is the map. Your flier is the big dot', at: '#map@0.5,0.5', act: 'tap', dur: 300, hold: 1200 },
+    { say: 'Tap anywhere on the map to fly there', at: '#map@0.3,0.3', act: 'tap', onEnd: function () { var r = cv.getBoundingClientRect(); ripples.push({ x: r.width * .3, y: r.height * .3, t: performance.now() }); } },
+    { say: 'Tap again to change course - watch the TV!', at: '#map@0.75,0.65', act: 'tap', onEnd: function () { var r = cv.getBoundingClientRect(); ripples.push({ x: r.width * .75, y: r.height * .65, t: performance.now() }); } } ] });
+  window.RTP = { m2w: m2w, w2m: w2m, get dots() { return dots; } };
+})();
+</script></body></html>

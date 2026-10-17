@@ -198,6 +198,14 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Phone: height-tinted minimap with hill shading, your dot (pulsing) + others in colour, tap ripple + dashed course line; How to play (3 steps); perf.js on both.
 - Next: unit selection/groups, obstacles/no-fly, fog of war, flier collision, pinch-zoom minimap.
 
+## RTS v0.2 'Shapes' (done)
+- index.html/pad.html = Shapes; v0.1 kept as flight.html/flightpad.html (?mode=flight redirects; flight TV QR passes mode=flight). shapes.js = shared tables (U 12 shapes, B buildings, FAC, BIAS, COST, WHEEL, SHARE rules).
+- TV sim: host-authoritative, substeps of 50 ms (keeps pace on slow frames), snapshot 6-7 Hz (~3-5 KB/s per phone). Monster waves every 40 s (first at 60 s). Neutrals turn hostile when hit.
+- Phone: lasso (drag), tap (smart action), double-tap options, pinch/wheel zoom, 2-finger/right-drag pan; mouse supported.
+- Wheel (Justin refinements): thumb-down only; picks inside 78% radius, outer band = travel to edge dots; TOP go, BOTTOM reset (option toggles return-to-top), LEFT back (keeps stack), RIGHT AI guess (frequency + recency, localStorage rts2-pred). Lift = orb at top (glow ~ stack size), tap orb = actuate. Burst 0.33 s + top shake + rolodex bottom-right.
+- Wired: bias (4), build (barracks/tower/workshop at the wheel point), train (Brick/Orb/Ring), select army, attack-move/move mode, hold/stop, upgrade, share, auto stack, order cycle. Stubs: wall, combine tree.
+- Todo: real combine/evolve, better battle readability on TV (bigger beams/impact puffs), fog of war, phone faction choice, sound, multiple phones splitting the army.
+
 ## Bubble Hockey v0.9.8 (done): phone puck-pointer arrows
 - pad.html puckArrows(): 6 SVG chevrons inside #rot (follows the v0.9.4 orientation lock), placed PARR.gap px outside the rink bounds from V.w2s, sine drift PARR.drift px, rotate to the puck's screen point, colour BubbleCOL[carrier team] or #f2f2f2 loose, opacity PARR.op, pointer-events none.
 - No netcode change: st.p and st.c were already in the updates (team = c < 6 ? 0 : 1).
