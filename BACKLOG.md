@@ -150,6 +150,8 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 ## Marble Rush v0.1 (Oct 16, 2026, dev only: /dev-7q3x/marble/)
 - [x] TV-authoritative sphere-on-track sim (sim.js, own physics, node-testable), turtle-built track: start gate + countdown, big drop, boosts, 2 jumps, banked curves with glass rails, over-drops, loop (offset corkscrew), rollers, finish + runout. Marble bumps, fall -> respawn at last checkpoint (1.4 s). Pack-follow camera. Phone: tilt (deadzone/curve/smoothing/sensitivity in TILT), iOS permission button, recalibrate, drag fallback, START.
 - [ ] Next: play-test tilt feel on real phones; track variety / random tracks; marble skins; sounds; a spectator camera cut for the loop and jumps; lap mode.
+- [x] v0.1.1: Portrait/Landscape toggle (localStorage marble-orient; landscape direction latched pre-race from the OS angle, marble-ldir), page locked via screen.orientation.lock or a counter-rotated wrapper with remapped drag; tilt from device-frame beta/gamma for the chosen mode only (landscape 90: lr=beta, fb=-gamma; 270: lr=-beta, fb=gamma); Recalibrate re-zeroes in that mode.
+- [ ] Verify on iPhone + Android in both landscape directions; consider auto-detect of landscape direction mid-lobby with a visible indicator.
 
 ## Stunt Smash v0.1 (Oct 16, 2026, dev only: /dev-7q3x/stunt/)
 - [x] Random level per round (1-2 kicker ramps, crate tower/wall/pile), phone top-down map: draw a line (direction from start, clamped +-26 deg), vehicle pick (bike 250 kg flips / car 1300 kg / bus 7000 kg smash), speed slider, GO. cannon.js 0.6.2 box physics on the TV; score = 100/crate + 400 total wreck + 60/s air + 500/flip. Turn rotation, chase cam, slow-mo (0.3x) orbit replay of the round's best crash, tap to skip.

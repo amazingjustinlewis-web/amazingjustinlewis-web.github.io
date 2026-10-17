@@ -1,17 +1,18 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><meta name="robots" content="noindex, nofollow">
 <title>Marble Rush pad</title><link rel="stylesheet" href="../minikit/kit.css">
 <style>body{background:radial-gradient(ellipse at 50% 30%,#23305e,#0b1022 75%);touch-action:none;user-select:none;-webkit-user-select:none}
-#ui{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:space-around;padding:14px;box-sizing:border-box}
+#rot{position:fixed;left:0;top:0;transform-origin:0 0}#ui{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:space-around;padding:14px;box-sizing:border-box}
 #place{font-size:64px;font-weight:800;color:#fff;text-shadow:0 4px 12px #0008;text-align:center;line-height:1}#place small{display:block;font-size:18px;font-weight:600;opacity:.8;margin-top:6px}
-#pad{position:relative;width:min(72vw,46vh);height:min(72vw,46vh);border-radius:50%;border:10px solid #fff;box-shadow:0 0 40px #0008,inset 0 0 30px #0006;background:radial-gradient(circle,#ffffff22,#0000 70%)}
+#pad{position:relative;width:min(calc(var(--W) * .72),calc(var(--H) * .46));height:min(calc(var(--W) * .72),calc(var(--H) * .46));flex:none;border-radius:50%;border:10px solid #fff;box-shadow:0 0 40px #0008,inset 0 0 30px #0006;background:radial-gradient(circle,#ffffff22,#0000 70%)}
 #pad:before,#pad:after{content:'';position:absolute;background:#fff3;left:50%;top:8%;bottom:8%;width:2px;margin-left:-1px}#pad:after{top:50%;left:8%;right:8%;width:auto;height:2px;bottom:auto;margin:-1px 0 0}
 #dot{position:absolute;width:26%;height:26%;left:37%;top:37%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff9,#0000 45%),var(--c,#fc3);box-shadow:0 6px 16px #0009;will-change:transform}
 #dz{position:absolute;left:50%;top:50%;border-radius:50%;border:2px dashed #fff5;transform:translate(-50%,-50%)}
 .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}.row .btn{min-width:42vw}#allow{background:#ffd23f;color:#222}#go{background:#5fdc7a;color:#062}
-#hint{font-size:13px;opacity:.7;text-align:center;max-width:90vw}</style></head><body>
-<div id="ui"><div id="place">–<small id="sub">Waiting at the gate</small></div><div id="pad"><div id="dz"></div><div id="dot"></div></div>
-<div class="row"><button class="btn" id="allow">Tap to allow tilt</button><button class="btn" id="cal">⟲ Recalibrate</button><button class="btn" id="go">START</button></div>
-<div id="hint">Hold the phone flat-ish and tilt to steer · forward = faster · no tilt sensor? drag the ball</div></div><div class="st" id="st"></div>
+#hint{font-size:13px;opacity:.7;text-align:center;max-width:90%}
+#rot.land #ui{flex-direction:row;flex-wrap:wrap;align-content:center;gap:12px 24px}#rot.land #pad{width:min(calc(var(--H) * .7),calc(var(--W) * .42));height:min(calc(var(--H) * .7),calc(var(--W) * .42))}#rot.land .row .btn{min-width:20%}#rot.land #hint{width:100%}#ori{background:#3d4c78;color:#fff}</style></head><body>
+<div id="rot"><div id="ui"><div id="place">–<small id="sub">Waiting at the gate</small></div><div id="pad"><div id="dz"></div><div id="dot"></div></div>
+<div class="row"><button class="btn" id="allow">Tap to allow tilt</button><button class="btn" id="cal">⟲ Recalibrate</button><button class="btn" id="ori">▯ Portrait</button><button class="btn" id="go">START</button></div>
+<div id="hint">Hold the phone flat-ish and tilt to steer · forward = faster · no tilt sensor? drag the ball</div></div></div><div class="st" id="st"></div>
 <script>window.MINI = 'marble';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script>
 <script>
 (function () {
@@ -24,14 +25,26 @@
       else if (m.t === 'st') { var sfx = ['th', 'st', 'nd', 'rd'][(m.place % 100 > 10 && m.place % 100 < 14) ? 0 : (m.place % 10 < 4 ? m.place % 10 : 0)];
         $('place').firstChild.nodeValue = m.ph === 'lobby' ? 'Ready' : m.ph === 'count' ? String(m.cd) : m.place + sfx;
         $('sub').textContent = m.ph === 'lobby' ? m.n + ' marble' + (m.n > 1 ? 's' : '') + ' at the gate' : m.ph === 'count' ? 'Get ready…' : m.fin ? 'Finished ' + m.fin.toFixed(2) + 's' : m.dead ? 'Oops! Respawning…' : 'of ' + m.n + ' · ' + m.prog + '%';
-        $('go').style.display = m.ph === 'lobby' || m.ph === 'results' ? '' : 'none'; } },
+        $('go').style.display = $('ori').style.display = m.ph === 'lobby' || m.ph === 'results' ? '' : 'none'; if (m.ph !== ph) { ph = m.ph; if (ph === 'count') lockOri(); } } },
     onStatus: function (s) { $('st').textContent = s === 'online' ? '' : s; } });
   Kit.joinCard('MARBLE RUSH', c);
   var dz = TILT.dead / TILT.full * 100; $('dz').style.width = $('dz').style.height = (dz * 2) + '%';
   function shape(a) { var s = a < 0 ? -1 : 1, m = Math.abs(a); if (m < TILT.dead) return 0; return s * Math.pow(Math.min(1, (m - TILT.dead) / (TILT.full - TILT.dead)), TILT.curve); }
+  // v0.1.1: chosen layout (portrait / landscape) stays locked to the phone whatever the OS says mid-race.
+  // Tilt axes come from the device frame (beta/gamma) for the chosen mode only, so an OS rotation report never changes steering.
+  var MODE = localStorage.getItem('marble-orient') === 'land' ? 'land' : 'port', LDIR = +(localStorage.getItem('marble-ldir') || 90), ph = 'lobby', rotR = 0, rot = $('rot');
+  function target() { return MODE === 'land' ? LDIR : 0; }
+  function layout() { var W = innerWidth, H = innerHeight, a = ang(); if (MODE === 'land' && (a === 90 || a === 270) && (ph === 'lobby' || ph === 'results')) { LDIR = a; localStorage.setItem('marble-ldir', a); }
+    var r = ((target() - a) % 360 + 360) % 360; rotR = r; var sw = r === 90 || r === 270, w = sw ? H : W, h = sw ? W : H;
+    rot.style.width = w + 'px'; rot.style.height = h + 'px'; rot.style.setProperty('--W', w + 'px'); rot.style.setProperty('--H', h + 'px'); rot.classList.toggle('land', MODE === 'land');
+    rot.style.transform = r === 270 ? 'translate(0,' + H + 'px) rotate(-90deg)' : r === 90 ? 'translate(' + W + 'px,0) rotate(90deg)' : r === 180 ? 'translate(' + W + 'px,' + H + 'px) rotate(180deg)' : 'none';
+    $('ori').textContent = MODE === 'land' ? '▭ Landscape' : '▯ Portrait'; }
+  function unrot(X, Y) { var W = innerWidth, H = innerHeight; return rotR === 270 ? [H - Y, X] : rotR === 90 ? [Y, W - X] : rotR === 180 ? [W - X, H - Y] : [X, Y]; }
+  function lockOri() { try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock(MODE === 'land' ? (LDIR === 270 ? 'landscape-secondary' : 'landscape-primary') : 'portrait-primary').catch(function () {}); } catch (e) {} }
+  addEventListener('resize', function () { setTimeout(layout, 30); }); if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', function () { setTimeout(layout, 60); });
   function ang() { var a = screen.orientation && screen.orientation.angle != null ? screen.orientation.angle : (window.orientation || 0); return ((a % 360) + 360) % 360; }
-  function onOri(e) { if (e.gamma == null) return; gotSensor = true; var g = e.gamma, b = e.beta, a = ang(), lr = g, fb = b;   // map to the phone held in its current screen orientation
-    if (a === 90) { lr = b; fb = -g; } else if (a === 270) { lr = -b; fb = g; } raw = [lr, fb]; if (!touch) update(); }
+  function onOri(e) { if (e.gamma == null) return; gotSensor = true; var g = e.gamma, b = e.beta, lr = g, fb = b;   // device frame, chosen mode only
+    if (MODE === 'land') { if (LDIR === 90) { lr = b; fb = -g; } else { lr = -b; fb = g; } } raw = [lr, fb]; if (!touch) update(); }
   function update() { var x, y; if (touch) { x = touch[0]; y = touch[1]; } else if (raw) { x = shape(raw[0] - zero[0]); y = shape(-(raw[1] - zero[1])); } else { x = 0; y = 0; }
     sm[0] += (x - sm[0]) * (touch ? 1 : TILT.smooth); sm[1] += (y - sm[1]) * (touch ? 1 : TILT.smooth); out = [Math.round(sm[0] * 100) / 100, Math.round(sm[1] * 100) / 100];
     $('dot').style.transform = 'translate(' + (out[0] * 140) + '%,' + (-out[1] * 140) + '%)'; }
@@ -40,14 +53,16 @@
   var needPerm = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
   if (!needPerm) { listen(); $('allow').style.display = 'none'; }
   $('allow').onclick = function () { DeviceOrientationEvent.requestPermission().then(function (r) { if (r === 'granted') { listen(); $('allow').style.display = 'none'; } else $('allow').textContent = 'Tilt blocked · drag the ball'; }).catch(function () { $('allow').textContent = 'Tilt blocked · drag the ball'; }); };
-  $('cal').onclick = calibrate; $('go').onclick = function () { c.send({ t: 'start' }); if (!gotSensor) calibrate(); };
+  $('cal').onclick = function () { layout(); calibrate(); };
+  $('ori').onclick = function () { MODE = MODE === 'land' ? 'port' : 'land'; localStorage.setItem('marble-orient', MODE); layout(); lockOri(); raw = null; setTimeout(calibrate, 250); }; $('go').onclick = function () { c.send({ t: 'start' }); if (!gotSensor) calibrate(); };
   // touch-drag fallback (desktop testing / no sensor)
-  var pad = $('pad'); function tp(e) { var r = pad.getBoundingClientRect(), x = (e.clientX - (r.left + r.width / 2)) / (r.width / 2), y = -(e.clientY - (r.top + r.height / 2)) / (r.height / 2), m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; } touch = [x, y]; update(); }
+  var pad = $('pad'); function padBox() { var x = 0, y = 0, el = pad; while (el && el !== rot) { x += el.offsetLeft; y += el.offsetTop; el = el.offsetParent; } return { cx: x + pad.offsetWidth / 2, cy: y + pad.offsetHeight / 2, r: pad.offsetWidth / 2 }; }
+  function tp(e) { var q = unrot(e.clientX, e.clientY), r = padBox(), x = (q[0] - r.cx) / r.r, y = -(q[1] - r.cy) / r.r, m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; } touch = [x, y]; update(); }
   pad.addEventListener('pointerdown', function (e) { pad.setPointerCapture(e.pointerId); tp(e); }); pad.addEventListener('pointermove', function (e) { if (touch) tp(e); });
   function rel() { touch = null; sm = [0, 0]; update(); } pad.addEventListener('pointerup', rel); pad.addEventListener('pointercancel', rel);
-  try { if (screen.orientation && screen.orientation.lock) document.addEventListener('pointerdown', function () { screen.orientation.lock('portrait').catch(function () {}); }, { once: true }); } catch (e) {}
+  document.addEventListener('pointerdown', lockOri, { once: true }); layout();
   // send: only when changed, at most TILT.hz; a rare keepalive otherwise
   setInterval(function () { if (!touch && raw) update(); var n = Date.now(), ch = Math.abs(out[0] - lastSent[0]) > 0.015 || Math.abs(out[1] - lastSent[1]) > 0.015; if (ch || n - lastT > 2000) { c.send({ t: 'tilt', x: out[0], y: out[1] }); lastSent = out.slice(); lastT = n; } }, 1000 / TILT.hz);
-  window.MRP = { get out() { return out; }, setTouch: function (x, y) { touch = x == null ? null : [x, y]; update(); } };
+  window.MRP = { unrot: unrot, get mode() { return MODE; }, get rotR() { return rotR; }, get out() { return out; }, setTouch: function (x, y) { touch = x == null ? null : [x, y]; update(); } };
 })();
 </script></body></html>
