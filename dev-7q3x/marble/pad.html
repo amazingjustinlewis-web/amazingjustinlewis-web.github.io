@@ -13,7 +13,7 @@
 <div id="rot"><div id="ui"><div id="place">–<small id="sub">Waiting at the gate</small></div><div id="pad"><div id="dz"></div><div id="dot"></div></div>
 <div class="row"><button class="btn" id="allow">Tap to allow tilt</button><button class="btn" id="cal">⟲ Recalibrate</button><button class="btn" id="ori">▯ Portrait</button><button class="btn" id="go">START</button></div>
 <div id="hint">Hold the phone flat-ish and tilt to steer · forward = faster · no tilt sensor? drag the ball</div></div></div><div class="st" id="st"></div>
-<script>window.MINI = 'marble';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script>
+<script>window.MINI = 'marble';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../minikit/howto.js"></script>
 <script>
 (function () {
   var $ = function (i) { return document.getElementById(i); };
@@ -63,6 +63,16 @@
   document.addEventListener('pointerdown', lockOri, { once: true }); layout();
   // send: only when changed, at most TILT.hz; a rare keepalive otherwise
   setInterval(function () { if (!touch && raw) update(); var n = Date.now(), ch = Math.abs(out[0] - lastSent[0]) > 0.015 || Math.abs(out[1] - lastSent[1]) > 0.015; if (ch || n - lastT > 2000) { c.send({ t: 'tilt', x: out[0], y: out[1] }); lastSent = out.slice(); lastT = n; } }, 1000 / TILT.hz);
-  window.MRP = { unrot: unrot, get mode() { return MODE; }, get rotR() { return rotR; }, get out() { return out; }, setTouch: function (x, y) { touch = x == null ? null : [x, y]; update(); } };
+  window.MRP = { unrot: unrot, get ph() { return ph; }, get mode() { return MODE; }, get rotR() { return rotR; }, get out() { return out; }, setTouch: function (x, y) { touch = x == null ? null : [x, y]; update(); } };
+  // How to play (shared minikit/howto.js). Finger demos drive the real tilt dot via the touch path, but only outside a race.
+  function demoTilt(p) { if (ph === 'race' || ph === 'count') return; var r = padBox(), q = $('rot').getBoundingClientRect(), x = (p[0] + q.left - r.cx) / r.r, y = -(p[1] + q.top - r.cy) / r.r, m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; } touch = [x, y]; update(); }
+  function demoOff() { if (touch && HowTo.playing && !padDown) { touch = null; sm = [0, 0]; update(); } }
+  var padDown = false; pad.addEventListener('pointerdown', function () { padDown = true; }); addEventListener('pointerup', function () { padDown = false; });
+  HowTo.setup({ game: 'marble', root: $('rot'), ready: function () { var k = document.getElementById('kjoin'); return !k || !k.offsetParent; }, steps: [
+    { say: 'Tilt your phone left or right to steer your marble', at: '#pad', to: '#pad', act: 'drag', dur: 2200, wiggle: 1.5, wiggleAmp: 70, onMove: demoTilt, onEnd: demoOff },
+    { say: 'Tilt it forward to roll faster, back to brake', at: '#pad@0.5,0.62', to: '#pad@0.5,0.2', act: 'drag', dur: 1400, onMove: demoTilt, onEnd: demoOff },
+    { say: 'Hold it however feels comfy, then tap Calibrate to zero the tilt', at: '#cal', act: 'tap' },
+    { say: 'Portrait or landscape? Pick it here before the race - it stays put after', at: '#ori', act: 'tap' },
+    { say: 'No tilt sensor? Just drag the ball', at: '#pad@0.5,0.5', to: '#pad@0.8,0.3', act: 'drag', dur: 1100, onMove: demoTilt, onEnd: demoOff } ] });
 })();
 </script></body></html>

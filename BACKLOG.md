@@ -169,3 +169,9 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - AI: wind back then strike, picks a contact offset that threads the next opposing rod; reaction delay on tracking; idle rods (AI and human-assisted) lift when their own team shoots from behind.
 - Dead zones between rods get a gentle roll toward the nearest rod (like a dished table).
 - Next: tune on real phones (THUMB.full, blanket strength), maybe pin/snake-shot trick (hold ball under a tilted man), 3D TV view, sound per contact strength.
+
+## Shared phone How to play (done: minikit/howto.js; Bubble Hockey v0.9.5, Marble Rush v0.1.2)
+- HowTo.setup({game, root, ready, steps}) - each step: caption, finger start (selector / selector@fx,fy / fraction / fn), optional swipe target, act tap|drag|flick, optional wiggle, ghost sprite that follows the finger, fly-off result (pass/shot), onMove/onEnd hooks to drive the real view locally.
+- Auto-plays once per game (localStorage ht-seen-<game>) after the join card is gone; ? button top-right replays; Skip button or tap anywhere skips.
+- Bubble: drag a player, stick aim, flick pass, tap shot, goalie strip. Marble: steer (moves the real tilt dot, not during a race), forward/back, Calibrate, Portrait/Landscape, drag fallback.
+- Next: wire into Foosball, Stunt Smash, Walker; per-game caption position (Marble's caption overlaps the 'Ready' title a little); a real local mini-sim result for Bubble instead of sprites.
