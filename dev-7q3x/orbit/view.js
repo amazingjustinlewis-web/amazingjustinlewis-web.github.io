@@ -45,7 +45,7 @@
 
   function View(canvas, o) {
     o = o || {}; this.o = o; var phone = !!o.phone;
-    var R = this.R = new T.WebGLRenderer({ canvas: canvas, antialias: !phone, powerPreference: 'high-performance' }); R.setPixelRatio(Math.min(devicePixelRatio || 1, phone ? 1.5 : 2));
+    var R = this.R = new T.WebGLRenderer({ canvas: canvas, antialias: !phone, powerPreference: 'high-performance' }); if (window.Perf) window.Perf.wrap(R, 'render', 'r'); R.setPixelRatio(Math.min(devicePixelRatio || 1, phone ? 1.5 : 2));
     var S = this.S = new T.Scene(); this.cam = new T.PerspectiveCamera(phone ? 72 : 55, 1, .5, 4000);
     S.add(new T.HemisphereLight(0x9ab8ff, 0x2a1438, .9)); var sun = new T.DirectionalLight(0xfff0dd, 1.4); sun.position.set(.6, .8, .3); S.add(sun);
     var sky = new T.Mesh(new T.SphereGeometry(2500, 32, 16), new T.MeshBasicMaterial({ map: nebulaTex(), side: T.BackSide, depthWrite: false, fog: false })); S.add(sky); this.sky = sky;

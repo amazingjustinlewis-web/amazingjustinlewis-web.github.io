@@ -5,11 +5,11 @@
 #board{position:fixed;left:12px;top:12px;z-index:4;font-size:clamp(14px,2.3vh,22px)}#board div{background:#000a;color:#fff;border-radius:10px;padding:3px 10px;margin-bottom:5px;border-left:8px solid;display:flex;gap:14px;justify-content:space-between}#board div.on{outline:3px solid #ffd23f}
 #join{position:fixed;right:12px;top:12px;z-index:4}#rep{position:fixed;left:16px;bottom:14px;color:#fff;font-weight:700;font-size:3vh;text-shadow:0 2px 6px #000;z-index:4;display:none}</style></head><body>
 <canvas id="cv" class="full"></canvas><div id="board"></div><div id="top">Scan to join · take turns smashing stuff</div><div id="pop"></div><div id="join"></div><div id="rep">● SLOW-MO REPLAY · tap to skip</div>
-<script>window.MINI = 'stunt';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="three.min.js"></script><script src="cannon.min.js"></script><script src="game.js"></script>
+<script>window.MINI = 'stunt';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/perf.js"></script><script src="../minikit/net.js"></script><script src="three.min.js"></script><script src="cannon.min.js"></script><script src="game.js"></script>
 <script>
 (function () {
   var $ = function (i) { return document.getElementById(i); }, ST = window.Stunt, REPLAY = { rate: 0.3, maxT: 9 }, AIM_T = 60;
-  var R = new THREE.WebGLRenderer({ canvas: $('cv'), antialias: true }); R.setPixelRatio(Math.min(1.5, devicePixelRatio || 1)); R.setClearColor(0x9cd3ff);
+  var R = new THREE.WebGLRenderer({ canvas: $('cv'), antialias: true }); R.setPixelRatio(Math.min(1.5, devicePixelRatio || 1)); R.setClearColor(0x9cd3ff); if (window.Perf) Perf.wrap(R, 'render', 'r');
   var scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x9cd3ff, 120, 420); var cam = new THREE.PerspectiveCamera(55, 1, 0.1, 1000);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x556644, 0.75)); var sun = new THREE.DirectionalLight(0xffffff, 0.7); sun.position.set(-40, 90, 30); scene.add(sun);
   (function () { var c = document.createElement('canvas'); c.width = c.height = 64; var x = c.getContext('2d'); x.fillStyle = '#7cc463'; x.fillRect(0, 0, 64, 64); x.fillStyle = '#72b95a'; x.fillRect(0, 0, 32, 32); x.fillRect(32, 32, 32, 32); var t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(200, 200);

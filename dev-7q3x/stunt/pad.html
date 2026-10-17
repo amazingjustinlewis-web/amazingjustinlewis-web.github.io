@@ -13,7 +13,7 @@
 <div id="ui"><div id="msg">Waiting…</div><canvas id="map"></canvas>
 <div class="veh"><button data-v="bike">🏍️<small>light · flips</small></button><button data-v="car" class="on">🚗<small>balanced</small></button><button data-v="bus">🚌<small>heavy · smash</small></button></div>
 <div id="spd">🐢<input type="range" id="speed" min="18" max="44" value="32" step="1">🚀 <b id="sv">32</b></div><button id="go">GO!</button><div id="q"></div><div id="sc"></div></div><div class="st" id="st"></div><div id="blast"></div><div id="obs"><div>Observe display screen<small id="obs2"></small></div></div>
-<script>window.MINI = 'stunt';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script>
+<script>window.MINI = 'stunt';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/perf.js"></script><script src="../minikit/net.js"></script>
 <script>
 (function () {
   var $ = function (i) { return document.getElementById(i); }, YAWMAX = 0.45, L = null, S = null, aim = { yaw: 0, speed: 32, veh: 'car' }, path = [], col = '#ffd23f', myTurn = false;

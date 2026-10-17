@@ -182,3 +182,11 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - TV: half-transparent tilt-force arrow per marble along the track's steer/push axes (B*x + T*y), length ~ tilt (ARROW constants), green -> gold -> fiery orange, pulses near max; additive charge glow halo + emissive tint (GLOW). Phone: mini arrow from the tilt dot centre.
 - How to play: added 'Tap anywhere for a little hop' and 'Press and hold to charge a big jump'.
 - Next: jump-over shortcuts/gaps designed for jumping, landing squash, arrow only for local view option, sound.
+
+## Dev metrics (done: minikit/perf.js, dev pages only)
+- Loaded on dev-7q3x Bubble Hockey, Marble Rush, Foosball, Stunt Smash, Orbit Brawl (TV + pad). No public page loads minikit.
+- Open: add ?perf=1 to the TV or pad URL, or triple-tap the top-left corner (70 px) within 0.7 s. Overlay: live 5 s bucket readout, Download log (JSON), Clear, close.
+- TV: fps, frame-time p50/p95/p99 (fixed 0.25 ms histogram), max, frames > 50 ms, sim step vs render CPU time (ms/call and per frame), JS heap (Chrome), device (UA, screen, window, dpr, cores, memory, GPU via WEBGL_debug_renderer_info), phone count, per phone: RTT and jitter (TV pings every 2 s, the phone echoes), msg in/out rate, bytes/s (sampled 1 in 8 via JSON length), late (>150 ms) / out-of-order / dropped pings, % of inbound on the unordered fast channel, phone fps.
+- Phone: fps and frame percentiles, RTT/jitter (reported by the TV in each ping), fps sent back in the echo.
+- Log: localStorage 'mk-perf-log', rolling (~720 buckets total across sessions).
+- Next: wire into other minis, GPU timer query (EXT_disjoint_timer_query) for true render cost, optional upload endpoint.

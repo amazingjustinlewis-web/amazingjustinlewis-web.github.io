@@ -7,13 +7,13 @@
 #res{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#000c;border-radius:20px;padding:20px 40px;font-size:clamp(18px,3.4vh,34px);color:#fff;z-index:6;display:none;min-width:40vw}#res h2{margin:0 0 10px;text-align:center;color:#ffd23f}#res div{display:flex;justify-content:space-between;gap:30px;border-left:10px solid;padding-left:12px;margin:6px 0}
 #join{position:fixed;right:12px;top:12px;z-index:4}</style></head><body>
 <canvas id="cv" class="full"></canvas><div id="board"></div><div id="clock"></div><div id="cd"></div><div id="msg">Scan to join · up to 8 marbles · tilt your phone to steer</div><div id="res"></div><div id="join"></div>
-<script>window.MINI = 'marble';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="three.min.js"></script><script src="sim.js"></script>
+<script>window.MINI = 'marble';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/perf.js"></script><script src="../minikit/net.js"></script><script src="three.min.js"></script><script src="sim.js"></script>
 <script>
 (function () {
   var $ = function (i) { return document.getElementById(i); }, U = Marble.util, sim = new Marble.Sim(), S = sim.tr.S;
   var CAM = { back: 13, up: 6.5, look: 6, k: 2.2, kl: 4 };
   // ---------- scene ----------
-  var R = new THREE.WebGLRenderer({ canvas: $('cv'), antialias: true }); R.setPixelRatio(Math.min(1.5, devicePixelRatio || 1)); R.setClearColor(0x86c5ff);
+  var R = new THREE.WebGLRenderer({ canvas: $('cv'), antialias: true }); R.setPixelRatio(Math.min(1.5, devicePixelRatio || 1)); R.setClearColor(0x86c5ff); if (window.Perf) Perf.wrap(R, 'render', 'r');
   var scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x86c5ff, 60, 220); var cam = new THREE.PerspectiveCamera(60, 1, 0.1, 500);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.65)); var sun = new THREE.DirectionalLight(0xffffff, 0.7); sun.position.set(30, 80, 20); scene.add(sun);
   var ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshLambertMaterial({ color: 0x6fbf5a })); ground.rotation.x = -Math.PI / 2; var GY = Math.min.apply(null, S.map(function (q) { return q.p[1]; })) - 5; ground.position.y = GY; scene.add(ground); scene.fog.far = 260;

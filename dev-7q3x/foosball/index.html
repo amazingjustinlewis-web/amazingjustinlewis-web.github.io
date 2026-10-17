@@ -3,7 +3,7 @@
 <style>body{background:#10140f}#sc,#sc2{position:fixed;left:0;right:0;text-align:center;z-index:4;font-size:4.2vh;font-weight:700}#sc{top:2.5vh}#sc2{bottom:2.5vh;font-size:2.4vh;font-weight:400;opacity:.8}#sc .t{margin:0 4vw;opacity:.6}#join{position:fixed;right:1.5vw;top:1.5vh;width:140px;z-index:6}</style></head><body>
 <canvas id="cv" class="full"></canvas><div id="sc"></div><div id="sc2"></div><div id="join"></div><div class="big" id="big"></div>
 <script>if (Math.min(screen.width, screen.height) < 600 && new URLSearchParams(location.search).get('tv') !== '1') location.replace('pad.html' + location.search);</script>
-<script>window.MINI = 'foosball';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script><script src="sim.js"></script><script src="view.js"></script>
+<script>window.MINI = 'foosball';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/perf.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script><script src="sim.js"></script><script src="view.js"></script>
 <script>
 (function () {
   var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), ctx = cv.getContext('2d'), V = new FoosView(), sim = new Foos.Sim(), demo = true, players = [];

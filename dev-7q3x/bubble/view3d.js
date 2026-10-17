@@ -9,7 +9,7 @@
   var B = root.Bubble, COLS = [0xff5a6e, 0x3aa8ff], L = B.L;
   function R3(canvas, V, opt) {
     opt = opt || {}; this.V = V; this.phone = !!opt.phone; this.cv = canvas;
-    var g = this.gl = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); g.setPixelRatio(Math.min(2, devicePixelRatio || 1)); g.setClearColor(0x0c1226);
+    var g = this.gl = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); g.setPixelRatio(Math.min(2, devicePixelRatio || 1)); g.setClearColor(0x0c1226); if (root.Perf) root.Perf.wrap(g, 'render', 'r');
     var sc = this.scene = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xffffff, 0x445066, .55)); var dl = new THREE.DirectionalLight(0xffffff, .55); dl.position.set(.6, 3, 1.2); sc.add(dl);
     var G = this.G = new THREE.Group(); sc.add(G); if (this.phone) G.scale.z = -1;
     this.ortho = new THREE.OrthographicCamera(0, 1, 0, -1, .01, 50); this.persp = new THREE.PerspectiveCamera(52, 1, .005, 40);
