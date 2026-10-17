@@ -1,0 +1,44 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><meta name="robots" content="noindex, nofollow">
+<title>Stunt Smash pad</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>body{background:#1a2238;touch-action:none;user-select:none;-webkit-user-select:none}#ui{position:fixed;inset:0;display:none;flex-direction:column;padding:8px;box-sizing:border-box;gap:8px}
+#msg{text-align:center;font-size:18px;font-weight:700;color:#fff;min-height:24px}#map{flex:1;width:100%;border-radius:14px;background:#6db35a;display:block}
+.veh{display:flex;gap:8px}.veh button{flex:1;font-size:30px;padding:6px 0;border-radius:14px;border:3px solid transparent;background:#2c3757;color:#fff}.veh button.on{border-color:#ffd23f;background:#3d4c78}.veh button small{display:block;font-size:11px}
+#spd{display:flex;align-items:center;gap:10px;color:#fff;font-size:15px}#spd input{flex:1;height:34px}#go{font-size:30px;font-weight:800;padding:12px;border-radius:16px;border:0;background:#ff4d5e;color:#fff;box-shadow:0 5px 0 #a3202e}#go:disabled{background:#555;box-shadow:none;color:#999}
+#sc{font-size:13px;color:#cfd8ef;text-align:center}</style></head><body>
+<div id="ui"><div id="msg">Waiting…</div><canvas id="map"></canvas>
+<div class="veh"><button data-v="bike">🏍️<small>light · flips</small></button><button data-v="car" class="on">🚗<small>balanced</small></button><button data-v="bus">🚌<small>heavy · smash</small></button></div>
+<div id="spd">🐢<input type="range" id="speed" min="18" max="44" value="32" step="1">🚀 <b id="sv">32</b></div><button id="go" disabled>GO!</button><div id="sc"></div></div><div class="st" id="st"></div>
+<script>window.MINI = 'stunt';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, YAWMAX = 0.45, L = null, S = null, aim = { yaw: 0, speed: 32, veh: 'car' }, path = [], col = '#ffd23f', myTurn = false;
+  var cv = $('map'), x = cv.getContext('2d'), VIEW = { x0: -50, x1: 92, zw: 46 };
+  var c = Kit.pad({ onMsg: function (m) { if (m.t === 'lvl') { L = m; path = []; aim.yaw = 0; draw(); $('ui').style.display = 'flex'; }
+      else if (m.t === 'st') { S = m; myTurn = m.turn; $('go').disabled = !myTurn; $('msg').textContent = m.ph === 'aim' ? (myTurn ? 'Your turn! Draw your line, pick a ride, GO' : m.who + ' is aiming…') : m.ph === 'run' ? m.who + ' is flying!' : m.ph === 'score' ? (m.last != null ? 'You scored ' + m.last.toLocaleString() + '!' : 'Nice one, ' + m.who) : m.ph === 'replay' ? 'Slow-mo replay · tap to skip' : 'Round ' + m.round;
+        $('sc').innerHTML = (m.scores || []).map(function (q) { return '<span style="color:' + q[1] + '">\u25CF</span> ' + String(q[0]).replace(/</g, '') + ' ' + q[2].toLocaleString(); }).join(' &nbsp; '); draw(); } },
+    onStatus: function (s) { $('st').textContent = s === 'online' ? '' : s; } });
+  Kit.joinCard('STUNT SMASH', c);
+  function fit() { var r = cv.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1); cv.width = r.width * d; cv.height = r.height * d; draw(); } addEventListener('resize', fit);
+  function sc() { return Math.min(cv.width / VIEW.zw, cv.height / (VIEW.x1 - VIEW.x0)); }
+  function w2s(wx, wz) { var k = sc(); return [cv.width / 2 + wz * k, cv.height - (wx - VIEW.x0) * k - (cv.height - (VIEW.x1 - VIEW.x0) * k) / 2]; }
+  function s2w(px, py) { var k = sc(), off = (cv.height - (VIEW.x1 - VIEW.x0) * k) / 2; return [(cv.height - off - py) / k + VIEW.x0, (px - cv.width / 2) / k]; }
+  function draw() { if (!L) return; var k = sc(); x.clearRect(0, 0, cv.width, cv.height); x.fillStyle = '#555b66'; var a = w2s(-50, -4.5), b = w2s(80, 4.5); x.fillRect(a[0], b[1], b[0] - a[0], a[1] - b[1]);
+    L.ramps.forEach(function (r) { var p = w2s(r[0], r[1] - r[3] / 2), q = w2s(r[0] + r[2], r[1] + r[3] / 2), g = x.createLinearGradient(0, p[1], 0, q[1]); g.addColorStop(0, '#ffcf8a'); g.addColorStop(1, '#ff7a1a'); x.fillStyle = g; x.fillRect(p[0], q[1], q[0] - p[0], p[1] - q[1]); x.fillStyle = '#fff'; x.font = (12 * (devicePixelRatio || 1)) + 'px sans-serif'; x.fillText(r[4] + 'm', q[0] + 4, (p[1] + q[1]) / 2); });
+    x.fillStyle = '#c98b4a'; x.strokeStyle = '#7a4a1a'; L.crates.forEach(function (cc) { var p = w2s(cc[0] - 0.6, cc[1] - 0.6); x.fillRect(p[0], p[1] - 1.2 * k, 1.2 * k, 1.2 * k); x.strokeRect(p[0], p[1] - 1.2 * k, 1.2 * k, 1.2 * k); });
+    var s0 = w2s(L.start[0], L.start[1]); if (path.length > 1) { x.strokeStyle = col + '99'; x.lineWidth = 3 * (devicePixelRatio || 1); x.setLineDash([6, 6]); x.beginPath(); path.forEach(function (p, i) { var q = w2s(p[0], p[1]); if (i) x.lineTo(q[0], q[1]); else x.moveTo(q[0], q[1]); }); x.stroke(); x.setLineDash([]); }
+    var ln = (40 + (aim.speed - 18) * 2.2), e = w2s(L.start[0] + Math.cos(aim.yaw) * ln, Math.sin(aim.yaw) * ln); x.strokeStyle = myTurn ? '#ffd23f' : '#fff6'; x.lineWidth = 5 * (devicePixelRatio || 1); x.beginPath(); x.moveTo(s0[0], s0[1]); x.lineTo(e[0], e[1]); x.stroke();
+    x.fillStyle = col; x.beginPath(); x.arc(s0[0], s0[1], 9 * (devicePixelRatio || 1), 0, 7); x.fill(); }
+  function setFrom(px, py) { var w = s2w(px, py); if (L) { var dx = w[0] - L.start[0], dz = w[1] - L.start[1]; if (dx > 3) aim.yaw = Math.max(-YAWMAX, Math.min(YAWMAX, Math.atan2(dz, dx))); } return w; }
+  var lastSend = 0; function sendAim(force) { var n = Date.now(); if (myTurn && (force || n - lastSend > 100)) { lastSend = n; c.send({ t: 'aim', yaw: +aim.yaw.toFixed(3), speed: aim.speed, veh: aim.veh }); } }
+  function pt(e) { var r = cv.getBoundingClientRect(), d = cv.width / r.width; return [(e.clientX - r.left) * d, (e.clientY - r.top) * d]; }
+  var drawing = false; cv.addEventListener('pointerdown', function (e) { if (S && S.ph === 'replay') { c.send({ t: 'skip' }); return; } if (!myTurn) return; drawing = true; cv.setPointerCapture(e.pointerId); path = [L.start.slice()]; var q = pt(e); path.push(setFrom(q[0], q[1])); draw(); sendAim(); });
+  cv.addEventListener('pointermove', function (e) { if (!drawing) return; var q = pt(e); path.push(setFrom(q[0], q[1])); if (path.length > 200) path.splice(1, 1); draw(); sendAim(); });
+  cv.addEventListener('pointerup', function () { drawing = false; sendAim(true); });
+  document.querySelectorAll('.veh button').forEach(function (b) { b.onclick = function () { document.querySelectorAll('.veh button').forEach(function (q) { q.classList.toggle('on', q === b); }); aim.veh = b.dataset.v; sendAim(true); }; });
+  $('speed').oninput = function () { aim.speed = +this.value; $('sv').textContent = this.value; draw(); sendAim(); };
+  $('go').onclick = function () { if (!myTurn) return; c.send({ t: 'go', yaw: +aim.yaw.toFixed(3), speed: aim.speed, veh: aim.veh }); myTurn = false; $('go').disabled = true; if (navigator.vibrate) navigator.vibrate(30); };
+  document.addEventListener('pointerdown', function (e) { if (S && S.ph === 'replay' && e.target !== cv) c.send({ t: 'skip' }); });
+  setTimeout(fit, 50); new MutationObserver(function () { fit(); }).observe($('ui'), { attributes: true });
+  window.STP = { aim: aim, get L() { return L; } };
+})();
+</script></body></html>
