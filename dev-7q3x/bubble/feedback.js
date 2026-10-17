@@ -1,7 +1,9 @@
 /* Bubble Hockey feedback button (v0.9.12): small corner pill -> panel with the build number + COPY. Touches never reach the game. */
 (function () {
   var BUILD = 'v0.9.12', DATE = '2026-10-17';
-  var TXT = 'Bubble Hockey build ' + BUILD + ' (' + DATE + ') - please include this build number in your feedback';
+  var TXT;
+  function mk() { TXT = 'Bubble Hockey build ' + BUILD + ' (' + DATE + ') - please include this build number in your feedback'; }
+  mk();
   var phone = /pad\.html/.test(location.pathname);
   var css = document.createElement('style');
   css.textContent = '#fbBtn{position:fixed;z-index:9998;border:0;border-radius:12px;background:rgba(255,255,255,.12);color:#fff;opacity:.55;font:600 11px system-ui;padding:4px 9px;cursor:pointer;' +
@@ -16,6 +18,8 @@
   var p = el('div', 'fbPan', root);
   p.innerHTML = '<b>Feedback</b><p style="margin:6px 0 8px;opacity:.85">Tell Justin what you think. Please include this:</p><textarea id="fbTxt" readonly></textarea><div class="r"><button id="fbCopy">COPY</button><button id="fbClose">Close</button></div><div id="fbMsg" style="font-size:12px;opacity:.7;margin-top:6px;min-height:14px"></div>';
   var ta = p.querySelector('#fbTxt'); ta.value = TXT;
+  // single source of truth: build.json (also read by the playtest page); the constants above are only a fallback
+  fetch('build.json?t=' + Date.now()).then(function (r) { return r.json(); }).then(function (j) { if (j.ver) { BUILD = j.ver; DATE = j.date || DATE; mk(); ta.value = TXT; window.BubbleFeedback.BUILD = BUILD; window.BubbleFeedback.TEXT = TXT; } }).catch(function () {});
   function stop(e) { e.stopPropagation(); }
   ['pointerdown', 'pointerup', 'pointermove', 'touchstart', 'touchmove', 'touchend', 'mousedown', 'click'].forEach(function (k) { b.addEventListener(k, stop); p.addEventListener(k, stop); });
   // act on pointerup too: the game may preventDefault touches, which kills synthetic clicks on phones
