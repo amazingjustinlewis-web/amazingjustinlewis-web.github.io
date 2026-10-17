@@ -1,0 +1,98 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<title>RTS Flight Test (dev)</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>body{background:#0b1430;overflow:hidden}#join{position:fixed;right:12px;top:12px;z-index:4}#msg{position:fixed;left:0;right:0;bottom:3vh;text-align:center;font-size:clamp(16px,2.8vh,28px);color:#fff;text-shadow:0 2px 6px #000;z-index:4}
+#board{position:fixed;left:12px;top:12px;z-index:4;font-size:clamp(13px,2.2vh,20px)}#board div{background:#0008;color:#fff;border-left:8px solid;border-radius:8px;padding:2px 10px;margin-bottom:4px}</style></head><body>
+<canvas id="cv" class="full"></canvas><div id="board"></div><div id="msg">Scan to join · tap your phone map to fly</div><div id="join"></div>
+<script>window.MINI = 'rts';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/perf.js"></script><script src="../minikit/net.js"></script>
+<script src="three.min.js"></script><script src="GLTFLoader.js"></script><script src="terrain.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (i) { return document.getElementById(i); }, T = Terrain;
+  // flight feel (tunable)
+  var FLY = { scale: 2.2, maxV: 16, acc: 9, brake: 7, alt: 7, altK: 2.5, turn: 3.2, bankK: .35, bankMax: .7, flapIdle: 2.2, flapCruise: 3.4, flapAcc: 3.5, hoverBob: .35, arrive: .6 };
+  var CAM = { pitch: .95, dist: 24, flyOut: 10, spread: .9, spreadMax: 70, k: 1.8, zoomK: 1.2 };
+  // ---------- renderer / scene ----------
+  var R = new THREE.WebGLRenderer({ canvas: $('cv'), antialias: true }); R.setPixelRatio(Math.min(1.5, devicePixelRatio || 1)); R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap; R.setClearColor(0x9cc8ef); if (window.Perf) Perf.wrap(R, 'render', 'r');
+  if ('outputEncoding' in R) R.outputEncoding = THREE.sRGBEncoding;
+  var scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x9cc8ef, 90, 230);
+  var cam = new THREE.PerspectiveCamera(45, 16 / 9, .5, 600);
+  scene.add(new THREE.HemisphereLight(0xdfefff, 0x4a5a3a, .55));
+  var sun = new THREE.DirectionalLight(0xfff1d6, 1.0); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); var sc = sun.shadow.camera; sc.left = sc.bottom = -45; sc.right = sc.top = 45; sc.near = 1; sc.far = 200; sun.shadow.bias = -.0006; sun.shadow.normalBias = .4; scene.add(sun); scene.add(sun.target);
+  // terrain
+  var N = 160, S = T.SIZE, g = new THREE.PlaneGeometry(S, S, N, N); g.rotateX(-Math.PI / 2); var P = g.attributes.position, cols = new Float32Array(P.count * 3);
+  for (var i = 0; i < P.count; i++) { var x = P.getX(i), z = P.getZ(i), y = T.h(x, z); P.setY(i, y); var c = T.col(y), j = (Math.sin(x * 3.1 + z * 1.7) * .5 + .5) * 8; cols[i * 3] = (c[0] + j) / 255; cols[i * 3 + 1] = (c[1] + j) / 255; cols[i * 3 + 2] = (c[2] + j) / 255; }
+  g.setAttribute('color', new THREE.BufferAttribute(cols, 3)); g.computeVertexNormals();
+  var ground = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true })); ground.receiveShadow = true; scene.add(ground);
+  var water = new THREE.Mesh(new THREE.PlaneGeometry(S * 2, S * 2), new THREE.MeshPhongMaterial({ color: 0x3f7fb5, transparent: true, opacity: .75, shininess: 80 })); water.rotation.x = -Math.PI / 2; water.position.y = -1.2; water.receiveShadow = false; scene.add(water);
+  // props: instanced low-poly trees and rocks
+  var props = T.props(), trees = props.filter(function (p) { return p.k === 'tree'; }), rocks = props.filter(function (p) { return p.k === 'rock'; });
+  function inst(geo, mat, list, f) { var m = new THREE.InstancedMesh(geo, mat, list.length), o = new THREE.Object3D(); list.forEach(function (p, k) { f(o, p, k); o.updateMatrix(); m.setMatrixAt(k, o.matrix); }); m.castShadow = m.receiveShadow = true; scene.add(m); return m; }
+  var flat = { flatShading: true };
+  inst(new THREE.ConeGeometry(1.2, 3.2, 6).translate(0, 2.9, 0), new THREE.MeshLambertMaterial(Object.assign({ color: 0x2f6b3a }, flat)), trees, function (o, p, k) { o.position.set(p.x, p.y, p.z); o.scale.setScalar(p.s); o.rotation.set(0, k, 0); });
+  inst(new THREE.CylinderGeometry(.18, .25, 1.4, 5).translate(0, .7, 0), new THREE.MeshLambertMaterial({ color: 0x6b4a2e }), trees, function (o, p) { o.position.set(p.x, p.y, p.z); o.scale.setScalar(p.s); });
+  inst(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial(Object.assign({ color: 0x8a867c }, flat)), rocks, function (o, p, k) { o.position.set(p.x, p.y + .2, p.z); o.scale.set(p.s, p.s * .7, p.s * 1.1); o.rotation.set(k, k * 2, 0); });
+  // ---------- flier model (Bloat Flier glb, procedural wing flap on the bones; proxy fallback) ----------
+  var glbBuf = null, glbWait = [];
+  fetch('flier.glb').then(function (r) { return r.arrayBuffer(); }).then(function (b) { glbBuf = b; glbWait.forEach(function (f) { f(); }); glbWait = []; }).catch(function () { glbBuf = false; glbWait.forEach(function (f) { f(); }); });
+  function proxy(col) { var gp = new THREE.Group(), m = new THREE.MeshLambertMaterial({ color: col, flatShading: true }), body = new THREE.Mesh(new THREE.SphereGeometry(.7, 10, 8), m); body.scale.set(1, .8, 1.4); gp.add(body);
+    var wing = function (s) { var w = new THREE.Group(), pl = new THREE.Mesh(new THREE.BoxGeometry(1.8, .06, .9), m); pl.position.x = s * .9; w.add(pl); w.position.x = s * .5; gp.add(w); return w; }; var L = wing(1), Rw = wing(-1);
+    gp.scale.setScalar(FLY.scale / 1.1); gp.traverse(function (o) { o.castShadow = true; }); return { root: gp, flap: function (a) { L.rotation.z = a; Rw.rotation.z = -a; } }; }
+  function makeModel(col, cb) {
+    function go() { if (!glbBuf) return cb(proxy(col)); new THREE.GLTFLoader().parse(glbBuf.slice(0), '', function (gl) { var r = gl.scene, bones = {}; r.traverse(function (o) { if (o.isBone) bones[o.name] = o; if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; if (o.material) { o.material = o.material.clone(); if (o.material.color) o.material.color.lerp(new THREE.Color(col), .45); } } });
+        var wrap = new THREE.Group(); r.scale.setScalar(FLY.scale); wrap.add(r); var base = {}; ['wing_upper.L', 'wing_upper.R', 'wing_fore.L', 'wing_fore.R', 'wing_hand.L', 'wing_hand.R', 'tail_01', 'tail_03'].forEach(function (n) { if (bones[n]) base[n] = bones[n].quaternion.clone(); });
+        var q = new THREE.Quaternion(), ax = new THREE.Vector3(0, 0, 1), axY = new THREE.Vector3(0, 1, 0);
+        function rot(n, axis, a) { var b = bones[n]; if (!b || !base[n]) return; q.setFromAxisAngle(axis, a); b.quaternion.copy(base[n]).multiply(q); }
+        cb({ root: wrap, glb: true, flap: function (a, ph) { rot('wing_upper.L', ax, a); rot('wing_upper.R', ax, -a); rot('wing_fore.L', ax, a * .5); rot('wing_fore.R', ax, -a * .5); rot('wing_hand.L', ax, Math.sin(ph - .6) * .35); rot('wing_hand.R', ax, -Math.sin(ph - .6) * .35); rot('tail_01', axY, Math.sin(ph * .5) * .12); rot('tail_03', axY, Math.sin(ph * .5 - .8) * .18); } }); }, function () { cb(proxy(col)); }); }
+    if (glbBuf === null) glbWait.push(go); else go(); }
+  // ---------- fliers (authoritative state) ----------
+  var F = {}, order = [];
+  function spawn(p) { var a = order.length * 1.3, x = Math.cos(a) * 8, z = Math.sin(a) * 8, f = { id: p.id, name: p.name, col: p.color, p: new THREE.Vector3(x, T.h(x, z) + FLY.alt, z), v: new THREE.Vector3(), yaw: a, bank: 0, dest: null, ph: Math.random() * 6, flapHz: FLY.flapIdle, model: null, moving: false, alt: T.h(x, z) + FLY.alt };
+    F[p.id] = f; order.push(p.id); makeModel(p.color, function (m) { if (!F[p.id]) return; f.model = m; scene.add(m.root); }); }
+  function despawn(id) { var f = F[id]; if (!f) return; if (f.model) scene.remove(f.model.root); delete F[id]; order = order.filter(function (q) { return q !== id; }); }
+  // destination ripple ring on the terrain
+  var rings = [];
+  function ripple(x, z, col) { var m = new THREE.Mesh(new THREE.RingGeometry(.6, 1, 32), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .9, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, T.h(x, z) + .15, z); scene.add(m); rings.push({ m: m, t: 0 }); }
+  function groundMax(x, z) { var m = -99; for (var k = 0; k < 5; k++) { var a = k * 1.26, y = T.h(x + Math.cos(a) * 3, z + Math.sin(a) * 3); if (y > m) m = y; } return Math.max(m, T.h(x, z), -1.2); }
+  var tmp = new THREE.Vector3(), want = new THREE.Vector3();
+  function stepF(f, dt) { var flying = false;
+    if (f.dest) { tmp.set(f.dest.x - f.p.x, 0, f.dest.z - f.p.z); var d = tmp.length();
+      if (d < FLY.arrive && f.v.length() < 1.2) { f.dest = null; } else { flying = true; var sp = Math.min(FLY.maxV, Math.sqrt(2 * FLY.brake * Math.max(0, d - FLY.arrive * .5))); want.copy(tmp).multiplyScalar(sp / Math.max(d, 1e-3)); } }
+    if (!flying) want.set(0, 0, 0);
+    var hv = tmp.set(f.v.x, 0, f.v.z), dv = want.clone().sub(hv), lim = (want.lengthSq() > hv.lengthSq() ? FLY.acc : FLY.brake) * dt, dl = dv.length(); if (dl > lim) dv.multiplyScalar(lim / dl);
+    var accel = dl > 1e-4 ? Math.min(dl, lim) / dt : 0; f.v.x += dv.x; f.v.z += dv.z;
+    var hs = Math.hypot(f.v.x, f.v.z); f.p.x += f.v.x * dt; f.p.z += f.v.z * dt; var lim2 = S * .46, rr = Math.hypot(f.p.x, f.p.z); if (rr > lim2) { f.p.x *= lim2 / rr; f.p.z *= lim2 / rr; }
+    // altitude: float over the terrain ahead, bob when hovering
+    var ahead = groundMax(f.p.x + f.v.x * .6, f.p.z + f.v.z * .6), target = ahead + FLY.alt + (hs < 1 ? Math.sin(f.ph * .5) * FLY.hoverBob : 0); f.alt += (target - f.alt) * Math.min(1, dt * FLY.altK); f.p.y = Math.max(f.alt, T.h(f.p.x, f.p.z) + 2);
+    // heading follows velocity (or the destination while still slow); bank from turn rate
+    var yawT = f.yaw; if (hs > .8) yawT = Math.atan2(f.v.x, f.v.z); else if (f.dest) yawT = Math.atan2(f.dest.x - f.p.x, f.dest.z - f.p.z);
+    var dy = Math.atan2(Math.sin(yawT - f.yaw), Math.cos(yawT - f.yaw)), step = Math.max(-FLY.turn * dt, Math.min(FLY.turn * dt, dy)); f.yaw += step;
+    var bankT = Math.max(-FLY.bankMax, Math.min(FLY.bankMax, -(step / Math.max(dt, 1e-3)) * FLY.bankK * Math.min(1, hs / 6))); f.bank += (bankT - f.bank) * Math.min(1, dt * 4);
+    // flap: faster while accelerating, cruise rate at speed, slow at hover
+    var hzT = FLY.flapIdle + (FLY.flapCruise - FLY.flapIdle) * Math.min(1, hs / FLY.maxV) + (want.lengthSq() > hv.lengthSq() ? accel / FLY.acc * FLY.flapAcc : 0); f.flapHz += (hzT - f.flapHz) * Math.min(1, dt * 3); f.ph += f.flapHz * dt * Math.PI * 2;
+    f.moving = flying || hs > .5;
+    if (f.model) { var r = f.model.root; r.position.copy(f.p); r.rotation.set(-Math.min(.25, hs / FLY.maxV * .25) * 0 + Math.sin(f.ph) * .03, f.yaw, f.bank, 'YXZ'); var amp = .55 + .25 * Math.min(1, accel / FLY.acc); f.model.flap(Math.sin(f.ph) * amp, f.ph); r.position.y += -Math.sin(f.ph) * .12; } }
+  // ---------- net ----------
+  var host = Kit.host({ max: 8, onJoin: function (p) { if (!F[p.id]) spawn(p); else F[p.id].name = p.name; host.send(p, { t: 'you', id: p.id, col: p.color }); board(); },
+    onLeave: function (p) { despawn(p.id); board(); },
+    onMsg: function (p, m) { var f = F[p.id]; if (!f) return; if (m.t === 'go') { var x = Math.max(-S * .45, Math.min(S * .45, +m.x || 0)), z = Math.max(-S * .45, Math.min(S * .45, +m.z || 0)); f.dest = { x: x, z: z }; ripple(x, z, f.col); } } });
+  host.qr($('join')); window.RTS = { F: F, host: host, cam: cam, FLY: FLY, CAM: CAM, spawn: spawn };
+  function board() { $('board').innerHTML = order.map(function (id) { var f = F[id]; return '<div style="border-color:' + f.col + '">' + String(f.name).replace(/</g, '') + '</div>'; }).join(''); $('msg').textContent = order.length ? 'Tap your phone map to fly' : 'Scan to join · tap your phone map to fly'; }
+  // ---------- camera: frame the group, zoom out while flying ----------
+  var camT = new THREE.Vector3(0, 5, 0), camD = CAM.dist, zoomF = 0, last = 0, sendT = 0, lastP = '', lastPT = 0;
+  function frame(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t;
+    var W = innerWidth, H = innerHeight; if (R.domElement.width !== Math.round(W * R.getPixelRatio())) { R.setSize(W, H, false); cam.aspect = W / H; cam.updateProjectionMatrix(); }
+    var any = false, mn = new THREE.Vector3(1e9, 1e9, 1e9), mx = new THREE.Vector3(-1e9, -1e9, -1e9), mov = 0;
+    order.forEach(function (id) { var f = F[id]; stepF(f, dt); mn.min(f.p); mx.max(f.p); any = true; if (f.moving) mov++; });
+    rings.forEach(function (r) { r.t += dt; var s = 1 + r.t * 5; r.m.scale.set(s, s, s); r.m.material.opacity = Math.max(0, .9 - r.t * .9); if (r.t > 1) { scene.remove(r.m); r.m.geometry.dispose(); } }); rings = rings.filter(function (r) { return r.t <= 1; });
+    var tgt = any ? mn.clone().add(mx).multiplyScalar(.5) : new THREE.Vector3(0, 5, 0), spread = any ? Math.hypot(mx.x - mn.x, mx.z - mn.z) : 30;
+    zoomF += ((mov ? 1 : 0) - zoomF) * Math.min(1, dt * CAM.zoomK);
+    var dWant = CAM.dist + Math.min(CAM.spreadMax, spread * CAM.spread) + zoomF * CAM.flyOut; camD += (dWant - camD) * Math.min(1, dt * CAM.k); camT.lerp(tgt, Math.min(1, dt * CAM.k * 1.5));
+    cam.position.set(camT.x, camT.y + Math.sin(CAM.pitch) * camD, camT.z - Math.cos(CAM.pitch) * camD); cam.lookAt(camT);
+    sun.position.set(camT.x + 40, camT.y + 70, camT.z + 25); sun.target.position.copy(camT);
+    R.render(scene, cam);
+    sendT += dt; if (sendT > .1) { sendT = 0; var a = order.map(function (id) { var f = F[id]; return [id, Math.round(f.p.x * 10) / 10, Math.round(f.p.z * 10) / 10, f.col, f.dest ? 1 : 0]; }); var js = JSON.stringify(a); if (js !== lastP || t - lastPT > 2000) { lastP = js; lastPT = t; host.players.forEach(function (p) { if (p.on) host.send(p, { t: 'p', a: a }); }); } }
+    requestAnimationFrame(frame); }
+  requestAnimationFrame(frame);
+})();
+</script></body></html>

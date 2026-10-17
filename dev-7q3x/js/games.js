@@ -15,6 +15,7 @@ window.DEV_GAMES = [
   { id: 'buddy', name: 'Balloon Buddy', ver: 'v0.1.1', url: 'buddy/index.html', img: 'buddy/shot.jpg', tag: 'Silly word guessing \u00b7 pop the balloons' },
   { id: 'orbit', name: 'Orbit Brawl', ver: 'v0.7', url: 'orbit/index.html', img: 'orbit/shot.jpg', tag: 'Phone cockpit space dogfight \u00b7 2\u201320 pilots \u00b7 TV = live cinematic cam' },
   { id: 'bubble', name: 'Bubble Hockey', ver: 'v0.9.5', url: 'bubble/index.html', img: 'bubble/shot.jpg', tag: 'Table-top rod hockey \u00b7 drag, dangle, flick to pass' },
+  { id: 'rts', name: 'RTS Flight Test', ver: 'v0.1', url: 'rts/index.html', img: 'rts/shot.png', tag: 'Tap the map, your flier goes \u00b7 terrain + shadows test' },
   { id: 'marble', name: 'Marble Rush', ver: 'v0.2', url: 'marble/index.html', img: 'marble/shot.png', tag: 'Tilt-to-steer marble race \u00b7 drops, jumps, a loop \u00b7 2\u20138 phones' },
   { id: 'stunt', name: 'Stunt Smash', ver: 'v0.2', url: 'stunt/index.html', img: 'stunt/shot.png', tag: 'Draw your line, pick bike/car/bus, launch into crates \u00b7 take turns' },
   { id: 'foosball', name: 'Foosball', ver: 'v0.2', url: 'foosball/index.html', img: 'foosball/shot.png', tag: 'Table foosball \u00b7 slide and spin rods, drill shots' },

@@ -190,3 +190,10 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Phone: fps and frame percentiles, RTT/jitter (reported by the TV in each ping), fps sent back in the echo.
 - Log: localStorage 'mk-perf-log', rolling (~720 buckets total across sessions).
 - Next: wire into other minis, GPU timer query (EXT_disjoint_timer_query) for true render cost, optional upload endpoint.
+
+## RTS Flight Test v0.1 (done, /dev-7q3x/rts/)
+- Shared deterministic terrain.js (value-noise heightmap, raised rim, height tint, prop scatter) used by TV mesh and phone minimap.
+- TV: vertex-coloured terrain, transparent water, instanced low-poly trees/rocks, PCF soft shadows following the camera. Fliers = BloatFlier_polish_v02b.glb (copied as rts/flier.glb), tinted 45% toward player colour, wings flapped procedurally on wing_upper/fore/hand bones + tail sway; proxy if load fails.
+- Flight (FLY constants): arrival-limited speed, accel/brake limits, heading follows velocity, bank from turn rate, flap Hz from speed + acceleration, altitude follows terrain ahead, hover bob. Camera (CAM): frames all fliers, extra zoom-out while anyone flies.
+- Phone: height-tinted minimap with hill shading, your dot (pulsing) + others in colour, tap ripple + dashed course line; How to play (3 steps); perf.js on both.
+- Next: unit selection/groups, obstacles/no-fly, fog of war, flier collision, pinch-zoom minimap.
