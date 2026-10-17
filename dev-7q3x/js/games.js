@@ -17,7 +17,7 @@ window.DEV_GAMES = [
   { id: 'bubble', name: 'Bubble Hockey', ver: 'v0.9.4', url: 'bubble/index.html', img: 'bubble/shot.jpg', tag: 'Table-top rod hockey \u00b7 drag, dangle, flick to pass' },
   { id: 'marble', name: 'Marble Rush', ver: 'v0.1.1', url: 'marble/index.html', img: 'marble/shot.png', tag: 'Tilt-to-steer marble race \u00b7 drops, jumps, a loop \u00b7 2\u20138 phones' },
   { id: 'stunt', name: 'Stunt Smash', ver: 'v0.2', url: 'stunt/index.html', img: 'stunt/shot.png', tag: 'Draw your line, pick bike/car/bus, launch into crates \u00b7 take turns' },
-  { id: 'foosball', name: 'Foosball', ver: 'v0.1', url: 'foosball/index.html', img: 'foosball/shot.png', tag: 'Table foosball \u00b7 slide rods, kick, pass, trick shots' },
+  { id: 'foosball', name: 'Foosball', ver: 'v0.2', url: 'foosball/index.html', img: 'foosball/shot.png', tag: 'Table foosball \u00b7 slide and spin rods, drill shots' },
   { id: 'lostsock', name: 'Lost Sock', ver: 'v0.3', url: 'lostsock/index.html', img: 'lostsock/shot.png', tag: 'Sock artillery \u00b7 phones \u00b7 WIP' },
   { id: 'derby', name: 'Demolition Derby', ver: 'v0.4.2-dev', url: 'derby/index.html', img: 'derby/shot.png', tag: 'Car smash + Race mode \u00b7 phones \u00b7 play on a phone screen' },
   { id: 'mechsquad', name: 'Iron Stride Squad', ver: 'v0.6-dev', url: 'mech-squad/index.html', img: 'mech-squad/shot.png', tag: '3/4 mech brawler \u00b7 jump/hover \u00b7 spare the city' },

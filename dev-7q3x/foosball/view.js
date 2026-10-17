@@ -23,10 +23,11 @@
     for (var r = 0; r < 8; r++) { var d = F.R[r], e1 = this.p(-.03, d.y), e2 = this.p(1.03, d.y), mine = opt.myRods && opt.myRods.indexOf(r) >= 0;
       ctx.strokeStyle = hr.indexOf(r) >= 0 ? '#fff' : mine ? '#dfe6ee' : '#9aa4ad'; ctx.lineWidth = S * (hr.indexOf(r) >= 0 ? .009 : .006); ctx.beginPath(); ctx.moveTo(e1[0], e1[1]); ctx.lineTo(e2[0], e2[1]); ctx.stroke();
       ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(e1[0], e1[1], S * .014, 0, 7); ctx.arc(e2[0], e2[1], S * .014, 0, 7); ctx.fill();
-      for (var j = 0; j < d.n; j++) { var mx = .5 + st.s[r] + (j - (d.n - 1) / 2) * d.sp, my = d.y + st.k[r], q1 = this.p(mx - F.HX, my - F.HY), q2 = this.p(mx + F.HX, my + F.HY);
+      var ang = st.a ? st.a[r] : 0, fc = d.t ? 1 : -1, sn = Math.sin(ang) * fc, cs = Math.cos(ang), ys = [[0, -F.HY], [0, F.HY], [F.ROD.len, -F.HY], [F.ROD.len, F.HY]].map(function (q) { return d.y + q[0] * sn + q[1] * cs; }), y0m = Math.min.apply(null, ys), y1m = Math.max.apply(null, ys), toe = F.ROD.h - F.ROD.len * cs, lifted = toe > F.BR * 2;
+      for (var j = 0; j < d.n; j++) { var mx = .5 + st.s[r] + (j - (d.n - 1) / 2) * d.sp, my = d.y, q1 = this.p(mx - F.HX, y0m), q2 = this.p(mx + F.HX, y1m);
         var rx = Math.min(q1[0], q2[0]), ry = Math.min(q1[1], q2[1]), rw = Math.abs(q2[0] - q1[0]), rh = Math.abs(q2[1] - q1[1]);
         ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(rx + S * .006, ry + S * .006, rw, rh);
-        ctx.fillStyle = COL[d.t]; ctx.fillRect(rx, ry, rw, rh); ctx.strokeStyle = st.h && st.h[0] === r && st.h[1] === j ? '#ffe14a' : 'rgba(255,255,255,.8)'; ctx.lineWidth = S * .004; ctx.strokeRect(rx, ry, rw, rh);
+        ctx.globalAlpha = lifted ? .55 : 1; ctx.fillStyle = COL[d.t]; ctx.fillRect(rx, ry, rw, rh); var tq = this.p(mx, d.y + F.ROD.len * sn), tq2 = this.p(mx - F.HX, d.y + F.ROD.len * sn); ctx.fillStyle = 'rgba(0,0,0,.25)'; if (Math.abs(sn) > .05) { var ta2 = this.p(mx - F.HX, d.y + (F.ROD.len - .008) * sn), tb2 = this.p(mx + F.HX, d.y + F.ROD.len * sn); ctx.fillRect(Math.min(ta2[0], tb2[0]), Math.min(ta2[1], tb2[1]), Math.abs(tb2[0] - ta2[0]) || 2, Math.abs(tb2[1] - ta2[1]) || 2); } ctx.globalAlpha = 1; ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = S * .004; ctx.strokeRect(rx, ry, rw, rh);
         var dc = this.p(mx, my); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(dc[0], dc[1], S * .004, 0, 7); ctx.fill(); } }
     var bp = this.p(st.b[0], st.b[1]); ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.arc(bp[0] + S * .005, bp[1] + S * .005, F.BR * S, 0, 7); ctx.fill();
     ctx.fillStyle = '#fafafa'; ctx.beginPath(); ctx.arc(bp[0], bp[1], F.BR * S, 0, 7); ctx.fill(); };
@@ -37,7 +38,7 @@
     cv.addEventListener('pointermove', function (e) { if (e.pointerId !== id) return; var p = tp(e); pts.push([p[0], p[1], performance.now()]); if (pts.length > 40) pts.shift(); send({ t: 'drag', x: p[0], y: p[1] }); });
     function up(e) { if (e.pointerId !== id) return; id = null; var now = performance.now(), last = pts[pts.length - 1], first = pts[0], k = pts.length - 1; while (k > 0 && now - pts[k][2] < 110) k--;
       var a = pts[k], dt = Math.max(.016, (now - a[2]) / 1000), dx = last[0] - a[0], dy = last[1] - a[1], sp = Math.hypot(dx, dy) / dt, tot = Math.hypot(last[0] - first[0], last[1] - first[1]);
-      if (tot < .02 && now - first[2] < 300) send({ t: 'tap' }); else if (sp > .6) send({ t: 'flick', dx: dx, dy: dy, sp: sp });
+      if (tot < .02 && now - first[2] < 300) send({ t: 'tap' });
       send({ t: 'rel' }); }
     cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); }
   root.FoosView = View; root.FoosGestures = Gestures; root.FoosCOL = COL;

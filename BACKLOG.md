@@ -161,3 +161,11 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 
 ## Mini golf idea (note only, Oct 16, 2026)
 - Phone putter (flick or pull-back for power, aim on the phone), shared 3D course on the TV, turns or simultaneous ghost balls; windmills, ramps, loops, moving obstacles; par per hole, scorecard on the TV.
+
+## Foosball v0.2 (done)
+- Forward/back thumb rotates the rod instead of translating it: angle proportional to thumb travel (THUMB.full = 90 deg), swing rate follows thumb speed (capped THUMB.maxW), critically-damped spring back to upright on release.
+- Ball vs man is a sphere vs rotating box (rod height ROD.h, man length ROD.len): contact point sets the normal, so centre face = straight and edges/corners angle it; man velocity at the contact point (swing x lever + rod slide) adds impulse (HIT.swingBoost). Restitution/tangential keep blend from blanket (HIT.eStill/keepStill) to drill (eFast/keepFast) by man speed. Lifted men (toe above the ball) let it pass under.
+- Dropped: old possession/stick-to-man, tap-to-shoot and flick pass/shot gestures (they fought the new spin). Sideways flick-pass dropped too: with real contact a sideways rod slide + touch does the same job; revisit if players miss it.
+- AI: wind back then strike, picks a contact offset that threads the next opposing rod; reaction delay on tracking; idle rods (AI and human-assisted) lift when their own team shoots from behind.
+- Dead zones between rods get a gentle roll toward the nearest rod (like a dished table).
+- Next: tune on real phones (THUMB.full, blanket strength), maybe pin/snake-shot trick (hold ball under a tilted man), 3D TV view, sound per contact strength.
