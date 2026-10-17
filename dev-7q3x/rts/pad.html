@@ -24,17 +24,25 @@
   function zoomAt(px, py, f) { var a = s2w(px, py); V.s = Math.max(1.6, Math.min(30, V.s * f)); var b = s2w(px, py); V.cx += a[0] - b[0]; V.cz += a[1] - b[1]; }
   var bg = document.createElement('canvas'); (function bake() { var n = 160, b = bg.getContext('2d'); bg.width = bg.height = n; var img = b.createImageData(n, n);
     for (var j = 0; j < n; j++) for (var i = 0; i < n; i++) { var x = (.5 - (i + .5) / n) * T.SIZE, z = (.5 - (j + .5) / n) * T.SIZE, y = T.h(x, z), c = T.col(y), k = (j * n + i) * 4, d = .45; img.data[k] = c[0] * d; img.data[k + 1] = c[1] * d; img.data[k + 2] = c[2] * d; img.data[k + 3] = 255; } b.putImageData(img, 0, 0); })();
-  function size() { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; if (!V.init) V.s = Math.min(W, H) / 70; }
+  // v0.4.1: size from the visual viewport (Android Chrome can report 0 / stale innerWidth during load or after the QR camera), re-read DPR every resize
+  function size() { var vv = window.visualViewport; W = Math.max(1, Math.round(innerWidth || (vv && vv.width) || document.documentElement.clientWidth || 360)); H = Math.max(1, Math.round(innerHeight || (vv && vv.height) || document.documentElement.clientHeight || 640));
+    dpr = Math.min(2, devicePixelRatio || 1); cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); if (!V.init || !(V.s > 0)) V.s = Math.max(1.6, Math.min(W, H) / 70); }
+  if (window.visualViewport) visualViewport.addEventListener('resize', size); addEventListener('orientationchange', function () { setTimeout(size, 250); });
+  var DIAG = { on: /[?&]diag=1/.test(location.search), n: 0, t0: 0, hz: 0, last: 0, bytes: 0, types: {}, err: '', vis: 0, fit: 0, need: 0 };
   addEventListener('resize', size); size();
   // ---------- state from the TV ----------
   var ents = {}, res = 0, sel = [], tapMode = 'amove', ripples = [], me = null, lastSnap = 0;
-  function onSnap(m) { var seen = {}; res = m.r; lastSnap = performance.now();
+  function onSnap(m) { var seen = {}, nowS = performance.now(); res = m.r; if (DIAG.last) DIAG.hz = DIAG.hz * .8 + 200 / Math.max(1, nowS - DIAG.last); DIAG.last = lastSnap = nowS; DIAG.n++; if (DIAG.n % 10 === 1) try { DIAG.bytes = JSON.stringify(m).length; } catch (er) {}
     m.u.forEach(function (q) { var e = ents[q[0]] || (ents[q[0]] = { id: q[0], k: 'u', x: q[3], z: q[4] }); e.ty = q[1]; e.team = q[2]; e.tx = q[3]; e.tz = q[4]; e.hp = q[5]; e.carry = q[6]; e.bias = q[7]; seen[q[0]] = 1; });
-    m.b.forEach(function (q) { var e = ents[q[0]] || (ents[q[0]] = { id: q[0], k: 'b', x: q[3], z: q[4] }); e.kind = q[1]; e.team = q[2]; e.tx = q[3]; e.tz = q[4]; e.hp = q[5]; e.lvl = q[6]; e.pulse = q[7]; seen[q[0]] = 1; });
+    m.b.forEach(function (q) { var e = ents[q[0]] || (ents[q[0]] = { id: q[0], k: 'b', x: q[3], z: q[4] }); e.kind = q[1]; e.team = q[2]; e.tx = q[3]; e.tz = q[4]; e.hp = q[5]; e.lvl = q[6]; e.pulse = q[7]; e.ra = q[8] || 0; seen[q[0]] = 1; });
     m.n.forEach(function (q) { var e = ents[q[0]] || (ents[q[0]] = { id: q[0], k: 'n', x: q[1], z: q[2] }); e.tx = q[1]; e.tz = q[2]; e.amt = q[3]; seen[q[0]] = 1; });
     Object.keys(ents).forEach(function (k) { if (!seen[k]) delete ents[k]; }); var n0 = sel.length; sel = sel.filter(function (i) { return ents[i]; }); if (sel.length !== n0) sendSel();
     if (!V.init) { var hq = m.b.filter(function (q) { return q[1] === 'hq' && q[2] === 0; })[0]; if (hq) { V.cx = hq[3] + 8; V.cz = hq[4] + 8; V.init = true; } } }
-  var c = Kit.pad({ onMsg: function (m) { if (m.t === 's') onSnap(m); else if (m.t === 'you') me = m.id; }, onStatus: function (s) { $('st').textContent = s === 'online' ? '' : s; } });
+  // v0.4.1: recentre on our shapes (used by FIND and once automatically if the first frames show none of ours)
+  function findMine() { var xs = 0, zs = 0, n = 0; for (var k in ents) { var e = ents[k]; if (e.team === 0 && e.k !== 'n' && isFinite(e.tx)) { xs += e.tx; zs += e.tz; n++; } } if (!n) return false; V.cx = xs / n; V.cz = zs / n; V.s = Math.max(V.s, Math.min(W, H) / 70); V.init = true; return true; }
+  function onMsgSafe(m) { if (typeof m === 'string') { try { m = JSON.parse(m); } catch (er) { DIAG.err = 'string msg'; return; } } if (!m || typeof m !== 'object') return; DIAG.types[m.t] = (DIAG.types[m.t] || 0) + 1;
+    try { if (m.t === 's') onSnap(m); else if (m.t === 'you') me = m.id; } catch (er) { DIAG.err = 'snap: ' + er.message; } }
+  var c = Kit.pad({ onMsg: onMsgSafe, onStatus: function (s) { $('st').textContent = s === 'online' ? '' : s; } });
   Kit.joinCard('RTS SHAPES', c);
   function send(m) { c.send(m); } function sendSel() { send({ t: 'sel', ids: sel }); }
   function toast(s) { var t = $('toast'); t.textContent = s; t.style.opacity = 1; clearTimeout(toast.h); toast.h = setTimeout(function () { t.style.opacity = 0; }, 1300); }
@@ -42,12 +50,36 @@
   // ---------- hit test / commands ----------
   function rpx(e) { return e.k === 'b' ? SH.B[e.kind].r * V.s + 6 : e.k === 'n' ? 9 : Math.max(7, U[e.ty].s * .6 * V.s); }
   function hit(px, py) { var best = null, bd = 1e9; for (var k in ents) { var e = ents[k], p = w2s(e.x, e.z), d = Math.hypot(p[0] - px, p[1] - py), r = rpx(e) + 8; if (d < r && d - r < bd) { bd = d - r; best = e; } } return best; }
+  // v0.4.1: tap and double-tap are distinct. A single tap waits CFG.tap2 ms (a faint ring shows at once) so a double-tap never also fires the single action.
+  //  tap: own thing = select it; enemy = attack it; crystal = gather; empty = go (tap mode)
+  //  double-tap: own building = options; own unit in selection = group options, else select all on-screen of that shape; enemy = focus fire it + its pack; empty = attack-move sweep into the area
   function tap(px, py) { var e = hit(px, py), w = s2w(px, py);
-    if (e && e.team === 0) { if (sel.indexOf(e.id) < 0) { sel = [e.id]; sendSel(); buzz(8); } return; }
+    if (e && e.team === 0 && e.k !== 'n') { if (sel.indexOf(e.id) < 0) { sel = [e.id]; sendSel(); buzz(8); } return; }
     if (!sel.length) { ripples.push({ x: w[0], z: w[1], t: performance.now(), c: '#ffffff' }); return; }
     var col = e ? (e.k === 'n' ? '#55ff88' : '#ff4444') : (tapMode === 'move' ? '#9cf' : CRT); ripples.push({ x: e ? e.x : w[0], z: e ? e.z : w[1], t: performance.now(), c: col });
     send({ t: 'go', ids: sel, x: +w[0].toFixed(1), z: +w[1].toFixed(1), tg: e ? e.id : 0, mode: tapMode }); buzz(12); if (tapMode === 'move') tapMode = 'amove'; }
-  function dtap(px, py) { var e = hit(px, py); if (e && e.team === 0 && (e.k === 'b' || sel.indexOf(e.id) >= 0)) { if (e.k === 'b') { sel = [e.id]; sendSel(); } openOpt(e); } }
+  function dtap(px, py) { var e = hit(px, py), w = s2w(px, py);
+    if (e && e.team === 0 && e.k === 'b') { sel = [e.id]; sendSel(); openOpt(e); return; }
+    if (e && e.team === 0 && e.k === 'u') { if (sel.indexOf(e.id) >= 0 && sel.length > 1) { openOpt(e); return; } sel = Object.keys(ents).map(Number).filter(function (i) { var q = ents[i], p2 = w2s(q.x, q.z); return q.k === 'u' && q.team === 0 && q.ty === e.ty && p2[0] > 0 && p2[0] < W && p2[1] > 0 && p2[1] < H; }); sendSel(); buzz(15); toast(sel.length + ' ' + U[e.ty].n + (sel.length > 1 ? 's' : '') + ' selected'); if (sel.length > 1) saveGroup(sel.slice(), false); return; }
+    if (!sel.length) { tap(px, py); return; }
+    if (e && e.k !== 'n' && e.team !== 0) { send({ t: 'act', a: 'focus', ids: sel, tg: e.id }); ripples.push({ x: e.x, z: e.z, t: performance.now(), c: '#ff4444', big: 1 }); buzz([10, 40, 10]); toast('focus fire'); return; }
+    if (e && e.k === 'n') { tap(px, py); return; }
+    send({ t: 'go', ids: sel, x: +w[0].toFixed(1), z: +w[1].toFixed(1), tg: 0, mode: 'sweep' }); ripples.push({ x: w[0], z: w[1], t: performance.now(), c: '#ff9a3d', big: 1 }); buzz([10, 40, 10]); toast('attack-move sweep'); }
+  // ---------- building placement ghost ----------
+  var PQ = [], PLACE = null;   // several builds in one chain = placed one after another   // { kind, x, z, ra }  ra = phone-screen angle, 0 = facing down the map = toward the TV camera
+  function ghostGeo() { var g = PLACE, p = w2s(g.x, g.z), r = Math.max(14, SH.B[g.kind].r * V.s * .9), lift = 12, cx = p[0], cy = p[1] - lift, hr = r + 18, h = [];
+    for (var i = 0; i < 8; i++) { var a = g.ra + i * Math.PI / 4; h.push({ x: cx + Math.sin(a) * hr, y: cy + Math.cos(a) * hr, big: i % 2 === 0 }); }
+    return { p: p, cx: cx, cy: cy, r: r, hr: hr, h: h, ok: [cx + r + 30, cy - r - 14], no: [cx - r - 30, cy - r - 14], cam: [cx, cy + hr + 26] }; }
+  function drawGhost(now) { var g = PLACE, G2 = ghostGeo(), ic = SH.B[g.kind].ico || 'sq';
+    ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.ellipse(G2.p[0], G2.p[1], G2.r, G2.r * .45, 0, 0, 7); ctx.fill();   // landing shadow
+    ctx.translate(G2.cx, G2.cy); ctx.rotate(-g.ra); ctx.setLineDash([6, 4]); ctx.lineDashOffset = -now / 40; shape(ic, 0, 0, G2.r); ctx.fillStyle = 'rgba(232,184,48,.14)'; ctx.fill(); ctx.strokeStyle = GOLD; ctx.lineWidth = 2.5; ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = CRT; ctx.beginPath(); ctx.moveTo(-7, G2.r + 2); ctx.lineTo(7, G2.r + 2); ctx.lineTo(0, G2.r + 12); ctx.fill(); ctx.restore();   // front marker
+    G2.h.forEach(function (d) { ctx.beginPath(); ctx.arc(d.x, d.y, d.big ? 7 : 3.5, 0, 7); ctx.fillStyle = d.big ? GOLD : '#000'; ctx.fill(); ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5; ctx.stroke(); });
+    [[G2.ok, '\u2714', CRT], [G2.no, '\u2716', '#ff6060'], [G2.cam, '\u25bc', GOLD]].forEach(function (b) { ctx.beginPath(); ctx.arc(b[0][0], b[0][1], 15, 0, 7); ctx.fillStyle = '#000'; ctx.fill(); ctx.strokeStyle = b[2]; ctx.lineWidth = 2; ctx.stroke(); crt(b[1], b[0][0], b[0][1] + 1, 14); });
+    crt(SH.B[g.kind].n.toUpperCase() + ' \u00b7 drag / rotate / \u2714', G2.cx, G2.cy - G2.r - 40, 10); }
+  function ghostHit(x, y) { var G2 = ghostGeo(); if (Math.hypot(x - G2.ok[0], y - G2.ok[1]) < 18) return 'ok'; if (Math.hypot(x - G2.no[0], y - G2.no[1]) < 18) return 'no'; if (Math.hypot(x - G2.cam[0], y - G2.cam[1]) < 18) return 'cam';
+    for (var i = 0; i < 8; i++) if (Math.hypot(x - G2.h[i].x, y - G2.h[i].y) < (G2.h[i].big ? 15 : 11)) return 'rot'; if (Math.hypot(x - G2.cx, y - G2.cy) < G2.r + 6) return 'body'; return ''; }
+  function placeConfirm() { var g = PLACE; PLACE = null; send({ t: 'act', a: 'build:' + g.kind, ids: sel, x: +g.x.toFixed(1), z: +g.z.toFixed(1), rot: +g.ra.toFixed(3) }); buzz([8, 30, 8]); toast(SH.B[g.kind].n + ' placed'); PLACE = PQ.shift() || null; }
   function inPoly(P, x, y) { var ins = false; for (var i = 0, j = P.length - 1; i < P.length; j = i++) { var a = P[i], b = P[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) ins = !ins; } return ins; }
   function lassoSel(P) { var us = [], bs = [], en = []; for (var k in ents) { var e = ents[k]; if (e.k === 'n') continue; var p = w2s(e.x, e.z); if (!inPoly(P, p[0], p[1])) continue; if (e.team === 0) (e.k === 'u' ? us : bs).push(e.id); else en.push(e.id); }
     if (!us.length && !bs.length && en.length) { saveGroup(en, true); EFL = { ids: en, t: performance.now() }; buzz(15); toast(en.length + ' enemies marked \u00b7 drag the red bubble onto TARGET'); return; }   // lasso on enemies = enemy group (for targets)
@@ -72,10 +104,10 @@
   ['pointerdown', 'pointerup', 'pointermove', 'wheel'].forEach(function (ev) { $('opt').addEventListener(ev, function (e) { e.stopPropagation(); }); });
   // ---------- hold wheel (exists only while the thumb is down) ----------
   // Picks walk a tree (branches deepen, leaves load the context chain). Edge circles: TOP actuate, BOTTOM reset, LEFT back one level, RIGHT AI guess.
-  var CFG = Object.assign({ drop: 'zip', reopen: 'exact', reopenAt: 'prev', size: 'M', ai: true, spd: 1, waves: true, hold: 450, dbl: 420, dcAI: 15, dcPause: false }, JSON.parse(localStorage.getItem('rts4-cfg') || '{}'));
+  var CFG = Object.assign({ drop: 'zip', reopen: 'exact', reopenAt: 'prev', size: 'M', ai: true, spd: 1, waves: true, hold: 450, dbl: 420, tap2: 280, dcAI: 15, dcPause: false, diag: false }, JSON.parse(localStorage.getItem('rts4-cfg') || '{}'));
   function saveCfg() { localStorage.setItem('rts4-cfg', JSON.stringify(CFG)); send({ t: 'cfg', spd: CFG.spd, waves: CFG.waves, dcAI: CFG.dcAI, dcPause: CFG.dcPause }); }
   var DROP_MS = 650, RECATCH_MS = 330, lastOrbTap = 0, QCOL = SH.QCOL;
-  var WH = null, TH = 32, ORBS = [], FX = [], ROLO = null, OPT = { resetTop: localStorage.getItem('rts2-resettop') !== '0' }, LASTPATH = [];
+  var WH = null, TH = 32, ORBS = [], FX = [], ROLOS = [], OPT = { resetTop: localStorage.getItem('rts2-resettop') !== '0' }, LASTPATH = [];
   var PRED = JSON.parse(localStorage.getItem('rts2-pred') || '{}');   // action -> { n: uses, t: last use ms }
   function nodeAt(path) { var it = SH.WHEEL; for (var i = 0; i < path.length; i++) { var n = it[path[i]]; if (!n || !n.c) return it; it = n.c; } return it; }
   function leafOf(a) { var out = null; (function walk(list, path) { list.forEach(function (it, q) { if (out) return; var p = path.concat(q); if (it.c) walk(it.c, p); else if (it.a === a) out = { it: it, cat: p[0], path: p.slice(0, -1), q: q }; }); })(SH.WHEEL, []); return out; }
@@ -111,13 +143,14 @@
     else if (ar[0] === 'mv') { if (ar[1] !== 'gather') send({ t: 'act', a: 'bias:' + ar[1], ids: sel }); tapMode = ar[1] === 'gather' ? 'amove' : 'move'; toast('next tap: move (' + it.n + ')'); }
     else if (a === 'selall') { sel = Object.keys(ents).map(Number).filter(function (i) { return ents[i].k === 'u' && ents[i].team === 0; }); sendSel(); }
     else if (ar[0] === 'tgt') { var T = TARGETS[+ar[2] - 1]; if (!T) { toast('no T' + ar[2] + ' yet: drag a group bubble onto TARGET'); return; } send({ t: 'act', a: 'tgt:' + ar[1], ids: sel, tids: T.ids }); toast(it.n + ' (' + sel.length + ' shapes)'); }
+    else if (ar[0] === 'build' && SH.B[ar[1]]) { var ng = { kind: ar[1], x: w[0], z: w[1], ra: 0 }; if (PLACE) { ng.x += 6; PQ.push(ng); toast(SH.B[ar[1]].n + ' queued'); return; } PLACE = ng; toast('place the ' + SH.B[ar[1]].n + ': drag, rotate, ✔'); }
     else if (ar[0] === 'stub') toast(it.n + ': coming soon');
     else send({ t: 'act', a: a, ids: sel, x: +w[0].toFixed(1), z: +w[1].toFixed(1) }); }
   // actuate a chain: burst up into gold threads through a top aperture (~0.33 s), shake the top, rolodex flicks through the stack
   function actuate(stack, geo, fromWheel, wp) { if (!stack.length) { toast('load something first'); return; } var w = WH; wp = wp || (w && w.wp);
     stack.forEach(function (l) { runLeaf(l.it, wp); }); learn(stack); buzz([8, 30, 18]);
     FX.push({ t: performance.now(), ox: geo[0], oy: geo[1], R: geo[2], items: fromWheel && w ? wItems() : null, n: stack.length });
-    ROLO = { t: performance.now(), stack: stack.slice(), cnt: sel.length };
+    ROLOS.push({ t: performance.now(), stack: stack.slice(), cnt: sel.length, y: null }); if (ROLOS.length > 5) ROLOS.shift();
     var tp = $('top'); tp.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(-3px,2px)' }, { transform: 'translate(3px,-1px)' }, { transform: 'translate(0,0)' }], { duration: 200 });
     if (fromWheel) WH = null; }
   // ---------- node combo (3 bottom buttons): which layer the wheel opens to ----------
@@ -134,6 +167,7 @@
   function pts() { return Object.keys(P).map(function (k) { return P[k]; }); }
   cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   cv.addEventListener('pointerdown', function (e) { cv.setPointerCapture(e.pointerId); var x = e.clientX, y = e.clientY; P[e.pointerId] = { x: x, y: y }; closeOptIfOutside();
+    if (PLACE && pts().length === 1) { var gh = ghostHit(x, y); if (gh) { var G2 = ghostGeo(); G = { m: 'ghost', part: gh, x: x, y: y, mv: false, ox: G2.cx - x, oy: G2.cy - y, a0: Math.atan2(x - G2.cx, y - G2.cy), r0: PLACE.ra }; return; } }
     for (var oi = ORBS.length - 1; oi >= 0; oi--) { var op = orbPos(oi); if (Math.hypot(x - op[0], y - op[1]) < orbR(ORBS[oi]) + 6) { var ob = ORBS.splice(oi, 1)[0]; fireOrb(ob, [op[0], op[1], 14]); G = { m: 'none' }; return; } }   // quick tap on an orb = actuate it
     if (ORBS.length && !WH && pts().length === 1 && !(e.pointerType === 'mouse' && e.button !== 0)) { var now0 = performance.now();
       if (now0 - lastOrbTap < CFG.dbl) { lastOrbTap = 0; fireOrb(ORBS.pop()); G = { m: 'none' }; return; }   // 2nd tap within CFG.dbl ms anywhere = actuate the newest orb
@@ -150,13 +184,17 @@
     if (G.m === 'pend' && Math.hypot(x - G.x, y - G.y) > 9) { clearTimeout(G.h); G.m = 'lasso'; }
     if (G.m === 'lasso') { var lp = G.path[G.path.length - 1]; if (Math.hypot(x - lp[0], y - lp[1]) > 3) G.path.push([x, y]); }
     else if (G.m === 'wheel' && WH) wMove(x, y);
+    else if (G.m === 'ghost') { if (Math.hypot(x - G.x, y - G.y) > 6) G.mv = true; if (!G.mv) return; var G3 = ghostGeo();
+      if (G.part === 'body') { var wp2 = s2w(x + G.ox, y + G.oy + 12); PLACE.x = wp2[0]; PLACE.z = wp2[1]; } else if (G.part === 'rot') PLACE.ra = G.r0 + Math.atan2(x - G3.cx, y - G3.cy) - G.a0; }
     else if (G.m === 'pan') { V.cx += (x - G.x) / V.s; V.cz += (y - G.y) / V.s; G.x = x; G.y = y; }
     else if (G.m === 'pinch') { var L = pts(); if (L.length < 2) return; var a = L[0], b = L[1], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2; V.cx += (mx - G.mx) / V.s; V.cz += (my - G.my) / V.s; zoomAt(mx, my, d / G.d); G.d = d; G.mx = mx; G.my = my; } });
   function up(e) { if (!P[e.pointerId]) return; delete P[e.pointerId]; var x = e.clientX, y = e.clientY;
-    if (G.m === 'pinch') { if (!pts().length) G = { m: 'none' }; return; } clearTimeout(G.h); if (G.m === 'wheel' && !WH) { G = { m: 'none' }; return; }
+    if (G.m === 'pinch') { if (!pts().length) G = { m: 'none' }; return; } clearTimeout(G.h);
+    if (G.m === 'ghost') { var gp = G.part, mv = G.mv; G = { m: 'none' }; if (!PLACE) return; if (gp === 'ok' || (gp === 'body' && !mv)) placeConfirm(); else if (gp === 'no') { PLACE = PQ.shift() || null; toast('build cancelled'); } else if (gp === 'cam' || (gp === 'rot' && !mv)) { PLACE.ra = 0; buzz(8); } return; } if (G.m === 'wheel' && !WH) { G = { m: 'none' }; return; }
     if (G.m === 'lasso') { if (G.path.length > 6) lassoSel(G.path); else tap(G.x, G.y); }
     else if (G.m === 'pend') { var now = performance.now(); if (COMBO && !hit(x, y)) { COMBO = ''; renderNodes(); toast('combo cleared'); }
-      else if (now - lastTap.t < 330 && Math.hypot(x - lastTap.x, y - lastTap.y) < 30) { lastTap.t = 0; dtap(x, y); } else { lastTap = { t: now, x: x, y: y }; tap(x, y); } }
+      else if (now - lastTap.t < CFG.tap2 && Math.hypot(x - lastTap.x, y - lastTap.y) < 34) { clearTimeout(lastTap.h); lastTap.t = 0; dtap(x, y); }
+      else { var tx0 = x, ty0 = y; lastTap = { t: now, x: x, y: y, h: setTimeout(function () { lastTap.t = 0; tap(tx0, ty0); }, CFG.tap2) }; var w0 = s2w(x, y); ripples.push({ x: w0[0], z: w0[1], t: now, c: 'rgba(255,255,255,.35)', small: 1 }); } }
     else if (G.m === 'wheel' && WH) { if (G.re && WH.orb && performance.now() - G.t < RECATCH_MS && Math.hypot(x - G.x, y - G.y) < 12) { var o3 = WH.orb; WH = null; o3.t = -1e9; ORBS.push(o3); lastOrbTap = performance.now(); } else wLift(); }
     G = { m: 'none' }; }
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
@@ -173,19 +211,20 @@
     for (var i = 0; i < sl.length; i++) for (var j = i + 1; j < sl.length; j++) { var A = sl[i], B = sl[j], ra = A.k === 'b' ? SH.B[A.kind].r : U[A.ty].s * .5, rb = B.k === 'b' ? SH.B[B.kind].r : U[B.ty].s * .5; if (Math.hypot(A.x - B.x, A.z - B.z) > SH.SHARE.r + ra + rb) continue;
       var kd = SH.shareKind(inf(A), inf(B)); if (!kd) continue; var pa = w2s(A.x, A.z), pb = w2s(B.x, B.z); ctx.strokeStyle = SH.SHARE[kd]; ctx.globalAlpha = .55 + .3 * Math.sin(now / 200 + i); ctx.beginPath(); ctx.moveTo(pa[0], pa[1]); ctx.lineTo(pb[0], pb[1]); ctx.stroke(); }
     ctx.globalAlpha = 1;
-    [ 'n', 'b', 'u' ].forEach(function (kk) { for (var k in ents) { var e = ents[k]; if (e.k !== kk) continue; var p = w2s(e.x, e.z), s = selSet[e.id];
+    var visN = 0; try { [ 'n', 'b', 'u' ].forEach(function (kk) { for (var k in ents) { var e = ents[k]; if (e.k !== kk) continue; if (!isFinite(e.x) || !isFinite(e.z)) { e.x = e.tx; e.z = e.tz; } var pv = w2s(e.x, e.z); if (pv[0] > -20 && pv[0] < W + 20 && pv[1] > -20 && pv[1] < H + 20) visN++; var p = w2s(e.x, e.z), s = selSet[e.id];
       if (e.k === 'n') { ctx.fillStyle = '#55ff88'; ctx.beginPath(); ctx.moveTo(p[0], p[1] - 8); ctx.lineTo(p[0] + 5, p[1]); ctx.lineTo(p[0], p[1] + 8); ctx.lineTo(p[0] - 5, p[1]); ctx.fill(); continue; }
       var r = e.k === 'b' ? Math.max(9, SH.B[e.kind].r * V.s * .9) : Math.max(4.5, Math.min(11, U[e.ty].s * .55 * V.s)), ic = e.k === 'b' ? SH.B[e.kind].ico : U[e.ty].icon;
       if (e.k === 'b' && e.pulse) { var g = ctx.createRadialGradient(p[0], p[1], r * .5, p[0], p[1], r * 2.4); g.addColorStop(0, 'rgba(255,200,70,' + (.35 + .25 * Math.sin(now / 300)) + ')'); g.addColorStop(1, 'rgba(255,200,70,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p[0], p[1], r * 2.4, 0, 7); ctx.fill(); }
-      if (s) { ctx.shadowColor = SEL; ctx.shadowBlur = 14; } shape(ic, p[0], p[1], r); ctx.fillStyle = COLS[e.team]; ctx.globalAlpha = e.team === 2 ? .75 : 1; ctx.fill(); ctx.globalAlpha = 1;
+      if (s) { ctx.shadowColor = SEL; ctx.shadowBlur = 14; } if (e.k === 'b' && e.ra) { ctx.save(); ctx.translate(p[0], p[1]); ctx.rotate(-e.ra); ctx.translate(-p[0], -p[1]); shape(ic, p[0], p[1], r); ctx.restore(); } else shape(ic, p[0], p[1], r); ctx.fillStyle = COLS[e.team]; ctx.globalAlpha = e.team === 2 ? .75 : 1; ctx.fill(); ctx.globalAlpha = 1;
       ctx.lineWidth = s ? 2.5 : e.k === 'b' ? 2 : 1; ctx.strokeStyle = s ? SEL : e.k === 'b' ? '#fff' : '#000a'; ctx.stroke(); ctx.shadowBlur = 0;
       if (e.k === 'b' && e.lvl > 1) { ctx.fillStyle = '#ffd35a'; ctx.font = '700 10px monospace'; ctx.textAlign = 'center'; ctx.fillText('\u2605'.repeat(e.lvl - 1), p[0], p[1] - r - 4); }
       if (e.hp < 100) { ctx.fillStyle = '#000a'; ctx.fillRect(p[0] - r, p[1] + r + 2, r * 2, 3); ctx.fillStyle = e.hp > 50 ? '#5f5' : e.hp > 25 ? '#fd4' : '#f44'; ctx.fillRect(p[0] - r, p[1] + r + 2, r * 2 * e.hp / 100, 3); }
       if (e.carry) { ctx.fillStyle = '#ffcc33'; ctx.beginPath(); ctx.arc(p[0] + r, p[1] - r, 2.5, 0, 7); ctx.fill(); } } });
+    } catch (er) { DIAG.err = 'draw: ' + er.message; } DIAG.vis = visN;
     if (EFL && performance.now() - EFL.t < 1500) EFL.ids.forEach(function (i) { var q = ents[i]; if (!q) return; var p2 = w2s(q.x, q.z); ctx.strokeStyle = '#ff5a5a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p2[0], p2[1], 12, 0, 7); ctx.stroke(); });
-    ripples = ripples.filter(function (r) { var k = (now - r.t) / 650; if (k > 1) return false; var p = w2s(r.x, r.z); ctx.strokeStyle = r.c; ctx.globalAlpha = 1 - k; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(p[0], p[1], 5 + k * 26, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; return true; });
+    ripples = ripples.filter(function (r) { var k = (now - r.t) / 650; if (k > 1) return false; var p = w2s(r.x, r.z); ctx.strokeStyle = r.c; ctx.globalAlpha = 1 - k; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(p[0], p[1], r.big ? 8 + k * 64 : r.small ? 3 + k * 10 : 5 + k * 26, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; return true; });
     if (G.m === 'lasso' && G.path.length > 1) { ctx.save(); ctx.shadowColor = SEL; ctx.shadowBlur = 10; ctx.strokeStyle = SEL; ctx.lineWidth = 2.5; ctx.setLineDash([7, 5]); ctx.lineDashOffset = -now / 30; ctx.beginPath(); G.path.forEach(function (q, i) { ctx[i ? 'lineTo' : 'moveTo'](q[0], q[1]); }); ctx.closePath(); ctx.fillStyle = 'rgba(77,255,106,.08)'; ctx.fill(); ctx.stroke(); ctx.restore(); }
-    if (WH) drawWheel(now); drawFX(now);
+    if (PLACE) drawGhost(now); if (WH) drawWheel(now); drawFX(now); diagTick(now);
     $('top').textContent = '\u25c6 ' + res + '  \u00b7  ' + sel.length + ' sel  \u00b7  tap = ' + (tapMode === 'move' ? 'move' : 'attack-move') + (lastSnap && now - lastSnap > 2000 ? '  \u00b7  (no TV)' : '');
     requestAnimationFrame(draw); }
   function inf(e) { return { isB: e.k === 'b', ty: e.ty, kind: e.kind, hpf: e.hp / 100, carry: e.carry, lvl: e.lvl }; }
@@ -240,10 +279,17 @@
         ctx.strokeStyle = 'rgba(255,' + (190 + (i % 3) * 20) + ',70,' + (1 - k * .7) + ')'; ctx.lineWidth = 1.2 + (1 - k) * 1.5; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(mx, my, ax + (i - NT / 2) * .25, ay); ctx.stroke(); }
       ctx.fillStyle = 'rgba(255,240,180,' + (1 - k) + ')'; ctx.beginPath(); ctx.ellipse(ax, ay, 9 * (1 - k * .5), 4, 0, 0, 7); ctx.fill(); ctx.restore(); return true; });
     // rolodex (bottom-right): flicks through the actuated stack one card at a time, threads link chained items
-    if (ROLO) { var dt2 = now - ROLO.t, per = 140, N = ROLO.stack.length, tot = N * per + 700; if (dt2 > tot) ROLO = null; else { var cw = 86, ch = 66, bx = W - cw - 12, by = H - ch - 12, cur = Math.min(N - 1, Math.floor(dt2 / per)), fade = dt2 > tot - 300 ? (tot - dt2) / 300 : 1;
-      ctx.save(); ctx.globalAlpha = fade; for (var j = 0; j <= cur; j++) { var off = (cur - j); if (off > 3) continue; var x = bx - off * 6, y = by - off * 6; if (j > 0 && off < 3) { ctx.strokeStyle = ['#ffcc33', '#47ff7a', '#3fd8ff', '#ff5cf0'][j % 4]; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + cw / 2, y); ctx.lineTo(x + cw / 2 + 6, y - 6); ctx.moveTo(x, y + ch / 2); ctx.lineTo(x - 6, y + ch / 2 - 6); ctx.stroke(); } }
-      var l = ROLO.stack[cur], fl = Math.random() < .15 ? .6 : 1; ctx.fillStyle = '#000'; ctx.strokeStyle = GOLD; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.rect(bx, by, cw, ch); ctx.fill(); ctx.stroke(); ctx.globalAlpha = fade * fl;
-      crt(l.it.i, bx + 26, by + 28, 26); crt('~' + Math.max(1, ROLO.cnt), bx + 62, by + 28, 14); crt(l.it.n.toUpperCase(), bx + cw / 2, by + ch - 12, 9); crt((cur + 1) + '/' + N, bx + cw - 14, by + 9, 8); ctx.restore(); } } }
+    // rolodex STACK (bottom-right): each actuated chain opens a new box above the others: straight linear open (60 ms), then flicks one card per 70 ms; when done it vanishes and the stack drops together
+    var RO_OPEN = 60, RO_PER = 70, RO_HOLD = 380, cw = 86, ch = 66;
+    ROLOS = ROLOS.filter(function (r) { return now - r.t < RO_OPEN + r.stack.length * RO_PER + RO_HOLD; });
+    ROLOS.forEach(function (r, i) { var ty = H - ch - 64 - i * (ch + 8); if (r.y === null) r.y = ty; r.y += (ty - r.y) * .25; if (Math.abs(ty - r.y) < .5) r.y = ty;
+      var bx = W - cw - 12, by = r.y, dt2 = now - r.t, ok = Math.min(1, dt2 / RO_OPEN), N = r.stack.length;
+      ctx.save(); ctx.fillStyle = '#000'; ctx.strokeStyle = GOLD; ctx.lineWidth = 2.5; var hh = ch * ok; ctx.beginPath(); ctx.rect(bx, by + (ch - hh) / 2, cw, hh); ctx.fill(); ctx.stroke();
+      if (ok >= 1) { var cur = Math.min(N - 1, Math.floor((dt2 - RO_OPEN) / RO_PER)), l = r.stack[cur], fl = Math.random() < .15 ? .6 : 1;
+        for (var j = 1; j <= Math.min(3, cur); j++) { ctx.strokeStyle = QCOL[r.stack[cur - j].cat]; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx - j * 5, by + 6); ctx.lineTo(bx - j * 5, by + ch - 6); ctx.stroke(); }   // threads = cards already flicked, in their quadrant colours
+        ctx.globalAlpha = fl; ctx.strokeStyle = QCOL[l.cat]; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(bx + 4, by + ch - 4); ctx.lineTo(bx + cw - 4, by + ch - 4); ctx.stroke();
+        crt(l.it.i, bx + 26, by + 28, 26); crt('~' + Math.max(1, r.cnt), bx + 62, by + 28, 14); crt(l.it.n.toUpperCase(), bx + cw / 2, by + ch - 12, 9); crt((cur + 1) + '/' + N, bx + cw - 14, by + 9, 8); }
+      ctx.restore(); }); }
   // ---- always-on reopen-mode button (bottom-left) ----
   var RM = { top: 'TOP LEVEL', exact: 'EXACT MENU', up: 'ONE LEVEL UP' }, RMI = { top: '\u25c9', exact: '\u25ce', up: '\u2191' };
   var mb = document.createElement('button'); mb.id = 'rmode'; mb.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:4;width:40px;height:40px;border-radius:50%;background:#000;border:2px solid ' + GOLD + ';color:' + CRT + ';font:700 18px ui-monospace,monospace;text-shadow:0 0 6px #1a8a3a;padding:0;cursor:pointer';
@@ -280,7 +326,7 @@
   renderTargets(); setInterval(function () { renderTargets(); }, 1500);
   // ---- left-edge pull-over test panel ----
   var TP = [ ['drop', 'DROP', ['zip', 'soft', 'sharp', 'plinko']], ['reopen', 'REOPEN', ['top', 'exact', 'up']], ['reopenAt', 'REOPEN AT', ['prev', 'thumb']], ['dbl', 'DBL-TAP MS', [300, 420, 550]], ['size', 'WHEEL', ['S', 'M', 'L']], ['ai', 'AI GUESS', [true, false]],
-    ['spd', 'UNIT SPD', [.5, 1, 1.5, 2]], ['waves', 'WAVES', [true, false]], ['hold', 'HOLD MS', [300, 450, 600]], ['dcAI', 'DC \u2192 AI', [5, 15, 30, 0]], ['dcPause', 'DC PAUSE', [false, true]] ];
+    ['spd', 'UNIT SPD', [.5, 1, 1.5, 2]], ['waves', 'WAVES', [true, false]], ['hold', 'HOLD MS', [300, 450, 600]], ['dcAI', 'DC \u2192 AI', [5, 15, 30, 0]], ['dcPause', 'DC PAUSE', [false, true]], ['tap2', 'TAP-TAP MS', [220, 280, 360]], ['diag', 'DIAG', [false, true]] ];
   var tp = document.createElement('div'), tab = document.createElement('button'); tp.id = 'tpanel';
   tp.style.cssText = 'position:fixed;left:0;top:50%;z-index:7;transform:translate(-100%,-50%);transition:transform .15s;background:#000e;border:2px solid ' + GOLD + ';border-left:none;border-radius:0 14px 14px 0;padding:8px;display:flex;flex-direction:column;flex-wrap:wrap;gap:7px;max-height:86vh;align-content:flex-start';
   tab.style.cssText = 'position:fixed;left:0;top:72%;z-index:7;transform:translateY(-50%);width:18px;height:46px;background:#000;border:2px solid ' + GOLD + ';border-left:none;border-radius:0 9px 9px 0;color:' + GOLD + ';font:700 12px monospace;padding:0;cursor:pointer'; tab.textContent = '\u25b6';
@@ -289,6 +335,25 @@
   window.tpSync = function () { Array.prototype.forEach.call(tp.children, function (b) { var d = TP.filter(function (q) { return q[0] === b.dataset.k; })[0], v = CFG[d[0]]; b.innerHTML = d[1] + '<br><span style="color:#ffd35a">' + (v === true ? 'ON' : v === false ? 'OFF' : d[0] === 'spd' ? v + 'x' : d[0] === 'dcAI' ? (v ? v + ' s' : 'OFF') : String(v).toUpperCase()) + '</span>'; }); };
   var tpOpen = false; function tpSet(o) { tpOpen = o; tp.style.transform = o ? 'translate(0,-50%)' : 'translate(-100%,-50%)'; tab.style.left = o ? (tp.offsetWidth - 2) + 'px' : '0'; tab.textContent = o ? '\u25c0' : '\u25b6'; }
   tab.onclick = function () { tpSet(!tpOpen); }; [tp, tab].forEach(function (el) { el.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); document.body.appendChild(el); }); tpSync(); addEventListener('resize', function () { tpSync(); tpSet(tpOpen); });
+  // ---- v0.4.1 diagnostic overlay (panel DIAG or ?diag=1) + auto-help when no map state arrives ----
+  var dg = document.createElement('div'); dg.id = 'diag'; dg.style.cssText = 'position:fixed;left:56px;top:34px;z-index:6;max-width:calc(100vw - 130px);background:#000d;border:1px solid ' + GOLD + ';border-radius:8px;padding:6px 8px;font:600 10.5px/1.35 ui-monospace,monospace;color:' + CRT + ';white-space:pre;display:none;pointer-events:auto';
+  var fb = document.createElement('button'); fb.textContent = 'FIND MY SHAPES'; fb.style.cssText = 'display:block;margin-top:5px;background:#000;border:1.5px solid ' + GOLD + ';color:' + GOLD + ';font:700 11px monospace;border-radius:6px;padding:4px 8px';
+  var dgt = document.createElement('div'); dg.appendChild(dgt); dg.appendChild(fb); document.body.appendChild(dg); dg.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+  fb.onclick = function () { if (!findMine()) { send({ t: 'need' }); toast('no shapes yet: asked the TV for the map'); } else toast('centred on your shapes'); };
+  var joinedAt = 0;
+  function diagTick(now) { var kj = document.getElementById('kjoin'), joined = !kj || !kj.offsetParent; if (joined && !joinedAt) joinedAt = now;
+    if (joined && now - (lastSnap || joinedAt) > 2500 && now - DIAG.need > 2500) { DIAG.need = now; send({ t: 'need' }); }   // no snapshot for 2.5 s: ask the TV directly
+    var nU = 0, nB = 0, nN = 0, mine = 0; for (var k in ents) { var e = ents[k]; if (e.k === 'u') nU++; else if (e.k === 'b') nB++; else nN++; if (e.team === 0 && e.k !== 'n') mine++; }
+    if (DIAG.n > 3 && !DIAG.fit && mine) { DIAG.fit = 1; var anyMine = false; for (var k2 in ents) { var q = ents[k2]; if (q.team === 0 && q.k !== 'n') { var pq = w2s(q.x, q.z); if (pq[0] > 0 && pq[0] < W && pq[1] > 0 && pq[1] < H) anyMine = true; } } if (!anyMine) findMine(); }
+    var stale = joined && (!lastSnap || now - lastSnap > 3000), show = CFG.diag || DIAG.on || stale; dg.style.display = show ? 'block' : 'none'; if (!show || (now - (diagTick.t || 0) < 250)) return; diagTick.t = now;
+    var ty = Object.keys(DIAG.types).map(function (t) { return t + ':' + DIAG.types[t]; }).join(' ');
+    dgt.textContent = (stale ? (lastSnap ? '⚠ MAP STATE STALLED ' + ((now - lastSnap) / 1000).toFixed(1) + ' s' : '⚠ NO MAP STATE FROM TV YET') + '\n' : '') +
+      'snaps ' + DIAG.n + '  ' + DIAG.hz.toFixed(1) + ' Hz  age ' + (lastSnap ? Math.round(now - lastSnap) + ' ms' : '-') + '  ~' + (DIAG.bytes / 1024).toFixed(1) + ' KB\n' +
+      'ents u' + nU + ' b' + nB + ' n' + nN + '  mine ' + mine + '  on-screen ' + DIAG.vis + '\n' +
+      'view ' + V.cx.toFixed(0) + ',' + V.cz.toFixed(0) + ' s' + V.s.toFixed(2) + (V.init ? '' : ' (not init)') + '\n' +
+      'css ' + W + 'x' + H + '  dpr ' + dpr + ' (dev ' + (devicePixelRatio || 1).toFixed(2) + ')  canvas ' + cv.width + 'x' + cv.height + '\n' +
+      'msgs ' + (ty || '-') + '\n' + (DIAG.err ? 'ERR ' + DIAG.err : 'no errors'); }
+  addEventListener('error', function (e) { DIAG.err = (e.message || 'error') + ' @' + (e.lineno || '?'); });
   setTimeout(saveCfg, 1500); setInterval(function () { if (lastSnap) send({ t: 'hb' }); }, 3000);
   requestAnimationFrame(draw);
   HowTo.setup({ game: 'rts4', ready: function () { var k = document.getElementById('kjoin'); return !k || !k.offsetParent; }, steps: [
@@ -301,6 +366,6 @@
     { say: 'Bottom nodes 1-2-3: tap or slide for a combo that opens the wheel deeper. Tap blank map to clear', at: [.42, .97], to: [.58, .97], act: 'drag', dur: 900 },
     { say: 'Double-tap your group or a building for options', at: [.45, .6], act: 'tap', dur: 300 },
     { say: 'Pinch to zoom, two fingers to pan (mouse: wheel + right-drag)', at: [.5, .5], act: 'tap', hold: 900 } ] });
-  window.RTP = { V: V, w2s: w2s, s2w: s2w, get ents() { return ents; }, get sel() { return sel; }, set sel(v) { sel = v; sendSel(); }, get WH() { return WH; }, get orbs() { return ORBS; }, CFG: CFG, tpSet: function (o) { tpSet(o); }, orbPos: function (i) { return orbPos(i); }, openOpt: openOpt, get COMBO() { return COMBO; }, get GROUPS() { return GROUPS; }, get TARGETS() { return TARGETS; }, comboLayer: comboLayer, leafOf: leafOf };
+  window.RTP = { V: V, w2s: w2s, s2w: s2w, get ents() { return ents; }, get sel() { return sel; }, set sel(v) { sel = v; sendSel(); }, get WH() { return WH; }, get orbs() { return ORBS; }, CFG: CFG, tpSet: function (o) { tpSet(o); }, orbPos: function (i) { return orbPos(i); }, openOpt: openOpt, DIAG: DIAG, get PLACE() { return PLACE; }, get ROLOS() { return ROLOS; }, ghostGeo: function () { return ghostGeo(); }, findMine: findMine, actuate: function (st) { actuate(st, [W / 2, H / 2, 100], false, [0, 0]); }, get COMBO() { return COMBO; }, get GROUPS() { return GROUPS; }, get TARGETS() { return TARGETS; }, comboLayer: comboLayer, leafOf: leafOf };
 })();
 </script></body></html>

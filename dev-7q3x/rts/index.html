@@ -98,7 +98,8 @@
     if (o && o.k === 'guard') { var al = o.ids.map(function (i) { return E[i]; }).filter(Boolean); if (!al.length) e.o = o = null; else { var gx = 0, gz = 0; al.forEach(function (q) { gx += q.x; gz += q.z; }); gx /= al.length; gz /= al.length;
       t = nearest(e, function (q) { return q.k !== 'n' && hostile(e, q) && o.ids.indexOf(q.id) < 0 && Math.hypot(q.x - gx, q.z - gz) < 14; }, 40); if (!t) { moveTo(e, gx + Math.cos(e.ph * .3) * 6, gz + Math.sin(e.ph * .3) * 6, sp * .7, dt, 1); return; } } }
     if (o && o.k === 'attack') { t = E[o.id]; if (!t) e.o = o = null; else if (t.k === 'b') { var thr = nearest(e, function (q) { return q.k === 'u' && hostile(e, q); }, Math.max(8, u.rng + 2)); if (thr) t = thr; } }   // fight off attackers before hitting a building
-    if (!t && !(o && o.k === 'move') && o !== 'hold') { var ag = bi.aggro + (u.rng > 6 ? u.rng * .5 : 0), cx = e.x, cz = e.z; t = nearest(e, function (q) { return q.k !== 'n' && hostile(e, q); }, ag);
+    if (e.sweepT > 0) e.sweepT -= dt;
+    if (!t && !(o && o.k === 'move') && o !== 'hold') { var ag = (e.sweepT > 0 ? Math.max(18, bi.aggro) : bi.aggro) + (u.rng > 6 ? u.rng * .5 : 0), cx = e.x, cz = e.z; t = nearest(e, function (q) { return q.k !== 'n' && hostile(e, q); }, ag);
       if (t && bi.leash && Math.hypot(t.x - e.ax, t.z - e.az) > bi.leash) t = null; if (t && e.bias === 'recon' && e.hp < e.mhp * .6) t = null; }
     if (t) { var d = Math.hypot(t.x - e.x, t.z - e.z) - rad(t); if (d <= u.rng) { e.face = Math.atan2(t.x - e.x, t.z - e.z); if (e.cd <= 0) { e.cd = u.rate; hurt(t, u.dmg * (e.buff > 0 ? 1.25 : 1), e); beam(e, t, e.team === 0 ? 0x9fd0ff : e.team === 1 ? 0xffa060 : e.team === 2 ? 0xbffcff : 0xffc080, u.rng > 4 ? .14 : .08); } }
       else if (o !== 'hold') moveTo(e, t.x, t.z, sp, dt, rad(t) + u.rng * .8); return; }
@@ -114,17 +115,21 @@
   function cmd(p, m) { var L = ents(m.ids), us = L.filter(function (e) { return e.k === 'u'; });
     if (m.t === 'sel') { sels[p.id] = (m.ids || []).slice(0, 200); return; }
     if (m.t === 'cfg') { CFG.spd = Math.max(.25, Math.min(3, +m.spd || 1)); CFG.waves = m.waves !== false; if (m.dcAI != null) CFG.dcAI = +m.dcAI || 0; if (m.dcPause != null) CFG.dcPause = !!m.dcPause; return; }
-    p.seen = performance.now(); if (m.t === 'hb') return;
+    p.seen = performance.now(); if (!p.on && p.conn && p.conn.open !== false) p.on = true;   // v0.4.1: any message proves the phone is there (a stale close must not stop its snapshots)
+    if (m.t === 'need') { snap(p); return; }
+    if (m.t === 'hb') return;
+    if (m.t === 'go' && m.mode === 'sweep') { var n2 = us.length; us.forEach(function (e, i) { var a2 = i / Math.max(1, n2) * Math.PI * 2, r2 = n2 > 1 ? 3 + Math.sqrt(n2) * 1.6 : 0; e.o = { k: 'amove', x: +m.x, z: +m.z, ox: Math.cos(a2) * r2, oz: Math.sin(a2) * r2 }; e.ax = +m.x + Math.cos(a2) * r2; e.az = +m.z + Math.sin(a2) * r2; e.sweepT = 20; }); return; }   // double-tap empty map: attack-move into the area, fanned out, hunting nearby for 20 s
     if (m.t === 'go') { var tg = m.tg && E[m.tg]; var n = us.length, cols = Math.ceil(Math.sqrt(n));
       us.forEach(function (e, i) { if (tg && tg.k === 'n' && U[e.ty].role === 'gather') e.o = { k: 'gather', id: tg.id }; else if (tg && tg.k !== 'n' && tg.team !== 0) { if (tg.team > 1) angry[tg.team] = 1; e.o = { k: 'attack', id: tg.id }; }
         else e.o = { k: m.mode === 'move' ? 'move' : 'amove', x: +m.x, z: +m.z, ox: (i % cols - cols / 2) * 2.4, oz: (Math.floor(i / cols) - cols / 2) * 2.4 }; e.ax = +m.x; e.az = +m.z; }); return; }
     if (m.t === 'act') { var a = String(m.a || ''), arg = a.split(':')[1];
       if (a.indexOf('bias:') === 0) (us.length ? us : Object.values(E).filter(function (e) { return e.k === 'u' && e.team === 0; })).forEach(function (e) { e.bias = arg; e.ax = e.x; e.az = e.z; });
       else if (a.indexOf('tgt:') === 0) { var tids = (m.tids || []).filter(function (i) { return E[i]; }); if (tids.length) us.forEach(function (e) { e.o = { k: arg === 'defend' ? 'guard' : 'attackset', ids: tids }; }); tids.forEach(function (i) { var q = E[i]; if (q.team > 1 && arg !== 'defend') angry[q.team] = 1; }); }
+      else if (a === 'focus') { var ft0 = E[m.tg]; if (ft0) { var fs = Object.values(E).filter(function (q) { return q.k !== 'n' && q.team === ft0.team && Math.hypot(q.x - ft0.x, q.z - ft0.z) < 9; }).map(function (q) { return q.id; }); fs.sort(function (a3, b3) { return a3 === ft0.id ? -1 : b3 === ft0.id ? 1 : 0; }); if (ft0.team > 1) angry[ft0.team] = 1; us.forEach(function (e) { e.o = { k: 'attackset', ids: fs }; }); } }
       else if (a === 'prio:rush') { var bx = +m.x || 0, bz = +m.z || 0, rb = null, rd = 1e9; Object.values(E).forEach(function (q) { if (q.k === 'b' && q.team === 0) { var d = Math.hypot(q.x - bx, q.z - bz); if (d < rd) { rd = d; rb = q; } } }); if (rb) rb.rush = 25; }
       else if (a === 'prio:normal') Object.values(E).forEach(function (q) { if (q.k === 'b') q.rush = 0; });
       else if (a === 'hold') us.forEach(function (e) { e.o = 'hold'; }); else if (a === 'stop') us.forEach(function (e) { e.o = null; e.ax = e.x; e.az = e.z; });
-      else if (a.indexOf('build:') === 0 && BT[arg] && res[0] >= BT[arg].cost) { var x = Math.max(-70, Math.min(70, +m.x || 0)), z = Math.max(-70, Math.min(70, +m.z || 0)); res[0] -= BT[arg].cost; building(arg, 0, x, z); }
+      else if (a.indexOf('build:') === 0 && BT[arg] && res[0] >= BT[arg].cost) { var x = Math.max(-70, Math.min(70, +m.x || 0)), z = Math.max(-70, Math.min(70, +m.z || 0)); res[0] -= BT[arg].cost; var nb = building(arg, 0, x, z), ra = +m.rot || 0; nb.ra = ra; nb.m.rotation.y = Math.atan2(-Math.sin(ra), -Math.cos(ra)); }   // rot: phone-screen angle, 0 = faces the TV camera
       else if (a.indexOf('train:') === 0) { var hq = Object.values(E).filter(function (e) { return e.k === 'b' && e.team === 0 && (e.kind === 'hq' || e.kind === 'barracks'); }); if (hq.length && res[0] >= SH.COST.train) { res[0] -= SH.COST.train; var h = hq[Math.floor(Math.random() * hq.length)]; h.q.push({ ty: +arg, t: 2.5 }); } }
       else if (a === 'upgrade') L.filter(function (e) { return e.k === 'b'; }).forEach(function (e) { if (e.lvl < 3 && res[0] >= SH.COST.upgrade) { res[0] -= SH.COST.upgrade; e.lvl++; e.hp = e.mhp = e.mhp * 1.3; e.m.scale.setScalar(1 + (e.lvl - 1) * .15); } });
       else if (a === 'share') { var c = 0; us.forEach(function (e) { c += e.carry; e.carry = 0; }); res[0] += c; }
@@ -183,9 +188,9 @@
     var foe = Object.values(E).filter(function (e) { return e.team === 1 && e.k !== 'n'; }); if (ft.length >= 8 && foe.length) { var f0 = foe[0]; ft.forEach(function (e, i) { if (!e.o) e.o = { k: 'amove', x: f0.x, z: f0.z, ox: (i % 4) * 2, oz: Math.floor(i / 4) * 2 }; }); } }
   var msgOv = '';
   function info(e) { return { isB: e.k === 'b', ty: e.ty, kind: e.kind, hpf: e.hp / e.mhp, carry: e.carry, lvl: e.lvl }; }
-  function snap() { var u = [], b = [], n = []; for (var k in E) { var e = E[k], x = Math.round(e.x * 10) / 10, z = Math.round(e.z * 10) / 10;
-      if (e.k === 'u') u.push([e.id, e.ty, e.team, x, z, Math.round(e.hp / e.mhp * 100), e.carry ? 1 : 0, e.bias[0]]); else if (e.k === 'b') b.push([e.id, e.kind, e.team, x, z, Math.round(e.hp / e.mhp * 100), e.lvl, e.pulse ? 1 : 0]); else n.push([e.id, x, z, e.amt]); }
-    var m = { t: 's', r: Math.floor(res[0]), u: u, b: b, n: n, ov: over > 0 ? 1 : 0, an: angry }; host.players.forEach(function (p) { if (p.on) host.send(p, m); }); }
+  function snap(only) { var u = [], b = [], n = []; for (var k in E) { var e = E[k], x = Math.round(e.x * 10) / 10, z = Math.round(e.z * 10) / 10;
+      if (e.k === 'u') u.push([e.id, e.ty, e.team, x, z, Math.round(e.hp / e.mhp * 100), e.carry ? 1 : 0, e.bias[0]]); else if (e.k === 'b') b.push([e.id, e.kind, e.team, x, z, Math.round(e.hp / e.mhp * 100), e.lvl, e.pulse ? 1 : 0, +(e.ra || 0).toFixed(2)]); else n.push([e.id, x, z, e.amt]); }
+    var m = { t: 's', r: Math.floor(res[0]), u: u, b: b, n: n, ov: over > 0 ? 1 : 0, an: angry }; m.sq = (snap.n = (snap.n || 0) + 1); if (only) { host.send(only, m); return; } host.players.forEach(function (p) { if (p.on) host.send(p, m); }); }
   requestAnimationFrame(frame);
 })();
 </script></body></html>

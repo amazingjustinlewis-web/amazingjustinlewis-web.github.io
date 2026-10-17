@@ -198,6 +198,12 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Phone: height-tinted minimap with hill shading, your dot (pulsing) + others in colour, tap ripple + dashed course line; How to play (3 steps); perf.js on both.
 - Next: unit selection/groups, obstacles/no-fly, fog of war, flier collision, pinch-zoom minimap.
 
+## RTS v0.4.1 (done)
+- Pixel 'no markers' bug: NOT reproduced (headless Pixel 7 emulation over real PeerJS from a laptop-style host shows markers, ~1 KB snaps at ~5 Hz). Hardened likely causes: size() from visualViewport fallback + min 1px + DPR re-read on resize/orientation; V.s guard; NaN position guard; try/catch around snapshot + entity draw (error kept in DIAG.err); onMsg accepts JSON strings; pad sends {t:'need'} when no snap for 2.5 s -> TV snap(p) to that phone; TV sets p.on=true on any message (stale onClose used to stop snapshots silently); auto findMine() once if none of ours on screen. DIAG overlay: snaps/Hz/age/KB, ent counts, on-screen count, view, css/dpr/canvas, msg types, last error, FIND MY SHAPES. Ask Justin for a DIAG screenshot from the Pixel.
+- Rolodex stack: ROLOS[], RO_OPEN 60 ms linear vertical open, RO_PER 70 ms, RO_HOLD 380; slots stack upward from bottom-right, y eases to slot (drop together).
+- Taps: single tap deferred CFG.tap2 (280 ms, panel 220/280/360) with a faint instant ring; double-tap table in pad.html dtap(). TV: go mode 'sweep' (fan ring, sweepT 20 s aggro>=18), act 'focus' (attackset of target's team within 9 m, target first).
+- Placement ghost: PLACE {kind,x,z,ra}; ra = screen angle (0 = faces down the map = TV camera); 4 big + 4 half dots on a ring rotate freely; tap dot / down-arrow button = face camera; confirm = tap ghost body or check button (both, by design); cross = cancel; several builds in a chain queue (PQ). TV: mesh rotation.y = atan2(-sin ra, -cos ra), ra sent in snapshots (q[8]) so the phone draws it rotated.
+
 ## RTS v0.4 wheel + controls (done)
 - Reopen: CFG.reopenAt 'prev' (default, wheel returns at its old ox/oy; thumb becomes the pick anchor) | 'thumb'. Drop 'zip' (default, 650 ms): straight up to slot+60 px, then quadratic arc/zip into the slot, wheel body fades out over first 60% while the orb fades in; 180 ms landing bounce. RECATCH_MS 330, CFG.dbl 420, orbR 16-28 px, spacing 70 px. localStorage key now rts4-cfg.
 - QCOL per top quadrant (orange/gold/cyan/violet). layers() = one per loaded leaf (its quadrant) then one per menu layer -> concentric rings around wheel, concentric fill in orbs (inner = first).
