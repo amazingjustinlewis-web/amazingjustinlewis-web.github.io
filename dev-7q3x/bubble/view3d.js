@@ -41,7 +41,7 @@
       var geo = new THREE.ExtrudeGeometry(o, { depth: hgt, bevelEnabled: false }), me = new THREE.Mesh(geo, mat(col)); me.rotation.x = Math.PI / 2; me.position.y = y0 + hgt; G.add(me); return me; }
     var proc = [ring(0, .03, .07, 0xf6f8fb, 0), ring(-.004, .012, .018, 0xf2c230, 0), ring(.03, .1, .02, 0x24356a, -.0)];
     var cab = new THREE.Mesh(new THREE.BoxGeometry(L + .5, .3, 1.5), mat(0x18244a)); cab.position.set(L / 2, -.16, .5); G.add(cab); proc.push(cab);
-    this.loadArena(proc);
+    this.loadArena(proc); this.loadSkaters();
     // nets: red frame + translucent mesh box
     var self = this; this.nets = [];
     // model hook: window.BubbleNetModel(side, dims) may return a Group with children named 'post_l', 'post_r', 'crossbar' (metal) and 'mesh' (soft, wobbles); origin on the goal line centre, +x into the net
@@ -79,6 +79,7 @@
     var tor = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.0, r * .85, .016, 14), jer); tor.position.y = .034; p.add(tor);
     var sh = new THREE.Mesh(new THREE.SphereGeometry(r * 1.0, 14, 8, 0, 7, 0, Math.PI / 2), jer); sh.scale.y = .45; sh.position.y = .042; p.add(sh);
     var hd = new THREE.Mesh(new THREE.SphereGeometry(r * .5, 12, 10), M(goalie ? 0xf2f2f2 : 0x20242e)); hd.position.y = .05 - r * .45; p.add(hd);
+    p.userData.body = p.children.slice();
     var arm = new THREE.Group(), ab = new THREE.Mesh(new THREE.BoxGeometry(r * .45, .022, r * .45), jer), gl = new THREE.Mesh(new THREE.SphereGeometry(r * .42, 8, 6), dark); ab.position.y = .011; gl.position.y = .024; arm.add(ab); arm.add(gl); arm.position.set(0, .042, -r * .95); arm.visible = false; p.add(arm); p.userData.arm = arm;
     return p; }
   function beamTex() { var c = document.createElement('canvas'); c.width = 128; c.height = 32; var x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 128, 0); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.beginPath(); x.moveTo(0, 14); x.lineTo(128, 0); x.lineTo(128, 32); x.lineTo(0, 18); x.fill(); return new THREE.CanvasTexture(c); }
@@ -156,10 +157,12 @@
       p.position.set(sp.x, 0, sp.z); var rgc = st.gc && st.gc[i]; p.userData.ring.visible = !!rgc; if (rgc) p.userData.ring.material.color.set(rgc); p.rotation.set(0, Math.atan2(-Math.cos(an), Math.sin(an)), 0); p.userData.stick.material.color.setHex(st.sw === i ? 0xffffff : 0x5a3a1c);
       var lnv = st.ln ? st.ln[i] : 0, dnv = st.dn ? st.dn[i] : 0, sk = p.userData.stick, bl = p.userData.blade, ln0 = p.userData.len, ext = 1 + Math.min(1, lnv / .3) * 2.2;   // snag/check lunge: lean in, stick shoots out
       sk.scale.x = ext; sk.position.x = ln0 * ext / 2; bl.position.x = ln0 * ext; p.position.y = 0;
+      var skm = p.userData.sk; if (skm) { sk.visible = bl.visible = ext > 1.05; var swc = st.sw === i ? 0xffffff : 0x8c5c2e; skm.sticks.forEach(function (o) { o.material.color.setHex(swc); }); }
       if (dnv > 0) { var tt = 1.5 - dnv, lie = tt < .25 ? tt / .25 : dnv < .45 ? dnv / .45 : 1; p.userData.spin = (p.userData.spin || (Math.random() - .5) * 16); p.rotateY(p.userData.spin * Math.max(0, 1 - tt) * .05); p.rotateZ(lie * Math.PI / 2 * .92); p.position.y = lie * .01 + Math.abs(Math.sin(tt * 9)) * .006 * Math.max(0, 1 - tt * 2); }
       else { p.userData.spin = 0; if (lnv > 0) p.rotateZ(-Math.min(1, lnv / .3) * .55); }
       if (tr.k === 'G') { var grv = st.gr ? st.gr[tr.t] : 0, rp = p.userData.rpad; if (!rp) { rp = p.userData.rpad = new THREE.Mesh(new THREE.BoxGeometry(.012, .02, .03), new THREE.MeshLambertMaterial({ color: tr.t ? 0x3aa8ff : 0xff5a6e })); rp.name = 'reachPad'; this.G.add(rp); }   // proxy blocker/pad (Justin's model reach animation drops in later)
         rp.visible = !!grv; if (grv) { var gx = sp.z, gz = sp.x; p.position.z += grv * .008; p.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), grv * .5)); rp.position.copy(L3(gx + grv * (B.R * .5 + .012), gz, .01)); rp.scale.set(1, 1, .6 + Math.abs(grv) * .7); } } }
+    this.skPose(st, this._dt || 0);
     var pz = st.pz || 0, h = 0, px = st.p[0], py = st.p[1]; this.puck.visible = !(pz > 0) || !!st.pg;   // faceoff: hidden in the slot until it launches
     if (st.z) h = st.z; this.puck.position.copy(L3(px, py, .006 + h)); var gs = 1 + h * 7; this.puck.scale.set(gs, 1, gs);
     if (!this.pshad) { this.pshad = new THREE.Mesh(new THREE.CircleGeometry(B.PR, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0, depthWrite: false })); this.pshad.rotation.x = -Math.PI / 2; this.G.add(this.pshad); }
@@ -244,6 +247,21 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     this.d.appendChild(f); setTimeout(function () { f.style.opacity = 0; }, 60); setTimeout(function () { f.remove(); }, 400); };
   // Justin's arena model (Blender, metres, rink centred at origin, long axis +Y, ice at z=0, 1 game unit = ARENA_UNIT m).
   // TV only; the procedural boards/cabinet stay as the fallback until it loads. The game keeps its own ice markings, nets and lights.
+  // v0.9.6: Justin's skater GLB (player_skater.glb, 23 deform joints, actions 'glide' + 'faceoff'). Skaters only (goalies keep the padded proxy).
+  // Glide during play, blend to faceoff while the puck waits in the slot, back to glide when it drops. Proxy stays as fallback; the model's own stick
+  // is used; the proxy stick/blade only shows during a lunge (stick shoots out) and the model stick turns white on a swing like the proxy did. ?noskaters disables; phones off unless ?skaters=1.
+  var SKATER = { url: 'player_skater.glb', yaw: Math.PI / 2, h: .085, blendIn: 3.5, blendOut: 6, tint: .85 };
+  R3.prototype.loadSkaters = function () { var self = this; if (!THREE.GLTFLoader || /noskaters/.test(location.search) || (this.phone && !/skaters=1/.test(location.search))) return;
+    fetch(SKATER.url).then(function (r) { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(function (buf) {
+      self.pl.forEach(function (p, i) { var tr = B.TR[i]; if (tr.k === 'G') return;
+        new THREE.GLTFLoader().parse(buf.slice(0), '', function (g) { var sticks = [], m = g.scene, box = new THREE.Box3().setFromObject(m), ht = box.max.y - box.min.y || 1.6, sc = SKATER.h / ht;
+          m.traverse(function (o) { if (!o.isMesh) return; if (o.name === 'stick') { o.material = o.material.clone(); sticks.push(o); return; } o.frustumCulled = false; var mt = o.material; if (mt && mt.name === 'Jersey') { mt = o.material = mt.clone(); mt.color.set(COLS[tr.t]).lerp(new THREE.Color(0xffffff), 1 - SKATER.tint); } });
+          var wrap = new THREE.Group(); m.scale.setScalar(sc); m.rotation.y = SKATER.yaw; wrap.add(m); p.add(wrap);
+          var mix = new THREE.AnimationMixer(m), clip = function (n) { return THREE.AnimationClip.findByName(g.animations, n); }, aG = clip('glide') && mix.clipAction(clip('glide')), aF = clip('faceoff') && mix.clipAction(clip('faceoff'));
+          [aG, aF].forEach(function (a) { if (a) { a.play(); a.setEffectiveWeight(0); } }); if (aG) aG.setEffectiveWeight(1);
+          p.userData.sk = { m: wrap, mix: mix, g: aG, f: aF, w: 0, sticks: sticks }; p.userData.body.forEach(function (o) { o.visible = false; }); }, function () {}); }); }).catch(function () {}); };
+  R3.prototype.skPose = function (st, dt) { var fo = st && st.pz > 0 ? 1 : 0; for (var i = 0; i < 12; i++) { var k = this.pl[i].userData.sk; if (!k) continue;
+      k.w += (fo - k.w) * Math.min(1, dt * (fo ? SKATER.blendIn : SKATER.blendOut)); if (k.g) k.g.setEffectiveWeight(1 - k.w); if (k.f) k.f.setEffectiveWeight(k.w); k.mix.update(dt); } };
   var ARENA_URL = 'arena_classic.glb', ARENA_UNIT = .62, ARENA_HIDE = /^(rink_surface|post_[lr]_|crossbar_|net_mesh_|goal_light_|serve_slot)/;
   R3.prototype.loadArena = function (proc) { var self = this; if (this.phone || !THREE.GLTFLoader || /noarena/.test(location.search)) return;
     new THREE.GLTFLoader().load(ARENA_URL, function (g) { var A = g.scene; A.scale.setScalar(1 / ARENA_UNIT); A.rotation.y = -Math.PI / 2; A.position.set(L / 2, 0, .5);

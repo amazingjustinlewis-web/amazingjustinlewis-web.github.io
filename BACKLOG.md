@@ -197,3 +197,8 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Flight (FLY constants): arrival-limited speed, accel/brake limits, heading follows velocity, bank from turn rate, flap Hz from speed + acceleration, altitude follows terrain ahead, hover bob. Camera (CAM): frames all fliers, extra zoom-out while anyone flies.
 - Phone: height-tinted minimap with hill shading, your dot (pulsing) + others in colour, tap ripple + dashed course line; How to play (3 steps); perf.js on both.
 - Next: unit selection/groups, obstacles/no-fly, fog of war, flier collision, pinch-zoom minimap.
+
+## Bubble Hockey v0.9.6 (done) + skater poses
+- /workspace/hockey/player_skater_poses.glb: from Justin's Faceoff.blend / glide.blend, evaluated deform-bone poses (IK/constraints baked) as single-frame actions 'faceoff' and 'glide' on the v03 armature; 23 deform joints, same meshes. Working file player_skater_v03_poses.blend (deform constraints removed, actions as NLA tracks). Previews pose_faceoff.png / pose_glide.png.
+- Game: bubble/player_skater.glb loaded on the TV for the 10 skaters (goalies keep the padded proxy); AnimationMixer per skater, glide weight 1 in play, blends to faceoff while st.pz > 0 (SKATER.blendIn / blendOut), back on the drop. Jersey material tinted to team colour; model stick turns white on a swing; proxy stick only appears during lunges. ?noskaters = proxy; phones keep the proxy unless ?skaters=1.
+- Next: stride/skate cycle, shoot/check poses, goalie model, instancing or merged meshes if many draw calls hurt on weak TVs.
