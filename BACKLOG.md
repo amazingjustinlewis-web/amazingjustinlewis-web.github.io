@@ -146,3 +146,7 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 
 ## Orbit Brawl design note (Oct 16, 2026, no build)
 - A spectator loved watching the big screen while someone played on a phone: consider a spectator-friendly TV camera (wider, smoother framing of the action for people watching rather than playing).
+
+## Marble Rush v0.1 (Oct 16, 2026, dev only: /dev-7q3x/marble/)
+- [x] TV-authoritative sphere-on-track sim (sim.js, own physics, node-testable), turtle-built track: start gate + countdown, big drop, boosts, 2 jumps, banked curves with glass rails, over-drops, loop (offset corkscrew), rollers, finish + runout. Marble bumps, fall -> respawn at last checkpoint (1.4 s). Pack-follow camera. Phone: tilt (deadzone/curve/smoothing/sensitivity in TILT), iOS permission button, recalibrate, drag fallback, START.
+- [ ] Next: play-test tilt feel on real phones; track variety / random tracks; marble skins; sounds; a spectator camera cut for the loop and jumps; lap mode.

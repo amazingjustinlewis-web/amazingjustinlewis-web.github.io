@@ -1,0 +1,85 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><meta name="robots" content="noindex, nofollow">
+<title>Marble Rush (dev)</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>body{background:#0b1430;overflow:hidden}#board{position:fixed;left:12px;top:12px;font-size:clamp(14px,2.4vh,22px);z-index:4;min-width:220px}#board div{background:#000a;border-radius:10px;padding:3px 10px;margin-bottom:5px;border-left:8px solid;display:flex;gap:10px;justify-content:space-between}
+#clock{position:fixed;left:50%;top:10px;transform:translateX(-50%);font-size:clamp(20px,4vh,40px);font-weight:700;color:#fff;text-shadow:0 2px 8px #000;font-variant-numeric:tabular-nums;z-index:4}
+#cd{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:30vh;font-weight:800;color:#fff;text-shadow:0 0 30px #f80,0 6px 0 #0006;pointer-events:none;z-index:5;opacity:0;transition:opacity .2s}
+#msg{position:fixed;left:0;right:0;bottom:4vh;text-align:center;font-size:clamp(16px,3vh,30px);color:#fff;text-shadow:0 2px 6px #000;z-index:4}
+#res{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#000c;border-radius:20px;padding:20px 40px;font-size:clamp(18px,3.4vh,34px);color:#fff;z-index:6;display:none;min-width:40vw}#res h2{margin:0 0 10px;text-align:center;color:#ffd23f}#res div{display:flex;justify-content:space-between;gap:30px;border-left:10px solid;padding-left:12px;margin:6px 0}
+#join{position:fixed;right:12px;top:12px;z-index:4}</style></head><body>
+<canvas id="cv" class="full"></canvas><div id="board"></div><div id="clock"></div><div id="cd"></div><div id="msg">Scan to join · up to 8 marbles · tilt your phone to steer</div><div id="res"></div><div id="join"></div>
+<script>window.MINI = 'marble';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="three.min.js"></script><script src="sim.js"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, U = Marble.util, sim = new Marble.Sim(), S = sim.tr.S;
+  var CAM = { back: 13, up: 6.5, look: 6, k: 2.2, kl: 4 };
+  // ---------- scene ----------
+  var R = new THREE.WebGLRenderer({ canvas: $('cv'), antialias: true }); R.setPixelRatio(Math.min(1.5, devicePixelRatio || 1)); R.setClearColor(0x86c5ff);
+  var scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x86c5ff, 60, 220); var cam = new THREE.PerspectiveCamera(60, 1, 0.1, 500);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.65)); var sun = new THREE.DirectionalLight(0xffffff, 0.7); sun.position.set(30, 80, 20); scene.add(sun);
+  var ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshLambertMaterial({ color: 0x6fbf5a })); ground.rotation.x = -Math.PI / 2; var GY = Math.min.apply(null, S.map(function (q) { return q.p[1]; })) - 5; ground.position.y = GY; scene.add(ground); scene.fog.far = 260;
+  function v3(a) { return new THREE.Vector3(a[0], a[1], a[2]); }
+  (function buildTrack() {   // ribbon (top + underside + edges), rails, boost chevrons
+    var pos = [], col = [], idx = [], rp = [], ri = [], bp = [], bi = [];
+    var cA = new THREE.Color(0xd9e2f2), cB = new THREE.Color(0x9fb3d6), cBo = new THREE.Color(0xffc21a), cL = new THREE.Color(0xa9d4ff);
+    for (var i = 0; i < S.length; i++) { var s = S[i], hw = s.w / 2, L = U.add(s.p, U.mul(s.B, -hw)), Rr = U.add(s.p, U.mul(s.B, hw)), dn = U.mul(s.N, -0.35);
+      [L, Rr, U.add(L, dn), U.add(Rr, dn)].forEach(function (q) { pos.push(q[0], q[1], q[2]); });
+      var c = s.boost ? cBo : s.tag === 'loop' ? cL : (Math.floor(i / 8) % 2 ? cA : cB); if (s.tag === 'finish' && i >= sim.tr.fin - 2 && i <= sim.tr.fin + 2) c = new THREE.Color(0x222222);
+      for (var k = 0; k < 4; k++) col.push(c.r * (k > 1 ? .55 : 1), c.g * (k > 1 ? .55 : 1), c.b * (k > 1 ? .55 : 1));
+      if (i > 0 && !s.gap && !S[i - 1].gap) { var a = (i - 1) * 4, b = i * 4; idx.push(a, b, a + 1, a + 1, b, b + 1, a + 2, a + 3, b + 2, a + 3, b + 3, b + 2, a, a + 2, b, a + 2, b + 2, b, a + 1, b + 1, a + 3, a + 3, b + 1, b + 3); }
+      [-1, 1].forEach(function (sg) { var e = U.add(s.p, U.mul(s.B, sg * hw)), t = U.add(e, U.mul(s.N, 0.9)); rp.push(e[0], e[1], e[2], t[0], t[1], t[2]); });
+      if (i > 0 && s.rail && S[i - 1].rail && !s.gap && !S[i - 1].gap) { var ra = (i - 1) * 4, rb = i * 4; ri.push(ra, rb, ra + 1, ra + 1, rb, rb + 1, ra + 2, rb + 2, ra + 3, ra + 3, rb + 2, rb + 3); } }
+    var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
+    scene.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide })));
+    var rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(rp, 3)); rg.setIndex(ri);
+    scene.add(new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0x9fe6ff, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false })));
+    // support pillars every ~12 m
+    var pm = new THREE.MeshLambertMaterial({ color: 0x8a95ad }); for (i = 20; i < S.length; i += 48) { s = S[i]; if (s.tag === 'loop' || s.gap) continue; var h = s.p[1] - GY; if (h < 1.5) continue; var pl = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, h, 8), pm); pl.position.set(s.p[0], s.p[1] - h / 2 - 0.3, s.p[2]); scene.add(pl); }
+  })();
+  // boost chevrons
+  S.forEach(function (s, i) { if (!s.boost || i % 6) return; var m = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.4, 3), new THREE.MeshBasicMaterial({ color: 0xff7a00 })); m.position.copy(v3(U.add(s.p, U.mul(s.N, 0.06)))); m.lookAt(v3(U.add(m.position.toArray(), s.N))); m.rotateX(Math.PI / 2); m.scale.set(1, 1, 0.08); var q = new THREE.Matrix4().makeBasis(v3(s.B), v3(s.T), v3(s.N)); m.quaternion.setFromRotationMatrix(q); scene.add(m); });
+  // start gate + finish arch + checkpoint flags
+  function arch(i, color, h) { var s = S[i], gp = new THREE.Group(), mt = new THREE.MeshLambertMaterial({ color: color }); [-1, 1].forEach(function (sg) { var p = new THREE.Mesh(new THREE.BoxGeometry(0.4, h, 0.4), mt); p.position.set(sg * (s.w / 2 + 0.3), h / 2, 0); gp.add(p); }); var top = new THREE.Mesh(new THREE.BoxGeometry(s.w + 1, 0.8, 0.4), mt); top.position.y = h; gp.add(top); place(gp, s); scene.add(gp); return gp; }
+  function place(o, s) { var q = new THREE.Matrix4().makeBasis(v3(s.B), v3(s.N), v3(U.mul(s.T, -1))); o.quaternion.setFromRotationMatrix(q); o.position.copy(v3(s.p)); }
+  var gS = S[sim.tr.gate], gate = new THREE.Group(); var gb = new THREE.Mesh(new THREE.BoxGeometry(gS.w, 1.2, 0.25), new THREE.MeshLambertMaterial({ color: 0xff3b5c })); gb.position.y = 0.6; var hinge = new THREE.Group(); hinge.add(gb); gate.add(hinge); place(gate, gS); scene.add(gate); arch(sim.tr.gate, 0x333a55, 3.4);
+  var fa = arch(sim.tr.fin, 0x222222, 4.2); var ck = document.createElement('canvas'); ck.width = 128; ck.height = 16; var cx = ck.getContext('2d'); for (var q = 0; q < 16; q++) for (var r = 0; r < 2; r++) { cx.fillStyle = (q + r) % 2 ? '#fff' : '#111'; cx.fillRect(q * 8, r * 8, 8, 8); }
+  var ban = new THREE.Mesh(new THREE.PlaneGeometry(S[sim.tr.fin].w + 1, 1), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(ck), side: THREE.DoubleSide })); ban.position.y = 4.2; ban.position.z = 0.25; fa.add(ban);
+  sim.tr.cps.forEach(function (i) { var f = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.2, 6), new THREE.MeshLambertMaterial({ color: 0x5fdc7a })); var s = S[i]; f.position.copy(v3(U.add(U.add(s.p, U.mul(s.B, s.w / 2 + 0.6)), U.mul(s.N, 0.8)))); scene.add(f); });
+  // marbles
+  var MM = {};
+  function marbleMesh(col) { var c = document.createElement('canvas'); c.width = 64; c.height = 32; var x = c.getContext('2d'); x.fillStyle = col; x.fillRect(0, 0, 64, 32); x.fillStyle = '#fff'; x.fillRect(0, 13, 64, 6); x.fillRect(28, 0, 8, 32);
+    var m = new THREE.Mesh(new THREE.SphereGeometry(Marble.PHYS.r, 24, 16), new THREE.MeshPhongMaterial({ map: new THREE.CanvasTexture(c), shininess: 90, specular: 0x666666 })); var sh = new THREE.Mesh(new THREE.CircleGeometry(0.45, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25, depthWrite: false })); scene.add(m); scene.add(sh); return { m: m, sh: sh }; }
+  // ---------- net ----------
+  var host = Kit.host({ max: 8, onJoin: function (p) { if (!sim.m.some(function (m) { return m.id === p.id; })) sim.add(p.id, p.color, p.name); else sim.m.forEach(function (m) { if (m.id === p.id) m.name = p.name; }); host.send(p, { t: 'you', col: p.color, name: p.name }); board(); },
+    onLeave: function (p) { sim.remove(p.id); if (MM[p.id]) { scene.remove(MM[p.id].m); scene.remove(MM[p.id].sh); delete MM[p.id]; } board(); },
+    onMsg: function (p, m) { if (m.t === 'tilt') sim.input(p.id, m.x, m.y); else if (m.t === 'start') sim.start(); } });
+  host.qr($('join')); window.MRT = { sim: sim, host: host, cam: cam };
+  function fmt(t) { return t ? t.toFixed(2) + 's' : ''; }
+  function board() { var L = sim.m.slice().sort(function (a, b) { return a.place - b.place; }); $('board').innerHTML = L.map(function (m) { return '<div style="border-color:' + m.col + '"><b>' + m.place + '</b><span>' + String(m.name).replace(/</g, '') + '</span><span>' + (m.fin ? fmt(m.fin) : m.dead > 0 ? '\u21BA' : Math.round(sim.prog(m) * 100) + '%') + '</span></div>'; }).join(''); }
+  // ---------- loop ----------
+  var last = 0, sendT = 0, bT = 0, camP = new THREE.Vector3(0, 50, -15), camL = new THREE.Vector3(0, 40, 5), shown = '';
+  function frame(t) { var dt = Math.min(0.05, (t - last) / 1000 || 0); last = t; sim.step(dt); sim.ev = [];
+    var W = innerWidth, H = innerHeight; if (R.domElement.width !== Math.round(W * R.getPixelRatio())) { R.setSize(W, H, false); cam.aspect = W / H; cam.updateProjectionMatrix(); }
+    sim.m.forEach(function (m) { var o = MM[m.id] || (MM[m.id] = marbleMesh(m.col)); o.m.visible = o.sh.visible = m.dead <= 0; o.m.position.set(m.p[0], m.p[1], m.p[2]); var w = m.spin, wl = U.len(w); if (wl > 1e-3) o.m.rotateOnWorldAxis(new THREE.Vector3(w[0] / wl, w[1] / wl, w[2] / wl), wl * dt);
+      var s = S[m.i], hh = U.dot(U.sub(m.p, s.p), s.N); o.sh.position.copy(v3(U.add(U.sub(m.p, U.mul(s.N, hh)), U.mul(s.N, 0.03)))); o.sh.lookAt(v3(U.add(o.sh.position.toArray(), s.N))); o.sh.visible = o.m.visible && !s.gap && Math.abs(U.dot(U.sub(m.p, s.p), s.B)) < s.w / 2; });
+    // gate drops forward when the race starts
+    hinge.rotation.x += ((sim.gateOpen ? -Math.PI / 2 : 0) - hinge.rotation.x) * Math.min(1, dt * 10);
+    // camera follows the pack: weighted toward the leader, ignoring respawning marbles
+    var alive = sim.m.filter(function (m) { return m.dead <= 0 && !m.fin; }), A = alive.length ? alive : sim.m;
+    if (A.length) { A = A.slice().sort(function (a, b) { return b.i - a.i; }); var tgt = [0, 0, 0], ws = 0, lead = A[0]; A.forEach(function (m, k) { if (lead.i - m.i > 260) return; var w = k === 0 ? 2 : 1; tgt = U.add(tgt, U.mul(m.p, w)); ws += w; }); tgt = U.mul(tgt, 1 / ws);
+      var si = Math.max(0, lead.i - 20), T = S[si].T, Th = U.nrm([T[0], 0, T[2]]), loop = S[lead.i].tag === 'loop';
+      var want = U.add(U.add(tgt, U.mul(Th, -CAM.back * (loop ? 1.6 : 1))), [0, CAM.up * (loop ? 1.3 : 1), 0]), lookAt = U.add(tgt, U.mul(Th, CAM.look));
+      camP.lerp(v3(want), 1 - Math.exp(-dt * CAM.k)); camL.lerp(v3(lookAt), 1 - Math.exp(-dt * CAM.kl)); } else { camP.set(-8, S[0].p[1] + 8, -12); camL.copy(v3(S[30].p)); }
+    cam.position.copy(camP); cam.lookAt(camL);
+    R.render(scene, cam);
+    // HUD
+    bT += dt; if (bT > 0.25) { bT = 0; board(); }
+    var ph = sim.phase; $('clock').textContent = ph === 'race' || ph === 'finishing' ? sim.t.toFixed(1) : '';
+    var cdv = ph === 'count' ? Math.ceil(sim.cd) : (ph === 'race' && sim.t < 0.8 ? 'GO!' : ''); if (String(cdv) !== shown) { shown = String(cdv); $('cd').textContent = shown; } $('cd').style.opacity = cdv ? 1 : 0;
+    $('msg').textContent = ph === 'lobby' ? (sim.m.length ? sim.m.length + ' at the gate \u00b7 press START on a phone' : 'Scan to join \u00b7 up to 8 marbles \u00b7 tilt your phone to steer') : ph === 'finishing' ? 'Finish closes in ' + Math.ceil(sim.after) + 's' : '';
+    if (ph === 'results') { var L = sim.m.slice().sort(function (a, b) { return a.place - b.place; }); $('res').innerHTML = '<h2>Results</h2>' + L.map(function (m) { return '<div style="border-color:' + m.col + '"><span>' + m.place + '. ' + String(m.name).replace(/</g, '') + '</span><span>' + (m.fin ? fmt(m.fin) : 'DNF') + '</span></div>'; }).join(''); $('res').style.display = 'block'; } else $('res').style.display = 'none';
+    $('join').style.display = ph === 'lobby' || ph === 'results' ? '' : 'none';
+    sendT += dt; if (sendT > 0.2) { sendT = 0; host.players.forEach(function (p) { var m = sim.m.filter(function (q) { return q.id === p.id; })[0]; if (m) host.send(p, { t: 'st', ph: ph, place: m.place, n: sim.m.length, cd: Math.ceil(sim.cd), fin: m.fin ? +m.fin.toFixed(2) : 0, dead: m.dead > 0 ? 1 : 0, prog: Math.round(sim.prog(m) * 100) }); }); }
+    requestAnimationFrame(frame); }
+  requestAnimationFrame(frame);
+})();
+</script></body></html>
