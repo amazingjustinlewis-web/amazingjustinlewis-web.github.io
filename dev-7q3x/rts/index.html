@@ -41,6 +41,7 @@
     capsule: new THREE.CapsuleGeometry(.32, .5, 4, 10), pillar: new THREE.BoxGeometry(.55, 1.5, .55), knot: new THREE.TorusKnotGeometry(.38, .12, 48, 8) };
   function mesh(g, m) { var o = new THREE.Mesh(g, m); o.castShadow = true; o.receiveShadow = true; return o; }
   function gy(x, z) { return Math.max(T.h(x, z), -1.0); }
+  var CFG = { spd: 1, waves: true };   // v0.3: set from the phone test panel
   var E = {}, nid = 1, res = [150, 150, 150, 150], angry = {}, beams = [], over = 0, waveT = 20;
   // selection rings (TV mirror of phone selections) + upgrade glow sprite
   function dotTex(col) { var c = document.createElement('canvas'); c.width = c.height = 64; var x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, col); g.addColorStop(1, 'rgba(255,200,80,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); }
@@ -84,7 +85,7 @@
   function hurt(t, dmg, by) { t.hp -= dmg; if (by && by.team === 0 && (t.team === 2 || t.team === 3)) angry[t.team] = 1; if (t.hp <= 0) kill(t); }
   function kill(e) { if (!E[e.id]) return; delete E[e.id]; e.dying = 0; dying.push(e); if (e.sel) scene.remove(e.sel); if (e.glow) scene.remove(e.glow); if (e.k === 'b' && e.kind === 'hq') over = 6; }
   var dying = [];
-  function moveTo(e, x, z, sp, dt, stop) { var dx = x - e.x, dz = z - e.z, d = Math.hypot(dx, dz); if (d < (stop || .6)) return true; var s = Math.min(d, sp * dt); e.x += dx / d * s; e.z += dz / d * s; e.face = Math.atan2(dx, dz); return false; }
+  function moveTo(e, x, z, sp, dt, stop) { var dx = x - e.x, dz = z - e.z, d = Math.hypot(dx, dz); if (d < (stop || .6)) return true; var s = Math.min(d, sp * CFG.spd * dt); e.x += dx / d * s; e.z += dz / d * s; e.face = Math.atan2(dx, dz); return false; }
   function stepU(e, dt) { var u = U[e.ty], bi = SH.BIAS[e.bias] || SH.BIAS.aggressive, o = e.o, sp = u.spd * bi.spd, t = null;
     e.cd -= dt; if (e.buff > 0) e.buff -= dt;
     if (u.role === 'heal') { var hurtF = nearest(e, function (q) { return q.team === e.team && q.k !== 'n' && q.hp < q.mhp; }, 6); if (hurtF) { hurtF.hp = Math.min(hurtF.mhp, hurtF.hp + 6 * dt); if (Math.random() < dt * 6) beam(e, hurtF, 0x47ff7a, .15); } }
@@ -107,6 +108,7 @@
   function ents(ids) { return (ids || []).map(function (i) { return E[i]; }).filter(function (e) { return e && e.team === 0; }); }
   function cmd(p, m) { var L = ents(m.ids), us = L.filter(function (e) { return e.k === 'u'; });
     if (m.t === 'sel') { sels[p.id] = (m.ids || []).slice(0, 200); return; }
+    if (m.t === 'cfg') { CFG.spd = Math.max(.25, Math.min(3, +m.spd || 1)); CFG.waves = m.waves !== false; return; }
     if (m.t === 'go') { var tg = m.tg && E[m.tg]; var n = us.length, cols = Math.ceil(Math.sqrt(n));
       us.forEach(function (e, i) { if (tg && tg.k === 'n' && U[e.ty].role === 'gather') e.o = { k: 'gather', id: tg.id }; else if (tg && tg.k !== 'n' && tg.team !== 0) { if (tg.team > 1) angry[tg.team] = 1; e.o = { k: 'attack', id: tg.id }; }
         else e.o = { k: m.mode === 'move' ? 'move' : 'amove', x: +m.x, z: +m.z, ox: (i % cols - cols / 2) * 2.4, oz: (Math.floor(i / cols) - cols / 2) * 2.4 }; e.ax = +m.x; e.az = +m.z; }); return; }
@@ -132,7 +134,7 @@
     var nsub = Math.max(1, Math.ceil(dtR / .05)); dt = dtR / nsub; for (var sub = 0; sub < nsub; sub++) {   // fixed-ish sim steps so slow devices keep real-time pace
     if (over > 0) { over -= dt; if (over <= 0) reset(); }
     res[0] += dt * 1.5; res[1] += dt * 2;
-    waveT -= dt; if (waveT <= 0) { waveT = 40; var mc = BASE[1], hq0 = Object.values(E).filter(function (e) { return e.kind === 'hq' && e.team === 0; })[0]; [1, 0, 3, 1].forEach(function (ty, i) { var nu = unit(ty, 1, mc[0] - 6 + i * 2, mc[1] - 6); if (hq0) nu.o = { k: 'amove', x: hq0.x, z: hq0.z, ox: i * 2, oz: 0 }; }); }
+    if (CFG.waves) waveT -= dt; if (waveT <= 0) { waveT = 40; var mc = BASE[1], hq0 = Object.values(E).filter(function (e) { return e.kind === 'hq' && e.team === 0; })[0]; [1, 0, 3, 1].forEach(function (ty, i) { var nu = unit(ty, 1, mc[0] - 6 + i * 2, mc[1] - 6); if (hq0) nu.o = { k: 'amove', x: hq0.x, z: hq0.z, ox: i * 2, oz: 0 }; }); }
     var list = Object.values(E);
     list.forEach(function (e) { if (e.k === 'u') stepU(e, dt); else if (e.k === 'b') stepB(e, dt); });
     // separation (cheap O(n^2), n ~ 60)

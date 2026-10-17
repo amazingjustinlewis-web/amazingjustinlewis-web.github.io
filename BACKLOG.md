@@ -198,6 +198,12 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Phone: height-tinted minimap with hill shading, your dot (pulsing) + others in colour, tap ripple + dashed course line; How to play (3 steps); perf.js on both.
 - Next: unit selection/groups, obstacles/no-fly, fog of war, flier collision, pinch-zoom minimap.
 
+## RTS v0.3 phone wheel (done)
+- Lift without GO: orb only if something is loaded or you are inside a sub-menu (top level + empty = plain close). Snap to green circle, drop DROP_MS 500 along dropAt(): soft (ease-out cubic + arc), sharp (12% ease-in then quartic snap), plinko (straight accelerating rise to just under the slot, then curved ramp in).
+- Pending orb: pointerdown anywhere (not on an orb / UI) reopens the NEWEST orb exactly centred on the thumb (no clamp, edges can go off-screen), state per CFG.reopen; stack always kept. Quick release (<220 ms, <12 px) puts the orb back untouched and arms double-tap; 2nd tap within 250 ms = actuate newest orb. Lasso / single map taps are unavailable while an orb is pending (clear by GO, or BOTTOM reset at top level then lift). Pinch still works (orb restored).
+- Bottom-left round button cycles reopen mode (localStorage rts3-cfg). Left tab = test panel (wraps to 2 columns in landscape); unit speed + waves are sent to the TV ({t:'cfg'}).
+- Todo: real-phone feel test of drop variants; maybe allow lasso while orb pending via 2-finger or edge-start.
+
 ## RTS v0.2 'Shapes' (done)
 - index.html/pad.html = Shapes; v0.1 kept as flight.html/flightpad.html (?mode=flight redirects; flight TV QR passes mode=flight). shapes.js = shared tables (U 12 shapes, B buildings, FAC, BIAS, COST, WHEEL, SHARE rules).
 - TV sim: host-authoritative, substeps of 50 ms (keeps pace on slow frames), snapshot 6-7 Hz (~3-5 KB/s per phone). Monster waves every 40 s (first at 60 s). Neutrals turn hostile when hit.
