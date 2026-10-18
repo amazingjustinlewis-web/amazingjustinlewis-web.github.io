@@ -35,7 +35,7 @@
   // v0.9.14: default = gold ring (#ffc83a, thin black outline, opacity .25, radius x1.2, slightly wider arrows) only while THIS phone's team has the puck; ?ring=team = v0.9.13 behaviour.
   // v0.9.13: default = ring of 8 arrows around the puck carrier (or the loose puck), pointing in at him, fixed screen orientation.
   // 4 long narrow arrows N/E/S/W + 4 tiny ones on the diagonals; carrier's team colour (blue #5fd6ff / red); loose = last team, PARR.loose x opacity. ?edge=1 = old edge arrows.
-  var EDGE = /[?&]edge=1/.test(location.search), RING = { op: .9, longL: 22, longW: 6, shortL: 8, shortW: 5, gap: 1.6, minR: 20, k: 18, spread: 1.2, mineOp: .25, ctrlOp: .4, gold: '#ffc83a' }, RTEAM = /[?&]ring=team/.test(location.search), ring = [], rc = null;
+  var EDGE = /[?&]edge=1/.test(location.search), RING = { op: .9, longL: 22, longW: 6, shortL: 8, shortW: 5, gap: 1.6, minR: 20, k: 18, spread: 1.2, mineOp: .55, ctrlOp: .3, gold: '#ffc83a' }, RTEAM = /[?&]ring=team/.test(location.search), ring = [], rc = null;
   [0, 1, 2, 3, 4, 5, 6, 7].forEach(function (k) { var lg = k % 2 === 0, L = lg ? RING.longL : RING.shortL, W = lg ? RING.longW : RING.shortW, e = document.createElement('div');
     e.innerHTML = '<svg width="' + L + '" height="' + W + '" viewBox="-2 -2 34 14" preserveAspectRatio="none" style="display:block;overflow:visible"><path d="M0 0 L30 5 L0 10 Z" fill="currentColor"' + (RTEAM ? '' : ' stroke="#000" stroke-width="1.6" stroke-linejoin="miter" vector-effect="non-scaling-stroke"') + '/></svg>';
     e.style.cssText = 'position:absolute;left:0;top:0;width:' + L + 'px;height:' + W + 'px;margin-top:-' + W / 2 + 'px;transform-origin:100% 50%;opacity:0'; parrD.appendChild(e); ring.push({ e: e, a: k * Math.PI / 4, L: L }); });

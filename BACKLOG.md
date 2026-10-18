@@ -240,6 +240,10 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Wired: bias (4), build (barracks/tower/workshop at the wheel point), train (Brick/Orb/Ring), select army, attack-move/move mode, hold/stop, upgrade, share, auto stack, order cycle. Stubs: wall, combine tree.
 - Todo: real combine/evolve, better battle readability on TV (bigger beams/impact puffs), fog of war, phone faction choice, sound, multiple phones splitting the army.
 
+## Bubble Hockey v0.9.16 (done): ring flip, poke aim, safer goalie
+- RING mineOp .55 / ctrlOp .30. Poke aim -> opposing carrier (was: toward the puck on his stick, median 4.7 deg / p95 18 deg off the carrier; now 0.2 / 0.3). GSAFE { lat .8, latShot .85, outK .8, shotK .7, shotRange .5 } in sim.js.
+- [ ] Goalie: tune GSAFE vs scoring rate with real players (AI-vs-AI goal rate is noisy, 0.35-0.73/min across runs).
+
 ## Bubble Hockey v0.9.15 (done): phone visual experiments (temporary, inform future animation)
 - Tunables, all in one place each: RING (bubble/pad.html: ctrlOp .40 / mineOp .25 / gold / spread / arrow sizes), FX.chk (wedge ms/len/spread/col/blur), FX.poke (ms/len/w/col), FX.gauge (size/top/right/outline/dot/op/opCtl/scale/hp high-pass/max overshoot), SPRING (bubble/sim.js: w stiffness, zeta damping, ?spring=0 rigid).
 - Sim now emits fx = [counter, 'C'|'B'|'P', player, dirx, diry] in snapshots for check/bigcheck/poke visuals.

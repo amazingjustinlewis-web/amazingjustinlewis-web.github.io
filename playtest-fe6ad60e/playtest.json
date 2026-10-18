@@ -9,9 +9,9 @@
       "phone": "../dev-7q3x/bubble/pad.html",
       "players": "1-10 phones, TV optional",
       "new": [
-        "Gold ring on whichever of your players you're touching (fainter when he has the puck)",
-        "Red flash when you body-check, red stick-jab line when you poke",
-        "Players follow your thumb on a springy feel (try ?spring=0 for the old stiff feel); spring gauge dot top-right"
+        "Ring is brighter on the player with the puck, fainter on other players you grab",
+        "Pokes aim straight at the puck carrier",
+        "Computer goalie plays safer: stays between the puck and the net, doesn't wander out of the crease"
       ]
     }
   ]

@@ -29,6 +29,9 @@
   var WILD = { on: true, p: .4, k: .5, max: .75, bounce: .45 };   // 'Wild puck': rebounds/rolling pucks lift more often/higher, livelier landings. on=false = exact v0.9 behaviour
   var AIF = { drive: .3, shootFar: .9, shootNear: .5 };   // AI forwards: chance a possession drives in (shoots only when close), otherwise shoot from up to shootFar
   var HACK = { r: .14, max: Infinity, reach: .035, kick: 1.3, steal: .35 };   // slow-mo scramble: taps make your players near the puck jab at it (max = cap on players in the sphere)
+  // v0.9.16 conservative goalie (AI + auto-assist; a thumb on the goalie strip is unchanged): lateral cap as a share of the half net width (GW = post offset from centre) (tighter when a shot is likely),
+  // depth multipliers on GD (out/brk/norm) and an extra squeeze when an opposing carrier is in shooting range with a lane.
+  var GSAFE = { lat: .8, latShot: .85, outK: .8, shotK: .7, shotRange: .5 };
   var AI = { goalieOut: .045, dMid: .22, dPress: .16, dStretch: .05, safeRe: .4, beat: .35, press: .055, rimP: .35, oneT: .4 };
   function cl(v, a, b) { return v < a ? a : v > b ? b : v; }
   function proj(tr, x, y) { var best = 0, bd = 9; for (var j = 1; j < tr.p.length; j++) { var a = tr.p[j - 1], b = tr.p[j], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy, f = cl(((x - a[0]) * dx + (y - a[1]) * dy) / l2, 0, 1), px = a[0] + dx * f - x, py = a[1] + dy * f - y, d = px * px + py * py;
@@ -93,7 +96,7 @@
     this.spot[i] = { u: best, t: now }; return best; };
   // where a non-held player wants to be
   Sim.prototype.aiWant = function (i, tgt, own, dt) { var tr = TR[i], t = tr.t, k = tr.k; this.pk = this.pk || []; this.pk[i] = null; if (i === this.to) return this.u[i];   // pass receiver waits where the pass was aimed
-    if (k === 'G') { var gy = t ? GY : L - GY, gc = [.5, gy], dx = tgt[0] - gc[0], dy = tgt[1] - gc[1], m = Math.hypot(dx, dy) || 1; return proj(tr, gc[0] + dx / m * AI.goalieOut, gc[1] + dy / m * AI.goalieOut); }   // on the puck line, squared to the shooter
+    if (k === 'G') { var gy = t ? GY : L - GY, gc = [.5, gy], dx = tgt[0] - gc[0], dy = tgt[1] - gc[1], m = Math.hypot(dx, dy) || 1, gx = gc[0] + dx / m * AI.goalieOut, lim = GW * GSAFE.lat * (this.shotLikely(t) ? GSAFE.latShot : 1); gx = cl(gx, .5 - lim, .5 + lim); return proj(tr, gx, gc[1] + dy / m * AI.goalieOut); }   // on the puck line, squared to the shooter; v0.9.16: lateral capped inside the posts (GSAFE)   // on the puck line, squared to the shooter
     if (own === 1 - t && this.c >= 0) { var cp = this.carryPos(), mine = (cp[1] - L / 2) * face(t) < 0;   // opponent has it
       if (k === 'D' && mine && Math.abs(cp[0] - .5) < AI.dMid) { var u = proj(tr, cp[0], cp[1]), q = pos(tr, u); if (Math.hypot(q[0] - cp[0], q[1] - cp[1]) < AI.dPress) this.pk[i] = cp; return u; } }
     if (own === t && this.c >= 0) { if (k === 'W' || k === 'C') return this.safeU(i); }   // forwards hunt open one-timer spots
@@ -199,8 +202,10 @@
   Sim.prototype.onCatch = function (i) { var t = this.team(i), A = this.ot[t]; this.ot[1 - t] = null; if (!A) return; this.ot[t] = null; for (var fh = t; fh < 10; fh += 2) if (this.grab[fh] === i && this.fing[fh]) { this.ev = 'catch'; return; }
     var cp = this.carryPos(), gy = goalOf(t), pres = Math.max(0, 1 - this.clear(cp, t) / .08), bounce = this.z > .003 || Math.hypot(this.v[0], this.v[1]) > 2.2 ? 1 : 0, err = Math.min(OT.max, OT.base + OT.press * pres + OT.bounce * bounce) * Math.PI / 180 * (Math.random() * 2 - 1);
     var a = Math.atan2(gy - cp[1], .5 + (Math.random() - .5) * GW * .6 - cp[0]) + err; this.release([Math.cos(a), Math.sin(a)], OT.sp); this.ev = 'onetimer'; this.otFx = 1; };
+  // v0.9.16 poke aim: the poke (fx dir, stick angle afterwards, phone red bar) points at the opposing carrier; the reach test still uses the stick toward the puck (unchanged steal odds)
   Sim.prototype.stickCheck = function (team, allow, who) { var best = who != null ? who : -1, bd = who != null ? -1 : 9; for (var i = team * 6; i < team * 6 + 6; i++) { if (allow && allow.indexOf(i) < 0) continue; if (bd < 0) break; if (this.dn[i] > 0 || TR[i].k === 'G') continue; var q = this.pp(i), d = Math.hypot(q[0] - this.p[0], q[1] - this.p[1]); if (d < bd) { bd = d; best = i; } }
-    if (best < 0) return; var P = this.pp(best); this.ang[best] = Math.atan2(this.p[1] - P[1], this.p[0] - P[0]); this.fx = [((this.fx || [0])[0] + 1) % 1000, 'P', best, Math.round(Math.cos(this.ang[best]) * 100) / 100, Math.round(Math.sin(this.ang[best]) * 100) / 100]; this.ln[best] = .25; this.swing = [best, .15]; var T = this.tip(best), dd = Math.hypot(T[0] - this.p[0], T[1] - this.p[1]), reach = (PR + .02) * POKEX;
+    if (best < 0) return; var P = this.pp(best), oc = this.c >= 0 && this.team(this.c) !== team ? this.pp(this.c) : null, aim = oc || this.p; this.pkAim = aim; this.ang[best] = Math.atan2(this.p[1] - P[1], this.p[0] - P[0]); var aa = Math.atan2(aim[1] - P[1], aim[0] - P[0]); this.fx = [((this.fx || [0])[0] + 1) % 1000, 'P', best, Math.round(Math.cos(aa) * 100) / 100, Math.round(Math.sin(aa) * 100) / 100]; this.ln[best] = .25; this.swing = [best, .15]; var T = this.tip(best), dd = Math.hypot(T[0] - this.p[0], T[1] - this.p[1]), reach = (PR + .02) * POKEX;
+    if (oc) this.ang[best] = Math.atan2(oc[1] - P[1], oc[0] - P[0]);   // stick (and the phone's red poke bar) point at the opposing carrier
     if (dd > reach || this.air) return; if (this.c >= 0) { var n = [this.p[0] - T[0], this.p[1] - T[1]], m = Math.hypot(n[0], n[1]) || 1; this.cool = this.c; this.coolT = .3; this.c = -1; this.v = [n[0] / m * .9, n[1] / m * .9]; this.ev = 'poke'; }
     else { var gy = goalOf(team), a = Math.atan2(gy - this.p[1], .5 - this.p[0]) + (Math.random() - .5) * .8; this.v[0] += Math.cos(a) * 1.1; this.v[1] += Math.sin(a) * 1.1; this.ev = 'jab'; } };
   Sim.prototype.hack = function (team, allow) { var me = this, ids = []; for (var i = team * 6; i < team * 6 + 6; i++) { if (allow && allow.indexOf(i) < 0) continue; if (this.dn[i] > 0) continue; var q = this.pp(i), d = Math.hypot(q[0] - this.p[0], q[1] - this.p[1]); if (d < HACK.r) ids.push([d, i]); }
@@ -225,7 +230,8 @@
     var gl = goalOf(1 - t), along = (this.p[1] - gl) * face(t), wide = Math.abs(this.p[0] - .5);
     if (along < .02 || wide > GD.wide || along > GD.quiet) return 0;   // behind the net / wide / quiet: settle back on the line
     var k = cl((GD.quiet - along) / .6, 0, 1) * (1 - wide / GD.wide), brk = this.c >= 0 && this.team(this.c) !== t && this.clear(this.carryPos(), 1 - t) > .12;
-    return mx * k * (brk ? GD.brk : GD.norm); };
+    return mx * GSAFE.outK * k * (brk ? GD.brk : GD.norm) * (this.shotLikely(t) ? GSAFE.shotK : 1); };
+  Sim.prototype.shotLikely = function (t) { if (this.c < 0 || this.team(this.c) === t) return false; var P = this.pp(this.c), gy = goalOf(1 - t); return Math.abs(P[1] - gy) < GSAFE.shotRange && Math.abs(P[0] - .5) < .42; };   // opposing carrier in range of OUR net (t defends goalOf(1-t))
   // goalie <-> skater bodies: shove each other for space (skaters can't skate through him)
   Sim.prototype.gBody = function (dt) { for (var t = 0; t < 2; t++) { var g = t * 6, G = this.pp(g); for (var j = 0; j < 12; j++) { if (j === g || TR[j].k === 'G') continue; var Q = this.pp(j), dx = Q[0] - G[0], dy = Q[1] - G[1], d = Math.hypot(dx, dy) || 1e-6; if (d >= R) continue;
       var nx = dx / d, ny = dy / d, ov = R - d; this.o[j][0] += nx * ov * GD.push; this.o[j][1] += ny * ov * GD.push; this.ko[j][0] += nx * ov * GD.shove; this.ko[j][1] += ny * ov * GD.shove; if (this.gd) this.gd[t] = Math.max(-GD.back * GD.wPx, this.gd[t] - ny * face(t) * ov * (1 - GD.push)); } } };
