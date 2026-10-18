@@ -32,22 +32,26 @@
   var PARR = { op: .42, len: 18, wid: 6, stretch: .5, bright: .2, drift: 16, sp: .35, inset: 9, top: 40, gap: 18, neutral: '#e8e8e8', loose: .7, col: [null, '#5fd6ff'], opK: [1, 1.4] }, parr = [], parrD = document.createElement('div'); parrD.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:3';
   [['l', .3], ['l', .7], ['r', .3], ['r', .7], ['t', .3], ['t', .7], ['b', .3], ['b', .7]].forEach(function (q, i) { var e = document.createElement('div'); e.innerHTML = '<svg width="' + PARR.len * 1.5 + '" height="' + PARR.wid + '" viewBox="0 0 30 10" preserveAspectRatio="none"><path d="M0 0 L30 5 L0 10 Z" fill="currentColor"/></svg>'; e.style.cssText = 'position:absolute;left:0;top:0;width:' + PARR.len * 1.5 + 'px;height:' + PARR.wid + 'px;margin-top:-' + PARR.wid / 2 + 'px;transform-origin:100% 50%;opacity:0;color:' + PARR.neutral; e.firstChild.style.display = 'block'; parrD.appendChild(e); parr.push({ e: e, side: q[0], f: q[1], ph: i * 1.7 }); });
   $('rot').appendChild(parrD); var parrCol = '', lastTeam = -1;
+  // v0.9.14: default = gold ring (#ffc83a, thin black outline, opacity .25, radius x1.2, slightly wider arrows) only while THIS phone's team has the puck; ?ring=team = v0.9.13 behaviour.
   // v0.9.13: default = ring of 8 arrows around the puck carrier (or the loose puck), pointing in at him, fixed screen orientation.
   // 4 long narrow arrows N/E/S/W + 4 tiny ones on the diagonals; carrier's team colour (blue #5fd6ff / red); loose = last team, PARR.loose x opacity. ?edge=1 = old edge arrows.
-  var EDGE = /[?&]edge=1/.test(location.search), RING = { op: .9, longL: 22, longW: 5, shortL: 8, shortW: 4, gap: 1.6, minR: 20, k: 18 }, ring = [], rc = null;
+  var EDGE = /[?&]edge=1/.test(location.search), RING = { op: .9, longL: 22, longW: 6, shortL: 8, shortW: 5, gap: 1.6, minR: 20, k: 18, spread: 1.2, mineOp: .25, gold: '#ffc83a' }, RTEAM = /[?&]ring=team/.test(location.search), ring = [], rc = null;
   [0, 1, 2, 3, 4, 5, 6, 7].forEach(function (k) { var lg = k % 2 === 0, L = lg ? RING.longL : RING.shortL, W = lg ? RING.longW : RING.shortW, e = document.createElement('div');
-    e.innerHTML = '<svg width="' + L + '" height="' + W + '" viewBox="0 0 30 10" preserveAspectRatio="none" style="display:block"><path d="M0 0 L30 5 L0 10 Z" fill="currentColor"/></svg>';
+    e.innerHTML = '<svg width="' + L + '" height="' + W + '" viewBox="-2 -2 34 14" preserveAspectRatio="none" style="display:block;overflow:visible"><path d="M0 0 L30 5 L0 10 Z" fill="currentColor"' + (RTEAM ? '' : ' stroke="#000" stroke-width="1.6" stroke-linejoin="miter" vector-effect="non-scaling-stroke"') + '/></svg>';
     e.style.cssText = 'position:absolute;left:0;top:0;width:' + L + 'px;height:' + W + 'px;margin-top:-' + W / 2 + 'px;transform-origin:100% 50%;opacity:0'; parrD.appendChild(e); ring.push({ e: e, a: k * Math.PI / 4, L: L }); });
   function puckRing(st) { var on = st && st.p && !(R3 && (R3.pzc > .002 || R3.replaying())) && !(st.pz > 0 && !st.pg);
     if (st && st.c >= 0) lastTeam = st.c < 6 ? 0 : 1;
-    if (!on || lastTeam < 0) { ring.forEach(function (A) { A.e.style.opacity = 0; }); rc = null; return; }
+    var mine = st && st.c >= 0 && (st.c < 6 ? 0 : 1) === team;   // v0.9.14: default shows the ring only while YOUR team has the puck
+    if (!RTEAM && !mine) on = false;
+    if (!on || lastTeam < 0) { ring.forEach(function (A) { A.e.style.opacity = 0; }); rc = null; window.BHPA.ring = { hidden: true, team: team, c: st ? st.c : -1 }; return; }
     var w, held = st.c >= 0; if (held) { var q = Bubble.pos(Bubble.TR[st.c], st.u[st.c]), o = st.o ? st.o[st.c] : [0, 0]; w = [q[0] + o[0], q[1] + o[1]]; } else w = st.p;
     var P = V.w2s(w[0], w[1]), P2 = V.w2s(w[0] + Bubble.R, w[1]), pr = Math.hypot(P2[0] - P[0], P2[1] - P[1]), r = Math.max(RING.minR, pr * (held ? RING.gap * 1.6 : RING.gap * 2.2)), now = performance.now();
     if (!rc) rc = { x: P[0], y: P[1], r: r, t: now }; var kk = 1 - Math.exp(-RING.k * Math.min(.1, (now - rc.t) / 1000)); rc.t = now; rc.x += (P[0] - rc.x) * kk; rc.y += (P[1] - rc.y) * kk; rc.r += (r - rc.r) * kk;
-    var col = PARR.col[lastTeam] || BubbleCOL[lastTeam], op = Math.min(1, RING.op * (held ? 1 : PARR.loose));
+    if (!RTEAM) r *= RING.spread;
+    var col = RTEAM ? (PARR.col[lastTeam] || BubbleCOL[lastTeam]) : RING.gold, op = RTEAM ? Math.min(1, RING.op * (held ? 1 : PARR.loose)) : RING.mineOp;
     ring.forEach(function (A) { var tx = rc.x + Math.cos(A.a) * rc.r, ty = rc.y + Math.sin(A.a) * rc.r, ang = A.a * 180 / Math.PI + 180;   // tip on the ring, body outside, pointing at the centre
       A.e.style.transform = 'translate(' + (tx - A.L).toFixed(1) + 'px,' + ty.toFixed(1) + 'px) rotate(' + ang.toFixed(1) + 'deg)'; A.e.style.opacity = op.toFixed(2); A.e.style.color = col; });
-    window.BHPA.ring = { x: rc.x, y: rc.y, r: rc.r, held: held, col: col, op: op, P: P }; }
+    window.BHPA.ring = { team: team, mine: mine, x: rc.x, y: rc.y, r: rc.r, held: held, col: col, op: op, P: P }; }
   function puckArrows(st) { if (!EDGE) { parr.forEach(function (A) { A.e.style.opacity = 0; }); return puckRing(st); } var on = st && st.p && !(R3 && (R3.pzc > .002 || R3.replaying())) && !(st.pz > 0 && !st.pg);
     if (st && st.c >= 0) lastTeam = st.c < 6 ? 0 : 1;
     var col = lastTeam >= 0 ? (PARR.col[lastTeam] || BubbleCOL[lastTeam]) : PARR.neutral, ok = lastTeam >= 0 ? PARR.opK[lastTeam] : 1, P = on ? V.w2s(st.p[0], st.p[1]) : [0, 0], t = performance.now() / 1000, c0 = V.w2s(0, 0), c1 = V.w2s(1, Bubble.L), rx0 = Math.min(c0[0], c1[0]), rx1 = Math.max(c0[0], c1[0]), ry0 = Math.min(c0[1], c1[1]), ry1 = Math.max(c0[1], c1[1]), Wd = parrD.clientWidth, Hd = parrD.clientHeight, diag = Math.hypot(rx1 - rx0, ry1 - ry0) || 1;

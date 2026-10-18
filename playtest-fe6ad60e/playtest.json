@@ -9,9 +9,9 @@
       "phone": "../dev-7q3x/bubble/pad.html",
       "players": "1-10 phones, TV optional",
       "new": [
-        "Puck-carrier ring: 8 arrows around whoever has the puck point in at him, in his team colour",
-        "Loose puck: the ring sits on the puck, faded, in the last team's colour",
-        "Old edge arrows still available with ?edge=1 (for comparison)"
+        "Gold arrow ring around your player only while YOUR team has the puck - shows exactly where you're moving it",
+        "Hidden when the puck is loose or the other team has it",
+        "Compare: ?ring=team (old team-colour ring), ?edge=1 (old edge arrows)"
       ]
     }
   ]

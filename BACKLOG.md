@@ -240,6 +240,9 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Wired: bias (4), build (barracks/tower/workshop at the wheel point), train (Brick/Orb/Ring), select army, attack-move/move mode, hold/stop, upgrade, share, auto stack, order cycle. Stubs: wall, combine tree.
 - Todo: real combine/evolve, better battle readability on TV (bigger beams/impact puffs), fog of war, phone faction choice, sound, multiple phones splitting the army.
 
+## Bubble Hockey v0.9.14 (done): own-possession gold ring
+- Ring only while your team has the puck; gold + black outline, opacity .25, spread 1.2 (RING.gold/mineOp/spread); ?ring=team keeps v0.9.13.
+
 ## Bubble Hockey v0.9.13 (done): puck-carrier ring
 - 8 inward arrows around the carrier / loose puck (RING in bubble/pad.html: longL/longW/shortL/shortW/gap/minR/k); ?edge=1 = old edge arrows.
 
