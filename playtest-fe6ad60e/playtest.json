@@ -8,7 +8,11 @@
       "tv": "../dev-7q3x/bubble/?tv=1",
       "phone": "../dev-7q3x/bubble/pad.html",
       "players": "1-10 phones, TV optional",
-      "new": ["Feedback button (shows the build number, with COPY)", "Phone How to play panel - tap the ? button", "Brighter blue puck arrows at the phone edges"]
+      "new": [
+        "Puck-carrier ring: 8 arrows around whoever has the puck point in at him, in his team colour",
+        "Loose puck: the ring sits on the puck, faded, in the last team's colour",
+        "Old edge arrows still available with ?edge=1 (for comparison)"
+      ]
     }
   ]
 }
