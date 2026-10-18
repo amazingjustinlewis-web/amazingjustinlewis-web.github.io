@@ -240,6 +240,11 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Wired: bias (4), build (barracks/tower/workshop at the wheel point), train (Brick/Orb/Ring), select army, attack-move/move mode, hold/stop, upgrade, share, auto stack, order cycle. Stubs: wall, combine tree.
 - Todo: real combine/evolve, better battle readability on TV (bigger beams/impact puffs), fog of war, phone faction choice, sound, multiple phones splitting the army.
 
+## Bubble Hockey v0.9.15 (done): phone visual experiments (temporary, inform future animation)
+- Tunables, all in one place each: RING (bubble/pad.html: ctrlOp .40 / mineOp .25 / gold / spread / arrow sizes), FX.chk (wedge ms/len/spread/col/blur), FX.poke (ms/len/w/col), FX.gauge (size/top/right/outline/dot/op/opCtl/scale/hp high-pass/max overshoot), SPRING (bubble/sim.js: w stiffness, zeta damping, ?spring=0 rigid).
+- Sim now emits fx = [counter, 'C'|'B'|'P', player, dirx, diry] in snapshots for check/bigcheck/poke visuals.
+- [ ] Future: spin-and-flick trick shots - spin the puck around behind the player via spring motion, then flick.
+
 ## Bubble Hockey v0.9.14 (done): own-possession gold ring
 - Ring only while your team has the puck; gold + black outline, opacity .25, spread 1.2 (RING.gold/mineOp/spread); ?ring=team keeps v0.9.13.
 
