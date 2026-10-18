@@ -14,7 +14,8 @@
     { n: 'Ring', g: 'torus', icon: 'ci', s: 1.5, hp: 35, dmg: 2, rng: 2, spd: 7, rate: 1, role: 'gather' },
     { n: 'Pill', g: 'capsule', icon: 'sq', s: 1.5, hp: 50, dmg: 4, rng: 7, spd: 6, rate: .9, role: 'fight' },
     { n: 'Pillar', g: 'pillar', icon: 'sq', s: 2, hp: 70, dmg: 14, rng: 20, spd: 3.5, rate: 2.4, role: 'fight' },
-    { n: 'Knot', g: 'knot', icon: 'ci', s: 1.8, hp: 90, dmg: 11, rng: 8, spd: 7, rate: .9, role: 'fight' }];
+    { n: 'Knot', g: 'knot', icon: 'ci', s: 1.8, hp: 90, dmg: 11, rng: 8, spd: 7, rate: .9, role: 'fight' },
+    { n: 'Dragon', g: 'dragon', icon: 'tri', s: 1.8, hp: 140, dmg: 9, rng: 7, spd: 7.5, rate: 1.1, role: 'fight', fly: 7 }];   // v0.5.1: flier (BloatFlier GLB, fly = cruise height above ground/water)
   var B = {   // buildings: big shapes. ico: phone glyph
     hq: { n: 'Core', hp: 600, r: 5, ico: 'sq' }, barracks: { n: 'Barracks', hp: 300, r: 3.5, ico: 'ci', cost: 60 }, tower: { n: 'Tower', hp: 250, r: 2.5, ico: 'tri', cost: 50, dmg: 6, rng: 15 },
     workshop: { n: 'Workshop (wheels)', hp: 280, r: 3.5, ico: 'hex', cost: 80 }, camp: { n: 'Camp', hp: 400, r: 4.5, ico: 'sq' } };

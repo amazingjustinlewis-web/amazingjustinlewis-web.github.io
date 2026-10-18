@@ -279,3 +279,7 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - /workspace/hockey/player_skater_poses.glb: from Justin's Faceoff.blend / glide.blend, evaluated deform-bone poses (IK/constraints baked) as single-frame actions 'faceoff' and 'glide' on the v03 armature; 23 deform joints, same meshes. Working file player_skater_v03_poses.blend (deform constraints removed, actions as NLA tracks). Previews pose_faceoff.png / pose_glide.png.
 - Game: bubble/player_skater.glb loaded on the TV for the 10 skaters (goalies keep the padded proxy); AnimationMixer per skater, glide weight 1 in play, blends to faceoff while st.pz > 0 (SKATER.blendIn / blendOut), back on the drop. Jersey material tinted to team colour; model stick turns white on a swing; proxy stick only appears during lunges. ?noskaters = proxy; phones keep the proxy unless ?skaters=1.
 - Next: stride/skate cycle, shoot/check poses, goalie model, instancing or merged meshes if many draw calls hurt on weak TVs.
+
+## RTS v0.5.1 (done): dragon + wading
+- Dragon unit (Shapes.U[12], fly: 7) from rts/flier.glb, per-instance parse + mixer (Fly_Flap_Loop); 1 Humans + 1 Monsters dragon per match. Ground units sink in water (sinkOf in rts/index.html: .2H shallow -> .5H cap) + ripple ring.
+- [ ] Dragon: trainable from a building, attack anim (Test_JawOpen), air-vs-ground rules, phone icon.
