@@ -251,10 +251,19 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Sim.input now records iev = [counter, team, ev, target, carrier before] in snaps (data only) so the phone knows what an input did even over the network.
 - [ ] Over the network the phone only sees ~30 state messages/s, so a one-frame result (post, save, pop-up) can be missed; whistles, goals, possession changes and checks are reliable.
 
+## Bubble Hockey v0.9.20 (done): cylinders, engine facing + shield, puck pivot, stickhandling, bounce, puck gravity
+- Switches (add =0 to get v0.9.19 behaviour for that piece; sim switches apply on the page that runs the sim: TV page for TV games, phone page for phone-vs-computer): cyl (view3d.js), face, pivot, hands, bnc, grav (sim.js V20).
+- Constants in bubble/sim.js: FACE { r .12, pokeOpen .7, pokeShield .25, turn 8, reach .9 }, PIVOT { k 22, stretch .02 }, HANDS { vmin .06, amp .16, f 2.2, side .35, ease 4 }, GRAV { r .09, k .9 }, BNC { n .86, t .86, land .22, hops 2 }; CYL { h .04, r .5, mark .75 } in view3d.js.
+- Snap adds fa (body facing per player) and sh (carrier shield 0..1).
+- [ ] AI-vs-AI turnovers dropped about in half with face on (steals 369 -> 162, pokes 343 -> 130 per 20 games): the shielding stick-away geometry does most of it. Tune FACE.reach / pokeShield with real players.
+- [ ] Cylinders are temporary; bring the skater GLB back with facing (fa) driving its yaw.
+
 ## Bubble Hockey: post-core feature pass (after core gameplay is loved)
 Cheap / near-free extras that don't touch core play.
 - [ ] Options-menu setting (default OFF): the scoring player can pinch/drag on their phone to orbit/zoom the TV goal-replay camera. Off by default - Justin prefers the designed cinematics, and free spinning could be jarring for spectators.
 - [ ] Shareable highlight clips: export best-of-game cinematic replays as short videos with player names, date/time stamp and styling (reuse replay recording; e.g. MediaRecorder on TV canvas).
+- [ ] Contextual moves: engine-chosen facing/animation, so thumb moves lead to elbows, stick reaches and trick shots.
+- [ ] Bar scenes outside the bubble: choose-your-own-adventure events around the bar that shift player disposition on the ice.
 
 ## Bubble Hockey v0.9.17 (done): puck physics (Justin feedback)
 - Tunables in bubble/sim.js: BNC { n .8, t .8 } board/post/crossbar bounce (was: boards .8 normal / 1.0 along; posts NET.post .92 normal / 1.0 along; crossbar NET.bar .85; net mesh NET.mesh .12 unchanged). KNOCK { p .5, r .09, sp 1.0, k .3, max 1.8 } body-check knock. SCR { dt .15, p .15, vz 2.9, side .3, reach .02, cd 2, v .3 } scramble pop-up. DOME { a .70, b 1.05, c .58, e .6 } glass dome ellipsoid (new; the dome had no collision before).

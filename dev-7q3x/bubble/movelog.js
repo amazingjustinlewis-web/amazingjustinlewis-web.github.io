@@ -15,11 +15,12 @@
   function f2(x) { return (Math.round(x * 100) / 100).toFixed(2); }
   function add(txt, st) { n++; log.push('#' + n + ' [' + clock(st || (getSt && getSt())) + '] ' + txt); if (log.length > CFG.max) log.shift(); if (uiList && uiList.offsetParent) render(); }
   // ---- hooks from Gestures ----
-  function down(d) { if (!on) return; src(); var st = getSt && getSt(); cur = { d: d, st0: st ? JSON.parse(JSON.stringify({ c: st.c, sc: st.sc, fx: st.fx, wh: st.wh, p: st.p, pz: st.pz, iev: st.iev })) : null, t0: now() }; }
+  function down(d) { if (!on) return; src(); var st = getSt && getSt(); cur = { d: d, st0: st ? JSON.parse(JSON.stringify({ c: st.c, sc: st.sc, fx: st.fx, wh: st.wh, p: st.p, pz: st.pz, iev: st.iev, sh: st.sh })) : null, t0: now() }; }
   function up(u) { if (!on) return; var st = getSt && getSt(), c = cur || { d: {}, st0: null, t0: now() }; cur = null; var d = c.d, s0 = c.st0 || {}, mine = s0.c != null && s0.c >= 0 && ((s0.c < 6 ? 0 : 1) === team());
     var phys = [], kind = u.kind;
     if (d.goalie) phys.push('GOALIE STRIP ' + (u.reach ? 'swipe' : 'slide') + ' ' + f2(u.dur) + ' s, path ' + f2(u.path));
     else { phys.push(kind.toUpperCase() + (d.multi ? ' (2nd finger)' : '') + ' ' + f2(u.dur) + ' s, path ' + f2(u.path) + ' rink, release ' + f2(u.sp) + '/s ' + (u.sp < .05 ? 'still' : dir(u.vx, u.vy)));
+      if (s0.c != null && s0.c >= 0 && s0.sh != null) phys.push((mine ? 'you' : 'carrier ' + pn(s0.c)) + ' shielding ' + f2(s0.sh) + (mine ? '' : ' (poke chance ~' + Math.round((.7 - .45 * s0.sh) * 100) + '%)'));
       if (!d.multi) phys.push('down ' + (d.best >= 0 ? f2(d.bd) + ' from ' + pn(d.best) : 'on open ice') + ', puck ' + f2(d.pd) + ' away'); }
     var e = { txt: phys.join('; '), kind: kind, d: d, s0: s0, mine: mine, t: now(), st0: st, interp: null, res: [], fx0: s0.fx ? s0.fx[0] : null, wh0: s0.wh || 0, sc0: s0.sc ? s0.sc.slice() : [0, 0], c0: s0.c, done: false, flickSent: u.flick, iev0: s0.iev ? s0.iev[0] : null };
     // expected interpretation from the pre-gesture state (confirmed / corrected by events below)
@@ -35,7 +36,7 @@
   function see(st) { var t = now(), ev = st.ev || '';
     for (var k = 0; k < pend.length; k++) { var e = pend[k]; if (e.done) continue; var age = t - e.t;
       if (st.iev && st.iev[0] !== e.iev0) { var iv = st.iev; e.iev0 = iv[0]; if (iv[1] === team() && !e.gotI) { e.gotI = 1; var k2 = iv[2]; if (iv[4] != null) { e.c0 = iv[4]; e.lc = st.c; }
-          var I = k2 === 'pass' ? 'pass by ' + pn(e.c0) + ' to ' + pn(iv[3]) : k2 === 'shot' ? 'shot by ' + pn(e.c0) + (e.kind === 'flick' ? ' (flick at the net)' : '') : k2 === 'arm' ? 'arm one-timer (next touch fires)' : k2 === 'poke' ? 'poke/stick-check: knocked it off the carrier' : k2 === 'steal' ? 'stick-check: steal' : k2 === 'jab' ? 'stick-check: jab at the loose puck' : k2 === 'snag' ? 'snag rush by ' + pn(e.d.best) : k2 === 'reach' ? 'goalie swipe (reach)' : k2 === 'auto' ? null : k2;
+          var I = k2 === 'pass' ? 'pass by ' + pn(e.c0) + ' to ' + pn(iv[3]) : k2 === 'shot' ? 'shot by ' + pn(e.c0) + (e.kind === 'flick' ? ' (flick at the net)' : '') : k2 === 'arm' ? 'arm one-timer (next touch fires)' : k2 === 'poke' ? 'poke/stick-check: knocked it off the carrier' : k2 === 'steal' ? 'stick-check: steal' : k2 === 'jab' ? 'stick-check: jab at the loose puck' : k2 === 'snag' ? 'snag rush by ' + pn(e.d.best) : k2 === 'reach' ? 'goalie swipe (reach)' : k2 === 'shielded' ? 'poke/stick-check: blocked by the carrier shielding (shield ' + f2(st.sh || 0) + ')' : k2 === 'auto' ? null : k2;
           if (I) { if (/^(poke|stick-check)/.test(I) && /^poke\/stick-check by/.test(e.interp || '')) e.interp = e.interp + ' -> ' + I.replace(/^poke\/stick-check: |^stick-check: /, ''); else e.interp = I; } } }
       if (st.fx && st.fx[0] !== e.fx0) { var fx = st.fx; e.fx0 = fx[0];
         if (fx[1] === 'P' && !e.interp && e.want === 'tap') e.interp = 'poke/stick-check by ' + pn(fx[2]) + (e.c0 >= 0 && !e.mine ? ' at carrier ' + pn(e.c0) : ' at the loose puck');
@@ -50,7 +51,7 @@
       if (age >= CFG.win) fin(e, st); }
     pend = pend.filter(function (e) { return !e.done; }); }
   function fin(e, st) { e.done = true; var interp = e.interp || (e.want === 'tap' ? 'ignored: tap did nothing (no free player / out of reach)' : e.want === 'flick' ? 'flick (no reaction seen)' : '?');
-    if (/^poke/.test(interp) && !/knocked|steal|jab/.test(interp) && !e.res.some(function (r) { return /poke|steal|jab/.test(r); })) e.res.unshift('missed: out of reach');
+    if (/^poke/.test(interp) && !/knocked|steal|jab|blocked/.test(interp) && !e.res.some(function (r) { return /poke|steal|jab/.test(r); })) e.res.unshift('missed: out of reach');
     if (/^shot/.test(interp) && !e.goal) { var s = e.res.filter(function (r) { return /save|glove|post|bar|taken by their goalie/.test(r); }); e.res.unshift(s.length ? 'on net, no goal' : (e.res.some(function (r) { return /taken by/.test(r); }) ? 'blocked / picked off' : 'wide or no result')); }
     if (/^pass/.test(interp)) e.res.unshift(e.endc != null ? ((e.endc < 6) === (e.c0 < 6) ? 'pass completed' : 'pass intercepted') : 'pass not collected');
     add(e.txt + ' -> GAME: ' + interp + ' -> RESULT: ' + (e.res.length ? e.res.join(', ') : '-'), e.st0); }

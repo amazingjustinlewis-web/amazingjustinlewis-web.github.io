@@ -1,7 +1,7 @@
 /* Bubble Hockey v0.9.11: scrollable How to play panel (gentle auto-scroll, hand-scrollable). Phone: '?' button + lobby link. */
 (function () {
   var H = [
-    ['Move', 'Put a finger on any of your players and drag. He slides along his slot. Your finger also turns his stick.'],
+    ['Move', 'Put a finger on any of your players and drag. He slides along his slot. With the puck, your finger steers the puck around him.'],
     ['Switch players', 'Just touch a different player. Whoever is under your thumb is yours (coloured ring). The computer moves the rest.'],
     ['Pass', 'With the puck, <b>FLICK toward a teammate</b> (quick swipe and let go). The game picks the teammate closest to your flick direction. Faster flick = harder pass.'],
     ['Shoot', '<b>TAP on (or near) your player with the puck</b> - he shoots at the open side of the net. A hard flick straight at their net (top of your screen) also shoots.'],

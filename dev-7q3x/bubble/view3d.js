@@ -42,7 +42,7 @@
       var geo = new THREE.ExtrudeGeometry(o, { depth: hgt, bevelEnabled: false }), me = new THREE.Mesh(geo, mat(col)); me.rotation.x = Math.PI / 2; me.position.y = y0 + hgt; G.add(me); return me; }
     var proc = [ring(0, .03, .07, 0xf6f8fb, 0), ring(-.004, .012, .018, 0xf2c230, 0), ring(.03, .1, .02, 0x24356a, -.0)];
     var cab = new THREE.Mesh(new THREE.BoxGeometry(L + .5, .3, 1.5), mat(0x18244a)); cab.position.set(L / 2, -.16, .5); G.add(cab); proc.push(cab);
-    this.loadArena(proc); this.loadSkaters();
+    this.loadArena(proc); if (!CYL.on) this.loadSkaters();
     // nets: red frame + translucent mesh box
     var self = this; this.nets = [];
     // model hook: window.BubbleNetModel(side, dims) may return a Group with children named 'post_l', 'post_r', 'crossbar' (metal) and 'mesh' (soft, wobbles); origin on the goal line centre, +x into the net
@@ -58,7 +58,7 @@
       lt.position.set(d * .6, hh + .004, 0); n.add(lt); n.userData.light = { dome: dome, spin: spin, halo: halo, t: 0 };
       n.position.copy(L3(.5, gq[0])); G.add(n); self.nets.push(n); });
     // players: solid team-colour cylinders + stick + blade; blob shadow
-    this.pl = B.TR.map(function (tr) { var p = new THREE.Group(); man(p, COLS[tr.t], tr.k === 'G');
+    this.pl = B.TR.map(function (tr) { var p = new THREE.Group(); man(p, COLS[tr.t], tr.k === 'G'); if (CYL.on) cyl(p, COLS[tr.t], tr.k === 'G');
       var len = B.R * .5 + tr.sl * .25, st = new THREE.Mesh(new THREE.BoxGeometry(len, .008, .009), mat(0x5a3a1c)); st.position.set(len / 2, .012, 0); p.add(st);
       var bl = new THREE.Mesh(new THREE.BoxGeometry(.012, .012, .03), mat(0x111111)); bl.position.set(len, .008, -.008); p.add(bl);
       var sh = new THREE.Mesh(new THREE.CircleGeometry(B.R * .62, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: .18 })); sh.rotation.x = -Math.PI / 2; sh.position.set(.006, .001, .006); p.add(sh);
@@ -74,6 +74,10 @@
     this.fpts = new THREE.Points(fg, new THREE.PointsMaterial({ size: .02, vertexColors: true, map: dotTex('#fff'), transparent: true, depthWrite: false })); this.fpts.frustumCulled = false; G.add(this.fpts); this.fl = []; this.fsp = 0;
   };
   // simple beefy proxy skater: radius ~B.R/2, height .05 (legs, pants, jersey torso, shoulders, helmet head). Goalie gets pads.
+  // v0.9.20 temporary look (?cyl=0 = v0.9.19 proxies/skaters): plain team cylinder, flat white facing wedge on top (engine-chosen facing, sim fa), straight stick from the centre toward the puck
+  var CYL = { on: !/[?&]cyl=0/.test(location.search), h: .04, r: .5, mark: .75 };
+  function cyl(p, col, goalie) { while (p.children.length) p.remove(p.children[0]); var r = B.R * CYL.r, c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, CYL.h, 20), new THREE.MeshLambertMaterial({ color: goalie ? new THREE.Color(col).lerp(new THREE.Color(0xffffff), .35) : col })); c.position.y = CYL.h / 2; p.add(c);
+    var fm = new THREE.Group(), w = new THREE.Mesh(new THREE.CircleGeometry(r * CYL.mark, 3), new THREE.MeshBasicMaterial({ color: 0xffffff })); w.rotation.x = -Math.PI / 2; w.scale.set(1.25, .7, 1); fm.add(w); fm.position.y = CYL.h + .0015; p.add(fm); p.userData.fm = fm; p.userData.body = []; }
   function man(p, col, goalie, opa) { var M = function (c) { return new THREE.MeshLambertMaterial(opa ? { color: c, transparent: true, opacity: opa, depthWrite: false } : { color: c }); }, r = B.R * .5, dark = M(0x1a1d26), jer = M(col);
     [-1, 1].forEach(function (sd) { var lg = new THREE.Mesh(new THREE.BoxGeometry(r * .55, .018, r * (goalie ? .8 : .55)), goalie ? M(0xeeeeee) : dark); lg.position.set(0, .009, sd * r * .45); p.add(lg); });
     var pant = new THREE.Mesh(new THREE.CylinderGeometry(r * .85, r * .8, .008, 14), dark); pant.position.y = .022; p.add(pant);
@@ -155,7 +159,7 @@
       var tg = L3(q[0] + o[0], q[1] + o[1], 0), sp = this.spr[i], h = this._dt || 0;   // visual-only critically damped spring (sim keeps true positions)
       if (!sp || h <= 0 || Math.hypot(sp.x - tg.x, sp.z - tg.z) > .15) sp = this.spr[i] = { x: tg.x, z: tg.z, vx: 0, vz: 0 };
       else { var ex = Math.exp(-SPRING_W * h), e1 = sp.x - tg.x, j1 = sp.vx + SPRING_W * e1, e2 = sp.z - tg.z, j2 = sp.vz + SPRING_W * e2; sp.x = tg.x + (e1 + j1 * h) * ex; sp.vx = (sp.vx - j1 * SPRING_W * h) * ex; sp.z = tg.z + (e2 + j2 * h) * ex; sp.vz = (sp.vz - j2 * SPRING_W * h) * ex; }
-      p.position.set(sp.x, 0, sp.z); var rgc = st.gc && st.gc[i]; p.userData.ring.visible = !!rgc; if (rgc) p.userData.ring.material.color.set(rgc); p.rotation.set(0, Math.atan2(-Math.cos(an), Math.sin(an)), 0); p.userData.stick.material.color.setHex(st.sw === i ? 0xffffff : 0x5a3a1c);
+      p.position.set(sp.x, 0, sp.z); var rgc = st.gc && st.gc[i]; p.userData.ring.visible = !!rgc; if (rgc) p.userData.ring.material.color.set(rgc); p.rotation.set(0, Math.atan2(-Math.cos(an), Math.sin(an)), 0); if (p.userData.fm) { var fav = st.fa ? st.fa[i] : an; p.userData.fm.rotation.y = Math.atan2(-Math.cos(fav), Math.sin(fav)) - Math.atan2(-Math.cos(an), Math.sin(an)); } p.userData.stick.material.color.setHex(st.sw === i ? 0xffffff : 0x5a3a1c);
       var lnv = st.ln ? st.ln[i] : 0, dnv = st.dn ? st.dn[i] : 0, sk = p.userData.stick, bl = p.userData.blade, ln0 = p.userData.len, ext = 1 + Math.min(1, lnv / .3) * 2.2;   // snag/check lunge: lean in, stick shoots out
       sk.scale.x = ext; sk.position.x = ln0 * ext / 2; bl.position.x = ln0 * ext; p.position.y = 0;
       var skm = p.userData.sk; if (skm) { sk.visible = bl.visible = ext > 1.05; var swc = st.sw === i ? 0xffffff : 0x8c5c2e; skm.sticks.forEach(function (o) { o.material.color.setHex(swc); }); }
