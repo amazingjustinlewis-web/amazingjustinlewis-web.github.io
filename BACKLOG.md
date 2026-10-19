@@ -240,6 +240,12 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Wired: bias (4), build (barracks/tower/workshop at the wheel point), train (Brick/Orb/Ring), select army, attack-move/move mode, hold/stop, upgrade, share, auto stack, order cycle. Stubs: wall, combine tree.
 - Todo: real combine/evolve, better battle readability on TV (bigger beams/impact puffs), fog of war, phone faction choice, sound, multiple phones splitting the army.
 
+## Bubble Hockey v0.9.18 (done): dead-puck whistle
+- DEAD { t 5, zone .45 } in bubble/sim.js: untouched loose puck for t s (not during pause/goal/replay/faceoff/airborne) -> whistle + faceoff at the nearest end-zone dot (puck's side), or centre if within zone of centre ice. Any stick touch (pickup, stick bump, jab, knock) resets the clock. Behind-net triangle unchanged. Fixes the v0.9.17 'stopped puck no stick reaches' item.
+- Ideas:
+  - [ ] Puck behind net: balance whip-behind-net play vs. slide-off triangle.
+  - [ ] Optional board lip where the puck can get stuck -> a crowd member outside the bubble bangs the dome to free it (fun bar moment).
+
 ## Bubble Hockey: post-core feature pass (after core gameplay is loved)
 Cheap / near-free extras that don't touch core play.
 - [ ] Options-menu setting (default OFF): the scoring player can pinch/drag on their phone to orbit/zoom the TV goal-replay camera. Off by default - Justin prefers the designed cinematics, and free spinning could be jarring for spectators.
@@ -247,7 +253,7 @@ Cheap / near-free extras that don't touch core play.
 ## Bubble Hockey v0.9.17 (done): puck physics (Justin feedback)
 - Tunables in bubble/sim.js: BNC { n .8, t .8 } board/post/crossbar bounce (was: boards .8 normal / 1.0 along; posts NET.post .92 normal / 1.0 along; crossbar NET.bar .85; net mesh NET.mesh .12 unchanged). KNOCK { p .5, r .09, sp 1.0, k .3, max 1.8 } body-check knock. SCR { dt .15, p .15, vz 2.9, side .3, reach .02, cd 2, v .3 } scramble pop-up. DOME { a .70, b 1.05, c .58, e .6 } glass dome ellipsoid (new; the dome had no collision before).
 - Sim keeps stat { bn, br, knock, scr, pop, dome } counters for headless tests.
-- [ ] Pre-existing (also in v0.9.16): in AI-vs-AI runs a loose, stopped puck can sit in a spot no computer stick reaches (seen up to ~150 s). Needs a dead-puck nudge or whistle.
+- [x] (fixed v0.9.18 dead-puck whistle) Pre-existing (also in v0.9.16): in AI-vs-AI runs a loose, stopped puck can sit in a spot no computer stick reaches (seen up to ~150 s). Needs a dead-puck nudge or whistle.
 - [ ] Tune KNOCK/SCR with real players.
 
 ## Bubble Hockey v0.9.16 (done): ring flip, poke aim, safer goalie

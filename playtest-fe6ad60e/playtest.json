@@ -9,6 +9,7 @@
       "phone": "../dev-7q3x/bubble/pad.html",
       "players": "1-10 phones, TV optional",
       "new": [
+        "Dead puck: if nobody's stick touches a loose puck for 5 seconds, the whistle blows and there's a faceoff at the nearest dot",
         "Puck loses about 20% of its speed every time it bounces off the boards, posts or crossbar (shots off the stick are just as hard as before)",
         "Body checks can knock a loose puck forward the way the checker was moving (about half the time)",
         "Scrambles: when both teams reach a loose puck at the same moment it sometimes pops straight up, bounces off the dome and lands wherever it lands - nobody can touch it until it drops"
