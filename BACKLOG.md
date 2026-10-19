@@ -246,9 +246,15 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
   - [ ] Puck behind net: balance whip-behind-net play vs. slide-off triangle.
   - [ ] Optional board lip where the puck can get stuck -> a crowd member outside the bubble bangs the dome to free it (fun bar moment).
 
+## Bubble Hockey v0.9.19 (done): phone move report
+- bubble/movelog.js (CFG: max 300 entries, win 1.5 s result window, mailMax 1800 chars in the mailto body, email). On with ?log=1 or the Feedback-panel checkbox (localStorage bubbleMoveLog). Hooks in view.js Gestures are no-ops while off.
+- Sim.input now records iev = [counter, team, ev, target, carrier before] in snaps (data only) so the phone knows what an input did even over the network.
+- [ ] Over the network the phone only sees ~30 state messages/s, so a one-frame result (post, save, pop-up) can be missed; whistles, goals, possession changes and checks are reliable.
+
 ## Bubble Hockey: post-core feature pass (after core gameplay is loved)
 Cheap / near-free extras that don't touch core play.
 - [ ] Options-menu setting (default OFF): the scoring player can pinch/drag on their phone to orbit/zoom the TV goal-replay camera. Off by default - Justin prefers the designed cinematics, and free spinning could be jarring for spectators.
+- [ ] Shareable highlight clips: export best-of-game cinematic replays as short videos with player names, date/time stamp and styling (reuse replay recording; e.g. MediaRecorder on TV canvas).
 
 ## Bubble Hockey v0.9.17 (done): puck physics (Justin feedback)
 - Tunables in bubble/sim.js: BNC { n .8, t .8 } board/post/crossbar bounce (was: boards .8 normal / 1.0 along; posts NET.post .92 normal / 1.0 along; crossbar NET.bar .85; net mesh NET.mesh .12 unchanged). KNOCK { p .5, r .09, sp 1.0, k .3, max 1.8 } body-check knock. SCR { dt .15, p .15, vz 2.9, side .3, reach .02, cd 2, v .3 } scramble pop-up. DOME { a .70, b 1.05, c .58, e .6 } glass dome ellipsoid (new; the dome had no collision before).
