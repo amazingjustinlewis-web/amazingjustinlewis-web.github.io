@@ -9,9 +9,10 @@
       "phone": "../dev-7q3x/bubble/pad.html",
       "players": "1-10 phones, TV optional",
       "new": [
-        "Players are plain cylinders for now: the white wedge shows which way he's facing, the stick points at the puck",
-        "With the puck, your thumb sets where the puck goes and he pivots around it - skate in, circle, tap to shoot. He picks his own facing and shields the puck from checkers (harder to poke)",
-        "Livelier boards, a heavier puck (one or two small hops), gentle stickhandling, and the player you hold gently pulls a nearby loose puck in"
+        "Body checks: bigger red check cone on the TV and phone, and checks knock the puck loose more often",
+        "Strong checks can knock a player down for under a second - he tips over, flashes, gets up and skates back to his spot",
+        "A stopped or crawling loose puck slowly drifts to the nearest player, so fewer dead pucks",
+        "Players are plain cylinders for now: the white wedge shows which way he's facing, the stick points at the puck"
       ]
     }
   ]

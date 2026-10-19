@@ -40,7 +40,7 @@
     e.innerHTML = '<svg width="' + L + '" height="' + W + '" viewBox="-2 -2 34 14" preserveAspectRatio="none" style="display:block;overflow:visible"><path d="M0 0 L30 5 L0 10 Z" fill="currentColor"' + (RTEAM ? '' : ' stroke="#000" stroke-width="1.6" stroke-linejoin="miter" vector-effect="non-scaling-stroke"') + '/></svg>';
     e.style.cssText = 'position:absolute;left:0;top:0;width:' + L + 'px;height:' + W + 'px;margin-top:-' + W / 2 + 'px;transform-origin:100% 50%;opacity:0'; parrD.appendChild(e); ring.push({ e: e, a: k * Math.PI / 4, L: L }); });
   // v0.9.15 visual experiments (all tunables here): check wedge, poke bar, spring gauge
-  var FX = { touch: false, fing: null, ring: null, lastFx: -1, chk: { ms: 200, len: 70, spread: 52, col: '#ff2a2a', blur: 6 }, poke: { ms: 200, len: 46, w: 4, col: '#ff3030' },
+  var FX = { touch: false, fing: null, ring: null, lastFx: -1, chk: { ms: 340, len: 120, spread: 84, col: '#ff2a2a', blur: 5 }, poke: { ms: 200, len: 46, w: 4, col: '#ff3030' },
     gauge: { size: 26, top: 84, right: 12, outline: .5, dot: 6, op: .5, opCtl: .6, scale: 90, hp: 1.6, max: 1.25 } };
   function myGrab(st) { return st && st.g ? st.g[sim ? team : hand] : -1; }
   function flash(el, kf, ms) { parrD.appendChild(el); var a = el.animate(kf, { duration: ms, easing: 'ease-out' }); a.onfinish = function () { el.remove(); }; FX.fired = (FX.fired || 0) + 1; }
@@ -49,7 +49,7 @@
     var r0 = (FX.ring && myGrab(st) === i) ? FX.ring.r : 18, e = document.createElement('div');
     if (f[1] === 'P') { var C = FX.poke; e.style.cssText = 'position:absolute;left:' + P[0] + 'px;top:' + (P[1] - C.w / 2) + 'px;width:' + C.len + 'px;height:' + C.w + 'px;background:' + C.col + ';transform-origin:0 50%;border-radius:2px;box-shadow:0 0 6px ' + C.col;
       flash(e, [{ transform: 'rotate(' + ang + 'deg) translateX(' + r0 * .6 + 'px) scaleX(0)' }, { transform: 'rotate(' + ang + 'deg) translateX(' + r0 * .6 + 'px) scaleX(1)', offset: .45 }, { transform: 'rotate(' + ang + 'deg) translateX(' + r0 * .6 + 'px) scaleX(0)' }], C.ms); FX.lastKind = 'poke'; return; }
-    var K = FX.chk, big = f[1] === 'B', L = K.len * (big ? 1.3 : 1), sp = K.spread * (big ? 1.2 : 1);   // wedge: apex at the ring, opening outward toward the check
+    var K = FX.chk, big = f[1] === 'B' || f[1] === 'K', L = K.len * (big ? 1.3 : 1), sp = K.spread * (big ? 1.2 : 1);   // wedge: apex at the ring, opening outward toward the check
     e.style.cssText = 'position:absolute;left:' + P[0] + 'px;top:' + (P[1] - sp / 2) + 'px;width:' + L + 'px;height:' + sp + 'px;transform-origin:0 50%;clip-path:polygon(0 50%,100% 0,100% 100%);background:radial-gradient(ellipse at 0 50%,#fff 0,' + K.col + ' 35%,rgba(255,0,0,0) 100%);filter:blur(' + K.blur + 'px) brightness(1.4);mix-blend-mode:screen';
     flash(e, [{ opacity: 0, transform: 'rotate(' + ang + 'deg) translateX(' + r0 * .7 + 'px) scale(.6)' }, { opacity: 1, transform: 'rotate(' + ang + 'deg) translateX(' + r0 * .7 + 'px) scale(1)', offset: .3 }, { opacity: 0, transform: 'rotate(' + ang + 'deg) translateX(' + r0 * .7 + 'px) scale(1.1)' }], K.ms); FX.lastKind = big ? 'bigcheck' : 'check'; }
   var gEl = document.createElement('div'), gDot = document.createElement('div'); (function () { var G = FX.gauge; gEl.style.cssText = 'position:fixed;z-index:8;pointer-events:none;top:' + G.top + 'px;right:' + G.right + 'px;width:' + G.size + 'px;height:' + G.size + 'px;border-radius:50%;border:1.5px solid rgba(255,255,255,' + G.outline + ')';

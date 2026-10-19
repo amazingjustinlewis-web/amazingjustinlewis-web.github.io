@@ -251,6 +251,12 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Sim.input now records iev = [counter, team, ev, target, carrier before] in snaps (data only) so the phone knows what an input did even over the network.
 - [ ] Over the network the phone only sees ~30 state messages/s, so a one-frame result (post, save, pop-up) can be missed; whistles, goals, possession changes and checks are reliable.
 
+## Bubble Hockey v0.9.21 (done): body checks + nearest-player puck gravity
+- KNOCK.p .65 (was .5). KD { on (?kd=0), min .8, p .55, t0 .6, t1 .9, push .35 } in sim.js: chance = p x (check speed - min)/(CHK.hard - min), only below big-hit strength (big hits keep the 1.5 s slide). fx kind 'K', snap kdn [n, hit, checker] + kd (remaining fraction).
+- GRAV { r .2, k .9, vslow .15, ramp 1 }: nearest player's blade (any team, not knocked down), strength (1 - speed/vslow)^3 x cubed smoothstep of slow time / ramp x (1 - d/r). AI-vs-AI dead-puck whistles 28 -> 17 per 30 games.
+- Check cone: phone FX.chk { ms 340, len 120, spread 84, blur 5 } (pad.html); TV/phone 3D CHKW { ms 380, len .2, spread 1.0, op .9 } (view3d.js).
+- [ ] Phone shows both the 2D and the 3D cone; drop one if it looks doubled.
+
 ## Bubble Hockey v0.9.20 (done): cylinders, engine facing + shield, puck pivot, stickhandling, bounce, puck gravity
 - Switches (add =0 to get v0.9.19 behaviour for that piece; sim switches apply on the page that runs the sim: TV page for TV games, phone page for phone-vs-computer): cyl (view3d.js), face, pivot, hands, bnc, grav (sim.js V20).
 - Constants in bubble/sim.js: FACE { r .12, pokeOpen .7, pokeShield .25, turn 8, reach .9 }, PIVOT { k 22, stretch .02 }, HANDS { vmin .06, amp .16, f 2.2, side .35, ease 4 }, GRAV { r .09, k .9 }, BNC { n .86, t .86, land .22, hops 2 }; CYL { h .04, r .5, mark .75 } in view3d.js.
