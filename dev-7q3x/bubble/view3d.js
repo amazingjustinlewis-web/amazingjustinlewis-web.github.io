@@ -175,7 +175,7 @@
       if (tr.k === 'G') { var grv = st.gr ? st.gr[tr.t] : 0, rp = p.userData.rpad; if (!rp) { rp = p.userData.rpad = new THREE.Mesh(new THREE.BoxGeometry(.012, .02, .03), new THREE.MeshLambertMaterial({ color: tr.t ? 0x3aa8ff : 0xff5a6e })); rp.name = 'reachPad'; this.G.add(rp); }   // proxy blocker/pad (Justin's model reach animation drops in later)
         rp.visible = !!grv; if (grv) { var gx = sp.z, gz = sp.x; p.position.z += grv * .008; p.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), grv * .5)); rp.position.copy(L3(gx + grv * (B.R * .5 + .012), gz, .01)); rp.scale.set(1, 1, .6 + Math.abs(grv) * .7); } } }
     this.skPose(st, this._dt || 0);
-    var pz = st.pz || 0, h = 0, px = st.p[0], py = st.p[1]; this.puck.visible = !(pz > 0) || !!st.pg;   // faceoff: hidden in the slot until it launches
+    var pz = st.pz || 0, h = 0, px = st.p[0], py = st.p[1]; this.puck.visible = (!(pz > 0) || !!st.pg) && !st.gone;   // faceoff: hidden in the slot until it launches
     if (st.z) h = st.z; this.puck.position.copy(L3(px, py, .006 + h)); var gs = 1 + h * 7; this.puck.scale.set(gs, 1, gs);
     if (!this.pshad) { this.pshad = new THREE.Mesh(new THREE.CircleGeometry(B.PR, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0, depthWrite: false })); this.pshad.rotation.x = -Math.PI / 2; this.G.add(this.pshad); }
     this.pshad.position.copy(L3(px + h * .45, py + h * .3, .0015)); this.pshad.scale.setScalar(1 + h * 2.5); this.pshad.material.opacity = this.puck.visible && h > .004 ? Math.max(.22, .5 - h * 1.6) : 0;
@@ -241,6 +241,7 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     // v0.9.24 board ping: sparks + flash at the contact, small board shake, knock sound (BPING tunable)
     if (st.bpg && this.lastBpg != null && st.bpg[0] !== this.lastBpg && !this.rep) { var bi = st.bpg[1], bq = B.pos(B.TR[bi], st.u[bi]), bo = st.o ? st.o[bi] : [0, 0], bx = bq[0] + bo[0] - st.bpg[2] * B.R * .5, by = bq[1] + bo[1] - st.bpg[3] * B.R * .5; this.emit(bx, by, .03, BPING.n, 0xfff2c0, BPING.sp, .35, 1); this.bShake = BPING.t; bthud(); }
     if (st.bpg) this.lastBpg = st.bpg[0];
+    this.ripFx(st, dt);
     if (this.bShake > 0) { this.bShake -= dt; var ka = Math.max(0, this.bShake / BPING.t) * BPING.amp, jx = (Math.random() - .5) * ka, jz = (Math.random() - .5) * ka; if (this.arena) { this.arena.position.x = L / 2 + jx; this.arena.position.z = .5 + jz; } (this.proc || []).forEach(function (m) { if (m.userData.p0 == null) m.userData.p0 = m.position.clone(); m.position.set(m.userData.p0.x + jx, m.userData.p0.y, m.userData.p0.z + jz); }); if (this.bShake <= 0) { if (this.arena) this.arena.position.set(L / 2, 0, .5); (this.proc || []).forEach(function (m) { if (m.userData.p0) m.position.copy(m.userData.p0); }); } }
     if ((st.ev === 'post' || st.ev === 'bar') && this.lastPing !== st) { this.lastPing = st; ping(); }
     if (st.wh != null && this.lastWh != null && st.wh !== this.lastWh) whistle(); this.lastWh = st.wh;
@@ -338,6 +339,34 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
   // (sim touch log st.tk), receiver had it <= hold s, any skaters/goalies of the scoring team. Celebration (horn/lights/banner) first, then:
   // frozen orbit around the whole bar -> accelerating zoom down to the passer -> slow-mo off his stick -> fast -> slow-mo off the receiver's stick
   // -> fast -> steady slow-mo ~final s of game time, pulling back over the last half (goal, goalies, players, bar) -> fade to faceoff. ?cine=0 disables.
+  // v0.9.25 max-rip + dispenser fx (visual only; thresholds live in sim.js RIP / SRV)
+  var RIPFX = { fireN: 3, crackT: 3.2, netT: 2.4, tearT: 3, srvN: 26, blastN: 60 };
+  function crackTex() { var c = document.createElement('canvas'); c.width = c.height = 256; var x = c.getContext('2d'); x.strokeStyle = 'rgba(230,245,255,.95)'; x.lineCap = 'round';
+    for (var k = 0; k < 14; k++) { var a = k / 14 * 6.283 + Math.random() * .3, r = 0, px = 128, py = 128; x.lineWidth = 2.6; x.beginPath(); x.moveTo(px, py); while (r < 120) { r += 10 + Math.random() * 14; a += (Math.random() - .5) * .5; px = 128 + Math.cos(a) * r; py = 128 + Math.sin(a) * r; x.lineTo(px, py); x.lineWidth *= .9; } x.stroke(); }
+    for (var q = 1; q < 4; q++) { x.lineWidth = 1.2; x.beginPath(); for (var k2 = 0; k2 <= 24; k2++) { var a2 = k2 / 24 * 6.283, rr = q * 26 + Math.random() * 8; x[k2 ? 'lineTo' : 'moveTo'](128 + Math.cos(a2) * rr, 128 + Math.sin(a2) * rr); } x.stroke(); }
+    var t = new THREE.CanvasTexture(c); return t; }
+  function smash() { if (root.BH_MUTE) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); var t = AC.currentTime, n = AC.sampleRate * .6, b = AC.createBuffer(1, n, AC.sampleRate), d = b.getChannelData(0); for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.2) * (Math.random() < .02 ? 3 : 1); var src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); f.type = 'highpass'; f.frequency.value = 1800; g.gain.value = .5; src.buffer = b; src.connect(f); f.connect(g); g.connect(AC.destination); src.start(t); } catch (e) {} }
+  function chug() { if (root.BH_MUTE) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); var t = AC.currentTime; for (var k = 0; k < 3; k++) { var o = AC.createOscillator(), g = AC.createGain(); o.type = 'square'; o.frequency.setValueAtTime(70 + k * 8, t + k * .11); g.gain.setValueAtTime(0, t + k * .11); g.gain.linearRampToValueAtTime(.08, t + k * .11 + .01); g.gain.exponentialRampToValueAtTime(.001, t + k * .11 + .09); o.connect(g); g.connect(AC.destination); o.start(t + k * .11); o.stop(t + k * .11 + .1); } } catch (e) {} }
+  R3.prototype.ripFx = function (st, dt) { var me = this, rep = !!this.rep, now = performance.now() / 1000;
+    // burning puck: flame particles off the puck while st.fi (tier 1..3 = hotter)
+    if (st.fi && this.puck.visible) { var pw = this.puck.position, n = RIPFX.fireN * st.fi; for (var k = 0; k < n; k++) this.emitW(pw.x, pw.y + .006, pw.z, k % 3 ? 0xff7a1a : 0xffd040, .12, .28, -.4); }
+    // rip events (counter in st.rx)
+    if (st.rx && this.lastRx != null && st.rx[0] !== this.lastRx && !rep) { var kd = st.rx[1];
+      if (kd === 'glass') { var gx = st.rx[2], gy = st.rx[3], gz = st.rx[4]; if (!this.crack) { this.crack = new THREE.Sprite(new THREE.SpriteMaterial({ map: crackTex(), transparent: true, depthWrite: false })); this.G.add(this.crack); }
+        this.crack.position.copy(L3(gx, gy, gz + .05)); this.crack.scale.set(.32, .32, 1); this.crack.material.opacity = 1; this.crackEnd = now + RIPFX.crackT; this.emit(gx, gy, gz + .05, 90, 0xdff4ff, .9, .9, 1); this.emit(gx, gy, gz + .05, 30, 0xff8a30, .6, .5, 1); this.bShake = .35; smash(); }
+      if (kd === 'netoff' || kd === 'tear') { var nt = this.nets[st.rx[2]]; if (nt) { nt.userData.knock = { end: now + (kd === 'netoff' ? RIPFX.netT : RIPFX.tearT), t: 1, k: kd, sx: (Math.random() - .5) * .06, r: (Math.random() - .5) * .5 }; this.emit(.5, st.rx[2] ? B.L - B.GY : B.GY, .03, 40, kd === 'tear' ? 0xffffff : 0xffc040, .5, .6, 1); bthud(); } } }
+    if (st.rx) this.lastRx = st.rx[0];
+    if (this.crack) { var cr = this.crackEnd - now; this.crack.material.opacity = Math.max(0, Math.min(1, cr)); this.crack.visible = cr > 0; }
+    this.nets.forEach(function (n, k) { var q = n.userData.knock; if (n.userData.p0 == null) n.userData.p0 = n.position.clone(); if (!q) return; q.t = q.end - now; var f = Math.max(0, Math.min(1, q.t * 2)), ms = n.userData.mesh;
+      if (q.k === 'netoff') { n.position.set(n.userData.p0.x + (k ? .05 : -.05) * f, n.userData.p0.y, n.userData.p0.z + q.sx * f); n.rotation.y = q.r * f; n.rotation.x = (k ? .25 : -.25) * f; }
+      else if (ms) { ms.traverse(function (o) { if (o.material && o.material.opacity != null) { if (o.userData.op0 == null) o.userData.op0 = o.material.opacity; o.material.transparent = true; o.material.opacity = o.userData.op0 * (1 - .8 * f); } }); }
+      if (q.t <= 0) { n.position.copy(n.userData.p0); n.rotation.set(0, 0, 0); if (ms) ms.traverse(function (o) { if (o.userData.op0 != null) o.material.opacity = o.userData.op0; }); n.userData.knock = null; } });
+    // dispenser serves: pulse open with fiery sparks (more for a blast), mechanical chug
+    if (st.srv && this.lastSrv != null && st.srv[0] !== this.lastSrv && !rep) { var kd2 = st.srv[1]; if (kd2 !== 'dot') { var nn = kd2 === 'blast' ? RIPFX.blastN : RIPFX.srvN; this.emit(.5, B.L / 2, .01, nn, 0xff9a2a, kd2 === 'blast' ? .8 : .45, .5, 1); this.emit(.5, B.L / 2, .01, nn >> 1, 0xffe080, .3, .35, 1); this.srvPulse = .5; chug(); } }
+    if (st.srv) this.lastSrv = st.srv[0];
+    if (this.srvPulse > 0) { this.srvPulse -= Math.min(.05, Math.max(dt, .016)); if (!this.srvRing) { this.srvRing = new THREE.Mesh(new THREE.RingGeometry(.012, .03, 24), new THREE.MeshBasicMaterial({ color: 0xff8a20, transparent: true, depthWrite: false, side: THREE.DoubleSide })); this.srvRing.rotation.x = -Math.PI / 2; this.srvRing.position.copy(L3(.5, B.L / 2, .002)); this.G.add(this.srvRing); } var pf = Math.max(0, this.srvPulse / .5); this.srvRing.material.opacity = pf; this.srvRing.scale.setScalar(1 + (1 - pf) * 1.5); this.srvRing.visible = pf > 0; } };
+  // world-space (group-local) emitter for the flame trail
+  R3.prototype.emitW = function (x, y, z, col, spd, life, grav) { if (this.parts.length >= this.NP) return; var c = new THREE.Color(col), a = Math.random() * 7, v = spd * (.3 + Math.random() * .7); this.parts.push({ p: new THREE.Vector3(x, y, z), v: new THREE.Vector3(Math.cos(a) * v * .4, v * .5, Math.sin(a) * v * .4), l: life * (.6 + Math.random() * .4), l0: life, c: c, g: grav }); };
   var BPING = { n: 14, sp: .35, t: .16, amp: .006 };   // v0.9.24 board ping fx: sparks, spark speed, shake s, shake amplitude (units)
   R3.BPING = BPING;
   var CINE = { on: !/[?&]cine=0/.test(location.search), wait: 3.0, blackIn: .35, orbit: 3.6, orbitDeg: 300, orbitR: [6.5, 8.5], orbitH: 2.0, zoom: 1.6, zoomFov: [58, 44],

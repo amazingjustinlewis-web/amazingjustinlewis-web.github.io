@@ -15,14 +15,14 @@
   function f2(x) { return (Math.round(x * 100) / 100).toFixed(2); }
   function add(txt, st) { n++; log.push('#' + n + ' [' + clock(st || (getSt && getSt())) + '] ' + txt); if (log.length > CFG.max) log.shift(); if (uiList && uiList.offsetParent) render(); }
   // ---- hooks from Gestures ----
-  function down(d) { if (!on) return; src(); var st = getSt && getSt(); cur = { d: d, st0: st ? JSON.parse(JSON.stringify({ c: st.c, sc: st.sc, fx: st.fx, wh: st.wh, p: st.p, pz: st.pz, iev: st.iev, sh: st.sh, kdn: st.kdn, bpg: st.bpg })) : null, t0: now() }; }
+  function down(d) { if (!on) return; src(); var st = getSt && getSt(); cur = { d: d, st0: st ? JSON.parse(JSON.stringify({ c: st.c, sc: st.sc, fx: st.fx, wh: st.wh, p: st.p, pz: st.pz, iev: st.iev, sh: st.sh, kdn: st.kdn, bpg: st.bpg, rx: st.rx })) : null, t0: now() }; }
   function up(u) { if (!on) return; var st = getSt && getSt(), c = cur || { d: {}, st0: null, t0: now() }; cur = null; var d = c.d, s0 = c.st0 || {}, mine = s0.c != null && s0.c >= 0 && ((s0.c < 6 ? 0 : 1) === team());
     var phys = [], kind = u.kind;
     if (d.goalie) phys.push('GOALIE STRIP ' + (u.reach ? 'swipe' : 'slide') + ' ' + f2(u.dur) + ' s, path ' + f2(u.path));
     else { phys.push(kind.toUpperCase() + (d.multi ? ' (2nd finger)' : '') + ' ' + f2(u.dur) + ' s, path ' + f2(u.path) + ' rink, release ' + f2(u.sp) + '/s ' + (u.sp < .05 ? 'still' : dir(u.vx, u.vy)));
       if (s0.c != null && s0.c >= 0 && s0.sh != null) phys.push((mine ? 'you' : 'carrier ' + pn(s0.c)) + ' shielding ' + f2(s0.sh) + (mine ? '' : ' (poke chance ~' + Math.round((.7 - .45 * s0.sh) * 100) + '%)'));
       if (!d.multi) phys.push('down ' + (d.best >= 0 ? f2(d.bd) + ' from ' + pn(d.best) : 'on open ice') + ', puck ' + f2(d.pd) + ' away'); }
-    var e = { txt: phys.join('; '), kind: kind, d: d, s0: s0, mine: mine, t: now(), st0: st, interp: null, res: [], fx0: s0.fx ? s0.fx[0] : null, wh0: s0.wh || 0, sc0: s0.sc ? s0.sc.slice() : [0, 0], c0: s0.c, done: false, flickSent: u.flick, iev0: s0.iev ? s0.iev[0] : null, kd0: s0.kdn ? s0.kdn[0] : null, bp0: s0.bpg ? s0.bpg[0] : null };
+    var e = { txt: phys.join('; '), kind: kind, d: d, s0: s0, mine: mine, t: now(), st0: st, interp: null, res: [], fx0: s0.fx ? s0.fx[0] : null, wh0: s0.wh || 0, sc0: s0.sc ? s0.sc.slice() : [0, 0], c0: s0.c, done: false, flickSent: u.flick, iev0: s0.iev ? s0.iev[0] : null, kd0: s0.kdn ? s0.kdn[0] : null, bp0: s0.bpg ? s0.bpg[0] : null, rx0: s0.rx ? s0.rx[0] : null };
     // expected interpretation from the pre-gesture state (confirmed / corrected by events below)
     if (d.goalie) e.interp = u.reach ? 'goalie swipe (reach)' : 'goalie move';
     else if (s0.pz > 0 && kind === 'tap') e.interp = 'skip / ignored (play stopped)';
@@ -33,12 +33,14 @@
   // ---- state watcher ----
   function src() { var S = window.BubbleMoveLogSrc; if (S && !getSt) { getSt = S.st; team = S.team; } }
   function tick() { if (!on) return requestAnimationFrame(tick); src(); var st = getSt && getSt(); if (st && st !== prev) { see(st); prev = st; } requestAnimationFrame(tick); }
+  var lastSrv = null;
   function see(st) { var t = now(), ev = st.ev || '';
     for (var k = 0; k < pend.length; k++) { var e = pend[k]; if (e.done) continue; var age = t - e.t;
       if (st.iev && st.iev[0] !== e.iev0) { var iv = st.iev; e.iev0 = iv[0]; if (iv[1] === team() && !e.gotI) { e.gotI = 1; var k2 = iv[2]; if (iv[4] != null) { e.c0 = iv[4]; e.lc = st.c; }
           var I = k2 === 'pass' ? 'pass by ' + pn(e.c0) + ' to ' + pn(iv[3]) : k2 === 'shot' ? 'shot by ' + pn(e.c0) + (e.kind === 'flick' ? ' (flick at the net)' : '') : k2 === 'arm' ? 'arm one-timer (next touch fires)' : k2 === 'poke' ? 'poke/stick-check: knocked it off the carrier' : k2 === 'steal' ? 'stick-check: steal' : k2 === 'jab' ? 'stick-check: jab at the loose puck' : k2 === 'snag' ? 'snag rush by ' + pn(e.d.best) : k2 === 'reach' ? 'goalie swipe (reach)' : k2 === 'shielded' ? 'poke/stick-check: blocked by the carrier shielding (shield ' + f2(st.sh || 0) + ')' : k2 === 'auto' ? null : k2;
           if (I) { if (/^(poke|stick-check)/.test(I) && /^poke\/stick-check by/.test(e.interp || '')) e.interp = e.interp + ' -> ' + I.replace(/^poke\/stick-check: |^stick-check: /, ''); else e.interp = I; } } }
       if (st.bpg && st.bpg[0] !== e.bp0) { e.bp0 = st.bpg[0]; if (age < CFG.win) e.res.push(pn(st.bpg[1]) + ' pinged off the boards'); }
+      if (st.rx && st.rx[0] !== e.rx0) { e.rx0 = st.rx[0]; var rk = st.rx[1]; if (age < CFG.win) e.res.push(rk === 'fire' ? 'MAX RIP (tier ' + st.rx[2] + '): puck on fire' : rk === 'netoff' ? 'knocked the net off its moorings' : rk === 'tear' ? 'tore through the back mesh' : rk === 'glass' ? 'SMASHED THE DOME GLASS - puck gone, reset' : rk); }
       if (st.kdn && st.kdn[0] !== e.kd0) { e.kd0 = st.kdn[0]; if (age < CFG.win) e.res.push('KNOCKDOWN: ' + pn(st.kdn[2]) + ' knocked down ' + pn(st.kdn[1])); }
       if (st.fx && st.fx[0] !== e.fx0) { var fx = st.fx; e.fx0 = fx[0];
         if (fx[1] === 'P' && !e.interp && e.want === 'tap') e.interp = 'poke/stick-check by ' + pn(fx[2]) + (e.c0 >= 0 && !e.mine ? ' at carrier ' + pn(e.c0) : ' at the loose puck');
@@ -51,6 +53,8 @@
       if (st.sc && (st.sc[0] !== e.sc0[0] || st.sc[1] !== e.sc0[1])) { var gt = st.sc[0] !== e.sc0[0] ? 0 : 1; e.res.push('GOAL ' + (gt === team() ? 'for you' : 'against you')); e.sc0 = st.sc.slice(); e.goal = 1; }
       if (st.c !== e.lc) { if (st.c >= 0 && age > .05 && st.c !== e.c0 && (e.nc = (e.nc || 0) + 1) <= 2) { var same = e.c0 >= 0 && (st.c < 6) === (e.c0 < 6); e.res.push((e.c0 >= 0 ? (same ? 'reached teammate ' : 'taken by ') : 'picked up by ') + pn(st.c)); if (!e.endc) e.endc = st.c; } e.lc = st.c; }
       if (age >= CFG.win) fin(e, st); }
+    // v0.9.25 serves from the centre dispenser (not tied to a move)
+    if (st.srv && st.srv[0] !== lastSrv) { if (lastSrv != null) { var sv = st.srv, SK = { open: 'opening serve: straight up', diag: 'serve: diagonal pop (stick crowd ' + sv[2] + ')', blast: 'serve: BLAST straight up, sticks jammed (crowd ' + sv[2] + ')', arc: 'reset serve: dispenser arc to the zone dot', dot: 'zone-dot faceoff' }; add('SERVE -> ' + (SK[sv[1]] || sv[1]), st); } lastSrv = st.srv[0]; }
     pend = pend.filter(function (e) { return !e.done; }); }
   function fin(e, st) { e.done = true; var interp = e.interp || (e.want === 'tap' ? 'ignored: tap did nothing (no free player / out of reach)' : e.want === 'flick' ? 'flick (no reaction seen)' : '?');
     if (/^poke/.test(interp) && !/knocked|steal|jab|blocked/.test(interp) && !e.res.some(function (r) { return /poke|steal|jab/.test(r); })) e.res.unshift('missed: out of reach');

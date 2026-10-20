@@ -251,6 +251,12 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Sim.input now records iev = [counter, team, ev, target, carrier before] in snaps (data only) so the phone knows what an input did even over the network.
 - [ ] Over the network the phone only sees ~30 state messages/s, so a one-frame result (post, save, pop-up) can be missed; whistles, goals, possession changes and checks are reliable.
 
+## Bubble Hockey v0.9.25 (done): max rip + dispenser serves
+- Flick power (unchanged): phone finger speed >= 0.9 rink/s counts as a flick; power = speed x 0.5 clamped 0.8..3.4. Pass speed 0.8..2.2; shot (aimed at the net, power > 1.6) = power x 1.1 clamped 1.4..3.5.
+- RIP block in sim.js (fire 3.0 / net 3.2 / glass 3.35, burn 2.2 s, minSp 1.2). ?rip=0 off, ?riplo=1 lowers thresholds by .8 for testing.
+- SRV block: open (straight up, small jitter), reg (stick crowd within r of the slot: diagonal through the widest gap, blast straight up at crowd >= tight 2.6), arc (glass reset onto one of the 4 zone dots). Zone-dot faceoffs unchanged. Bounce (BNC) unchanged.
+- Caveat: AI faceoffs only put the two centres near the slot (crowd ~1.6-1.95), so AI games never blast; it needs players jammed in.
+
 ## Bubble Hockey v0.9.24 (done): players stay inside the boards + board ping
 - sim.js BRD { m .02, v .35, e .45, cd .3, minIn .05, cr .12 }: every skater/goalie body centre is clamped m inside the boards (straight sides + rounded corners of radius cr), whatever moved him (body checks, knockdown push, big hits, pivot stretch, thumb stretch). A check/knockdown that carries him into the boards pings him back off them at >= v rink/s (keeps e of the incoming speed), at most once per cd s per player; slow leans are just stopped.
 - Snap bpg = [counter, player, nx, ny]; sim ev 'boardping'; stat.bping. TV/phone 3D: sparks + small board shake + a short knock sound (BPING { n 14, sp .35, t .16, amp .006 } in view3d.js). Move report: '<player> pinged off the boards'.

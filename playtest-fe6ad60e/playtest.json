@@ -9,9 +9,9 @@
       "phone": "../dev-7q3x/bubble/pad.html",
       "players": "1-10 phones, TV optional",
       "new": [
-        "Players can no longer be shoved through the boards by checks, knockdowns or big hits: they ping back off the boards with a little spark, shake and knock sound",
-        "Fixed a rare glitch where a carried puck could end up outside the end boards",
-        "Cinematic pass + redirect replays from v0.9.23 are unchanged"
+        "MAX RIP: your very hardest flicks set the puck on fire; even harder ones can knock the net off its moorings or rip out the back mesh, and the very top can smash the dome glass (play resets)",
+        "New centre dispenser serve: it pulses open with sparks and chugs the puck out. The opening faceoff pops straight up; later serves pop diagonally between the sticks, or blast straight up if sticks jam the slot; after a glass smash it arcs the puck onto a zone dot",
+        "Gentle flicks and puck bounciness are unchanged"
       ]
     }
   ]
