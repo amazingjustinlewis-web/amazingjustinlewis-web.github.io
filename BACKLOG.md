@@ -251,6 +251,16 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Sim.input now records iev = [counter, team, ev, target, carrier before] in snaps (data only) so the phone knows what an input did even over the network.
 - [ ] Over the network the phone only sees ~30 state messages/s, so a one-frame result (post, save, pop-up) can be missed; whistles, goals, possession changes and checks are reliable.
 
+## Bubble Hockey v0.9.23 (done): pass + redirect cinematic (TV), per Justin
+- Trigger: sim touch log (snap tk = [counter, player]; every catch, bump/redirect, poke, jab; -2 = scramble). The last touches before the goal must be teammate pass -> receiver (one-timer or deflection, held <= CINE.hold s), nobody else in between; any skater or goalie of the scoring team; an opposing goalie nicking it on the way in still counts. Anything else keeps the normal 3-angle replay.
+- Order: normal goal celebration (banner, flash, fireworks, goal light, crowd cheering) for CINE.wait s, dip to black, then the replay. The host keeps the goal pause topped up while it runs; Skip (phone/tap) still cuts to the faceoff.
+- Sequence: frozen orbit around the whole bar (CINE.orbitDeg, ending on the passer's bearing) -> accelerating zoom down to the passer, CINE.preP s before the pass -> slow-mo until the puck is CINE.offP off his stick -> fast -> CINE.preS s before the redirect, receiver angle, slow-mo until the puck is CINE.offS (half a puck length) off his stick -> fast until CINE.nearG (a puck width) from scoring (skipped if already that close) -> steady slow-mo for CINE.final s of game time; over the last half (pull.at) the camera pulls back out past the boards (goal, goalies, players, bar crowd behind) -> fade -> faceoff. Rates ease (no hard cuts).
+- Tunables: CINE in bubble/view3d.js { wait 3.0, blackIn .35, orbit 3.6, orbitDeg 300, orbitR [6.5, 8.5], orbitH 2.0, zoom 1.6, zoomFov [58, 44], preP 1.0, offP .03, preS .5, offS PR, nearG 2PR, final 4.0, hold .4, maxGap 2.5, slowP .22, slowS .18, slowG .25, fast 1.7, ease 4, look .3, fade .9, budget 45, pull { at .5, x .55, y .38, h .36 }, cam { v 2.6, a 11, lv 2.6, la 13 }, domeQ .85, edge .035, fov 46, dofBar .15 }. Typical run ~30 s real.
+- Bar: placeholder silhouettes added to the room proxy (bar stools, pool table, dartboard, wall TV, BUBBLE BAR neon, a crowd around the table); patrons bounce when a goal goes in (live, and in the replay at replay speed).
+- Dev: ?cinetest=1 or key C now stages a pass + redirect (skaters held still, goalies play, retries until it scores). ?cine=0 off, ?fixdt=1, BHHOLD/BHSTEPN unchanged.
+- [ ] Real-TV check of pacing (it is long by design) and angles; tune CINE with Justin. Skater GLB still glides through the slow-mo.
+- [ ] Bar props are placeholders (simple boxes); real bar art later.
+
 ## Bubble Hockey v0.9.22 (done): one-timer cinematic replay (TV)
 - Triggers only when the goal is a clean one-timer: sim ev 'onetimer' by the scoring team, a teammate had the puck before the pass, nobody controlled it after the shot, goal within CINE.maxGap s. Everything else keeps the normal 3-angle replay.
 - Tunables in one place: CINE in bubble/view3d.js { wait 1.2, orbit 2.0, orbitDeg 200, orbitR [.40,.60], orbitH .26, push .9, poss .9, preP .30, postP .10, preS .22, postS .10, preG .12, postG .32, short .26, slowP .16, slowS .13, slowG .11, fast 1.7, hangRate .025, hang 1.2, fade .6, ease 7, look .28, budget 15.0, maxGap 2.2, cam {v 2.6, a 11, lv 2.6, la 13}, domeQ .85, edge .035, fov 48 }. Slow rates scale up automatically if the plan would run past the goal pause (budget).
@@ -285,6 +295,7 @@ Cheap / near-free extras that don't touch core play.
 - [ ] Arcade fight system (punch/grab), Base Wars style where fights decide outcomes; maybe grab improvised items like a water bottle near the opposing bench.
 - [ ] Visual wear during a game: layered textures across team jerseys/colours: scuffs, visors crack/break, helmets knocked off and replaced but scuffed.
 - [ ] Speed-ramped instant replays (slow-mo pass, fast to receiver, slow-mo bendy-stick slapshot, fast to net, slow-mo goal).
+- [ ] Bar background events driven by momentum, streaks, fights, etc. (reactions visible in replays).
 
 ## Bubble Hockey v0.9.17 (done): puck physics (Justin feedback)
 - Tunables in bubble/sim.js: BNC { n .8, t .8 } board/post/crossbar bounce (was: boards .8 normal / 1.0 along; posts NET.post .92 normal / 1.0 along; crossbar NET.bar .85; net mesh NET.mesh .12 unchanged). KNOCK { p .5, r .09, sp 1.0, k .3, max 1.8 } body-check knock. SCR { dt .15, p .15, vz 2.9, side .3, reach .02, cd 2, v .3 } scramble pop-up. DOME { a .70, b 1.05, c .58, e .6 } glass dome ellipsoid (new; the dome had no collision before).

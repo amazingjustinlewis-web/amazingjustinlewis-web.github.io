@@ -190,8 +190,8 @@
   R3.prototype.render = function (st, dt, opt) {
     opt = opt || {}; this.clock += dt; this.chkFx(st, dt); var W = this.cv.clientWidth, H = this.cv.clientHeight; if (this.W !== W || this.H !== H) { this.W = W; this.H = H; this.gl.setSize(W, H, false); }
     // record history (skip while paused)
-    if (!this.rep && (!(st.pz > 0) || st.pg)) { this.hist.push({ t: this.clock, p: st.p.slice(), u: st.u.slice(), o: (st.o || st.u.map(function () { return [0, 0]; })).map(function (q) { return q.slice(); }), a: (st.a || st.u.map(function () { return 0; })).slice(), c: st.c, z: st.z || 0, e: st.ev || '', gc: st.gc ? st.gc.slice() : null });
-      while (this.hist.length && this.hist[0].t < this.clock - 5) this.hist.shift(); }
+    if (!this.rep && (!(st.pz > 0) || st.pg)) { this.hist.push({ t: this.clock, p: st.p.slice(), u: st.u.slice(), o: (st.o || st.u.map(function () { return [0, 0]; })).map(function (q) { return q.slice(); }), a: (st.a || st.u.map(function () { return 0; })).slice(), c: st.c, z: st.z || 0, e: st.ev || '', tk: st.tk || null, gc: st.gc ? st.gc.slice() : null });
+      while (this.hist.length && this.hist[0].t < this.clock - 7) this.hist.shift(); }
     // buzzer right before the puck is spat out (pz counts down; pop starts at .55)
     if (st.pz > .02 && st.pz < .5 && !this.buzzed) { this.buzzed = true; buzz(); } if (!(st.pz > 0)) this.buzzed = false;
     var fdv = this.d.querySelector('.b3fade'); if (this.fadeOut > 0) { this.fadeOut -= dt; fdv.style.opacity = Math.max(0, this.fadeOut / CINE.fade); } else if (!(this.rep && this.rep.cine)) fdv.style.opacity = 0;
@@ -218,6 +218,7 @@
         if (MO && !R) {   // crazy-moment camera: swoops from high over the impact point down toward ice level as time slows
       var Gq = this.G, P3 = function (x, y, h) { return Gq.localToWorld(L3(x, y, h)); }, c = MO.c, d = MO.dir, sd = MO.pt[0] < .5 ? 1 : -1, hi = P3(MO.pt[0] - d[0] * .15, MO.pt[1] - d[1] * .15, 1.25), lo = P3(MO.pt[0] - d[0] * .34 + sd * .12, MO.pt[1] - d[1] * .34, .085);
       cam = this.persp; cam.aspect = W / H; cam.fov = 50 - c * 8; var wp = hi.lerp(lo, c), wl = P3(MO.pt[0], MO.pt[1], .005); if (!this.mcs || this.lastCam !== this.persp) { this.mcs = { p: wp.clone() }; this.mls = { p: wl.clone() }; } else { camLim(this.mcs, wp, dt, CAMLIM.v * 2.5, CAMLIM.a * 3); camLim(this.mls, wl, dt, CAMLIM.lv, CAMLIM.la); } cam.position.copy(this.mcs.p); cam.up.set(0, 1, 0); cam.lookAt(this.mls.p); cam.updateProjectionMatrix(); }
+this.cheerAnim(dt);
 this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     // puck trail + glow at speed (visual only)
     var lt = this.trail; lt.push([pp[0], pp[1]]); if (lt.length > 8) lt.shift(); var sp = lt.length > 1 ? Math.hypot(lt[lt.length - 1][0] - lt[lt.length - 2][0], lt[lt.length - 1][1] - lt[lt.length - 2][1]) / Math.max(dt, .001) : 0;
@@ -239,7 +240,7 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     if (st.wh != null && this.lastWh != null && st.wh !== this.lastWh) whistle(); this.lastWh = st.wh;
     var rep = !!this.rep; this.nets.forEach(function (n) { var l = n.userData.light; if (!l) return; if (l.t > 0) l.t -= dt; if (!rep) l.rep = false; l.on = l.t > 0 || l.rep;
       var k = l.on ? .75 + .25 * Math.sin(performance.now() / 90) : 0; l.dome.material.color.setHex(l.on ? 0xff3030 : 0x551018); l.spin.rotation.y += dt * 9; l.spin.children.forEach(function (b) { b.children[0].material.opacity = k * .8; }); l.halo.material.opacity = k * .9; });
-    this.lastCam = cam; var dS = 0, D = this.dof; if (D && D.ok && this.dofOn && cam.isPerspectiveCamera) dS = R ? (R.hl ? DOFK.reel : DOFK.replay) : MO ? DOFK.replay * .7 : DOFK.live;
+    this.lastCam = cam; var dS = 0, D = this.dof; if (D && D.ok && this.dofOn && cam.isPerspectiveCamera) dS = R ? (R.hl ? DOFK.reel : R.cine && R.dofK != null ? R.dofK : DOFK.replay) : MO ? DOFK.replay * .7 : DOFK.live;
     this.dofS = (this.dofS || 0) + (dS - (this.dofS || 0)) * Math.min(1, dt * 4);
     if (D && this.dofS > .03) { var fp = R && R.ls ? R.ls.p : MO && this.mls ? this.mls.p : (this.focusPt || this.puck.getWorldPosition(new THREE.Vector3())); D.render(this.scene, cam, this.dofS, cam.position.distanceTo(fp), dt); }
     else this.gl.render(this.scene, cam);
@@ -326,79 +327,98 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
       var lie = t < .3 ? t / .3 : F.down < .5 ? F.down / .5 : 1; g.rotation.set(0, g.rotation.y + F.spin * dt * (1 - t / 2.2), 0); g.rotateX(lie * Math.PI / 2 * .95); g.position.y = lie * .008; if (F.down <= 0) { F.down = 0; g.rotation.set(0, 0, 0); g.position.y = 0; } }
     else { var dx = tx - F.x, dy = ty - F.y, m = Math.hypot(dx, dy), v = .5; if (m > .01) { var k = Math.min(m, v * dt) / m; F.x += dx * k; F.y += dy * k; F.hd = Math.atan2(dx, dy); } g.rotation.set(0, F.hd, 0); }
     F.x = Math.max(.04, Math.min(.96, F.x)); F.y = Math.max(.12, Math.min(L - .12, F.y)); g.position.x = F.y; g.position.z = F.x; };
-  // ---- v0.9.22 one-timer cinematic (TV): speed-ramped replay of pass -> one-timer -> goal, built on the recorded history ----
-  // Only after a one-timer goal (sim ev 'onetimer' by the scoring team, preceded by a teammate's possession). ?cine=0 disables.
-  // Timeline is in game-time zones; replay rate eases toward each zone's target (look-ahead so it slows before the moment, never a hard cut).
-  var CINE = { on: !/[?&]cine=0/.test(location.search), wait: 1.2, orbit: 2.0, orbitDeg: 200, orbitR: [.40, .60], orbitH: .26, push: .9, poss: .9,
-    preP: .30, postP: .10, preS: .22, postS: .10, preG: .12, postG: .32, short: .26,
-    slowP: .16, slowS: .13, slowG: .11, fast: 1.7, hangRate: .025, hang: 1.2, fade: .6, ease: 7, look: .28, budget: 15.0, maxGap: 2.2,
-    cam: { v: 2.6, a: 11, lv: 2.6, la: 13 }, domeQ: .85, edge: .035, fov: 48 };
+  // ---- v0.9.23 pass -> redirect/one-timer cinematic (TV): speed-ramped replay built on the recorded history ----
+  // Trigger: the last touches before the goal are [teammate pass] -> [receiver touch (one-timer or deflection)], nobody else touched it in between
+  // (sim touch log st.tk), receiver had it <= hold s, any skaters/goalies of the scoring team. Celebration (horn/lights/banner) first, then:
+  // frozen orbit around the whole bar -> accelerating zoom down to the passer -> slow-mo off his stick -> fast -> slow-mo off the receiver's stick
+  // -> fast -> steady slow-mo ~final s of game time, pulling back over the last half (goal, goalies, players, bar) -> fade to faceoff. ?cine=0 disables.
+  var CINE = { on: !/[?&]cine=0/.test(location.search), wait: 3.0, blackIn: .35, orbit: 3.6, orbitDeg: 300, orbitR: [6.5, 8.5], orbitH: 2.0, zoom: 1.6, zoomFov: [58, 44],
+    preP: 1.0, offP: .03, preS: .5, offS: B.PR, nearG: 2 * B.PR, final: 4.0, hold: .4, maxGap: 2.5,
+    slowP: .22, slowS: .18, slowG: .25, fast: 1.7, ease: 4, look: .3, fade: .9, budget: 45,
+    pull: { at: .5, x: .55, y: .38, h: .36 }, cam: { v: 2.6, a: 11, lv: 2.6, la: 13 }, domeQ: .85, edge: .035, fov: 46, dofBar: .15 };
   R3.CINE = CINE; root.BubbleCINE = CINE;
   function ppos(f, i) { var q = B.pos(B.TR[i], f.u[i]), o = f.o ? f.o[i] : [0, 0]; return [q[0] + o[0], q[1] + o[1]]; }
   function cineClamp(x, y, h) { x = Math.max(CINE.edge, Math.min(1 - CINE.edge, x)); y = Math.max(CINE.edge, Math.min(L - CINE.edge, y)); h = Math.max(.03, h);   // inside the boards, above the ice
     var dx = (x - .5) / .70, dy = (y - L / 2) / 1.05, dz = h / .58, q = dx * dx + dy * dy + dz * dz;   // and inside the glass dome (sim DOME ellipsoid)
     if (q > CINE.domeQ) { var k = Math.sqrt(CINE.domeQ / q); x = .5 + (x - .5) * k; y = L / 2 + (y - L / 2) * k; h = Math.max(.03, h * k); } return [x, y, h]; }
+  function tmOf(i) { return i < 6 ? 0 : 1; }
   R3.prototype.cineNo = function (why) { this.cineWhy = why; return null; };
   R3.prototype.cinePlan = function (team) { this.cineWhy = '';
     var F = this.hist.slice(); while (F.length > 2 && Math.hypot(F[F.length - 1].p[0] - .5, F[F.length - 1].p[1] - L / 2) < .02) F.pop(); var n = F.length; if (n < 20) return this.cineNo('short history');
-    var k = -1; for (var q = n - 1; q >= 0; q--) if (F[q].e === 'onetimer') { k = q; break; } if (k < 0) return this.cineNo('no one-timer in history'); if (F[n - 1].t - F[k].t > CINE.maxGap) return this.cineNo('one-timer too long before the goal');
-    for (var q2 = k + 1; q2 < n; q2++) if (F[q2].c >= 0) return this.cineNo('controlled after the shot');   // somebody controlled it after the shot: not a clean one-timer goal
-    var gy = team ? L - B.GY : B.GY, dir = team ? 1 : -1, pk = F[k].p, sh = -1, sd = 9;
-    for (var i = team * 6; i < team * 6 + 6; i++) { if (B.TR[i].k === 'G') continue; var p = ppos(F[k], i), d = Math.hypot(p[0] - pk[0], p[1] - pk[1]); if (d < sd) { sd = d; sh = i; } }
-    for (var q5 = k; q5 >= Math.max(0, k - 3); q5--) { var cc = F[q5].c; if (cc >= 0 && (cc < 6 ? 0 : 1) === team && B.TR[cc].k !== 'G') { sh = cc; break; } }   // the receiver is the carrier for a frame before the release
-    var j = -1; for (var q3 = k - 1; q3 >= 0; q3--) if (F[q3].c >= 0 && F[q3].c !== sh) { j = q3; break; } if (j < 0 || sh < 0) return this.cineNo('no pass before the shot'); var pa = F[j].c; if (pa === sh || (pa < 6 ? 0 : 1) !== team) return this.cineNo('previous carrier not a teammate');
-    var j0 = j; while (j0 > 0 && F[j0 - 1].c === pa && F[j].t - F[j0 - 1].t < CINE.poss) j0--;
-    var T0 = F[0].t, t0 = Math.max(0, F[j0].t - T0 - .15), tpr = F[j].t - T0, ts = F[k].t - T0, tg = F[n - 1].t - T0;
-    for (var q4 = k; q4 < n; q4++) if ((F[q4].p[1] - gy) * dir > 0) { tg = F[q4].t - T0; break; }
-    var ps = ppos(F[k], sh), pp = ppos(F[j], pa), pd = [ps[0] - pp[0], ps[1] - pp[1]], pm = Math.hypot(pd[0], pd[1]) || 1; pd = [pd[0] / pm, pd[1] / pm];
-    var net = [.5, gy + dir * .015], shortShot = Math.hypot(pk[0] - net[0], pk[1] - net[1]) < CINE.short;
-    // shooter angle: ring of candidates around the shooter; want shooter + net both in frame (small angular separation, shooter nearer), puck arriving from the side, inside dome/boards
-    var best = null; for (var a = 0; a < 24; a++) { var th = a / 24 * Math.PI * 2, c = cineClamp(ps[0] + Math.cos(th) * .24, ps[1] + Math.sin(th) * .24, .085), moved = Math.hypot(c[0] - ps[0] - Math.cos(th) * .24, c[1] - ps[1] - Math.sin(th) * .24);
+    var T = []; for (var q = 1; q < n; q++) { var a0 = F[q - 1].tk, a1 = F[q].tk; if (a0 && a1 && a0[0] !== a1[0]) T.push({ q: q, i: a1[1], t: F[q].t }); }
+    while (T.length && T[T.length - 1].i >= 0 && B.TR[T[T.length - 1].i].k === 'G' && tmOf(T[T.length - 1].i) !== team) T.pop();   // a goalie getting a piece of it on the way in still counts
+    if (!T.length) return this.cineNo('no touches'); var last = T[T.length - 1], rc = last.i; if (rc < 0 || tmOf(rc) !== team) return this.cineNo('last touch not the scoring team');
+    var a = T.length - 1; while (a > 0 && T[a - 1].i === rc) a--; if (a === 0) return this.cineNo('no pass before the receiver');
+    var pv = T[a - 1], pa = pv.i; if (pa < 0 || tmOf(pa) !== team) return this.cineNo('previous touch not a teammate (opponent/scramble)');
+    var ks = last.q; for (var q1 = T[a].q - 1; q1 < n; q1++) if (F[q1].c === rc) ks = Math.min(n - 1, q1 + 1); if (F[ks].t - T[a].t > CINE.hold) return this.cineNo('receiver held it');
+    var kp = pv.q; for (var q2 = Math.max(0, pv.q - 1); q2 < T[a].q; q2++) if (F[q2].c === pa) kp = q2 + 1;
+    if (F[n - 1].t - F[ks].t > CINE.maxGap) return this.cineNo('shot too long before the goal');
+    var gy = team ? L - B.GY : B.GY, dir = team ? 1 : -1, T0 = F[0].t, find = function (from, fn, def) { for (var z = from; z < n; z++) if (fn(F[z])) return F[z].t - T0; return def; };
+    var tpr = F[kp].t - T0, ts = F[ks].t - T0, tg = find(ks, function (f) { return (f.p[1] - gy) * dir > 0; }, F[n - 1].t - T0);
+    var tpOff = find(kp, function (f) { return Math.hypot(f.p[0] - F[kp].p[0], f.p[1] - F[kp].p[1]) > CINE.offP; }, tpr + .05), tsOff = find(ks, function (f) { return Math.hypot(f.p[0] - F[ks].p[0], f.p[1] - F[ks].p[1]) > CINE.offS; }, ts + .03);
+    var tgN = Math.min(tg, find(ks, function (f) { return (f.p[1] - gy) * dir > -CINE.nearG; }, tg)); tsOff = Math.min(tsOff, tg); tpOff = Math.min(tpOff, T[a].t - T0);
+    var t0 = Math.max(0, tpr - CINE.preP), pp = ppos(F[kp], pa), ps = ppos(F[ks], rc), pd = [ps[0] - pp[0], ps[1] - pp[1]], pm = Math.hypot(pd[0], pd[1]) || 1; pd = [pd[0] / pm, pd[1] / pm];
+    var net = [.5, gy + dir * .015];
+    // receiver angle: ring around him; want receiver + net both in frame (small separation, receiver nearer), puck arriving from the side, inside dome/boards
+    var best = null; for (var k = 0; k < 24; k++) { var th = k / 24 * Math.PI * 2, c = cineClamp(ps[0] + Math.cos(th) * .24, ps[1] + Math.sin(th) * .24, .11), moved = Math.hypot(c[0] - ps[0] - Math.cos(th) * .24, c[1] - ps[1] - Math.sin(th) * .24);
       var vs = [ps[0] - c[0], ps[1] - c[1]], vn = [net[0] - c[0], net[1] - c[1]], ds = Math.hypot(vs[0], vs[1]) || 1, dn = Math.hypot(vn[0], vn[1]) || 1, sep = Math.acos(Math.max(-1, Math.min(1, (vs[0] * vn[0] + vs[1] * vn[1]) / ds / dn))) * 180 / Math.PI;
       var sc = Math.abs(sep - 16) / 10 + (sep > CINE.fov * .42 ? 5 : 0) + (dn < ds ? 4 : 0) + moved * 20 + Math.abs((vs[0] * pd[0] + vs[1] * pd[1]) / ds) * .6;
       if (!best || sc < best.s) best = { s: sc, c: c }; }
-    // final angle: beside the net on the shooter's side, a little out from the goal line and raised; sees shooter, puck path and the mouth
-    var sx = ps[0] < .5 ? -1 : 1, fc = cineClamp(.5 + sx * .2, gy - dir * .17, .1);
-    var orbE = cineClamp(pp[0] - pd[0] * .3, pp[1] - pd[1] * .3, CINE.orbitH), thE = Math.atan2((orbE[0] - .5) / CINE.orbitR[0], (orbE[1] - L / 2) / CINE.orbitR[1]);
-    var P = { F: F, team: team, gy: gy, dir: dir, sh: sh, pa: pa, pd: pd, net: net, t0: t0, tpr: tpr, ts: ts, tg: tg, shortShot: shortShot, scam: best.c, fcam: fc, thE: thE, k: 1 };
-    // zones (game time from F[0]); rates scaled down/up so the whole thing fits the goal pause
-    for (var it = 0; it < 6; it++) { var tot = this.cineDur(P); if (tot <= CINE.budget) break; P.k *= 1.18; }
+    var sx = ps[0] < .5 ? -1 : 1, fc = cineClamp(.5 + sx * .2, gy - dir * .17, .1), pb = [.5 - sx * CINE.pull.x, gy - dir * CINE.pull.y, CINE.pull.h];   // net-side cam; pull-back point out past the far boards (bar behind the goal)
+    var P = { F: F, team: team, gy: gy, dir: dir, sh: rc, pa: pa, pd: pd, net: net, t0: t0, tpr: tpr, tpOff: tpOff, ts: ts, tsOff: tsOff, tgN: tgN, tg: tg, scam: best.c, fcam: fc, pb: pb, k: 1, redirect: F[ks].t - T[a].t < .02 };
+    for (var it = 0; it < 6; it++) { if (this.cineDur(P) <= CINE.budget) break; P.k *= 1.2; }
     P.est = this.cineDur(P); return { cine: P, F: F, team: team, t: 0, wait: CINE.wait, segs: [], gy: gy, dir: dir, ct: t0, r: 0 };
   };
-  R3.prototype.cineZones = function (P) { var s = function (r) { return Math.min(1, r * P.k); }, a1 = Math.max(P.t0 + .05, P.tpr - CINE.preP), Z = [];
-    Z.push([a1, P.tpr + CINE.postP, s(CINE.slowP), 'pass']);
-    if (P.ts - CINE.preS > P.tpr + CINE.postP) Z.push([P.tpr + CINE.postP, P.ts - CINE.preS, CINE.fast, 'travel']);
-    Z.push([Math.max(P.tpr + CINE.postP, P.ts - CINE.preS), P.ts + CINE.postS, s(CINE.slowS), 'shot']);
-    var g0 = P.shortShot ? P.ts + CINE.postS : Math.max(P.ts + CINE.postS, P.tg - CINE.preG); if (g0 > P.ts + CINE.postS) Z.push([P.ts + CINE.postS, g0, CINE.fast, 'fly']);
-    Z.push([g0, P.tg + CINE.postG, s(CINE.slowG), 'goal']); return { a1: a1, Z: Z, end: P.tg + CINE.postG }; };
-  R3.prototype.cineRate = function (P, c) { var Z = P.zones || (P.zones = this.cineZones(P)), z = Z.Z; for (var q = 0; q < z.length; q++) if (c < z[q][1]) return z[q][2]; return CINE.hangRate; };
+  R3.prototype.cineZones = function (P) { var s = function (r) { return Math.min(1, r * P.k); }, Z = [];
+    Z.push([P.t0, P.tpOff, s(CINE.slowP), 'pass']);
+    var s0 = Math.max(P.tpOff, P.ts - CINE.preS); if (s0 > P.tpOff + .01) Z.push([P.tpOff, s0, CINE.fast, 'travel']);
+    Z.push([s0, P.tsOff, s(CINE.slowS), 'shot']);
+    var g0 = Math.max(P.tsOff, P.tgN); if (g0 > P.tsOff + .01) Z.push([P.tsOff, g0, CINE.fast, 'fly']);
+    Z.push([g0, g0 + CINE.final, s(CINE.slowG), 'goal']); return { Z: Z, g0: g0, end: g0 + CINE.final }; };
+  R3.prototype.cineRate = function (P, c) { var z = (P.zones || (P.zones = this.cineZones(P))).Z; for (var q = 0; q < z.length; q++) if (c < z[q][1]) return z[q][2]; return z[z.length - 1][2]; };
   R3.prototype.cineTgt = function (P, c, r) { return Math.min(this.cineRate(P, c), this.cineRate(P, c + Math.max(r, .05) * CINE.look)); };
-  R3.prototype.cineDur = function (P) { P.zones = null; var Z = this.cineZones(P), c = Z.a1, r = Math.min(1, CINE.slowP * P.k), t = CINE.wait + CINE.orbit + CINE.push, h = 1 / 60;
-    while (c < Z.end && t < 60) { r += (this.cineTgt(P, c, r) - r) * (1 - Math.exp(-h * CINE.ease)); c += r * h; t += h; } return t + CINE.hang + CINE.fade; };
+  R3.prototype.cineDur = function (P) { P.zones = null; var Z = this.cineZones(P), c = P.t0, r = 0, t = CINE.wait + CINE.orbit + CINE.zoom, h = 1 / 60;
+    while (c < Z.end && t < 200) { r += (this.cineTgt(P, c, r) - r) * (1 - Math.exp(-h * CINE.ease)); c += r * h; t += h; } return t + CINE.fade; };
   R3.prototype.cineEndRep = function (R) { this.rep = null; this.cineEnd = true; var d = this.d; ['.b3rep', '.b3bars', '.b3ban', '.b3flash'].forEach(function (k) { d.querySelector(k).style.opacity = 0; }); this.fadeOut = CINE.fade;
-    if (!this.phone) this.hlAdd({ k: 'goal', s: HLK.goal[0] + 1 + Math.random(), F: R.F.filter(function (f) { return f.t >= R.F[R.F.length - 1].t - HL.pre - HL.post - REP_POST; }), team: R.team, t: this.clock }); };
+    if (!this.phone) this.hlAdd({ k: 'goal', s: HLK.goal[0] + 1 + Math.random(), F: R.F.filter(function (f) { return f.t >= R.F[0].t + R.cine.t0 && f.t <= R.F[0].t + R.cine.tg + 1.4; }), team: R.team, t: this.clock }); };
   R3.prototype.cineStep = function (R, st, dt, W, H) { var P = R.cine, Z = P.zones || (P.zones = this.cineZones(P)), d = this.d, flash = d.querySelector('.b3flash'), ban = d.querySelector('.b3ban'), fade = d.querySelector('.b3fade');
-    R.t += dt; if (R.t < R.wait) { var kw = R.t / R.wait; flash.style.opacity = Math.max(0, .85 - kw * 2.5); ban.style.opacity = Math.min(1, R.t * 5) * (kw < .85 ? 1 : (1 - kw) / .15); ban.style.transform = 'scale(' + (1 + Math.max(0, .25 - R.t) * 2) + ')';
-      if (Math.random() < dt * 5) this.emit(.2 + Math.random() * .6, R.gy + (R.team ? -1 : 1) * (.1 + Math.random() * .4), .15 + Math.random() * .2, 70, R.team ? 0x9fd4ff : 0xffb3be, .5, 1.3, 1); if (Math.random() < dt * 22) this.camFlash(); return null; }
+    R.t += dt; if (R.t < R.wait) { var kw = R.t / R.wait; flash.style.opacity = Math.max(0, .85 - kw * 2.5) * (1 + Math.sin(R.t * 40) * .2); ban.style.opacity = Math.min(1, R.t * 5) * (kw < .85 ? 1 : (1 - kw) / .15); ban.style.transform = 'scale(' + (1 + Math.max(0, .25 - R.t) * 2) + ')';
+      if (Math.random() < dt * 5) this.emit(.2 + Math.random() * .6, R.gy + (R.team ? -1 : 1) * (.1 + Math.random() * .4), .15 + Math.random() * .2, 70, R.team ? 0x9fd4ff : 0xffb3be, .5, 1.3, 1); if (Math.random() < dt * 22) this.camFlash();
+      fade.style.opacity = Math.max(0, 1 - (R.wait - R.t) / CINE.blackIn); this.cheerK = 1; this.cineDbg = { ph: 'celebrate', ct: R.ct, r: 1, D: R.t - R.wait }; return null; }   // live celebration, dips to black at the end
     ban.style.opacity = 0; flash.style.opacity = 0; d.querySelector('.b3rep').style.opacity = 1; d.querySelector('.b3bars').style.opacity = 1;
-    var D = R.t - R.wait, T0 = R.F[0].t, phase, u = 0;
-    if (D < CINE.orbit) { phase = 'orbit'; R.ct = P.t0; u = D / CINE.orbit; }
-    else if (D < CINE.orbit + CINE.push) { phase = 'push'; u = (D - CINE.orbit) / CINE.push; var S = Z.a1 - P.t0, m1 = Math.min(1, CINE.slowP * P.k) * CINE.push, h00 = u * u * (3 - 2 * u), h11 = u * u * (u - 1); R.ct = P.t0 + S * h00 + m1 * h11; R.r = Math.min(1, CINE.slowP * P.k); }   // Hermite: from frozen (rate 0) to the pass slow-mo rate, fast in between
+    var D = R.t - R.wait, T0 = R.F[0].t, phase, u = 0, G = this.G, W3 = function (v) { return G.localToWorld(L3(v[0], v[1], v[2])); }, sm = function (x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+    if (D < CINE.orbit) { phase = 'orbit'; R.ct = P.t0; R.r = 0; u = D / CINE.orbit; }
+    else if (D < CINE.orbit + CINE.zoom) { phase = 'zoom'; R.ct = P.t0; R.r = 0; u = (D - CINE.orbit) / CINE.zoom; }
     else { R.r += (this.cineTgt(P, R.ct, R.r) - R.r) * (1 - Math.exp(-dt * CINE.ease)); R.ct += R.r * dt; phase = 'play';
-      if (R.ct >= Z.end) { R.hang = (R.hang || 0) + dt; if (R.hang > CINE.hang) { var fk = (R.hang - CINE.hang) / CINE.fade; fade.style.opacity = Math.min(1, fk); if (fk >= 1) { this.cineEndRep(R); return null; } } } }
-    var fr = frameAt(R.F, T0 + R.ct), show = { p: fr.p, u: fr.u, o: fr.o, a: fr.a, c: fr.c, z: fr.z, gc: fr.gc, sc: st.sc, sw: -1 }, G = this.G, W3 = function (v) { return G.localToWorld(L3(v[0], v[1], v[2])); };
+      if (R.ct >= Z.end - CINE.slowG * P.k * CINE.fade) fade.style.opacity = Math.min(1, (R.ct - (Z.end - CINE.slowG * P.k * CINE.fade)) / (CINE.slowG * P.k * CINE.fade)); else fade.style.opacity = 0;
+      if (R.ct >= Z.end) { this.cineEndRep(R); return null; } }
+    if (phase !== 'play') fade.style.opacity = phase === 'orbit' ? Math.max(0, 1 - D / CINE.blackIn) : 0;
+    var fr = frameAt(R.F, T0 + R.ct), show = { p: fr.p, u: fr.u, o: fr.o, a: fr.a, c: fr.c, z: fr.z, gc: fr.gc, sc: st.sc, sw: -1 };
     var cam = this.persp, want, look, zone = 'pass'; for (var q = 0; q < Z.Z.length; q++) if (R.ct < Z.Z[q][1]) { zone = Z.Z[q][3]; break; } if (R.ct >= Z.end) zone = 'goal';
     var pp = ppos(fr, P.pa), ps = ppos(fr, P.sh), pk = [fr.p[0], fr.p[1], .012 + (fr.z || 0)], side = pp[0] < .5 ? 1 : -1, nrm = [-P.pd[1] * side, P.pd[0] * side];
     var pcam = cineClamp(pp[0] - P.pd[0] * .2 + nrm[0] * .09, pp[1] - P.pd[1] * .2 + nrm[1] * .09, .075), plook = [pp[0] + P.pd[0] * .06, pp[1] + P.pd[1] * .06, .015];
-    if (phase !== 'play') { var th = P.thE - (1 - (phase === 'orbit' ? u * (2 - u) : 1)) * CINE.orbitDeg * Math.PI / 180, oc = cineClamp(.5 + CINE.orbitR[0] * Math.sin(th), L / 2 + CINE.orbitR[1] * Math.cos(th), CINE.orbitH), ol = [.5, L / 2, 0];
-      if (phase === 'orbit') { want = oc; look = ol; } else { var e = u * u * (3 - 2 * u); want = [lerp(oc[0], pcam[0], e), lerp(oc[1], pcam[1], e), lerp(oc[2], pcam[2], e)]; look = [lerp(ol[0], plook[0], e), lerp(ol[1], plook[1], e), lerp(ol[2], plook[2], e)]; }
-      R.cs = { p: W3(want) }; R.ls = { p: W3(look) }; cam.fov = CINE.fov + (phase === 'orbit' ? 6 : 6 * (1 - u)); }
-    else { if (zone === 'pass') { want = pcam; look = [lerp(plook[0], pk[0], .5), lerp(plook[1], pk[1], .5), .015]; }
-      else if (zone === 'travel' || zone === 'shot') { want = P.scam; look = zone === 'travel' ? [lerp(pk[0], ps[0], .5), lerp(pk[1], ps[1], .5), .015] : [lerp(ps[0], P.net[0], .35), lerp(ps[1], P.net[1], .35), .02]; }
-      else { want = P.fcam; look = [lerp(pk[0], P.net[0], .45), lerp(pk[1], P.net[1], .45), .02]; }
-      camLim(R.cs, W3(want), dt, CINE.cam.v, CINE.cam.a); camLim(R.ls, W3(look), dt, CINE.cam.lv, CINE.cam.la); cam.fov = CINE.fov; }
-    cam.aspect = W / H; cam.position.copy(R.cs.p); cam.up.set(0, 1, 0); cam.lookAt(R.ls.p); cam.updateProjectionMatrix(); R.zone = phase === 'play' ? zone : phase; this.cineDbg = { ph: R.zone, ct: R.ct, r: phase === 'orbit' ? 0 : R.r, D: D };
+    if (phase !== 'play') {   // frozen: orbit the whole bar, ending on the passer's bearing, then dive at him faster and faster
+      var bx = pcam[0] - .5, by = pcam[1] - L / 2, thE = Math.atan2(bx / CINE.orbitR[0], by / CINE.orbitR[1]), uo = phase === 'orbit' ? .5 - .5 * Math.cos(Math.PI * u) : 1, th = thE - (1 - uo) * CINE.orbitDeg * Math.PI / 180;
+      var oc = [.5 + CINE.orbitR[0] * Math.sin(th), L / 2 + CINE.orbitR[1] * Math.cos(th), CINE.orbitH], ol = [.5, L / 2, -.4];
+      if (phase === 'orbit') { want = oc; look = ol; cam.fov = CINE.zoomFov[0]; R.dofK = CINE.dofBar; }
+      else { var e = u * u * u, el = u * u * (3 - 2 * u); want = [lerp(oc[0], pcam[0], e), lerp(oc[1], pcam[1], e), lerp(oc[2], pcam[2], e)]; look = [lerp(ol[0], plook[0], el), lerp(ol[1], plook[1], el), lerp(ol[2], plook[2], el)]; cam.fov = lerp(CINE.zoomFov[0], CINE.zoomFov[1], el); R.dofK = lerp(CINE.dofBar, DOFK.replay, e); }
+      R.cs = { p: W3(want) }; R.ls = { p: W3(look) }; cam.near = .03; }
+    else { cam.near = .005; R.dofK = DOFK.replay; var direct = false;
+      if (zone === 'pass') { want = pcam; look = [lerp(plook[0], pk[0], .5), lerp(plook[1], pk[1], .5), .015]; }
+      else if (zone === 'travel' || zone === 'shot') { want = P.scam; look = zone === 'travel' ? [lerp(pk[0], ps[0], .6), lerp(pk[1], ps[1], .6), .015] : [lerp(ps[0], P.net[0], .3), lerp(ps[1], P.net[1], .3), .02]; }
+      else if (zone === 'fly' || R.ct < Z.g0 + CINE.final * CINE.pull.at) { want = P.fcam; look = [lerp(pk[0], P.net[0], .45), lerp(pk[1], P.net[1], .45), .02]; R.pull0 = null; }
+      else {   // last half: slow pull back revealing the goal, goalies, players and the bar
+        var kp = sm((R.ct - Z.g0 - CINE.final * CINE.pull.at) / (CINE.final * (1 - CINE.pull.at))); if (!R.pull0) R.pull0 = { p: R.cs.p.clone(), l: R.ls.p.clone() };
+        var wl = [lerp(pk[0], P.net[0], .45), lerp(pk[1], P.net[1], .45), .02], wl2 = [.5, P.gy - P.dir * .25, .03];
+        R.cs.p.copy(R.pull0.p).lerp(W3(P.pb), kp); R.ls.p.copy(R.pull0.l).lerp(W3([lerp(wl[0], wl2[0], kp), lerp(wl[1], wl2[1], kp), lerp(wl[2], wl2[2], kp)]), Math.min(1, kp * 1.5)); direct = true; cam.fov = CINE.fov + kp * 6; }
+      if (!direct) { camLim(R.cs, W3(want), dt, CINE.cam.v, CINE.cam.a); camLim(R.ls, W3(look), dt, CINE.cam.lv, CINE.cam.la); cam.fov = CINE.fov; } }
+    this.cheerK = R.ct >= P.tg ? 1 : 0; this.cheerRate = phase === 'play' ? R.r : 0;
+    cam.aspect = W / H; cam.position.copy(R.cs.p); cam.up.set(0, 1, 0); cam.lookAt(R.ls.p); cam.updateProjectionMatrix(); R.zone = phase === 'play' ? zone : phase; this.cineDbg = { ph: R.zone, ct: R.ct, r: R.r, D: D };
     return { show: show, cam: cam }; };
+  // patrons bounce while a goal is being celebrated (live + in the cinematic once the puck is in, at replay speed)
+  R3.prototype.cheerAnim = function (dt) { var P = this.pats; if (!P) return; var live = this.rep && !this.rep.cine && !this.rep.hl && this.rep.t < this.rep.wait, cine = this.rep && this.rep.cine; if (!cine) { this.cheerK = live ? 1 : 0; this.cheerRate = 1; }
+    this.chA = (this.chA || 0) + ((this.cheerK || 0) - (this.chA || 0)) * Math.min(1, dt * (cine ? 3 * (this.cheerRate || 0) + .01 : 3)); this.chT = (this.chT || 0) + dt * (cine ? (this.cheerRate || 0) : 1); var k = this.chA, t = this.chT;
+    for (var i = 0; i < P.length; i++) { var o = P[i], h = k * o.a * Math.abs(Math.sin(t * 6 + o.ph)); o.m[0].position.y = o.y[0] + h; o.m[1].position.y = o.y[1] + h; } };
   R3.prototype.replaying = function () { return !!this.rep; };
   // ---- highlights (TV): small capped clip buffer, post-game reel ----
   var HL = { cap: 14, pre: 3.0, post: 1.4, fps: 30, reel: 180, wait: 1.1, same: 1.2 };
@@ -435,8 +455,8 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
   // ---- v0.9.7 bar room proxy (TV): boxes around the table, warm dim lights; the rink keeps the brightest light ----
   var ROOM = { floor: -1.5, w: 26, d: 20, h: 5.5, warm: 0xffb36b, rink: .5 };   // game units (1 = .62 m); room is unlit MeshBasic (baked warm shading) so it costs ~nothing per pixel
   R3.prototype.buildRoom = function () { var G = this.G, R = new THREE.Group(), M = function (c) { return new THREE.MeshBasicMaterial({ color: c }); }, cx = L / 2, cz = .5, F = ROOM.floor;
-    function box(w, h, d, x, y, z, c) { var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M(c)); m.position.set(cx + x, y, cz + z); R.add(m); return m; }
-    function person(x, z, c, sit) { var hgt = sit ? 2.1 : 2.8, b = new THREE.Mesh(new THREE.CylinderGeometry(.3, .36, hgt * .62, 8), M(c)); b.position.set(cx + x, F + hgt * .31 + (sit ? .7 : 0), cz + z); R.add(b); var hd = new THREE.Mesh(new THREE.SphereGeometry(.2, 10, 8), M(0x4a3428)); hd.position.set(cx + x, F + hgt * .62 + .2 + (sit ? .7 : 0), cz + z); R.add(hd); }
+    var pats = []; function box(w, h, d, x, y, z, c) { var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M(c)); m.position.set(cx + x, y, cz + z); R.add(m); return m; }
+    function person(x, z, c, sit) { var hgt = sit ? 2.1 : 2.8, b = new THREE.Mesh(new THREE.CylinderGeometry(.3, .36, hgt * .62, 8), M(c)); b.position.set(cx + x, F + hgt * .31 + (sit ? .7 : 0), cz + z); R.add(b); var hd = new THREE.Mesh(new THREE.SphereGeometry(.2, 10, 8), M(0x4a3428)); hd.position.set(cx + x, F + hgt * .62 + .2 + (sit ? .7 : 0), cz + z); R.add(hd); pats.push({ m: [b, hd], y: [b.position.y, hd.position.y], ph: Math.random() * 6.3, a: sit ? .25 : .45 }); }
     var fl = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.w, ROOM.d), M(0x1e130c)); fl.rotation.x = -Math.PI / 2; fl.position.set(cx, F, cz); R.add(fl);
     [[0, ROOM.d / 2, ROOM.w, 0], [0, -ROOM.d / 2, ROOM.w, 0], [ROOM.w / 2, 0, ROOM.d, 1], [-ROOM.w / 2, 0, ROOM.d, 1]].forEach(function (q) { var wl = new THREE.Mesh(new THREE.PlaneGeometry(q[2], ROOM.h), M(0x2a1a12)); wl.position.set(cx + q[0], F + ROOM.h / 2, cz + q[1]); wl.rotation.y = q[3] ? (q[0] > 0 ? -Math.PI / 2 : Math.PI / 2) : (q[1] > 0 ? Math.PI : 0); R.add(wl); });
     box(1, 1.2, 1, -L / 2 - 2.2, F + .6, .4, 0x1c1a1e); box(1, 1.2, 1, L / 2 + 2.2, F + .6, -.5, 0x1c1a1e); person(-L / 2 - 3.4, -.6, 0x3a3a4a, false); person(L / 2 + 3.6, 1.0, 0x4a3030, false);   // stools / crates past both ends of the table
@@ -444,11 +464,19 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     for (var k = -3; k <= 3; k++) box(.25, .6, .25, k * 1.4, F + 2.6, 9.25, [0x3d7a3a, 0x9a5a20, 0x5a2a6a][(k + 3) % 3]);   // bottles
     [[-6, -5.5], [6.5, -5.8], [-8, 3], [8, 3.4]].forEach(function (t, i) { box(1.6, .08, 1.6, t[0], F + 1.2, t[1], 0x4a2e18); box(.16, 1.2, .16, t[0], F + .6, t[1], 0x1a100a); person(t[0] + 1.2, t[1] + .3, [0x5a5f7a, 0x7a4a4a, 0x4a6a5a, 0x6a5a3a][i], true); });
     [[-3, 6.4, 0x3a3448], [-.5, 6.5, 0x483c2a], [2.4, 6.3, 0x2c3440], [-4.5, -7, 0x382c2c], [4.8, -6.8, 0x2c2c3c]].forEach(function (q) { person(q[0], q[1], q[2], false); });
+    // v0.9.23 placeholder bar props (silhouettes): stools along the bar, pool table, dartboard, wall TV, neon sign, a crowd watching the table
+    for (var st2 = -4; st2 <= 4; st2 += 1.6) { box(.5, .08, .5, st2, F + 1.25, 6.4, 0x2a1a10); box(.1, 1.25, .1, st2, F + .62, 6.4, 0x140c08); }
+    box(4.4, .9, 2.4, -8.5, F + .45, -1.2, 0x2a1608); box(4, .06, 2, -8.5, F + .93, -1.2, 0x1f5a2c);   // pool table
+    var dart = new THREE.Mesh(new THREE.CircleGeometry(.5, 24), M(0x1a1a1a)); dart.position.set(cx - ROOM.w / 2 + .05, F + 2.6, cz - 4); dart.rotation.y = Math.PI / 2; R.add(dart); var dr = new THREE.Mesh(new THREE.RingGeometry(.2, .32, 24), M(0x8a2020)); dr.position.copy(dart.position); dr.position.x += .01; dr.rotation.y = Math.PI / 2; R.add(dr);
+    box(.15, 1.6, 2.8, ROOM.w / 2 - .1, F + 3, -2, 0x0a0a0a); var tvs = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 1.35), M(0x24486a)); tvs.position.set(cx + ROOM.w / 2 - .2, F + 3, cz - 2); tvs.rotation.y = -Math.PI / 2; R.add(tvs);   // wall TV
+    var nc = document.createElement('canvas'); nc.width = 256; nc.height = 64; var nx = nc.getContext('2d'); nx.font = 'bold 44px sans-serif'; nx.textAlign = 'center'; nx.shadowColor = '#ff4fa0'; nx.shadowBlur = 16; nx.fillStyle = '#ffd0ea'; nx.fillText('BUBBLE BAR', 128, 47);
+    var neon = new THREE.Mesh(new THREE.PlaneGeometry(4, 1), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(nc), transparent: true, depthWrite: false })); neon.position.set(cx, F + 4.4, cz + ROOM.d / 2 - .1); neon.rotation.y = Math.PI; R.add(neon);
+    [[-2.6, -3.2], [-1, -3.4], [.8, -3.3], [2.5, -3.1], [-2, 3.3], [0, 3.5], [2.2, 3.2], [-L / 2 - 2.6, 1.6], [L / 2 + 2.8, -1.4]].forEach(function (q, i) { person(q[0], q[1], [0x3a4a6a, 0x6a3a3a, 0x4a5a3a, 0x5a4a6a, 0x6a5a3a, 0x3a5a5a][i % 6], false); });   // crowd around the table
     // warm dim lamps (pendants over tables + bar); a cooler bright light over the rink itself
     var glowM = new THREE.SpriteMaterial({ map: dotTex('rgba(255,170,90,1)'), color: ROOM.warm, transparent: true, opacity: .35, depthWrite: false, blending: THREE.AdditiveBlending });
     [[-3, 7.5], [3, 7.5], [-6, -5.5], [6.5, -5.8], [-8, 3], [8, 3.4]].forEach(function (q) { var sh = new THREE.Mesh(new THREE.ConeGeometry(.4, .35, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffb860, side: THREE.DoubleSide })); sh.position.set(cx + q[0], F + 4.2, cz + q[1]); R.add(sh); var gw = new THREE.Sprite(glowM); gw.scale.set(3, 3, 1); gw.position.copy(sh.position); gw.position.y -= .3; R.add(gw); var pool = new THREE.Mesh(new THREE.CircleGeometry(1.4, 20), new THREE.MeshBasicMaterial({ color: 0x5a3a20, transparent: true, opacity: .5, depthWrite: false })); pool.rotation.x = -Math.PI / 2; pool.position.set(cx + q[0], F + .01, cz + q[1]); R.add(pool); });
     var sp = new THREE.SpotLight(0xf4f8ff, ROOM.rink, 6, .7, .6, 1); sp.position.set(cx, 2.4, cz); sp.target.position.set(cx, 0, cz); R.add(sp); R.add(sp.target);   // the one extra real light: over the rink
-    G.add(R); this.room = R; this.scene.children.forEach(function (o) { if (o.isHemisphereLight) { o.intensity = .42; o.groundColor.setHex(0x3a2a20); } }); this.gl.setClearColor(0x120a06); };
+    G.add(R); this.room = R; this.pats = pats; this.scene.children.forEach(function (o) { if (o.isHemisphereLight) { o.intensity = .42; o.groundColor.setHex(0x3a2a20); } }); this.gl.setClearColor(0x120a06); };
   // ---- v0.9.7 broadcast camera (TV default): gentle 3/4 view from the near side, low enough that puck lift reads ----
   var BCAST = { side: -.62, h: .62, back: 0, fov: 40, follow: .55, across: .25, k: 1.1, look: -.04 };
   R3.BCAST = BCAST;
