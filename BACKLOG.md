@@ -299,6 +299,7 @@ Cheap / near-free extras that don't touch core play.
 - [ ] Personality beats: goalie sips and spits water after a big save, etc.
 - [ ] Benches with manual or auto line changes, simple and arcade.
 - [ ] Arcade fight system (punch/grab), Base Wars style where fights decide outcomes; maybe grab improvised items like a water bottle near the opposing bench.
+- [ ] Simple, hard-hitting fight system between arcade hockey and wrestling with big special finishers. Suplexes crack the ice; blood spray. An original ice resurfacer (not the trademarked Zamboni name) runs before the 3rd period: it clears the blood, but cracks persist with a bronze stain where blood remained. Family-friendly filter softens the gore/effects.
 - [ ] Visual wear during a game: layered textures across team jerseys/colours: scuffs, visors crack/break, helmets knocked off and replaced but scuffed.
 - [ ] Speed-ramped instant replays (slow-mo pass, fast to receiver, slow-mo bendy-stick slapshot, fast to net, slow-mo goal).
 - [ ] Bar background events driven by momentum, streaks, fights, etc. (reactions visible in replays).
