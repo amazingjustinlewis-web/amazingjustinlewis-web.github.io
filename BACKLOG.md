@@ -251,6 +251,11 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Sim.input now records iev = [counter, team, ev, target, carrier before] in snaps (data only) so the phone knows what an input did even over the network.
 - [ ] Over the network the phone only sees ~30 state messages/s, so a one-frame result (post, save, pop-up) can be missed; whistles, goals, possession changes and checks are reliable.
 
+## Bubble Hockey v0.9.26 (done): possession border + zigzag deke
+- PGLOW (view3d.js): line round the whole rink in the possessing team's colour (red team 0 / blue team 1), quick fade on change; TV adds a soft additive glow, phone = plain line. ?pglow=0 off.
+- DEKE (sim.js): carrier's thumb zigzags side to side (each swing >= .035 rink, 2 reversals within 1 s) -> wide side-to-side deke (follows the current side), slight lateral drift on the peg; a shot during the deke releases from that side and leans aim toward it. ?deke=0 off. Move report: 'zigzag DEKE', 'deke shot released left/right side'.
+- Caveat: the deke works for any carrier held by a thumb (not limited to the centre / up-ice).
+
 ## Bubble Hockey v0.9.25 (done): max rip + dispenser serves
 - Flick power (unchanged): phone finger speed >= 0.9 rink/s counts as a flick; power = speed x 0.5 clamped 0.8..3.4. Pass speed 0.8..2.2; shot (aimed at the net, power > 1.6) = power x 1.1 clamped 1.4..3.5.
 - RIP block in sim.js (fire 3.0 / net 3.2 / glass 3.35, burn 2.2 s, minSp 1.2). ?rip=0 off, ?riplo=1 lowers thresholds by .8 for testing.
@@ -305,6 +310,11 @@ Cheap / near-free extras that don't touch core play.
 - [ ] Personality beats: goalie sips and spits water after a big save, etc.
 - [ ] Benches with manual or auto line changes, simple and arcade.
 - [ ] Arcade fight system (punch/grab), Base Wars style where fights decide outcomes; maybe grab improvised items like a water bottle near the opposing bench.
+- [ ] Four ORIGINAL public teams: subtly mythological but grounded, visceral Alberta / North American hockey look (jerseys, patches, crests; more gear that can come off), distinct colours blue / red / green / yellow.
+- [ ] Private pitch build only (not a public team): a Red Deer Rebels jersey with a 'black hat' nod, shown to the Rebels after bar testing goes well (needs their OK / licence). Public teams stay original.
+- [ ] Wraparound gear-shift gesture: up, slide sideways, start back -> engine predicts a sharp spin-around backwards; flick forward = snapshot; no flick = just settle after the spin.
+- [ ] After the opening faceoff, any thumb-mash / tap / slide check or stick-check action can trigger the big reach-grab for initial possession, then normal physics and ragdoll blends.
+- [ ] BACK-BURNER (doc only, don't build yet; ship balanced and clean first): team traits by colour (e.g. red hits slightly harder) with a 'Team traits / Balanced' toggle, plus team-specific fight moves/finishers.
 - [ ] Simple, hard-hitting fight system between arcade hockey and wrestling with big special finishers. Suplexes crack the ice; blood spray. An original ice resurfacer (not the trademarked Zamboni name) runs before the 3rd period: it clears the blood, but cracks persist with a bronze stain where blood remained. Family-friendly filter softens the gore/effects.
 - [ ] Visual wear during a game: layered textures across team jerseys/colours: scuffs, visors crack/break, helmets knocked off and replaced but scuffed.
 - [ ] Speed-ramped instant replays (slow-mo pass, fast to receiver, slow-mo bendy-stick slapshot, fast to net, slow-mo goal).

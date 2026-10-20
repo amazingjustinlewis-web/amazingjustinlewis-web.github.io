@@ -242,6 +242,7 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     if (st.bpg && this.lastBpg != null && st.bpg[0] !== this.lastBpg && !this.rep) { var bi = st.bpg[1], bq = B.pos(B.TR[bi], st.u[bi]), bo = st.o ? st.o[bi] : [0, 0], bx = bq[0] + bo[0] - st.bpg[2] * B.R * .5, by = bq[1] + bo[1] - st.bpg[3] * B.R * .5; this.emit(bx, by, .03, BPING.n, 0xfff2c0, BPING.sp, .35, 1); this.bShake = BPING.t; bthud(); }
     if (st.bpg) this.lastBpg = st.bpg[0];
     this.ripFx(st, dt);
+    this.possFx(st, dt);
     if (this.bShake > 0) { this.bShake -= dt; var ka = Math.max(0, this.bShake / BPING.t) * BPING.amp, jx = (Math.random() - .5) * ka, jz = (Math.random() - .5) * ka; if (this.arena) { this.arena.position.x = L / 2 + jx; this.arena.position.z = .5 + jz; } (this.proc || []).forEach(function (m) { if (m.userData.p0 == null) m.userData.p0 = m.position.clone(); m.position.set(m.userData.p0.x + jx, m.userData.p0.y, m.userData.p0.z + jz); }); if (this.bShake <= 0) { if (this.arena) this.arena.position.set(L / 2, 0, .5); (this.proc || []).forEach(function (m) { if (m.userData.p0) m.position.copy(m.userData.p0); }); } }
     if ((st.ev === 'post' || st.ev === 'bar') && this.lastPing !== st) { this.lastPing = st; ping(); }
     if (st.wh != null && this.lastWh != null && st.wh !== this.lastWh) whistle(); this.lastWh = st.wh;
@@ -367,6 +368,19 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     if (this.srvPulse > 0) { this.srvPulse -= Math.min(.05, Math.max(dt, .016)); if (!this.srvRing) { this.srvRing = new THREE.Mesh(new THREE.RingGeometry(.012, .03, 24), new THREE.MeshBasicMaterial({ color: 0xff8a20, transparent: true, depthWrite: false, side: THREE.DoubleSide })); this.srvRing.rotation.x = -Math.PI / 2; this.srvRing.position.copy(L3(.5, B.L / 2, .002)); this.G.add(this.srvRing); } var pf = Math.max(0, this.srvPulse / .5); this.srvRing.material.opacity = pf; this.srvRing.scale.setScalar(1 + (1 - pf) * 1.5); this.srvRing.visible = pf > 0; } };
   // world-space (group-local) emitter for the flame trail
   R3.prototype.emitW = function (x, y, z, col, spd, life, grav) { if (this.parts.length >= this.NP) return; var c = new THREE.Color(col), a = Math.random() * 7, v = spd * (.3 + Math.random() * .7); this.parts.push({ p: new THREE.Vector3(x, y, z), v: new THREE.Vector3(Math.cos(a) * v * .4, v * .5, Math.sin(a) * v * .4), l: life * (.6 + Math.random() * .4), l0: life, c: c, g: grav }); };
+  // v0.9.26 possession border: a line round the whole rink in the colour of the team with the puck (fades over fade s when it changes). TV adds a soft additive glow; phone = plain colour line. ?pglow=0 off
+  var PGLOW = { on: !/[?&]pglow=0/.test(location.search), col: [0xff5a6e, 0x3aa8ff], h: .074, glow: .6, line: .95, fade: .35, pad: .015 };
+  R3.prototype.possFx = function (st, dt) { if (!PGLOW.on) return; var me = this, P = this.pB;
+    if (!P) { var r = .12 + PGLOW.pad, x0 = -PGLOW.pad, y0 = -PGLOW.pad, w = L + 2 * PGLOW.pad, hh = 1 + 2 * PGLOW.pad, sh = new THREE.Shape(); sh.moveTo(x0 + r, y0); sh.lineTo(x0 + w - r, y0); sh.quadraticCurveTo(x0 + w, y0, x0 + w, y0 + r); sh.lineTo(x0 + w, y0 + hh - r); sh.quadraticCurveTo(x0 + w, y0 + hh, x0 + w - r, y0 + hh); sh.lineTo(x0 + r, y0 + hh); sh.quadraticCurveTo(x0, y0 + hh, x0, y0 + hh - r); sh.lineTo(x0, y0 + r); sh.quadraticCurveTo(x0, y0, x0 + r, y0);
+      var pts = sh.getSpacedPoints(160).map(function (q) { return new THREE.Vector3(q.x, PGLOW.h, q.y); }), cv = new THREE.CatmullRomCurve3(pts, true);
+      P = this.pB = { col: new THREE.Color(PGLOW.col[0]), tgt: -1, a: 0 };
+      P.line = new THREE.Mesh(new THREE.TubeGeometry(cv, 320, this.phone ? .006 : .004, 6, true), new THREE.MeshBasicMaterial({ color: P.col, transparent: true, opacity: 0, depthWrite: false })); this.G.add(P.line);
+      if (!this.phone) { P.glow = new THREE.Mesh(new THREE.TubeGeometry(cv, 320, .018, 8, true), new THREE.MeshBasicMaterial({ color: P.col, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending })); this.G.add(P.glow); } }
+    var tm = st.c >= 0 ? (st.c < 6 ? 0 : 1) : P.tgt; if (st.pg || (st.pz > 0 && st.c < 0)) tm = -1;
+    if (tm !== P.tgt) { P.tgt = tm; P.dip = 1; }
+    if (P.dip > 0) { P.dip -= dt / PGLOW.fade; if (P.dip <= .5 && P.tgt >= 0) P.col.setHex(PGLOW.col[P.tgt]); }
+    var want = P.tgt >= 0 ? 1 : 0, dipK = P.dip > 0 ? Math.abs(P.dip - .5) * 2 : 1; P.a += (want - P.a) * Math.min(1, dt / PGLOW.fade * 3); var k = P.a * dipK, pulse = .85 + .15 * Math.sin(performance.now() / 260);
+    P.line.material.color.copy(P.col); P.line.material.opacity = k * PGLOW.line; if (P.glow) { P.glow.material.color.copy(P.col); P.glow.material.opacity = k * PGLOW.glow * pulse; } };
   var BPING = { n: 14, sp: .35, t: .16, amp: .006 };   // v0.9.24 board ping fx: sparks, spark speed, shake s, shake amplitude (units)
   R3.BPING = BPING;
   var CINE = { on: !/[?&]cine=0/.test(location.search), wait: 3.0, blackIn: .35, orbit: 3.6, orbitDeg: 300, orbitR: [6.5, 8.5], orbitH: 2.0, zoom: 1.6, zoomFov: [58, 44],
