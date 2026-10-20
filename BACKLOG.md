@@ -314,6 +314,10 @@ Cheap / near-free extras that don't touch core play.
   - Red / fire: bison or firebird. Blue / ice: wolf or owl. Green / forest trickster: lynx, raven or antlered spirit. Yellow: the Hornets (name locked; anthropomorphic).
   - Modes: Balanced = clean, normal teams. Abilities = subtle creature mutations (ties into the team-traits toggle below).
   - Scope: after the base skater / goalie / ref models exist, just 4 extra mutated models + extra animations.
+- [ ] Design rule: mythological but very grounded designs.
+- [ ] Goalie masks: each team's goalie gets a hardcore custom mask (regular and creature versions).
+- [ ] Venues / surfaces, selectable for any team: regular arcade bar, dive bar, high-class lounge, a completely frozen place (crowd shivering), and an expansive never-ending nature bar where the lights trickle away through the trees and fade off. Crowd interest behaviour is the same everywhere (bored -> eyes on the glass).
+- [ ] Menu structure: basic 'Play Now' = clean, regular samurai-style hockey. All customization (teams, abilities/mutations, venues, surfaces) sits as options on top.
 - [ ] Private pitch build only (not a public team): a Red Deer Rebels jersey with a 'black hat' nod, shown to the Rebels after bar testing goes well (needs their OK / licence). Public teams stay original.
 - [ ] Wraparound gear-shift gesture: up, slide sideways, start back -> engine predicts a sharp spin-around backwards; flick forward = snapshot; no flick = just settle after the spin.
 - [ ] After the opening faceoff, any thumb-mash / tap / slide check or stick-check action can trigger the big reach-grab for initial possession, then normal physics and ragdoll blends.
