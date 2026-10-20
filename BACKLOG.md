@@ -251,6 +251,15 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Sim.input now records iev = [counter, team, ev, target, carrier before] in snaps (data only) so the phone knows what an input did even over the network.
 - [ ] Over the network the phone only sees ~30 state messages/s, so a one-frame result (post, save, pop-up) can be missed; whistles, goals, possession changes and checks are reliable.
 
+## Bubble Hockey v0.9.22 (done): one-timer cinematic replay (TV)
+- Triggers only when the goal is a clean one-timer: sim ev 'onetimer' by the scoring team, a teammate had the puck before the pass, nobody controlled it after the shot, goal within CINE.maxGap s. Everything else keeps the normal 3-angle replay.
+- Tunables in one place: CINE in bubble/view3d.js { wait 1.2, orbit 2.0, orbitDeg 200, orbitR [.40,.60], orbitH .26, push .9, poss .9, preP .30, postP .10, preS .22, postS .10, preG .12, postG .32, short .26, slowP .16, slowS .13, slowG .11, fast 1.7, hangRate .025, hang 1.2, fade .6, ease 7, look .28, budget 15.0, maxGap 2.2, cam {v 2.6, a 11, lv 2.6, la 13}, domeQ .85, edge .035, fov 48 }. Slow rates scale up automatically if the plan would run past the goal pause (budget).
+- Sequence: freeze + orbit (inside the dome) -> Hermite push-in (time fast, eases into the pass slow-mo) -> pass slow-mo -> fast travel -> shooter cam (best of 24 ring angles framing shooter + net) slow-mo -> fast flight (skipped when the shot starts within CINE.short of the goal) -> final net-side slow-mo, hang, fade -> skip to the faceoff. Camera clamped inside boards + glass dome.
+- Switches: ?cine=0 off; dev: ?cinetest=1 or key C stages a scripted one-timer goal (computer players paused, retries until a clean one-timer scores); ?fixdt=1 fixed 1/60 s steps; window.BHHOLD/BHSTEPN frame stepping for headless capture.
+- Phone: st.rp = 1 while the TV runs it; pad shows REPLAY + Skip (sends skip; the goal pause cuts to the faceoff).
+- [ ] Real-TV check of pacing and camera angles; tune CINE with Justin. Skater GLB poses during the slow-mo are still the glide loop.
+- [ ] Pre-existing: AI-vs-AI regression saw the puck ~0.008 past the end boards once in 20 games (out-of-bounds check), sim unchanged this version.
+
 ## Bubble Hockey v0.9.21 (done): body checks + nearest-player puck gravity
 - KNOCK.p .65 (was .5). KD { on (?kd=0), min .8, p .55, t0 .6, t1 .9, push .35 } in sim.js: chance = p x (check speed - min)/(CHK.hard - min), only below big-hit strength (big hits keep the 1.5 s slide). fx kind 'K', snap kdn [n, hit, checker] + kd (remaining fraction).
 - GRAV { r .2, k .9, vslow .15, ramp 1 }: nearest player's blade (any team, not knocked down), strength (1 - speed/vslow)^3 x cubed smoothstep of slow time / ramp x (1 - d/r). AI-vs-AI dead-puck whistles 28 -> 17 per 30 games.

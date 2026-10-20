@@ -110,7 +110,7 @@
   R3.prototype.dom = function () {
     var d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:6;overflow:hidden';
     d.innerHTML = '<div class="b3flash" style="position:absolute;inset:0;opacity:0;background:radial-gradient(circle,#fff,#fff0 70%)"></div><div class="b3ban" style="position:absolute;left:0;right:0;top:38%;text-align:center;font:700 16vmin Fredoka,sans-serif;opacity:0;-webkit-text-stroke:3px #0008"></div>' +
-      '<div class="b3rep" style="position:absolute;left:3vw;top:3vh;font:700 3.6vmin Fredoka,sans-serif;color:#fff;background:#d8344c;padding:.3em .8em;border-radius:.4em;opacity:0">\u25CF INSTANT REPLAY <span style="font-weight:400;opacity:.8;font-size:.7em">\u00b7 tap to skip</span></div><div class="b3bars" style="position:absolute;inset:0;opacity:0;box-shadow:inset 0 9vh 0 #000,inset 0 -9vh 0 #000"></div>';
+      '<div class="b3rep" style="position:absolute;left:3vw;top:3vh;font:700 3.6vmin Fredoka,sans-serif;color:#fff;background:#d8344c;padding:.3em .8em;border-radius:.4em;opacity:0">\u25CF INSTANT REPLAY <span style="font-weight:400;opacity:.8;font-size:.7em">\u00b7 tap to skip</span></div><div class="b3fade" style="position:absolute;inset:0;background:#000;opacity:0;pointer-events:none"></div><div class="b3bars" style="position:absolute;inset:0;opacity:0;box-shadow:inset 0 9vh 0 #000,inset 0 -9vh 0 #000"></div>';
     document.body.appendChild(d); this.d = d; this.flashes = [];
   };
   // breakaway: carrier with no skater (goalie excluded) between him and the net within BREAK.dist. Camera eases toward that end.
@@ -190,12 +190,14 @@
   R3.prototype.render = function (st, dt, opt) {
     opt = opt || {}; this.clock += dt; this.chkFx(st, dt); var W = this.cv.clientWidth, H = this.cv.clientHeight; if (this.W !== W || this.H !== H) { this.W = W; this.H = H; this.gl.setSize(W, H, false); }
     // record history (skip while paused)
-    if (!this.rep && (!(st.pz > 0) || st.pg)) { this.hist.push({ t: this.clock, p: st.p.slice(), u: st.u.slice(), o: (st.o || st.u.map(function () { return [0, 0]; })).map(function (q) { return q.slice(); }), a: (st.a || st.u.map(function () { return 0; })).slice(), c: st.c, z: st.z || 0, gc: st.gc ? st.gc.slice() : null });
+    if (!this.rep && (!(st.pz > 0) || st.pg)) { this.hist.push({ t: this.clock, p: st.p.slice(), u: st.u.slice(), o: (st.o || st.u.map(function () { return [0, 0]; })).map(function (q) { return q.slice(); }), a: (st.a || st.u.map(function () { return 0; })).slice(), c: st.c, z: st.z || 0, e: st.ev || '', gc: st.gc ? st.gc.slice() : null });
       while (this.hist.length && this.hist[0].t < this.clock - 5) this.hist.shift(); }
     // buzzer right before the puck is spat out (pz counts down; pop starts at .55)
     if (st.pz > .02 && st.pz < .5 && !this.buzzed) { this.buzzed = true; buzz(); } if (!(st.pz > 0)) this.buzzed = false;
+    var fdv = this.d.querySelector('.b3fade'); if (this.fadeOut > 0) { this.fadeOut -= dt; fdv.style.opacity = Math.max(0, this.fadeOut / CINE.fade); } else if (!(this.rep && this.rep.cine)) fdv.style.opacity = 0;
+    if (this.phone && st.rp && this.rep && !this.rep.hl) { this.rep = null; this.d.querySelector('.b3rep').style.opacity = 0; this.d.querySelector('.b3ban').style.opacity = 0; this.d.querySelector('.b3flash').style.opacity = 0; }
     // tap-to-skip: the sim cut the pause short, so end the replay too
-    if (this.rep && st.pz > 0 && st.pz < 1.1) { this.rep = null; this.d.querySelector('.b3rep').style.opacity = 0; this.d.querySelector('.b3bars').style.opacity = 0; this.d.querySelector('.b3ban').style.opacity = 0; this.d.querySelector('.b3flash').style.opacity = 0; }
+    if (this.rep && st.pz > 0 && st.pz < 1.1) { if (this.rep.cine) this.fadeOut = CINE.fade * .5; this.rep = null; this.d.querySelector('.b3rep').style.opacity = 0; this.d.querySelector('.b3bars').style.opacity = 0; this.d.querySelector('.b3ban').style.opacity = 0; this.d.querySelector('.b3flash').style.opacity = 0; }
     // goal detection by score change (works on remote phones too)
     var tot = st.sc[0] + st.sc[1]; if (this.sc != null && tot > this.sc && this.hist.length > 10) this.goal(st.sc[0] > this.lastSc[0] ? 0 : 1);
     this.sc = tot; this.lastSc = st.sc.slice();
@@ -203,7 +205,8 @@
     if (!this.phone) this.hlRec(st);
     var cam = this.setTop(opt.action ? st : null, dt), show = st, MO = opt.moment && !this.rep ? opt.moment : null, R = this.rep, flash = this.d.querySelector('.b3flash'), ban = this.d.querySelector('.b3ban');
     if (R && st.pg) R.F.push({ t: this.clock, p: st.p.slice(), u: st.u.slice(), o: (st.o || st.u.map(function () { return [0, 0]; })).map(function (q) { return q.slice(); }), a: (st.a || st.u.map(function () { return 0; })).slice(), c: st.c, z: st.z || 0, gc: st.gc ? st.gc.slice() : null });
-    if (R) { R.t += (this.phone && R.t >= R.wait && (this.pzc || 0) < .97) ? 0 : dt; var T = R.t - R.wait;   // phones: hold the cut until the zip-zoom-in has landed
+    if (R && R.cine) { var crs = this.cineStep(R, st, dt, W, H); if (crs) { show = crs.show; cam = crs.cam; } else R = null; }
+    else if (R) { R.t += (this.phone && R.t >= R.wait && (this.pzc || 0) < .97) ? 0 : dt; var T = R.t - R.wait;   // phones: hold the cut until the zip-zoom-in has landed
       if (R.t < R.wait && R.hl) { var k = R.t / R.wait; flash.style.opacity = 0; ban.style.opacity = Math.min(1, R.t * 3) * (k < .75 ? 1 : (1 - k) / .25) * .85; ban.style.transform = 'scale(1)'; }
       else if (R.t < R.wait) { var k = R.t / R.wait; flash.style.opacity = Math.max(0, .85 - k * 2.5) * (1 + Math.sin(R.t * 40) * .2); ban.style.opacity = Math.min(1, R.t * 5) * (k < .85 ? 1 : (1 - k) / .15); ban.style.transform = 'scale(' + (1 + Math.max(0, .25 - R.t) * 2) + ')';
         if (Math.random() < dt * 5) { var gy = R.team ? L - B.GY : B.GY; this.emit(.2 + Math.random() * .6, gy + (R.team ? -1 : 1) * (.1 + Math.random() * .4), .15 + Math.random() * .2, 70, R.team ? 0x9fd4ff : 0xffb3be, .5, 1.3, 1); }
@@ -288,6 +291,7 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
         else if (/boards/.test(o.name)) o.material.side = THREE.DoubleSide; });
       self.G.add(A); self.arena = A; proc.forEach(function (m) { m.visible = false; }); }, undefined, function () { /* keep the procedural arena */ }); };
   R3.prototype.goal = function (team) { var nl = this.nets[team] && this.nets[team].userData.light; if (nl) { nl.t = 4.5; nl.rep = true; }
+    if (CINE.on && !this.phone && !this.reelOn) { var cp = this.cinePlan(team); if (cp) { var bn = this.d.querySelector('.b3ban'); bn.textContent = 'GOAL!'; bn.style.fontSize = ''; bn.style.color = team ? '#3aa8ff' : '#ff5a6e'; this.rep = cp; this.lastCine = cp.cine; return; } }
     var F = this.hist.slice(); while (F.length > 2 && Math.hypot(F[F.length - 1].p[0] - .5, F[F.length - 1].p[1] - L / 2) < .02) F.pop();   // drop the reset frame
     var D = this.phone ? 2.0 : 3.6, t1 = F[F.length - 1].t; F = F.filter(function (f) { return f.t >= t1 - D; }); if (F.length < 4) return; D = t1 - F[0].t;
     var ban = this.d.querySelector('.b3ban'); ban.textContent = 'GOAL!'; ban.style.fontSize = ''; ban.style.color = team ? '#3aa8ff' : '#ff5a6e';
@@ -322,6 +326,79 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
       var lie = t < .3 ? t / .3 : F.down < .5 ? F.down / .5 : 1; g.rotation.set(0, g.rotation.y + F.spin * dt * (1 - t / 2.2), 0); g.rotateX(lie * Math.PI / 2 * .95); g.position.y = lie * .008; if (F.down <= 0) { F.down = 0; g.rotation.set(0, 0, 0); g.position.y = 0; } }
     else { var dx = tx - F.x, dy = ty - F.y, m = Math.hypot(dx, dy), v = .5; if (m > .01) { var k = Math.min(m, v * dt) / m; F.x += dx * k; F.y += dy * k; F.hd = Math.atan2(dx, dy); } g.rotation.set(0, F.hd, 0); }
     F.x = Math.max(.04, Math.min(.96, F.x)); F.y = Math.max(.12, Math.min(L - .12, F.y)); g.position.x = F.y; g.position.z = F.x; };
+  // ---- v0.9.22 one-timer cinematic (TV): speed-ramped replay of pass -> one-timer -> goal, built on the recorded history ----
+  // Only after a one-timer goal (sim ev 'onetimer' by the scoring team, preceded by a teammate's possession). ?cine=0 disables.
+  // Timeline is in game-time zones; replay rate eases toward each zone's target (look-ahead so it slows before the moment, never a hard cut).
+  var CINE = { on: !/[?&]cine=0/.test(location.search), wait: 1.2, orbit: 2.0, orbitDeg: 200, orbitR: [.40, .60], orbitH: .26, push: .9, poss: .9,
+    preP: .30, postP: .10, preS: .22, postS: .10, preG: .12, postG: .32, short: .26,
+    slowP: .16, slowS: .13, slowG: .11, fast: 1.7, hangRate: .025, hang: 1.2, fade: .6, ease: 7, look: .28, budget: 15.0, maxGap: 2.2,
+    cam: { v: 2.6, a: 11, lv: 2.6, la: 13 }, domeQ: .85, edge: .035, fov: 48 };
+  R3.CINE = CINE; root.BubbleCINE = CINE;
+  function ppos(f, i) { var q = B.pos(B.TR[i], f.u[i]), o = f.o ? f.o[i] : [0, 0]; return [q[0] + o[0], q[1] + o[1]]; }
+  function cineClamp(x, y, h) { x = Math.max(CINE.edge, Math.min(1 - CINE.edge, x)); y = Math.max(CINE.edge, Math.min(L - CINE.edge, y)); h = Math.max(.03, h);   // inside the boards, above the ice
+    var dx = (x - .5) / .70, dy = (y - L / 2) / 1.05, dz = h / .58, q = dx * dx + dy * dy + dz * dz;   // and inside the glass dome (sim DOME ellipsoid)
+    if (q > CINE.domeQ) { var k = Math.sqrt(CINE.domeQ / q); x = .5 + (x - .5) * k; y = L / 2 + (y - L / 2) * k; h = Math.max(.03, h * k); } return [x, y, h]; }
+  R3.prototype.cineNo = function (why) { this.cineWhy = why; return null; };
+  R3.prototype.cinePlan = function (team) { this.cineWhy = '';
+    var F = this.hist.slice(); while (F.length > 2 && Math.hypot(F[F.length - 1].p[0] - .5, F[F.length - 1].p[1] - L / 2) < .02) F.pop(); var n = F.length; if (n < 20) return this.cineNo('short history');
+    var k = -1; for (var q = n - 1; q >= 0; q--) if (F[q].e === 'onetimer') { k = q; break; } if (k < 0) return this.cineNo('no one-timer in history'); if (F[n - 1].t - F[k].t > CINE.maxGap) return this.cineNo('one-timer too long before the goal');
+    for (var q2 = k + 1; q2 < n; q2++) if (F[q2].c >= 0) return this.cineNo('controlled after the shot');   // somebody controlled it after the shot: not a clean one-timer goal
+    var gy = team ? L - B.GY : B.GY, dir = team ? 1 : -1, pk = F[k].p, sh = -1, sd = 9;
+    for (var i = team * 6; i < team * 6 + 6; i++) { if (B.TR[i].k === 'G') continue; var p = ppos(F[k], i), d = Math.hypot(p[0] - pk[0], p[1] - pk[1]); if (d < sd) { sd = d; sh = i; } }
+    for (var q5 = k; q5 >= Math.max(0, k - 3); q5--) { var cc = F[q5].c; if (cc >= 0 && (cc < 6 ? 0 : 1) === team && B.TR[cc].k !== 'G') { sh = cc; break; } }   // the receiver is the carrier for a frame before the release
+    var j = -1; for (var q3 = k - 1; q3 >= 0; q3--) if (F[q3].c >= 0 && F[q3].c !== sh) { j = q3; break; } if (j < 0 || sh < 0) return this.cineNo('no pass before the shot'); var pa = F[j].c; if (pa === sh || (pa < 6 ? 0 : 1) !== team) return this.cineNo('previous carrier not a teammate');
+    var j0 = j; while (j0 > 0 && F[j0 - 1].c === pa && F[j].t - F[j0 - 1].t < CINE.poss) j0--;
+    var T0 = F[0].t, t0 = Math.max(0, F[j0].t - T0 - .15), tpr = F[j].t - T0, ts = F[k].t - T0, tg = F[n - 1].t - T0;
+    for (var q4 = k; q4 < n; q4++) if ((F[q4].p[1] - gy) * dir > 0) { tg = F[q4].t - T0; break; }
+    var ps = ppos(F[k], sh), pp = ppos(F[j], pa), pd = [ps[0] - pp[0], ps[1] - pp[1]], pm = Math.hypot(pd[0], pd[1]) || 1; pd = [pd[0] / pm, pd[1] / pm];
+    var net = [.5, gy + dir * .015], shortShot = Math.hypot(pk[0] - net[0], pk[1] - net[1]) < CINE.short;
+    // shooter angle: ring of candidates around the shooter; want shooter + net both in frame (small angular separation, shooter nearer), puck arriving from the side, inside dome/boards
+    var best = null; for (var a = 0; a < 24; a++) { var th = a / 24 * Math.PI * 2, c = cineClamp(ps[0] + Math.cos(th) * .24, ps[1] + Math.sin(th) * .24, .085), moved = Math.hypot(c[0] - ps[0] - Math.cos(th) * .24, c[1] - ps[1] - Math.sin(th) * .24);
+      var vs = [ps[0] - c[0], ps[1] - c[1]], vn = [net[0] - c[0], net[1] - c[1]], ds = Math.hypot(vs[0], vs[1]) || 1, dn = Math.hypot(vn[0], vn[1]) || 1, sep = Math.acos(Math.max(-1, Math.min(1, (vs[0] * vn[0] + vs[1] * vn[1]) / ds / dn))) * 180 / Math.PI;
+      var sc = Math.abs(sep - 16) / 10 + (sep > CINE.fov * .42 ? 5 : 0) + (dn < ds ? 4 : 0) + moved * 20 + Math.abs((vs[0] * pd[0] + vs[1] * pd[1]) / ds) * .6;
+      if (!best || sc < best.s) best = { s: sc, c: c }; }
+    // final angle: beside the net on the shooter's side, a little out from the goal line and raised; sees shooter, puck path and the mouth
+    var sx = ps[0] < .5 ? -1 : 1, fc = cineClamp(.5 + sx * .2, gy - dir * .17, .1);
+    var orbE = cineClamp(pp[0] - pd[0] * .3, pp[1] - pd[1] * .3, CINE.orbitH), thE = Math.atan2((orbE[0] - .5) / CINE.orbitR[0], (orbE[1] - L / 2) / CINE.orbitR[1]);
+    var P = { F: F, team: team, gy: gy, dir: dir, sh: sh, pa: pa, pd: pd, net: net, t0: t0, tpr: tpr, ts: ts, tg: tg, shortShot: shortShot, scam: best.c, fcam: fc, thE: thE, k: 1 };
+    // zones (game time from F[0]); rates scaled down/up so the whole thing fits the goal pause
+    for (var it = 0; it < 6; it++) { var tot = this.cineDur(P); if (tot <= CINE.budget) break; P.k *= 1.18; }
+    P.est = this.cineDur(P); return { cine: P, F: F, team: team, t: 0, wait: CINE.wait, segs: [], gy: gy, dir: dir, ct: t0, r: 0 };
+  };
+  R3.prototype.cineZones = function (P) { var s = function (r) { return Math.min(1, r * P.k); }, a1 = Math.max(P.t0 + .05, P.tpr - CINE.preP), Z = [];
+    Z.push([a1, P.tpr + CINE.postP, s(CINE.slowP), 'pass']);
+    if (P.ts - CINE.preS > P.tpr + CINE.postP) Z.push([P.tpr + CINE.postP, P.ts - CINE.preS, CINE.fast, 'travel']);
+    Z.push([Math.max(P.tpr + CINE.postP, P.ts - CINE.preS), P.ts + CINE.postS, s(CINE.slowS), 'shot']);
+    var g0 = P.shortShot ? P.ts + CINE.postS : Math.max(P.ts + CINE.postS, P.tg - CINE.preG); if (g0 > P.ts + CINE.postS) Z.push([P.ts + CINE.postS, g0, CINE.fast, 'fly']);
+    Z.push([g0, P.tg + CINE.postG, s(CINE.slowG), 'goal']); return { a1: a1, Z: Z, end: P.tg + CINE.postG }; };
+  R3.prototype.cineRate = function (P, c) { var Z = P.zones || (P.zones = this.cineZones(P)), z = Z.Z; for (var q = 0; q < z.length; q++) if (c < z[q][1]) return z[q][2]; return CINE.hangRate; };
+  R3.prototype.cineTgt = function (P, c, r) { return Math.min(this.cineRate(P, c), this.cineRate(P, c + Math.max(r, .05) * CINE.look)); };
+  R3.prototype.cineDur = function (P) { P.zones = null; var Z = this.cineZones(P), c = Z.a1, r = Math.min(1, CINE.slowP * P.k), t = CINE.wait + CINE.orbit + CINE.push, h = 1 / 60;
+    while (c < Z.end && t < 60) { r += (this.cineTgt(P, c, r) - r) * (1 - Math.exp(-h * CINE.ease)); c += r * h; t += h; } return t + CINE.hang + CINE.fade; };
+  R3.prototype.cineEndRep = function (R) { this.rep = null; this.cineEnd = true; var d = this.d; ['.b3rep', '.b3bars', '.b3ban', '.b3flash'].forEach(function (k) { d.querySelector(k).style.opacity = 0; }); this.fadeOut = CINE.fade;
+    if (!this.phone) this.hlAdd({ k: 'goal', s: HLK.goal[0] + 1 + Math.random(), F: R.F.filter(function (f) { return f.t >= R.F[R.F.length - 1].t - HL.pre - HL.post - REP_POST; }), team: R.team, t: this.clock }); };
+  R3.prototype.cineStep = function (R, st, dt, W, H) { var P = R.cine, Z = P.zones || (P.zones = this.cineZones(P)), d = this.d, flash = d.querySelector('.b3flash'), ban = d.querySelector('.b3ban'), fade = d.querySelector('.b3fade');
+    R.t += dt; if (R.t < R.wait) { var kw = R.t / R.wait; flash.style.opacity = Math.max(0, .85 - kw * 2.5); ban.style.opacity = Math.min(1, R.t * 5) * (kw < .85 ? 1 : (1 - kw) / .15); ban.style.transform = 'scale(' + (1 + Math.max(0, .25 - R.t) * 2) + ')';
+      if (Math.random() < dt * 5) this.emit(.2 + Math.random() * .6, R.gy + (R.team ? -1 : 1) * (.1 + Math.random() * .4), .15 + Math.random() * .2, 70, R.team ? 0x9fd4ff : 0xffb3be, .5, 1.3, 1); if (Math.random() < dt * 22) this.camFlash(); return null; }
+    ban.style.opacity = 0; flash.style.opacity = 0; d.querySelector('.b3rep').style.opacity = 1; d.querySelector('.b3bars').style.opacity = 1;
+    var D = R.t - R.wait, T0 = R.F[0].t, phase, u = 0;
+    if (D < CINE.orbit) { phase = 'orbit'; R.ct = P.t0; u = D / CINE.orbit; }
+    else if (D < CINE.orbit + CINE.push) { phase = 'push'; u = (D - CINE.orbit) / CINE.push; var S = Z.a1 - P.t0, m1 = Math.min(1, CINE.slowP * P.k) * CINE.push, h00 = u * u * (3 - 2 * u), h11 = u * u * (u - 1); R.ct = P.t0 + S * h00 + m1 * h11; R.r = Math.min(1, CINE.slowP * P.k); }   // Hermite: from frozen (rate 0) to the pass slow-mo rate, fast in between
+    else { R.r += (this.cineTgt(P, R.ct, R.r) - R.r) * (1 - Math.exp(-dt * CINE.ease)); R.ct += R.r * dt; phase = 'play';
+      if (R.ct >= Z.end) { R.hang = (R.hang || 0) + dt; if (R.hang > CINE.hang) { var fk = (R.hang - CINE.hang) / CINE.fade; fade.style.opacity = Math.min(1, fk); if (fk >= 1) { this.cineEndRep(R); return null; } } } }
+    var fr = frameAt(R.F, T0 + R.ct), show = { p: fr.p, u: fr.u, o: fr.o, a: fr.a, c: fr.c, z: fr.z, gc: fr.gc, sc: st.sc, sw: -1 }, G = this.G, W3 = function (v) { return G.localToWorld(L3(v[0], v[1], v[2])); };
+    var cam = this.persp, want, look, zone = 'pass'; for (var q = 0; q < Z.Z.length; q++) if (R.ct < Z.Z[q][1]) { zone = Z.Z[q][3]; break; } if (R.ct >= Z.end) zone = 'goal';
+    var pp = ppos(fr, P.pa), ps = ppos(fr, P.sh), pk = [fr.p[0], fr.p[1], .012 + (fr.z || 0)], side = pp[0] < .5 ? 1 : -1, nrm = [-P.pd[1] * side, P.pd[0] * side];
+    var pcam = cineClamp(pp[0] - P.pd[0] * .2 + nrm[0] * .09, pp[1] - P.pd[1] * .2 + nrm[1] * .09, .075), plook = [pp[0] + P.pd[0] * .06, pp[1] + P.pd[1] * .06, .015];
+    if (phase !== 'play') { var th = P.thE - (1 - (phase === 'orbit' ? u * (2 - u) : 1)) * CINE.orbitDeg * Math.PI / 180, oc = cineClamp(.5 + CINE.orbitR[0] * Math.sin(th), L / 2 + CINE.orbitR[1] * Math.cos(th), CINE.orbitH), ol = [.5, L / 2, 0];
+      if (phase === 'orbit') { want = oc; look = ol; } else { var e = u * u * (3 - 2 * u); want = [lerp(oc[0], pcam[0], e), lerp(oc[1], pcam[1], e), lerp(oc[2], pcam[2], e)]; look = [lerp(ol[0], plook[0], e), lerp(ol[1], plook[1], e), lerp(ol[2], plook[2], e)]; }
+      R.cs = { p: W3(want) }; R.ls = { p: W3(look) }; cam.fov = CINE.fov + (phase === 'orbit' ? 6 : 6 * (1 - u)); }
+    else { if (zone === 'pass') { want = pcam; look = [lerp(plook[0], pk[0], .5), lerp(plook[1], pk[1], .5), .015]; }
+      else if (zone === 'travel' || zone === 'shot') { want = P.scam; look = zone === 'travel' ? [lerp(pk[0], ps[0], .5), lerp(pk[1], ps[1], .5), .015] : [lerp(ps[0], P.net[0], .35), lerp(ps[1], P.net[1], .35), .02]; }
+      else { want = P.fcam; look = [lerp(pk[0], P.net[0], .45), lerp(pk[1], P.net[1], .45), .02]; }
+      camLim(R.cs, W3(want), dt, CINE.cam.v, CINE.cam.a); camLim(R.ls, W3(look), dt, CINE.cam.lv, CINE.cam.la); cam.fov = CINE.fov; }
+    cam.aspect = W / H; cam.position.copy(R.cs.p); cam.up.set(0, 1, 0); cam.lookAt(R.ls.p); cam.updateProjectionMatrix(); R.zone = phase === 'play' ? zone : phase; this.cineDbg = { ph: R.zone, ct: R.ct, r: phase === 'orbit' ? 0 : R.r, D: D };
+    return { show: show, cam: cam }; };
   R3.prototype.replaying = function () { return !!this.rep; };
   // ---- highlights (TV): small capped clip buffer, post-game reel ----
   var HL = { cap: 14, pre: 3.0, post: 1.4, fps: 30, reel: 180, wait: 1.1, same: 1.2 };

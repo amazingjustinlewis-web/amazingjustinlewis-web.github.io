@@ -9,10 +9,9 @@
       "phone": "../dev-7q3x/bubble/pad.html",
       "players": "1-10 phones, TV optional",
       "new": [
-        "Body checks: bigger red check cone on the TV and phone, and checks knock the puck loose more often",
-        "Strong checks can knock a player down for under a second - he tips over, flashes, gets up and skates back to his spot",
-        "A stopped or crawling loose puck slowly drifts to the nearest player, so fewer dead pucks",
-        "Players are plain cylinders for now: the white wedge shows which way he's facing, the stick points at the puck"
+        "One-timer goals (pass, then the receiver shoots it straight off the pass and scores) get a new cinematic replay on the TV: freeze and orbit, then slow-mo on the pass, fast to the shooter, slow-mo on the shot, and a long slow-mo as it goes in",
+        "Phones show REPLAY with a Skip button while it plays",
+        "Every other goal keeps the normal instant replay"
       ]
     }
   ]
