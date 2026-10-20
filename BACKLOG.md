@@ -251,6 +251,12 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Sim.input now records iev = [counter, team, ev, target, carrier before] in snaps (data only) so the phone knows what an input did even over the network.
 - [ ] Over the network the phone only sees ~30 state messages/s, so a one-frame result (post, save, pop-up) can be missed; whistles, goals, possession changes and checks are reliable.
 
+## Bubble Hockey v0.9.24 (done): players stay inside the boards + board ping
+- sim.js BRD { m .02, v .35, e .45, cd .3, minIn .05, cr .12 }: every skater/goalie body centre is clamped m inside the boards (straight sides + rounded corners of radius cr), whatever moved him (body checks, knockdown push, big hits, pivot stretch, thumb stretch). A check/knockdown that carries him into the boards pings him back off them at >= v rink/s (keeps e of the incoming speed), at most once per cd s per player; slow leans are just stopped.
+- Snap bpg = [counter, player, nx, ny]; sim ev 'boardping'; stat.bping. TV/phone 3D: sparks + small board shake + a short knock sound (BPING { n 14, sp .35, t .16, amp .006 } in view3d.js). Move report: '<player> pinged off the boards'.
+- Old out-of-bounds puck fixed: carryPos could put a carried puck past the end boards (carrier on the boards facing out); now clamped inside. AI-vs-AI 20 games: 0 errors (was 1). Forced-hit test (1200 shoves into the boards, 40% knockdowns): 0 player frames outside the boards (was 9757, up to .17 past), 179 pings; TV page: 12 forced shoves, 12 pings with fx, 0 errors.
+- [ ] Tune BRD.v / e with real players (how lively the ping feels).
+
 ## Bubble Hockey v0.9.23 (done): pass + redirect cinematic (TV), per Justin
 - Trigger: sim touch log (snap tk = [counter, player]; every catch, bump/redirect, poke, jab; -2 = scramble). The last touches before the goal must be teammate pass -> receiver (one-timer or deflection, held <= CINE.hold s), nobody else in between; any skater or goalie of the scoring team; an opposing goalie nicking it on the way in still counts. Anything else keeps the normal 3-angle replay.
 - Order: normal goal celebration (banner, flash, fireworks, goal light, crowd cheering) for CINE.wait s, dip to black, then the replay. The host keeps the goal pause topped up while it runs; Skip (phone/tap) still cuts to the faceoff.
@@ -296,6 +302,11 @@ Cheap / near-free extras that don't touch core play.
 - [ ] Visual wear during a game: layered textures across team jerseys/colours: scuffs, visors crack/break, helmets knocked off and replaced but scuffed.
 - [ ] Speed-ramped instant replays (slow-mo pass, fast to receiver, slow-mo bendy-stick slapshot, fast to net, slow-mo goal).
 - [ ] Bar background events driven by momentum, streaks, fights, etc. (reactions visible in replays).
+- [ ] Art direction: subtle samurai theme. Black silhouette players with fiery eyes and texture-swap expressions; bar crowd with softer shapes and animated texture-swap faces; on intense moments the crowd leans in with hands on the dome. Uniforms start vivid, clean and sharp and get progressively ravaged (scuffs, tears, grime) through the game via layered textures across team colours.
+- [ ] Bar skins: same game system, very different venues, e.g. high-class lounge vs raw dive bar. Each has its own crowd look and reactions (mustard stains on the audience in the dive), and its own bar fights and animated versions of the same events.
+- [ ] Crowd interest meter: crowd mirrors game intensity. Low intensity = way over-the-top bored (slumped, wandering, ignoring it). High stakes/wild play = crowd fights for position, faces and eyes pressed to the dome glass, almost haunting. In that state cinematics switch to very close, low-on-the-ice dramatic shots of the players so the eyes all over the dome fill the background.
+  - [ ] Cinematic entry adapts to crowd interest. Low: slow wide orbit outside the dome shows a clear dome, a couple of bored people in the shadows tipping drinks back and forth, camera slides in freely. High: dome swarmed with hunched shoulders; camera slides in through one tiny pinhole between squished faces, shoulders and necks.
+- [ ] Animations to hook up later: HP_Scramble_Back_v01 / HP_Scramble_Front_v01 (down -> standing -> fast skating, then blend back to the peg).
 
 ## Bubble Hockey v0.9.17 (done): puck physics (Justin feedback)
 - Tunables in bubble/sim.js: BNC { n .8, t .8 } board/post/crossbar bounce (was: boards .8 normal / 1.0 along; posts NET.post .92 normal / 1.0 along; crossbar NET.bar .85; net mesh NET.mesh .12 unchanged). KNOCK { p .5, r .09, sp 1.0, k .3, max 1.8 } body-check knock. SCR { dt .15, p .15, vz 2.9, side .3, reach .02, cd 2, v .3 } scramble pop-up. DOME { a .70, b 1.05, c .58, e .6 } glass dome ellipsoid (new; the dome had no collision before).

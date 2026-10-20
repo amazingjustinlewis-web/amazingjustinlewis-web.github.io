@@ -9,10 +9,9 @@
       "phone": "../dev-7q3x/bubble/pad.html",
       "players": "1-10 phones, TV optional",
       "new": [
-        "Pass-and-redirect goals (any clean pass that goes off a teammate's stick into the net, one-timer or tip) now get the long cinematic replay on the TV, after the normal goal celebration",
-        "Replay: frozen orbit around the whole bar, a dive down to the passer, slow-mo pass, fast to the receiver, slow-mo redirect, then a long slow-mo as it goes in while the camera pulls back to show the goal, players and the bar crowd cheering",
-        "Phones still show REPLAY with a Skip button",
-        "Every other goal keeps the normal instant replay"
+        "Players can no longer be shoved through the boards by checks, knockdowns or big hits: they ping back off the boards with a little spark, shake and knock sound",
+        "Fixed a rare glitch where a carried puck could end up outside the end boards",
+        "Cinematic pass + redirect replays from v0.9.23 are unchanged"
       ]
     }
   ]

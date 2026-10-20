@@ -42,7 +42,7 @@
       var geo = new THREE.ExtrudeGeometry(o, { depth: hgt, bevelEnabled: false }), me = new THREE.Mesh(geo, mat(col)); me.rotation.x = Math.PI / 2; me.position.y = y0 + hgt; G.add(me); return me; }
     var proc = [ring(0, .03, .07, 0xf6f8fb, 0), ring(-.004, .012, .018, 0xf2c230, 0), ring(.03, .1, .02, 0x24356a, -.0)];
     var cab = new THREE.Mesh(new THREE.BoxGeometry(L + .5, .3, 1.5), mat(0x18244a)); cab.position.set(L / 2, -.16, .5); G.add(cab); proc.push(cab);
-    this.loadArena(proc); if (!CYL.on) this.loadSkaters();
+    this.proc = proc; this.loadArena(proc); if (!CYL.on) this.loadSkaters();
     // nets: red frame + translucent mesh box
     var self = this; this.nets = [];
     // model hook: window.BubbleNetModel(side, dims) may return a Group with children named 'post_l', 'post_r', 'crossbar' (metal) and 'mesh' (soft, wobbles); origin on the goal line centre, +x into the net
@@ -147,6 +147,8 @@
       o.connect(g); o2.connect(g); g.connect(AC.destination); o.start(t); o2.start(t); o.stop(t + .52); o2.stop(t + .52); } catch (e) {} }
   root.BubbleBuzz = buzz;
   function whistle() { if (root.BH_MUTE) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); var t = AC.currentTime, o = AC.createOscillator(), l = AC.createOscillator(), lg = AC.createGain(), g = AC.createGain(); o.type = 'sine'; o.frequency.value = 2900; l.frequency.value = 38; lg.gain.value = 180; l.connect(lg); lg.connect(o.frequency); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.14, t + .03); g.gain.setValueAtTime(.14, t + .55); g.gain.linearRampToValueAtTime(0, t + .65); o.connect(g); g.connect(AC.destination); o.start(t); l.start(t); o.stop(t + .7); l.stop(t + .7); } catch (e) {} }
+  // v0.9.24 board ping: short low knock + a tick (player bounced off the boards)
+  function bthud() { if (root.BH_MUTE) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); var t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain(), o2 = AC.createOscillator(), g2 = AC.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(190, t); o.frequency.exponentialRampToValueAtTime(70, t + .16); g.gain.setValueAtTime(.22, t); g.gain.exponentialRampToValueAtTime(.001, t + .2); o2.type = 'triangle'; o2.frequency.setValueAtTime(1400, t); g2.gain.setValueAtTime(.05, t); g2.gain.exponentialRampToValueAtTime(.001, t + .07); o.connect(g); o2.connect(g2); g.connect(AC.destination); g2.connect(AC.destination); o.start(t); o2.start(t); o.stop(t + .22); o2.stop(t + .08); } catch (e) {} }
   function ping() { if (root.BH_MUTE) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); var t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(2300, t); o.frequency.exponentialRampToValueAtTime(1800, t + .25); g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t + .3); o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + .32); } catch (e) {} }
   function lerp(a, b, k) { return a + (b - a) * k; }
   function frameAt(F, t) { var i = 1; while (i < F.length - 1 && F[i].t < t) i++; var a = F[i - 1], b = F[i], k = Math.max(0, Math.min(1, (t - a.t) / ((b.t - a.t) || 1)));
@@ -236,6 +238,10 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
     this.pts.material.size = cam === this.ortho ? Math.max(4, this.V.s * .018) * Math.min(2, devicePixelRatio || 1) : .012; this.pts.material.sizeAttenuation = true;
     this.markers(cam, cam === this.ortho && (this.az || 1) > 1.05);
     var mwv = st.mw || 0, pyv = st.p[1], nowv = performance.now() / 1000; this.nets.forEach(function (n, k) { var ms = n.userData.mesh; if (ms) { var w = (k ? pyv > L / 2 : pyv < L / 2) ? mwv : 0, sx = ms.scale.x < 0 ? -1 : 1; ms.scale.set(sx * (1 + w * .12 * Math.sin(nowv * 38)), 1 + w * .05 * Math.sin(nowv * 31 + 1), 1 + w * .04 * Math.sin(nowv * 27)); } });
+    // v0.9.24 board ping: sparks + flash at the contact, small board shake, knock sound (BPING tunable)
+    if (st.bpg && this.lastBpg != null && st.bpg[0] !== this.lastBpg && !this.rep) { var bi = st.bpg[1], bq = B.pos(B.TR[bi], st.u[bi]), bo = st.o ? st.o[bi] : [0, 0], bx = bq[0] + bo[0] - st.bpg[2] * B.R * .5, by = bq[1] + bo[1] - st.bpg[3] * B.R * .5; this.emit(bx, by, .03, BPING.n, 0xfff2c0, BPING.sp, .35, 1); this.bShake = BPING.t; bthud(); }
+    if (st.bpg) this.lastBpg = st.bpg[0];
+    if (this.bShake > 0) { this.bShake -= dt; var ka = Math.max(0, this.bShake / BPING.t) * BPING.amp, jx = (Math.random() - .5) * ka, jz = (Math.random() - .5) * ka; if (this.arena) { this.arena.position.x = L / 2 + jx; this.arena.position.z = .5 + jz; } (this.proc || []).forEach(function (m) { if (m.userData.p0 == null) m.userData.p0 = m.position.clone(); m.position.set(m.userData.p0.x + jx, m.userData.p0.y, m.userData.p0.z + jz); }); if (this.bShake <= 0) { if (this.arena) this.arena.position.set(L / 2, 0, .5); (this.proc || []).forEach(function (m) { if (m.userData.p0) m.position.copy(m.userData.p0); }); } }
     if ((st.ev === 'post' || st.ev === 'bar') && this.lastPing !== st) { this.lastPing = st; ping(); }
     if (st.wh != null && this.lastWh != null && st.wh !== this.lastWh) whistle(); this.lastWh = st.wh;
     var rep = !!this.rep; this.nets.forEach(function (n) { var l = n.userData.light; if (!l) return; if (l.t > 0) l.t -= dt; if (!rep) l.rep = false; l.on = l.t > 0 || l.rep;
@@ -332,6 +338,8 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
   // (sim touch log st.tk), receiver had it <= hold s, any skaters/goalies of the scoring team. Celebration (horn/lights/banner) first, then:
   // frozen orbit around the whole bar -> accelerating zoom down to the passer -> slow-mo off his stick -> fast -> slow-mo off the receiver's stick
   // -> fast -> steady slow-mo ~final s of game time, pulling back over the last half (goal, goalies, players, bar) -> fade to faceoff. ?cine=0 disables.
+  var BPING = { n: 14, sp: .35, t: .16, amp: .006 };   // v0.9.24 board ping fx: sparks, spark speed, shake s, shake amplitude (units)
+  R3.BPING = BPING;
   var CINE = { on: !/[?&]cine=0/.test(location.search), wait: 3.0, blackIn: .35, orbit: 3.6, orbitDeg: 300, orbitR: [6.5, 8.5], orbitH: 2.0, zoom: 1.6, zoomFov: [58, 44],
     preP: 1.0, offP: .03, preS: .5, offS: B.PR, nearG: 2 * B.PR, final: 4.0, hold: .4, maxGap: 2.5,
     slowP: .22, slowS: .18, slowG: .25, fast: 1.7, ease: 4, look: .3, fade: .9, budget: 45,
