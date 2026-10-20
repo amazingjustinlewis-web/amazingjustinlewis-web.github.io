@@ -274,6 +274,8 @@ Cheap / near-free extras that don't touch core play.
 - [ ] Personality beats: goalie sips and spits water after a big save, etc.
 - [ ] Benches with manual or auto line changes, simple and arcade.
 - [ ] Arcade fight system (punch/grab), Base Wars style where fights decide outcomes; maybe grab improvised items like a water bottle near the opposing bench.
+- [ ] Visual wear during a game: layered textures across team jerseys/colours: scuffs, visors crack/break, helmets knocked off and replaced but scuffed.
+- [ ] Speed-ramped instant replays (slow-mo pass, fast to receiver, slow-mo bendy-stick slapshot, fast to net, slow-mo goal).
 
 ## Bubble Hockey v0.9.17 (done): puck physics (Justin feedback)
 - Tunables in bubble/sim.js: BNC { n .8, t .8 } board/post/crossbar bounce (was: boards .8 normal / 1.0 along; posts NET.post .92 normal / 1.0 along; crossbar NET.bar .85; net mesh NET.mesh .12 unchanged). KNOCK { p .5, r .09, sp 1.0, k .3, max 1.8 } body-check knock. SCR { dt .15, p .15, vz 2.9, side .3, reach .02, cd 2, v .3 } scramble pop-up. DOME { a .70, b 1.05, c .58, e .6 } glass dome ellipsoid (new; the dome had no collision before).
