@@ -240,6 +240,9 @@ Hop Top (peg triangle), Dangerous Waters (classic battleships, folder broadside/
 - Wired: bias (4), build (barracks/tower/workshop at the wheel point), train (Brick/Orb/Ring), select army, attack-move/move mode, hold/stop, upgrade, share, auto stack, order cycle. Stubs: wall, combine tree.
 - Todo: real combine/evolve, better battle readability on TV (bigger beams/impact puffs), fog of war, phone faction choice, sound, multiple phones splitting the army.
 
+## Fighting game (design backlog, Oct 20, 2026)
+- [ ] Sleek humanoid AI character who chats with players, teaches tricks, and fights at full strength ('don't hold back') if asked nicely. Doubles as the learn-the-game tutorial and ask-anything guide.
+
 ## Bubble Hockey v0.9.18 (done): dead-puck whistle
 - DEAD { t 5, zone .45 } in bubble/sim.js: untouched loose puck for t s (not during pause/goal/replay/faceoff/airborne) -> whistle + faceoff at the nearest end-zone dot (puck's side), or centre if within zone of centre ice. Any stick touch (pickup, stick bump, jab, knock) resets the clock. Behind-net triangle unchanged. Fixes the v0.9.17 'stopped puck no stick reaches' item.
 - Ideas:
@@ -319,6 +322,7 @@ Cheap / near-free extras that don't touch core play.
 - [ ] Venues / surfaces, selectable for any team: regular arcade bar, dive bar, high-class lounge, a completely frozen place (crowd shivering), and an expansive never-ending nature bar where the lights trickle away through the trees and fade off. Crowd interest behaviour is the same everywhere (bored -> eyes on the glass).
 - [ ] Menu structure: basic 'Play Now' = clean, regular samurai-style hockey. All customization (teams, abilities/mutations, venues, surfaces) sits as options on top.
 - [ ] Knockdown buildup: knocked-down players get progressively covered in snow (or the venue's material on mythological sets: frost, moss, leaves), stacking with the visual wear.
+- [ ] Later: a sleek humanoid AI team with the same personality as the fighting-game guide (chats with players, teaches tricks, plays at full strength ('don't hold back') if asked nicely).
 - [ ] Private pitch build only (not a public team): a Red Deer Rebels jersey with a 'black hat' nod, shown to the Rebels after bar testing goes well (needs their OK / licence). Public teams stay original.
 - [ ] Wraparound gear-shift gesture: up, slide sideways, start back -> engine predicts a sharp spin-around backwards; flick forward = snapshot; no flick = just settle after the spin.
 - [ ] After the opening faceoff, any thumb-mash / tap / slide check or stick-check action can trigger the big reach-grab for initial possession, then normal physics and ragdoll blends.
