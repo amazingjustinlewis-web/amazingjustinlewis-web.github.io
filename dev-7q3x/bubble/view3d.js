@@ -75,7 +75,8 @@
   };
   // simple beefy proxy skater: radius ~B.R/2, height .05 (legs, pants, jersey torso, shoulders, helmet head). Goalie gets pads.
   // v0.9.20 temporary look (?cyl=0 = v0.9.19 proxies/skaters): plain team cylinder, flat white facing wedge on top (engine-chosen facing, sim fa), straight stick from the centre toward the puck
-  var CYL = { on: !/[?&]cyl=0/.test(location.search), h: .04, r: .5, mark: .75 };
+  var HP012 = /[?&]hp012(=1)?(&|$)/.test(location.search);   // v0.9.27 dev flag: Justin's rig 012 + mocap clips (implies ?cyl=0)
+  var CYL = { on: !/[?&]cyl=0/.test(location.search) && !HP012, h: .04, r: .5, mark: .75 };
   function cyl(p, col, goalie) { while (p.children.length) p.remove(p.children[0]); var r = B.R * CYL.r, c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, CYL.h, 20), new THREE.MeshLambertMaterial({ color: goalie ? new THREE.Color(col).lerp(new THREE.Color(0xffffff), .35) : col })); c.position.y = CYL.h / 2; p.add(c); p.userData.cm = c.material;
     var fm = new THREE.Group(), w = new THREE.Mesh(new THREE.CircleGeometry(r * CYL.mark, 3), new THREE.MeshBasicMaterial({ color: 0xffffff })); w.rotation.x = -Math.PI / 2; w.scale.set(1.25, .7, 1); fm.add(w); fm.position.y = CYL.h + .0015; p.add(fm); p.userData.fm = fm; p.userData.body = []; }
   // v0.9.21 3D check wedge (TV + phone 3D): feathered red cone on the ice from the checker toward the hit, fades over CHKW.ms
@@ -281,17 +282,38 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
   // Glide during play, blend to faceoff while the puck waits in the slot, back to glide when it drops. Proxy stays as fallback; the model's own stick
   // is used; the proxy stick/blade only shows during a lunge (stick shoots out) and the model stick turns white on a swing like the proxy did. ?noskaters disables; phones off unless ?skaters=1.
   var SKATER = { url: 'player_skater.glb', yaw: Math.PI / 2, h: .085, blendIn: 3.5, blendOut: 6, tint: .85 };
+  // v0.9.27 ?hp012: rig 012 GLB (60 deform joints + 12-joint stick). Faces +Z in glTF (old skater faces -Z) -> yaw + PI. Clips: ready (faceoff wait),
+  // idle (standing still), glide (skating, retargeted old pose), check (one-shot on own body check), stick (one-shot on swing / lunge). Falls back to player_skater.glb.
+  var HPK = { url: 'player_hp012_v04.glb', yaw: Math.PI / 2 + Math.PI, h: .085, tint: .85, idleV: .02, idleT: .6, fade: 8, oneFade: 10, stickRate: 1.6, stickS: [1.2, 2.6], checkRate: 1.1 };
   R3.prototype.loadSkaters = function () { var self = this; if (!THREE.GLTFLoader || /noskaters/.test(location.search) || (this.phone && !/skaters=1/.test(location.search))) return;
-    fetch(SKATER.url).then(function (r) { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(function (buf) {
+    var go = function (cfg, hp, fail) { fetch(cfg.url).then(function (r) { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(function (buf) {
       self.pl.forEach(function (p, i) { var tr = B.TR[i]; if (tr.k === 'G') return;
-        new THREE.GLTFLoader().parse(buf.slice(0), '', function (g) { var sticks = [], m = g.scene, box = new THREE.Box3().setFromObject(m), ht = box.max.y - box.min.y || 1.6, sc = SKATER.h / ht;
-          m.traverse(function (o) { if (!o.isMesh) return; if (o.name === 'stick') { o.material = o.material.clone(); sticks.push(o); return; } o.frustumCulled = false; var mt = o.material; if (mt && mt.name === 'Jersey') { mt = o.material = mt.clone(); mt.color.set(COLS[tr.t]).lerp(new THREE.Color(0xffffff), 1 - SKATER.tint); } });
-          var wrap = new THREE.Group(); m.scale.setScalar(sc); m.rotation.y = SKATER.yaw; wrap.add(m); p.add(wrap);
-          var mix = new THREE.AnimationMixer(m), clip = function (n) { return THREE.AnimationClip.findByName(g.animations, n); }, aG = clip('glide') && mix.clipAction(clip('glide')), aF = clip('faceoff') && mix.clipAction(clip('faceoff'));
-          [aG, aF].forEach(function (a) { if (a) { a.play(); a.setEffectiveWeight(0); } }); if (aG) aG.setEffectiveWeight(1);
-          p.userData.sk = { m: wrap, mix: mix, g: aG, f: aF, w: 0, sticks: sticks }; p.userData.body.forEach(function (o) { o.visible = false; }); }, function () {}); }); }).catch(function () {}); };
-  R3.prototype.skPose = function (st, dt) { var fo = st && st.pz > 0 ? 1 : 0; for (var i = 0; i < 12; i++) { var k = this.pl[i].userData.sk; if (!k) continue;
-      k.w += (fo - k.w) * Math.min(1, dt * (fo ? SKATER.blendIn : SKATER.blendOut)); if (k.g) k.g.setEffectiveWeight(1 - k.w); if (k.f) k.f.setEffectiveWeight(k.w); k.mix.update(dt); } };
+        new THREE.GLTFLoader().parse(buf.slice(0), '', function (g) { var sticks = [], m = g.scene, box = new THREE.Box3().setFromObject(m), ht = box.max.y - box.min.y || 1.6, sc = cfg.h / ht;
+          m.traverse(function (o) { if (!o.isMesh) return; o.frustumCulled = false; if (/^stick$/i.test(o.name)) { o.material = o.material.clone(); sticks.push(o); return; } var mt = o.material; if (mt && mt.name === 'Jersey') { mt = o.material = mt.clone(); mt.color.set(COLS[tr.t]).lerp(new THREE.Color(0xffffff), 1 - cfg.tint); } });
+          var wrap = new THREE.Group(); m.scale.setScalar(sc); m.rotation.y = cfg.yaw; wrap.add(m); p.add(wrap);
+          var mix = new THREE.AnimationMixer(m), clip = function (n) { var c = THREE.AnimationClip.findByName(g.animations, n); return c && mix.clipAction(c); };
+          if (hp) { var A = { glide: clip('glide'), ready: clip('ready'), idle: clip('idle'), check: clip('check'), stick: clip('stick') };
+            if (!A.glide || !A.ready) { wrap.parent.remove(wrap); return; }
+            ['glide', 'ready', 'idle'].forEach(function (n) { if (A[n]) { A[n].play(); A[n].setEffectiveWeight(n === 'glide' ? 1 : 0); } });
+            ['check', 'stick'].forEach(function (n) { if (A[n]) { A[n].setLoop(THREE.LoopOnce, 1); A[n].clampWhenFinished = true; } });
+            p.userData.sk = { m: wrap, mix: mix, hp: A, wb: { glide: 1, ready: 0, idle: 0 }, one: null, ow: 0, still: 0, sticks: sticks, lp: null };
+          } else { var aG = clip('glide'), aF = clip('faceoff'); [aG, aF].forEach(function (a) { if (a) { a.play(); a.setEffectiveWeight(0); } }); if (aG) aG.setEffectiveWeight(1);
+            p.userData.sk = { m: wrap, mix: mix, g: aG, f: aF, w: 0, sticks: sticks }; }
+          p.userData.body.forEach(function (o) { o.visible = false; }); }, function () { if (fail && i === 0) fail(); }); }); }).catch(function () { if (fail) fail(); }); };
+    if (HP012) go(HPK, true, function () { if (!self._hpFell) { self._hpFell = true; self.pl.forEach(function (p) { var k = p.userData.sk; if (k && k.m.parent) k.m.parent.remove(k.m); p.userData.sk = null; }); go(SKATER, false); } }); else go(SKATER, false); };
+  R3.prototype.hpOne = function (k, n, rate, t0) { var a = k.hp[n]; if (!a || k.one === a && a.isRunning()) return; if (k.one && k.one !== a) k.one.stop(); a.reset(); a.timeScale = rate || 1; a.time = t0 || 0; a.setEffectiveWeight(1); a.play(); k.one = a; k.oneEnd = t0 && n === 'stick' ? HPK.stickS[1] : null; };
+  R3.prototype.skPose = function (st, dt) { var fo = st && st.pz > 0 ? 1 : 0, f = st && st.fx, chk = -1;
+    if (f && f[0] !== this.hpChkN) { if (this.hpChkN != null && (f[1] === 'C' || f[1] === 'B' || f[1] === 'K')) chk = f[2]; this.hpChkN = f[0]; }
+    for (var i = 0; i < 12; i++) { var k = this.pl[i].userData.sk; if (!k) continue;
+      if (!k.hp) { k.w += (fo - k.w) * Math.min(1, dt * (fo ? SKATER.blendIn : SKATER.blendOut)); if (k.g) k.g.setEffectiveWeight(1 - k.w); if (k.f) k.f.setEffectiveWeight(k.w); k.mix.update(dt); continue; }
+      var sp = this.spr && this.spr[i], v = sp ? Math.hypot(sp.vx, sp.vz) : 1; k.still = v < HPK.idleV ? k.still + dt : 0;
+      var base = fo ? 'ready' : (k.still > HPK.idleT || !st ? 'idle' : 'glide'), e = Math.min(1, dt * HPK.fade);
+      if (chk === i) this.hpOne(k, 'check', HPK.checkRate);
+      var lnv = st && st.ln ? st.ln[i] : 0, sw = st && st.sw === i, trig = lnv > 0 || sw; if (trig && !k.lt && !(k.one === k.hp.check && k.one.isRunning())) this.hpOne(k, 'stick', HPK.stickRate, HPK.stickS[0]); k.lt = trig;
+      if (k.one && k.oneEnd && k.one.time >= k.oneEnd) k.one.stop();
+      var on = k.one && k.one.isRunning() ? 1 : 0; k.ow += (on - k.ow) * Math.min(1, dt * HPK.oneFade); if (k.one) k.one.setEffectiveWeight(k.ow);
+      for (var n in k.wb) { k.wb[n] += ((n === base ? 1 : 0) - k.wb[n]) * e; if (k.hp[n]) k.hp[n].setEffectiveWeight(k.wb[n] * (1 - k.ow)); }
+      k.mix.update(dt); } };
   var ARENA_URL = 'arena_classic.glb', ARENA_UNIT = .62, ARENA_HIDE = /^(rink_surface|post_[lr]_|crossbar_|net_mesh_|goal_light_|serve_slot)/;
   R3.prototype.loadArena = function (proc) { var self = this; if (this.phone || !THREE.GLTFLoader || /noarena/.test(location.search)) return;
     new THREE.GLTFLoader().load(ARENA_URL, function (g) { var A = g.scene; A.scale.setScalar(1 / ARENA_UNIT); A.rotation.y = -Math.PI / 2; A.position.set(L / 2, 0, .5);
