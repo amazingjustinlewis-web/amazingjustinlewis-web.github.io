@@ -284,7 +284,8 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
   var SKATER = { url: 'player_skater.glb', yaw: Math.PI / 2, h: .085, blendIn: 3.5, blendOut: 6, tint: .85 };
   // v0.9.27 ?hp012: rig 012 GLB (60 deform joints + 12-joint stick). Faces +Z in glTF (old skater faces -Z) -> yaw + PI. Clips: ready (faceoff wait),
   // idle (standing still), glide (skating, retargeted old pose), check (one-shot on own body check), stick (one-shot on swing / lunge). Falls back to player_skater.glb.
-  var HPK = { url: 'player_hp012_v04.glb', yaw: Math.PI / 2 + Math.PI, h: .085, tint: .85, idleV: .02, idleT: .6, fade: 8, oneFade: 10, stickRate: 1.6, stickS: [1.2, 2.6], checkRate: 1.1 };
+  // v0.9.28: player_hp012_v05.glb adds Justin's own mocap (m_idle, m_skate, m_fopose, m_fodraw, m_check); old clips stay as fallbacks, v04 GLB if v05 fails.
+  var HPK = { url: 'player_hp012_v05.glb', drawRate: 1.2, yaw: Math.PI / 2 + Math.PI, h: .085, tint: .85, idleV: .02, idleT: .6, fade: 8, oneFade: 10, stickRate: 1.6, stickS: [1.2, 2.6], checkRate: 1.1 };
   R3.prototype.loadSkaters = function () { var self = this; if (!THREE.GLTFLoader || /noskaters/.test(location.search) || (this.phone && !/skaters=1/.test(location.search))) return;
     var go = function (cfg, hp, fail) { fetch(cfg.url).then(function (r) { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(function (buf) {
       self.pl.forEach(function (p, i) { var tr = B.TR[i]; if (tr.k === 'G') return;
@@ -292,15 +293,16 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
           m.traverse(function (o) { if (!o.isMesh) return; o.frustumCulled = false; if (/^stick$/i.test(o.name)) { o.material = o.material.clone(); sticks.push(o); return; } var mt = o.material; if (mt && mt.name === 'Jersey') { mt = o.material = mt.clone(); mt.color.set(COLS[tr.t]).lerp(new THREE.Color(0xffffff), 1 - cfg.tint); } });
           var wrap = new THREE.Group(); m.scale.setScalar(sc); m.rotation.y = cfg.yaw; wrap.add(m); p.add(wrap);
           var mix = new THREE.AnimationMixer(m), clip = function (n) { var c = THREE.AnimationClip.findByName(g.animations, n); return c && mix.clipAction(c); };
-          if (hp) { var A = { glide: clip('glide'), ready: clip('ready'), idle: clip('idle'), check: clip('check'), stick: clip('stick') };
+          if (hp) { var A = { glide: clip('m_skate') || clip('glide'), ready: clip('m_fopose') || clip('ready'), idle: clip('m_idle') || clip('idle'), check: clip('m_check') || clip('check'), stick: clip('stick'), draw: clip('m_fodraw') }, mfo = !!clip('m_fopose');
             if (!A.glide || !A.ready) { wrap.parent.remove(wrap); return; }
             ['glide', 'ready', 'idle'].forEach(function (n) { if (A[n]) { A[n].play(); A[n].setEffectiveWeight(n === 'glide' ? 1 : 0); } });
-            ['check', 'stick'].forEach(function (n) { if (A[n]) { A[n].setLoop(THREE.LoopOnce, 1); A[n].clampWhenFinished = true; } });
+            ['check', 'stick', 'draw'].concat(mfo ? ['ready'] : []).forEach(function (n) { if (A[n]) { A[n].setLoop(THREE.LoopOnce, 1); A[n].clampWhenFinished = true; } });
             p.userData.sk = { m: wrap, mix: mix, hp: A, wb: { glide: 1, ready: 0, idle: 0 }, one: null, ow: 0, still: 0, sticks: sticks, lp: null };
           } else { var aG = clip('glide'), aF = clip('faceoff'); [aG, aF].forEach(function (a) { if (a) { a.play(); a.setEffectiveWeight(0); } }); if (aG) aG.setEffectiveWeight(1);
             p.userData.sk = { m: wrap, mix: mix, g: aG, f: aF, w: 0, sticks: sticks }; }
           p.userData.body.forEach(function (o) { o.visible = false; }); }, function () { if (fail && i === 0) fail(); }); }); }).catch(function () { if (fail) fail(); }); };
-    if (HP012) go(HPK, true, function () { if (!self._hpFell) { self._hpFell = true; self.pl.forEach(function (p) { var k = p.userData.sk; if (k && k.m.parent) k.m.parent.remove(k.m); p.userData.sk = null; }); go(SKATER, false); } }); else go(SKATER, false); };
+    var HPK4 = Object.assign({}, HPK, { url: 'player_hp012_v04.glb' });
+    if (HP012) go(HPK, true, function () { if (self._hp5Fell) return; self._hp5Fell = true; self.pl.forEach(function (p) { var k = p.userData.sk; if (k && k.m.parent) k.m.parent.remove(k.m); p.userData.sk = null; }); go(HPK4, true, function () { if (!self._hpFell) { self._hpFell = true; self.pl.forEach(function (p) { var k = p.userData.sk; if (k && k.m.parent) k.m.parent.remove(k.m); p.userData.sk = null; }); go(SKATER, false); } }); }); else go(SKATER, false); };
   R3.prototype.hpOne = function (k, n, rate, t0) { var a = k.hp[n]; if (!a || k.one === a && a.isRunning()) return; if (k.one && k.one !== a) k.one.stop(); a.reset(); a.timeScale = rate || 1; a.time = t0 || 0; a.setEffectiveWeight(1); a.play(); k.one = a; k.oneEnd = t0 && n === 'stick' ? HPK.stickS[1] : null; };
   R3.prototype.skPose = function (st, dt) { var fo = st && st.pz > 0 ? 1 : 0, f = st && st.fx, chk = -1;
     if (f && f[0] !== this.hpChkN) { if (this.hpChkN != null && (f[1] === 'C' || f[1] === 'B' || f[1] === 'K')) chk = f[2]; this.hpChkN = f[0]; }
@@ -308,6 +310,7 @@ this._dt = dt; var pp = this.place(show); this.refStep(show, dt);
       if (!k.hp) { k.w += (fo - k.w) * Math.min(1, dt * (fo ? SKATER.blendIn : SKATER.blendOut)); if (k.g) k.g.setEffectiveWeight(1 - k.w); if (k.f) k.f.setEffectiveWeight(k.w); k.mix.update(dt); continue; }
       var sp = this.spr && this.spr[i], v = sp ? Math.hypot(sp.vx, sp.vz) : 1; k.still = v < HPK.idleV ? k.still + dt : 0;
       var base = fo ? 'ready' : (k.still > HPK.idleT || !st ? 'idle' : 'glide'), e = Math.min(1, dt * HPK.fade);
+      if (fo && !k.fo && k.hp.ready) { k.hp.ready.reset(); k.hp.ready.play(); } if (!fo && k.fo && k.hp.draw) this.hpOne(k, 'draw', HPK.drawRate); k.fo = fo;
       if (chk === i) this.hpOne(k, 'check', HPK.checkRate);
       var lnv = st && st.ln ? st.ln[i] : 0, sw = st && st.sw === i, trig = lnv > 0 || sw; if (trig && !k.lt && !(k.one === k.hp.check && k.one.isRunning())) this.hpOne(k, 'stick', HPK.stickRate, HPK.stickS[0]); k.lt = trig;
       if (k.one && k.oneEnd && k.one.time >= k.oneEnd) k.one.stop();
