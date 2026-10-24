@@ -4,26 +4,37 @@
 <style>body{margin:0;background:#0a0e1c;color:#fff;font:16px system-ui,sans-serif;display:flex;justify-content:center}main{width:min(520px,94vw);padding:24px 0}
 h1{font-size:24px;margin:0 0 4px}.card{background:#ffffff10;border:1px solid #ffffff22;border-radius:14px;padding:16px;margin:14px 0}label{display:block;font-size:13px;opacity:.7;margin:10px 0 4px}
 input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid #fff4;background:#0008;color:#fff;width:100%;box-sizing:border-box}.dials{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}.dials input{text-align:center;padding:8px 2px}
-button{font:inherit;padding:9px 14px;border-radius:9px;border:0;background:#5ef2c8;color:#012;font-weight:700;cursor:pointer;margin:6px 6px 0 0}button.alt{background:#ffffff1f;color:#fff}.big{font-size:28px;font-weight:800}.mut{opacity:.6;font-size:13px}#msg{min-height:1.2em;color:#ffd27a}</style></head>
+button{font:inherit;padding:9px 14px;border-radius:9px;border:0;background:#5ef2c8;color:#012;font-weight:700;cursor:pointer;margin:6px 6px 0 0}button.alt{background:#ffffff1f;color:#fff}.big{font-size:28px;font-weight:800}.mut{opacity:.6;font-size:13px}#msg{min-height:1.2em;color:#ffd27a}.av{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px}.av label{display:flex;justify-content:space-between;align-items:center;margin:4px 0}.av input{width:44px;height:32px;padding:0;border:0;background:none}select{font:inherit;padding:6px;border-radius:8px;background:#0008;color:#fff;border:1px solid #fff4}#sk span{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent}#sk span.on{border-color:#5ef2c8}</style></head>
 <body><main>
 <h1>Your 0-Phi profile</h1><div class="mut">Dev build. Only your display name and initials are ever shown publicly. Your email is never stored or shown.</div>
 <div class="card"><div class="mut">Status</div><div id="st">Connecting…</div>
 <button id="si">Sign in with Google</button><button id="so" class="alt" style="display:none">Sign out</button></div>
 <div class="card" style="display:flex;gap:20px"><div><div class="mut">Player ID</div><div class="big" id="pid">–</div></div><div><div class="mut">Founder #</div><div class="big" id="fd">–</div></div></div>
+<div class="card"><div class="mut">Your avatar</div><div style="display:flex;gap:16px;align-items:center"><div id="av" style="background:radial-gradient(#25305a,#0a0e1c);border-radius:14px;padding:6px 14px"></div>
+<div style="flex:1"><div class="av"><label>Shirt <input type="color" data-k="shirt"></label><label>Pants <input type="color" data-k="pants"></label><label>Shoes <input type="color" data-k="shoes"></label><label>Hat <input type="color" data-k="hat"></label></div>
+<label>Hat style</label><select id="hs"><option value="none">None</option><option value="cap">Cap</option><option value="beanie">Beanie</option></select>
+<label>Skin</label><div id="sk" style="display:flex;gap:6px"></div></div></div></div>
 <div class="card"><label>Display name (public, max 16)</label><input id="nm" maxlength="16">
 <label>Arcade initials (3 letters, public)</label><input id="in" maxlength="3" style="text-transform:uppercase;width:6em">
 <label>Dial numbers (0–99)</label><div class="dials" id="dl"></div>
 <button id="sv">Save profile</button><div id="msg"></div></div>
 <div class="mut">Founder # goes to the first <span id="cap">100</span> people who save a profile while signed in with Google.</div>
 </main>
-<script src="minikit/ztp-account.js?b=2"></script>
+<script src="minikit/ztp-account.js?b=3"></script>
 <script>
 (function () {
   var $ = function (i) { return document.getElementById(i); };
   for (var i = 0; i < 6; i++) { var e = document.createElement('input'); e.type = 'number'; e.min = 0; e.max = 99; e.value = 0; $('dl').appendChild(e); }
   $('cap').textContent = Acct.FOUNDER_CAP;
+  var AV = Acct.avatar(), ph = 0, SK = ['#f6d7b8', '#f1c7a1', '#d9a27a', '#b07a52', '#7d5236', '#4f3322'];
+  SK.forEach(function (c) { var e = document.createElement('span'); e.style.background = c; e.onclick = function () { AV.skin = c; avUI(); }; $('sk').appendChild(e); });
+  function avUI() { [].forEach.call(document.querySelectorAll('[data-k]'), function (i) { i.value = AV[i.getAttribute('data-k')]; }); $('hs').value = AV.hatStyle; [].forEach.call($('sk').children, function (e, k) { e.className = SK[k] === AV.skin ? 'on' : ''; }); }
+  [].forEach.call(document.querySelectorAll('[data-k]'), function (i) { i.oninput = function () { AV[i.getAttribute('data-k')] = i.value; }; });
+  $('hs').onchange = function () { AV.hatStyle = $('hs').value; };
+  (function walk() { ph = (ph + 0.012) % 1; $('av').innerHTML = Acct.avatarSVG(AV, { size: 110, walk: ph }); requestAnimationFrame(walk); })();
+  avUI();
   function fill(p) { p = p || {}; $('nm').value = p.name || ''; $('in').value = p.initials || Acct.initials(); $('fd').textContent = p.founder ? '#' + p.founder : '–';
-    var ds = $('dl').children; (p.dials || []).forEach(function (n, k) { if (ds[k]) ds[k].value = n; }); }
+    AV = Acct.cleanAvatar(p.avatar || AV); avUI(); var ds = $('dl').children; (p.dials || []).forEach(function (n, k) { if (ds[k]) ds[k].value = n; }); }
   function refresh() { var u = Acct.user(), S = Acct.state;
     $('st').textContent = !S.online ? 'Local mode: the online service is not reachable yet, so this profile saves on this device only.' : u && !u.anon ? 'Signed in with Google.' : 'Playing as a guest. Sign in with Google to keep your profile and get a Founder #.';
     $('pid').textContent = u ? u.uid.slice(0, 8).toUpperCase() : 'LOCAL'; $('si').style.display = u && !u.anon ? 'none' : ''; $('so').style.display = u && !u.anon ? '' : 'none';
@@ -32,7 +43,7 @@ button{font:inherit;padding:9px 14px;border-radius:9px;border:0;background:#5ef2
   $('si').onclick = function () { $('msg').textContent = ''; Acct.signIn().then(refresh).catch(function (e) { $('msg').textContent = 'Sign-in failed: ' + (e.code || e.message); }); };
   $('so').onclick = function () { Acct.signOut().then(function () { location.reload(); }); };
   $('sv').onclick = function () { $('msg').textContent = 'Saving…';
-    Acct.saveProfile({ name: $('nm').value, initials: $('in').value, dials: [].map.call($('dl').children, function (x) { return x.value; }) })
+    Acct.saveProfile({ name: $('nm').value, initials: $('in').value, avatar: AV, dials: [].map.call($('dl').children, function (x) { return x.value; }) })
       .then(function (p) { fill(p); $('msg').textContent = p.local ? 'Saved ON THIS DEVICE ONLY, not online (' + p.why + '). Reload the page and try again.' : 'Saved online' + (p.founder ? ', Founder #' + p.founder : '') + '.'; })
       .catch(function (e) { $('msg').textContent = 'Could not save: ' + (e.code || e.message); }); };
 })();

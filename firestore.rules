@@ -10,6 +10,10 @@ service cloud.firestore {
     function okName(s) { return s is string && s.size() >= 1 && s.size() <= 16; }
     function okInit(s) { return s is string && s.matches('^[A-Z0-9]{0,3}$'); }
     function okDials(d) { return d is list && d.size() <= 6; }
+    function okCol(c) { return c is string && c.matches('^#[0-9a-f]{6}$'); }
+    function okAv(a) { return a is map && a.keys().hasOnly(['shirt', 'pants', 'shoes', 'hat', 'hatStyle', 'skin'])
+      && okCol(a.shirt) && okCol(a.pants) && okCol(a.shoes) && okCol(a.hat) && okCol(a.skin) && a.hatStyle in ['none', 'cap', 'beanie']; }
+    function okAvOpt(d) { return !('avatar' in d) || okAv(d.avatar); }
 
     // games/{game}/scores/{entry}
     match /games/{game}/scores/{entry} {
@@ -43,8 +47,8 @@ service cloud.firestore {
     match /profiles/{uid} {
       allow read: if true;
       allow create: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['name', 'initials', 'dials', 'founder', 'ts'])
-        && okName(request.resource.data.name) && okInit(request.resource.data.initials) && okDials(request.resource.data.dials)
+        && request.resource.data.keys().hasOnly(['name', 'initials', 'dials', 'avatar', 'founder', 'ts'])
+        && okName(request.resource.data.name) && okInit(request.resource.data.initials) && okDials(request.resource.data.dials) && okAvOpt(request.resource.data)
         && request.resource.data.ts == request.time
         && request.resource.data.founder is int
         && (request.resource.data.founder == 0
@@ -54,8 +58,8 @@ service cloud.firestore {
                     ? !exists(/databases/$(database)/documents/meta/founders)
                     : get(/databases/$(database)/documents/meta/founders).data.n == request.resource.data.founder - 1)));
       allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'initials', 'dials'])
-        && okName(request.resource.data.name) && okInit(request.resource.data.initials) && okDials(request.resource.data.dials);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'initials', 'dials', 'avatar'])
+        && okName(request.resource.data.name) && okInit(request.resource.data.initials) && okDials(request.resource.data.dials) && okAvOpt(request.resource.data);
       allow delete: if false;
     }
   }

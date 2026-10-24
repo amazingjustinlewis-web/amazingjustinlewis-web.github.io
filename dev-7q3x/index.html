@@ -53,4 +53,10 @@ body.playing #corner{display:flex}#corner.show,#corner:hover{opacity:1}
 <script src="js/net.js"></script>
 <script src="js/games.js"></script>
 <script src="js/launcher.js"></script>
+<script src="minikit/ztp-account.js?b=3"></script>
+<a id="ztpMe" href="profile.html" style="position:fixed;right:12px;top:12px;z-index:99;display:flex;gap:8px;align-items:center;background:#0c1226e6;color:#fff;border:1px solid #5ef2c8aa;border-radius:20px;padding:4px 12px 4px 4px;font:600 14px system-ui,sans-serif;text-decoration:none"><span id="ztpMeAv" style="width:30px;height:30px;overflow:hidden;border-radius:50%;background:#ffffff14"></span><span id="ztpMeT">Sign in with Google</span></a>
+<script>(function () { function paint() { var u = Acct.user(), p = null; try { p = JSON.parse(localStorage.getItem('ztp:profile')); } catch (e) {}
+  document.getElementById('ztpMeAv').innerHTML = Acct.avatarSVG(Acct.avatar(), { size: 30 });
+  document.getElementById('ztpMeT').textContent = u && !u.anon ? ((p && p.name) || 'My profile') : 'Sign in with Google'; }
+  paint(); Acct.ready.then(function () { setTimeout(paint, 300); Acct.profile().then(function (p) { if (p) { delete p.ts; localStorage.setItem('ztp:profile', JSON.stringify(p)); } paint(); }); }); })();</script>
 </body></html>
