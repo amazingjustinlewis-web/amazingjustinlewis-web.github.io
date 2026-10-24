@@ -1,6 +1,6 @@
 /* Bubble Hockey feedback button (v0.9.12): small corner pill -> panel with the build number + COPY. Touches never reach the game. */
 (function () {
-  var BUILD = 'v0.9.33', DATE = '2026-10-23';
+  var BUILD = 'v0.9.34', DATE = '2026-10-23';
   var TXT;
   function mk() { TXT = 'Bubble Hockey build ' + BUILD + ' (' + DATE + ') - please include this build number in your feedback'; }
   mk();

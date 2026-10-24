@@ -145,7 +145,7 @@
   function tick(s, rep, demo, attract) { var now = performance.now() / 1000, dt = Math.min(.1, now - lastT || .016); lastT = now; var on = !demo && !attract, goalNow = s.msg === 'GOAL!';
     if (!on) { if (st !== 'off') stopAll(1.2); pv = { pause: s.pause, msg: s.msg, rep: rep, demo: true, over: s.over }; return; }
     var g = gameInfo(s, dt); API.g = g;
-    if (pv.demo) { st = 'play'; go('rush'); }
+    if (pv.demo || (pv.over >= 0 && s.over < 0)) { st = 'play'; heat = 0; go('rush'); note('newgame'); }   // v0.9.34: every new game (incl. tap to play again) restarts rush -> loop
     else if (s.over >= 0 && pv.over < 0) { st = 'end'; go('win', { fade: .2 }); setTimeout(function () { if (st === 'end') stopAll(2.5); }, 5000); }
     else if (goalNow && pv.msg !== 'GOAL!') { st = 'goal'; go('goal', { fade: .2 }); }
     else if (st === 'goal' && !rep && (pv.rep || s.pause <= SETTLE_FILL + .6 || !goalNow)) { st = 'settle'; var lead = Math.max(0, s.pause - .45 - SETTLE_FILL); API.lastSettleLead = lead; go('settle', { fade: .5 + lead, at: ctx ? ctx.currentTime + lead : 0 }); }
