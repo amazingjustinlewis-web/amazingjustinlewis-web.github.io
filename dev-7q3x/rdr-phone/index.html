@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Red Deer Rich - TV | Zero to Phi</title>
-<meta name="description" content="Red Deer Rich: a Red Deer property-trading board game for the TV with phones as controllers. v0.7 by Zero to Phi.">
+<meta name="description" content="Red Deer Rich: a Red Deer property-trading board game for the TV with phones as controllers. v0.7.1 by Zero to Phi.">
 <meta name="theme-color" content="#14121b">
 <meta name="robots" content="noindex">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
@@ -15,7 +15,7 @@
 
 <header id="top">
   <div class="brand"><img src="assets/logo.svg" alt="" width="49" height="40"><span>ZERO&nbsp;TO&nbsp;PHI</span></div>
-  <div class="title">RED DEER <span class="rich">RICH</span><span class="proto">v0.7 · PLACEHOLDER ART</span></div>
+  <div class="title">RED DEER <span class="rich">RICH</span><span class="proto">v0.7.1 · PLACEHOLDER ART</span></div>
   <div class="top-right"><span id="roundInfo"></span><span id="potInfo"></span><span id="joinInfo"></span><span id="lightInfo"></span><span id="fxInfo"></span></div>
 </header>
 
@@ -105,6 +105,15 @@
 <script src="js/host.js"></script>
 <script src="../../assets/js/ztp-end.js"></script>
 <script>ZTPEnd.watch(function () { return RDR.game.phase==='over'; }, 20000);</script>
+<script src="../minikit/ztp-account.js?b=1"></script>
+<script>/* v0.7.1 leaderboard: at the winner screen, a human winner posts their final net worth (bankrupt = 0, so a winner always has worth > 0). */
+Acct.watch(function () { return RDR.game.phase === 'over'; }, function () {
+  var g = RDR.game, r = (g.results || [])[0]; if (!r) return; var p = (g.players || []).filter(function (q) { return q.id === r.pid; })[0];
+  var meta = { title: 'Red Deer Rich: Top 10 fortunes', meaning: 'Score = winner\'s final net worth', fmt: function (n) { return '$' + n.toLocaleString(); } };
+  if (!p || p.ai || r.team) { Acct.board('red-deer-rich', meta); return; }
+  Acct.submit('red-deer-rich', { name: r.name, score: r.worth, label: (g.players || []).length + ' players' }).then(function (e) { meta.mine = [e]; Acct.board('red-deer-rich', meta); });
+});
+Acct.watch(function () { return RDR.game.phase !== 'over'; }, Acct.hide);</script>
 <script src="../js/ztp-playbar.js" data-here="screen" data-screen="index.html" data-phone="phone.html"></script>
 </body>
 </html>

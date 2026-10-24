@@ -67,5 +67,12 @@
   Kit.over(function () { return joined && G.sim.over; }, 40000);
   window.OBT = { G: G, V: V, get shot() { return shot; }, force: function (k) { cut(); shot.kind = k; place(1 / 60, true); } };
 })();
-</script><script src="../js/ztp-playbar.js" data-here="screen" data-screen="index.html" data-phone="pad.html"></script>
+</script><script src="../minikit/ztp-account.js?b=1"></script>
+<script>/* v0.7.1 leaderboard: at match end each human pilot posts their KOs (label shows KOs/deaths). */
+Acct.watch(function () { return window.OBT && OBT.G.sim && OBT.G.sim.over; }, function () {
+  var sim = OBT.G.sim, hs = sim.ships.filter(function (s) { return !s.bot; }), meta = { title: 'Orbit Brawl: Top 10 pilots', meaning: 'Score = KOs in one match' };
+  Promise.all(hs.map(function (s) { return Acct.submit('orbit', { name: s.name, score: s.k, label: s.k + ' KO / ' + s.d + ' D' }); })).then(function (es) { meta.mine = es; Acct.board('orbit', meta); });
+});
+Acct.watch(function () { return window.OBT && OBT.G.sim && !OBT.G.sim.over; }, Acct.hide);</script>
+<script src="../js/ztp-playbar.js" data-here="screen" data-screen="index.html" data-phone="pad.html"></script>
 </body></html>

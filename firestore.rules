@@ -1,0 +1,62 @@
+rules_version = '2';
+// Zero to Phi: leaderboards + profiles. Paste into Firebase console > Firestore Database > Rules > Publish.
+// Public reads; score entries are create-only and validated; nothing can be edited or deleted from the site.
+// Profiles hold only a chosen display name, initials, dial numbers and Founder # (never emails).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isGoogle() { return signedIn() && request.auth.token.firebase.sign_in_provider == 'google.com'; }
+    function okName(s) { return s is string && s.size() >= 1 && s.size() <= 16; }
+    function okInit(s) { return s is string && s.matches('^[A-Z0-9]{0,3}$'); }
+    function okDials(d) { return d is list && d.size() <= 6; }
+
+    // games/{game}/scores/{entry}
+    match /games/{game}/scores/{entry} {
+      allow read: if true;
+      allow create: if signedIn()
+        && game.matches('^[a-z0-9-]{1,24}$')
+        && request.resource.data.keys().hasOnly(['name', 'score', 'label', 'ver', 'uid', 'ts'])
+        && request.resource.data.keys().hasAll(['name', 'score', 'ver', 'uid', 'ts'])
+        && okName(request.resource.data.name)
+        && request.resource.data.score is int
+        && request.resource.data.score >= -1000000 && request.resource.data.score <= 1000000000
+        && request.resource.data.ver is string && request.resource.data.ver.matches('^v[0-9.]{1,12}$')
+        && (!('label' in request.resource.data) || (request.resource.data.label is string && request.resource.data.label.size() <= 24))
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.ts == request.time;
+      allow update, delete: if false;
+    }
+
+    // Founder # counter: only ever +1, only alongside the new Google profile that claims that number, capped at 100.
+    match /meta/founders {
+      allow read: if true;
+      allow create: if isGoogle() && request.resource.data.keys().hasOnly(['n']) && request.resource.data.n == 1
+        && getAfter(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.founder == 1;
+      allow update: if isGoogle() && request.resource.data.keys().hasOnly(['n'])
+        && request.resource.data.n == resource.data.n + 1 && request.resource.data.n <= 100
+        && !exists(/databases/$(database)/documents/profiles/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.founder == request.resource.data.n;
+      allow delete: if false;
+    }
+
+    match /profiles/{uid} {
+      allow read: if true;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'initials', 'dials', 'founder', 'ts'])
+        && okName(request.resource.data.name) && okInit(request.resource.data.initials) && okDials(request.resource.data.dials)
+        && request.resource.data.ts == request.time
+        && request.resource.data.founder is int
+        && (request.resource.data.founder == 0
+            || (isGoogle() && request.resource.data.founder >= 1 && request.resource.data.founder <= 100
+                && getAfter(/databases/$(database)/documents/meta/founders).data.n == request.resource.data.founder
+                && (request.resource.data.founder == 1
+                    ? !exists(/databases/$(database)/documents/meta/founders)
+                    : get(/databases/$(database)/documents/meta/founders).data.n == request.resource.data.founder - 1)));
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'initials', 'dials'])
+        && okName(request.resource.data.name) && okInit(request.resource.data.initials) && okDials(request.resource.data.dials);
+      allow delete: if false;
+    }
+  }
+}
