@@ -13,6 +13,18 @@
         "Zigzag your thumb side to side while carrying to pull a wide deke; shoot mid-deke and it comes off that side",
         "Max rip and dispenser serves from v0.9.25 unchanged"
       ]
+    },
+    {
+      "name": "Orbit Brawl",
+      "build": "v0.7",
+      "tv": "builds/orbit-v0.7/?tv=1",
+      "phone": "builds/orbit-v0.7/pad.html",
+      "players": "1-20 phones, TV optional (live cinematic cam)",
+      "new": [
+        "Phone cockpit space dogfight: fly and shoot from your phone, play bots solo",
+        "Put it on a screen and friends scan the QR to join as pilots",
+        "Phone / Screen switch and ? help in the top corner"
+      ]
     }
   ]
 }
