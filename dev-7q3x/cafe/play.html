@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#c8682f">
+<title>Café games · no app needed</title>
+<link rel="stylesheet" href="js/cafe.css">
+<style>
+body{min-height:100vh;display:flex;flex-direction:column;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+header{display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;background:var(--accent);color:#fff}
+header img{height:34px;border-radius:8px;background:#fff}
+header b{flex:1;font-size:1.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.35)}#dot.on{background:#8f8}
+#help{width:34px;height:34px;padding:0;border-radius:50%;background:#fff;color:var(--accent);font-weight:700;font-size:1.1rem}
+main{flex:1;padding:1rem;max-width:520px;width:100%;margin:0 auto}
+.view{display:none}.view.on{display:block;animation:in .25s}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+h2{margin:.2rem 0 .8rem}
+.gcard{display:flex;align-items:center;gap:.9rem;width:100%;text-align:left;background:var(--card);color:var(--ink);border:2px solid var(--line);margin-bottom:.7rem;padding:.9rem 1rem}
+.gcard .i{font-size:2.2rem}.gcard small{display:block;color:var(--muted);font-weight:400}
+.gcard.soon{opacity:.5}
+.modes button{display:block;width:100%;margin:.6rem 0;font-size:1.1rem;padding:1rem}
+.tagline{text-align:center;margin:.4rem 0 1rem}
+footer{text-align:center;padding:.8rem;font-size:.9rem}
+footer a{color:var(--accent2);font-weight:600}
+.status{text-align:center;color:var(--muted);min-height:1.4em;margin:.4rem 0;font-weight:600}
+/* battleship */
+.bsg{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);gap:3px;background:#2d6b8a;padding:5px;border-radius:12px;aspect-ratio:1}
+.bsg div{background:#5aa7c9;border-radius:5px;position:relative;display:flex;align-items:center;justify-content:center;font-size:1rem}
+.bsg.fleet{width:46%;margin:0 auto;gap:2px;padding:3px}
+.bsg div.ship{background:#e9dcc6}
+.bsg div.m::after{content:'';width:28%;height:28%;border-radius:50%;background:#e9f6fb}
+.bsg div.h{background:#f0a35e}.bsg div.h::after{content:'\1F4A5'}
+.bsg div.s{background:#c4473a}.bsg div.s::after{content:'\2620';color:#fff}
+.bsg.fleet div::after{font-size:.6rem}
+.bsg div.new{animation:pop .35s}
+@keyframes pop{0%{transform:scale(1.6)}}
+.bsg.mine{opacity:.55;pointer-events:none}
+.lbl{display:flex;justify-content:space-between;font-weight:600;margin:.6rem 0 .3rem;font-size:.95rem}
+/* connect four */
+.c4b{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;background:var(--accent2);padding:7px;border-radius:14px}
+.c4b div{aspect-ratio:1;border-radius:50%;background:var(--bg);box-shadow:inset 0 3px 4px rgba(0,0,0,.25)}
+.c4b div.p1{background:#e0533d;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2)}.c4b div.p2{background:#f4c430;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2)}
+.c4b div.new{animation:drop .35s cubic-bezier(.5,0,.75,1.3)}.c4b div.win{outline:3px solid #fff}
+@keyframes drop{from{transform:translateY(-200px)}}
+.cols{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:0 7px;margin-bottom:5px}
+.cols button{padding:.9rem 0;border-radius:10px;font-size:1.1rem}
+.cols button:disabled{opacity:.3}
+.chip{display:inline-block;width:18px;height:18px;border-radius:50%;vertical-align:-3px;margin-right:4px}
+/* overlays */
+.ov{position:fixed;inset:0;background:rgba(40,25,15,.55);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:30}
+.ov .card{max-width:420px;width:100%;text-align:center}
+.reward{background:linear-gradient(145deg,#fff3c4,#ffd56a);border:3px dashed #c8901a}
+.reward .big{font-size:1.7rem;font-weight:700;margin:.4rem 0}
+.tqr{width:190px;height:190px;margin:.5rem auto;background:#fff;border-radius:12px;padding:4px}.tqr svg{width:100%;height:100%}
+.tcode{font-size:2rem;letter-spacing:.3em;font-weight:700}
+</style></head><body>
+<header><img id="logo" class="hide" alt=""><b id="cname">Café games</b><i id="dot" title="café screen"></i><button id="help" aria-label="Feedback">?</button></header>
+<main>
+  <section class="view" id="vName"><h2>Hi! What should we call you?</h2><p class="tagline"><span class="noapp">NO APP TO DOWNLOAD · just scan and play</span></p><input id="nick" maxlength="14" placeholder="Your name"><p><button id="nickGo" style="width:100%;font-size:1.2rem">Let's play ☕</button></p></section>
+  <section class="view" id="vHome"><p class="tagline"><span class="noapp">No app needed ✓</span></p><h2 id="hi">Pick a game</h2><div id="glist"></div></section>
+  <section class="view" id="vMode"><h2 id="mTitle"></h2><div class="modes" id="modes"></div><button class="ghost" data-back style="width:100%">← Back</button></section>
+  <section class="view" id="vTable"><h2>Play with your table</h2>
+    <div id="tHost" class="card" style="text-align:center"><b>Show this to your friend</b><div class="tqr" id="tQr"></div>Or they tap <i>Join a friend</i> and type<div class="tcode" id="tCode">....</div><div class="status" id="tStat">Waiting for your friend…</div></div>
+    <div id="tJoin" class="card"><b>Type your friend's code</b><input id="tIn" maxlength="4" style="text-transform:uppercase;font-size:1.6rem;letter-spacing:.3em;text-align:center;margin:.6rem 0"><button id="tGo" style="width:100%">Join</button><div class="status" id="tJStat"></div></div>
+    <p><button class="ghost" data-back style="width:100%">← Back</button></p></section>
+  <section class="view" id="vBS">
+    <div class="lbl"><span id="bsWho">Enemy waters</span><span id="bsCount"></span></div>
+    <div class="bsg" id="bsEnemy"></div>
+    <div class="status" id="bsStat"></div>
+    <div class="lbl"><span>Your fleet</span><span id="bsMine"></span></div>
+    <div class="bsg fleet" id="bsFleet"></div>
+    <p style="display:flex;gap:.5rem"><button class="ghost" id="bsShuffle" style="flex:1">🔀 Shuffle fleet</button><button id="bsReady" style="flex:1">Ready!</button></p>
+    <button class="ghost" data-quit style="width:100%">Leave game</button></section>
+  <section class="view" id="vC4">
+    <div class="lbl" id="c4who"></div>
+    <div class="cols" id="c4cols"></div><div class="c4b" id="c4b"></div>
+    <div class="status" id="c4stat"></div>
+    <div id="c4wait" class="hide"><button class="alt" id="c4cpu" style="width:100%">Play the TV's computer instead</button></div>
+    <p><button class="ghost" data-quit style="width:100%">Leave game</button></p></section>
+</main>
+<footer><a id="learn" target="_blank">Learn more about custom games by Justin</a> · <span style="color:var(--muted)">Zero to Phi</span></footer>
+<div class="ov hide" id="ovEnd"><div class="card"><div style="font-size:3rem" id="endIcon"></div><h2 id="endT"></h2><p id="endS"></p><button id="again" style="width:100%">Play again</button><p><button class="ghost" id="endHome" style="width:100%">Back to games</button></p></div></div>
+<div class="ov hide" id="ovReward"><div class="card reward"><div style="font-size:2.6rem">🎉☕</div><h2>You won a treat!</h2><div class="big" id="rwText"></div><p>Show this to the barista</p><p style="font-size:.85rem" id="rwMeta"></p><button id="rwOk" style="width:100%">Got it</button></div></div>
+<div class="ov hide" id="ovHelp"><div class="card" style="text-align:left"><h2>Ideas or problems?</h2><p>Tell Justin what you'd love to play or what went wrong.</p><textarea id="fb" rows="4" maxlength="800" placeholder="Type here…"></textarea><p style="display:flex;gap:.5rem"><button id="fbSend" style="flex:1">Send</button><button class="ghost" id="fbClose" style="flex:1">Close</button></p><p class="status" id="fbMsg"></p><p style="font-size:.9rem">Or email <a id="fbMail" href="#">amazingjustinlewis@gmail.com</a></p></div></div>
+<script src="js/vendor/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="../minikit/ztp-account.js?b=5"></script>
+<script src="js/cafe.js?b=2"></script>
+<script src="js/net.js"></script>
+<script src="js/games.js"></script>
+<script src="js/play.js"></script>
+</body></html>

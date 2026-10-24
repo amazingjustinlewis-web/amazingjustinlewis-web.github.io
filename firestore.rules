@@ -15,12 +15,54 @@ service cloud.firestore {
       && okCol(a.shirt) && okCol(a.pants) && okCol(a.shoes) && okCol(a.hat) && okCol(a.skin) && a.hatStyle in ['none', 'cap', 'beanie']; }
     function okAvOpt(d) { return !('avatar' in d) || okAv(d.avatar); }
 
+    // Optional café/world tag on a global score: only members of that shop can tag it; the name must match the shop; game must be allowed there.
+    function okShopTag(game, d) {
+      return (!('shopId' in d) && !('shopName' in d))
+        || (d.shopId is string && d.shopId.matches('^[a-z0-9-]{1,32}$')
+            && exists(/databases/$(database)/documents/shops/$(d.shopId)/members/$(request.auth.uid))
+            && d.shopName == get(/databases/$(database)/documents/shops/$(d.shopId)).data.name
+            && game in get(/databases/$(database)/documents/shops/$(d.shopId)).data.games);
+    }
+
+    // Shops (cafés / worlds). Doc is public (name, games, pinned versions). Join code lives in private/join, readable by the owner only.
+    // Joining = creating members/{yourUid} carrying the right code (works with anonymous auth, so bots need no Google).
+    match /shops/{shop} {
+      function okShop(d) { return d.keys().hasOnly(['name', 'owner', 'private', 'games', 'pins', 'ts'])
+        && d.name is string && d.name.size() >= 1 && d.name.size() <= 32 && d.private is bool
+        && d.games is list && d.games.size() <= 20 && d.pins is map && d.ts == request.time; }
+      allow read: if true;
+      allow create: if signedIn() && shop.matches('^[a-z0-9-]{1,32}$') && okShop(request.resource.data)
+        && request.resource.data.owner == request.auth.uid
+        && getAfter(/databases/$(database)/documents/shops/$(shop)/private/join).data.code is string;
+      allow update: if signedIn() && resource.data.owner == request.auth.uid && okShop(request.resource.data)
+        && request.resource.data.owner == resource.data.owner;
+      allow delete: if false;
+
+      match /private/{doc} {
+        allow read: if signedIn() && get(/databases/$(database)/documents/shops/$(shop)).data.owner == request.auth.uid;
+        allow create: if signedIn() && doc == 'join' && getAfter(/databases/$(database)/documents/shops/$(shop)).data.owner == request.auth.uid
+          && !exists(/databases/$(database)/documents/shops/$(shop))
+          && request.resource.data.keys().hasOnly(['code']) && request.resource.data.code is string && request.resource.data.code.size() >= 16;
+        allow update: if signedIn() && doc == 'join' && get(/databases/$(database)/documents/shops/$(shop)).data.owner == request.auth.uid
+          && request.resource.data.keys().hasOnly(['code']) && request.resource.data.code is string && request.resource.data.code.size() >= 16;
+        allow delete: if false;
+      }
+      match /members/{uid} {
+        allow read: if signedIn() && (request.auth.uid == uid || get(/databases/$(database)/documents/shops/$(shop)).data.owner == request.auth.uid);
+        allow create: if signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['code', 'name', 'ts']) && okName(request.resource.data.name) && request.resource.data.ts == request.time
+          && request.resource.data.code == getAfter(/databases/$(database)/documents/shops/$(shop)/private/join).data.code;
+        allow update: if false;
+        allow delete: if signedIn() && get(/databases/$(database)/documents/shops/$(shop)).data.owner == request.auth.uid;
+      }
+    }
+
     // games/{game}/scores/{entry}
     match /games/{game}/scores/{entry} {
       allow read: if true;
       allow create: if signedIn()
         && game.matches('^[a-z0-9-]{1,24}$')
-        && request.resource.data.keys().hasOnly(['name', 'score', 'label', 'ver', 'uid', 'ts'])
+        && request.resource.data.keys().hasOnly(['name', 'score', 'label', 'ver', 'uid', 'ts', 'shopId', 'shopName'])
         && request.resource.data.keys().hasAll(['name', 'score', 'ver', 'uid', 'ts'])
         && okName(request.resource.data.name)
         && request.resource.data.score is int
@@ -28,7 +70,8 @@ service cloud.firestore {
         && request.resource.data.ver is string && request.resource.data.ver.matches('^v[0-9.]{1,12}$')
         && (!('label' in request.resource.data) || (request.resource.data.label is string && request.resource.data.label.size() <= 24))
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.ts == request.time;
+        && request.resource.data.ts == request.time
+        && okShopTag(game, request.resource.data);
       allow update, delete: if false;
     }
 

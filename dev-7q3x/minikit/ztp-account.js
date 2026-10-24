@@ -16,7 +16,7 @@
   var S = { fb: null, auth: null, db: null, user: null, online: false, why: '' }, M = {};
   function jget(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
   function jset(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  function clean(s, n) { return String(s || '').replace(/[^\w .'\u2013-]/g, '').replace(/\s+/g, ' ').trim().slice(0, n || 16); }
+  function clean(s, n) { return String(s || '').replace(/[^\w .'\u00c0-\u017f\u2013-]/g, '').replace(/\s+/g, ' ').trim().slice(0, n || 16); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   function initials() { return jget('ztp:initials', ''); }
   function setInitials(s) { s = String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3); jset('ztp:initials', s); return s; }
@@ -54,8 +54,10 @@
   function submit(game, o) {
     return Promise.all([ready, ver(game, o.buildUrl)]).then(function (r) {
       var e = { name: clean(o.name || initials() || '???', 16) || '???', score: Math.round(Number(o.score) || 0), label: clean(o.label, 24), ver: /^v[0-9.]+$/.test(r[1]) ? r[1] : 'v0', t: Date.now() };
+      if (o.shop && o.shop.id) { e.shopId = o.shop.id; e.shopName = o.shop.name; }
       if (!S.online || !S.user) { e.local = true; return localAdd(game, e); }
       var d = { name: e.name, score: e.score, label: e.label, ver: e.ver, uid: S.user.uid, ts: M.fs.serverTimestamp() };
+      if (o.shop && o.shop.id) { d.shopId = e.shopId = String(o.shop.id); d.shopName = e.shopName = String(o.shop.name || '').slice(0, 32); }
       return timeout(M.fs.addDoc(M.fs.collection(S.db, 'games', game, 'scores'), d), 8000).then(function (ref) { e.id = ref.id; return e; })
         .catch(function (err) { S.lastError = (err && (err.code || err.message)) || 'error'; console.warn('[ztp-account] score saved locally:', S.lastError); e.local = true; e.err = S.lastError; return localAdd(game, e); });
     });
@@ -63,11 +65,11 @@
   function top(game, o) {
     o = o || {}; var n = o.n || 10;
     var loc = jget(lkey(game), []).map(function (e) { e.local = true; return e; });
-    var pick = function (l) { if (o.ver) l = l.filter(function (e) { return e.ver === o.ver; }); return l.sort(cmp).slice(0, n); };
+    var pick = function (l) { if (o.shop) l = l.filter(function (e) { return e.shopId === o.shop; }); if (o.ver) l = l.filter(function (e) { return e.ver === o.ver; }); return l.sort(cmp).slice(0, n); };
     return ready.then(function () {
       if (!S.online) return pick(loc);
       var q = M.fs.query(M.fs.collection(S.db, 'games', game, 'scores'), M.fs.orderBy('score', 'desc'), M.fs.limit(200));
-      return timeout(M.fs.getDocs(q), 8000).then(function (snap) { var l = []; snap.forEach(function (d) { var x = d.data(); l.push({ id: d.id, uid: x.uid, name: x.name, score: x.score, label: x.label, ver: x.ver, t: x.ts && x.ts.toMillis ? x.ts.toMillis() : 0 }); });
+      return timeout(M.fs.getDocs(q), 8000).then(function (snap) { var l = []; snap.forEach(function (d) { var x = d.data(); l.push({ id: d.id, uid: x.uid, name: x.name, score: x.score, label: x.label, ver: x.ver, shopId: x.shopId, shopName: x.shopName, t: x.ts && x.ts.toMillis ? x.ts.toMillis() : 0 }); });
         return pick(l.concat(loc.filter(function (e) { return e.local; }))); }).catch(function () { return pick(loc); });
     });
   }
@@ -82,10 +84,10 @@
     if (!el) { var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); el = document.createElement('div'); el.id = 'ztpBoard'; document.body.appendChild(el); }
     var mode = 'all', mine = o.mine || [];
     function draw() {
-      ver(game, o.buildUrl).then(function (cv) { return top(game, mode === 'this' ? { ver: cv } : {}).then(function (l) {
+      ver(game, o.buildUrl).then(function (cv) { return top(game, Object.assign(mode === 'this' ? { ver: cv } : {}, o.shop ? { shop: o.shop } : {})).then(function (l) {
         el.innerHTML = '<h3>' + esc(o.title || 'Top 10') + '</h3><div class="bar"><button data-m="all" class="' + (mode === 'all' ? 'on' : '') + '">All versions</button><button data-m="this" class="' + (mode === 'this' ? 'on' : '') + '">This version (' + esc(cv) + ')</button><span style="flex:1"></span><button data-x>✕</button></div>' +
           (l.length ? l.map(function (e, i) { var me = mine.some(function (m) { return m && ((m.id && m.id === e.id) || (m.t && m.t === e.t && m.name === e.name)); });
-            return '<div class="row' + (me ? ' me' : '') + '"><span class="rk">' + (i + 1) + '</span><span class="nm">' + (e.uid ? '<a style="color:inherit;text-decoration:none" target="_blank" href="' + PROFILE + '?u=' + encodeURIComponent(e.uid) + '">' + esc(e.name) + '</a>' : esc(e.name)) + '</span><span class="lb">' + esc(e.label || '') + '</span><span class="sc">' + esc(o.fmt ? o.fmt(e.score) : e.score) + '</span><span class="vr">' + esc(e.ver) + (e.local ? ' · local' : '') + '</span></div>'; }).join('') : '<div style="opacity:.6">No scores yet. Be the first!</div>') +
+            return '<div class="row' + (me ? ' me' : '') + '"><span class="rk">' + (i + 1) + '</span><span class="nm">' + (e.uid ? '<a style="color:inherit;text-decoration:none" target="_blank" href="' + PROFILE + '?u=' + encodeURIComponent(e.uid) + '">' + esc(e.name) + '</a>' : esc(e.name)) + '</span><span class="lb">' + esc(e.label || '') + '</span><span class="sc">' + esc(o.fmt ? o.fmt(e.score) : e.score) + '</span><span class="vr">' + esc(e.ver) + (e.shopName ? ' <b style="color:#ffc83a;font-weight:600">@ ' + esc(e.shopName) + '</b>' : '') + (e.local ? ' · local' : '') + '</span></div>'; }).join('') : '<div style="opacity:.6">No scores yet. Be the first!</div>') +
           '<div style="margin-top:8px;font-size:12px;opacity:.7">Set your name, initials and avatar on your phone (\uD83D\uDC64 button).</div>' +
           '<div class="ft">' + (S.online ? 'Online board' : 'This device only (online board not reachable: ' + esc(S.why) + ')') + (mine.some(function (m) { return m && m.err; }) ? ' · <b style="color:#ffd27a">online save failed: ' + esc(mine.filter(function (m) { return m && m.err; })[0].err) + '</b>' : '') + ' · ' + esc(o.meaning || '') + '</div>';
       }); });
@@ -103,6 +105,16 @@
     return ready.then(function () { if (!S.online || !S.user) return jget('ztp:profile', null);
       return M.fs.getDoc(M.fs.doc(S.db, 'profiles', S.user.uid)).then(function (d) { return d.exists() ? d.data() : null; }).catch(function () { return jget('ztp:profile', null); }); });
   }
+  // ---------- shops (cafés / worlds) ----------
+  // shops/{id} public doc; shops/{id}/private/join {code} owner-only; shops/{id}/members/{uid} {code,name,ts} (rules check code)
+  function needDb() { return ready.then(function () { if (!S.db || !S.user) throw new Error(S.why || 'offline'); return S; }); }
+  function getShop(id) { return needDb().then(function () { return M.fs.getDoc(M.fs.doc(S.db, 'shops', id)); }).then(function (d) { return d.exists() ? Object.assign({ id: id }, d.data()) : null; }); }
+  function isMember(id) { return needDb().then(function () { return M.fs.getDoc(M.fs.doc(S.db, 'shops', id, 'members', S.user.uid)); }).then(function (d) { return d.exists(); }).catch(function () { return false; }); }
+  function joinShop(id, code, name) { return needDb().then(function () { return M.fs.setDoc(M.fs.doc(S.db, 'shops', id, 'members', S.user.uid), { code: String(code), name: clean(name || myName('Bot'), 16) || 'Bot', ts: M.fs.serverTimestamp() }); }); }
+  function createShop(id, d, code) { return needDb().then(function () { var b = M.fs.writeBatch(S.db);
+    b.set(M.fs.doc(S.db, 'shops', id), { name: clean(d.name, 32), owner: S.user.uid, private: !!d.private, games: d.games || [], pins: d.pins || {}, ts: M.fs.serverTimestamp() });
+    b.set(M.fs.doc(S.db, 'shops', id, 'private', 'join'), { code: String(code) });
+    b.set(M.fs.doc(S.db, 'shops', id, 'members', S.user.uid), { code: String(code), name: clean(d.ownerName || 'Owner', 16), ts: M.fs.serverTimestamp() }); return b.commit(); }); }
   function today() { return new Date().toISOString().slice(0, 10); }
   // public profile of any player (by uid) + their recent scores across games (no index needed: one equality query per game)
   function publicProfile(uid) {
@@ -197,5 +209,5 @@
   function myName(fallback) { var p = jget('ztp:profile', null); return clean(initials() || (p && p.name) || fallback || '', 16); }
 
   root.Acct = { ready: ready, state: S, user: user, signIn: signIn, signOut: signOut, initials: initials, setInitials: setInitials, ver: ver,
-    submit: submit, top: top, watch: watch, board: board, hide: hide, profile: profile, saveProfile: saveProfile, avatar: avatar, avatarSVG: avatarSVG, cleanAvatar: cleanAv, phoneChip: phoneChip, endPrompt: endPrompt, myName: myName, publicProfile: publicProfile, today: today, PROFILE: PROFILE, FOUNDER_CAP: FOUNDER_CAP, clean: clean };
+    submit: submit, top: top, watch: watch, board: board, hide: hide, profile: profile, saveProfile: saveProfile, avatar: avatar, avatarSVG: avatarSVG, cleanAvatar: cleanAv, phoneChip: phoneChip, endPrompt: endPrompt, getShop: getShop, isMember: isMember, joinShop: joinShop, createShop: createShop, myName: myName, publicProfile: publicProfile, today: today, PROFILE: PROFILE, FOUNDER_CAP: FOUNDER_CAP, clean: clean };
 })(window);

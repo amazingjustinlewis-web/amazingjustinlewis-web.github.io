@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Set up your café screen · Zero to Phi Café</title>
+<link rel="stylesheet" href="js/cafe.css">
+<style>
+body{padding:1rem}
+.wrap{max-width:980px;margin:0 auto}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem 1rem;margin-bottom:1rem}
+h1{margin:0;font-size:1.8rem}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+label{display:block;font-weight:600;margin:.8rem 0 .3rem}
+.hint{color:var(--muted);font-size:.9rem;font-weight:400}
+.row{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.row input[type=color]{width:56px;height:42px;padding:2px}
+.games{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}
+.games label{margin:0;font-weight:500;display:flex;gap:.4rem;align-items:center}
+.games input{width:auto}
+.toggle{display:flex;gap:.5rem;align-items:center;font-weight:600;margin:.8rem 0}
+.toggle input{width:auto;transform:scale(1.3)}
+#logoPrev:not([src]),#logoPrev[src=""]{visibility:hidden}
+#logoPrev{width:56px;height:56px;border-radius:12px;object-fit:contain;background:#fff;border:2px solid var(--line)}
+.out{position:sticky;top:.5rem}
+.out a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;font-size:1.2rem;padding:.9rem;border-radius:14px;margin:.6rem 0}
+#tent{background:#fff;border:2px dashed var(--line);border-radius:14px;padding:1rem;text-align:center}
+#tent .qr{width:180px;height:180px;margin:.4rem auto}
+#tent .qr svg{width:100%;height:100%}
+#tent h2{margin:.2rem 0;font-size:1.5rem}
+#tent .code{font-size:1.1rem;letter-spacing:.3em;font-weight:700}
+.saved{color:var(--accent2);font-weight:600}
+@media print{body *{visibility:hidden}#tent,#tent *{visibility:visible}#tent{position:fixed;inset:0;border:0;display:flex;flex-direction:column;justify-content:center}#tent .qr{width:9cm;height:9cm}#tent h2{font-size:2.4rem}}
+</style></head><body>
+<div class="wrap">
+<header><h1>☕ Set up your café screen</h1><span class="noapp">NO APP TO DOWNLOAD · just scan and play</span></header>
+<p class="hint">Free from Zero to Phi. Fill this in once, open the café screen on your TV's browser, and print the table tent. Everything is saved on this device and packed into the screen link, so no account is needed yet.</p>
+<div class="grid">
+<div class="card">
+  <label>Café name</label><input id="name" maxlength="40">
+  <label>Logo <span class="hint">(paste a link or upload a small image)</span></label>
+  <div class="row"><img id="logoPrev" alt=""><input id="logoUrl" placeholder="https://…/logo.png" style="flex:1 1 160px;width:auto;min-width:0"><input id="logoFile" type="file" accept="image/*" style="flex:0 1 220px;min-width:0"></div>
+  <label>Colours</label>
+  <div class="row"><input type="color" id="accent"> main <input type="color" id="accent2"> second <input type="color" id="bg"> background</div>
+  <label>Games on your screen</label><div class="games" id="games"></div>
+  <label>Menu <span class="hint">one per line: Name | price | category. These become the board-game track around your screen. Add a line called "Golden Bean" for a lucky space.</span></label>
+  <textarea id="menu" rows="9"></textarea>
+  <label>Specials <span class="hint">(one per line, they rotate in the middle of the screen)</span></label>
+  <textarea id="specials" rows="3"></textarea>
+  <label>Promos / rewards <span class="hint">(one per line, e.g. "10% off a latte for landing on the Golden Bean space")</span></label>
+  <textarea id="promos" rows="3"></textarea>
+  <div class="toggle"><input type="checkbox" id="promoRewards"> Games can drop a promo in as a surprise reward</div>
+  <div class="toggle"><input type="checkbox" id="leaderboards"> Show leaderboards on the screen</div>
+  <div class="row"><button class="ghost" id="reset">Reset scores</button><button class="ghost" id="demo">Fill with a sample café</button><span id="msg" class="saved"></span></div>
+</div>
+<div class="out">
+  <div class="card">
+    <b>Your café screen</b>
+    <a class="big" id="open" target="_blank">▶ Open your café screen</a>
+    <div class="row"><button class="ghost" id="copy">Copy screen link</button><span class="hint">Open it in the TV's browser (or cast a Chrome tab) and go full screen.</span></div>
+    <label>Table tent <span class="hint">print and fold one for each table</span></label>
+    <div id="tent"><div style="font-weight:700;color:var(--accent)" id="tName"></div><h2>Scan to play!</h2><div class="qr" id="tQr"></div><div class="noapp">No app to download</div><p class="hint">Point your camera at the code. Free games, right in your browser.</p><div class="code" id="tCode"></div></div>
+    <p><button class="alt" onclick="print()">🖨 Print table tent</button></p>
+    <p class="hint">Want games made just for your café? <a href="../business.html">Custom games by Justin</a></p>
+  </div>
+</div>
+</div></div>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/cafe.js"></script>
+<script src="js/setup.js"></script>
+</body></html>

@@ -112,7 +112,7 @@
   addEventListener('keydown', function (e) { if (e.key === 'c' || e.key === 'C') CT.start(); }); window.BHCT = CT;
   Kit.over(function () { return !demo && sim.over >= 0 && reelSt === 0; }, 40000); window.BHT = { sim: sim, host: host, get R3() { return R3; }, get plist() { return plist; }, get reelSt() { return reelSt; }, get attract() { return attract; }, get demo() { return demo; }, get watch() { return watch; }, startWatch: startWatch, SET: SET, devPlay: function () { demo = false; attract = false; sim.reset(); sim.ai = [true, true]; } };
 })();
-</script><script src="../minikit/ztp-account.js?b=4"></script>
+</script><script src="../minikit/ztp-account.js?b=5"></script>
 <script>/* v0.9.45 leaderboard: at the final whistle (real games only) the TV broadcasts the result; each phone on the winning team posts the goal margin
    under its own account + chosen name and replies acctok. After 5 s the TV posts for any winning phone that could not (guest/offline fallback), then shows the top 10. */
 Acct.watch(function () { return window.BHT && !BHT.demo && BHT.sim.over >= 0; }, function () {

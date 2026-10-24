@@ -1,0 +1,28 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shop · Zero to Phi (dev)</title>
+<meta name="robots" content="noindex">
+<style>body{margin:0;background:#0b1020;color:#eef;font:16px system-ui,sans-serif}.w{max-width:760px;margin:0 auto;padding:18px}h1{margin:.2em 0}.mut{opacity:.65;font-size:13px}
+.card{background:#141b33;border:1px solid #2a3560;border-radius:14px;padding:14px;margin:12px 0}.row{display:flex;gap:8px;padding:3px 0}.row .n{flex:1;font-weight:600}.tag{display:inline-block;background:#ffc83a;color:#211;border-radius:6px;padding:1px 7px;font-size:12px;font-weight:700}
+a{color:#7fd3ff}input,button{font:inherit;padding:7px 10px;border-radius:8px;border:1px solid #fff4;background:#0008;color:#fff}button{background:#5ef2c8;color:#012;border:0;font-weight:700}</style></head><body><div class="w">
+<div class="mut"><a href="../">← dev hub</a> · DEV</div>
+<h1 id="nm">Loading…</h1><div id="meta" class="mut"></div>
+<div class="card" id="joinC" style="display:none"><b>Join this shop</b><div class="mut">Members can post scores tagged to this shop. Ask the owner for the join code.</div>
+<p><input id="jn" placeholder="Your name" maxlength="16"> <input id="jc" placeholder="Join code" type="password"> <button id="jb">Join</button></p><div id="jm" class="mut"></div></div>
+<div id="games"></div>
+<div class="mut">Shop scores also appear on each game's global board, tagged “@ shop”. This page shows the shop-filtered board.</div>
+</div>
+<script src="../minikit/ztp-account.js?b=5"></script>
+<script>
+(function(){ var $=function(i){return document.getElementById(i)}, esc=function(x){return String(x==null?'':x).replace(/[&<>"']/g,function(c){return '&#'+c.charCodeAt(0)+';'})};
+ var NAMES={battleship:'Battleship',connect4:'Connect Four',bubble:'Bubble Hockey',orbit:'Orbit Brawl','red-deer-rich':'Red Deer Rich'};
+ var PLAY={battleship:'play.html',connect4:'play.html',bubble:'../bubble/',orbit:'../orbit/','red-deer-rich':'../rdr-phone/'};
+ var id=(/[?&]s=([a-z0-9-]{1,32})/.exec(location.search)||[])[1];
+ if(!id){$('nm').textContent='No shop given (use ?s=<id>)';return;}
+ function draw(sh,member){ document.title=sh.name+' · Zero to Phi (dev)'; $('nm').textContent=sh.name; $('meta').innerHTML=(sh.private?'<span class="tag">PRIVATE</span> ':'')+(member?'You are a member':'Not a member')+' · id '+esc(id);
+  $('joinC').style.display=member?'none':'';
+  $('games').innerHTML=sh.games.map(function(g){return '<div class="card"><b>'+esc(NAMES[g]||g)+'</b> <span class="mut">pinned '+esc((sh.pins||{})[g]||'latest')+'</span> · <a href="'+PLAY[g]+(PLAY[g]==='play.html'?'?s='+id:'')+'">play</a><div id="b-'+g+'" class="mut">loading board…</div></div>'}).join('');
+  sh.games.forEach(function(g){ Acct.top(g,{shop:id,n:10}).then(function(l){ $('b-'+g).innerHTML=l.length?l.map(function(e,i){return '<div class="row"><span>'+(i+1)+'</span><span class="n">'+(e.uid?'<a href="../profile.html?u='+encodeURIComponent(e.uid)+'">'+esc(e.name)+'</a>':esc(e.name))+'</span><span>'+esc(e.score)+'</span><span class="mut">'+esc(e.label||'')+'</span><span class="mut">'+esc(e.ver)+'</span></div>'}).join(''):'no scores yet'; }); }); }
+ function load(){ Acct.getShop(id).then(function(sh){ if(!sh){$('nm').textContent='Shop not found';return;} return Acct.isMember(id).then(function(m){draw(sh,m)}); }).catch(function(e){$('nm').textContent='Shop unavailable ('+(e.message||e)+')'}); }
+ $('jb').onclick=function(){ $('jm').textContent='Joining…'; Acct.joinShop(id,$('jc').value,$('jn').value).then(function(){$('jm').textContent='Joined!';load()}).catch(function(e){$('jm').textContent='Join failed: '+(e.code||e.message)}); };
+ load();
+})();
+</script></body></html>
