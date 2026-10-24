@@ -22,7 +22,9 @@
     // stem levels (0..1) as functions of game state g; base stems sit at 1
     layers: {
       drive:   function (g) { return g.heat; },                                          // puck near a net / on a rush
-      tension: function (g) { return g.mode === 'ot' || g.mode === 'final' ? .9 : g.mode === 'late' ? .65 : 0; } },
+      tension: function (g) { return g.mode === 'ot' || g.mode === 'final' ? .9 : g.mode === 'late' ? .65 : 0; },
+      // v0.9.33 build-up: elapsed game fraction (0 at puck drop -> 1 at the horn), eased, capped so it stays subtle
+      prog: function (g) { var f = g.sudden ? 1 : Math.max(0, Math.min(1, 1 - g.time / 180)); return Math.min(.7, f * f * (3 - 2 * f) * .75 + (g.sudden ? .1 : 0)); } },
     heat: { netDist: .42, rushSpeed: 1.15, rise: .25, fall: 1.6 },   // seconds-ish smoothing (rise fast, fall slow)
     stingers: { save: ['save', 'glove'], check: ['bigcheck', 'knockdown'], cooldown: 1.6, vol: .8 },
     fadeIn: .5, fadeOut: .9
@@ -34,10 +36,15 @@
   function N(ch, s, m, len, v, x) { var e = { ch: ch, s: s, m: m, len: len, v: v }; if (x) for (var k in x) e[k] = x[k]; return e; }
   function Z(s, nk, v) { return { ch: 'noise', s: s, nk: nk, len: 1, v: v }; }
   function barStems(sec, bi, chord) { var r = CH[chord][0], P = CH[chord][1], st = { bass: [], drums: [], pad: [], arp: [], drive: [], dhat: [], tense: [] }, s;
-    var ot = sec === 'OT', br = sec === 'Br', fill = sec === 'F', intro = sec === 'I';
+    var ot = sec === 'OT', br = sec === 'Br', fill = sec === 'F', intro = sec === 'I'; st.prog = []; st.bassP = [];
     // bass (triangle): octave pump 8ths; OT pumps 16ths; bridge holds
     if (br) { st.bass.push(N('tri', 0, r, 8, .55)); st.bass.push(N('tri', 8, r + 7, 8, .5)); }
     else for (s = 0; s < 16; s += ot ? 1 : 2) st.bass.push(N('tri', s, (s / (ot ? 1 : 2)) % 2 ? r + 12 : r, ot ? 1 : 2, ot ? .5 : .55, { r: .02 }));
+    // BUILD bass (triangle, v0.9.33): same line but each beat's note drops an octave with a short pitch-dive 'punch'; crossfades with bass so it's still one triangle
+    if (br) { st.bassP.push(N('tri', 0, r - 12, 8, .6, { slide: 0 })); st.bassP.push(N('tri', 8, r + 7, 8, .5)); }
+    else for (s = 0; s < 16; s += ot ? 1 : 2) { var dn = s % 4 === 0; st.bassP.push(N('tri', s, dn ? r - 12 + 5 : ((s / (ot ? 1 : 2)) % 2 ? r + 12 : r), ot ? 1 : 2, dn ? .7 : .55, dn ? { slide: -5, r: .02 } : { r: .02 })); }
+    // BUILD drums (noise, v0.9.33): pickup kicks before beats 3 and 1, ghost snares, a crash to open each section
+    if (!intro && !fill) { if (!br) { st.prog.push(Z(10, 'kick', .32)); st.prog.push(Z(14, 'kick', .3)); } st.prog.push(Z(7, 'snare', .12)); st.prog.push(Z(15, 'snare', .16)); if (bi === 0) st.prog.push(Z(0, 'crash', .18)); }
     // drums (noise)
     for (s = 0; s < 16; s++) {
       if (intro) { st.drums.push(Z(s, s % 4 === 0 ? 'kick' : s >= 12 ? 'roll' : 'hat', s % 4 === 0 ? .5 : .16 + s * .012)); continue; }
@@ -57,7 +64,7 @@
     // TENSE (pulse 2, 50%): low semitone-neighbour 8th ostinato on the chord 5th, the "clock is ticking" pulse
     var f = P[2] - 12; for (s = 0; s < 16; s += 2) st.tense.push(N('p2', s, (s % 8 === 6) ? f + 1 : f, 1.6, .1, { duty: .5, decay: .6 }));
     return st; }
-  var STEMS = ['bass', 'drums', 'pad', 'arp', 'drive', 'dhat', 'tense'];
+  var STEMS = ['bass', 'bassP', 'drums', 'prog', 'pad', 'arp', 'drive', 'dhat', 'tense'];
   // ======================= new one-shots =======================
   var ONE = {
     save:  { ev: [N('p1', 0, 76, 1, .32, { duty: .25 }), N('p1', 1, 81, 1, .32, { duty: .25 }), N('p1', 2, 88, 3, .3, { duty: .125, decay: .3 }), Z(0, 'hat', .25), Z(2, 'chh', .2)], len: 5, steal: 'p1' },
@@ -72,17 +79,17 @@
   // ======================= transport (vertical + horizontal) =======================
   function Transport(ctx, chip, out) { this.ctx = ctx; this.chip = chip; this.out = out; this.on = false; this.bus = {}; this.mode = 'norm'; this.log = [];
     var self = this; this.main = ctx.createGain(); this.main.gain.value = 0; this.main.connect(out);
-    STEMS.forEach(function (k) { var g = ctx.createGain(); g.gain.value = (k === 'drive' || k === 'dhat' || k === 'tense') ? 0 : 1; g.connect(self.main); self.bus[k] = g; });
+    STEMS.forEach(function (k) { var g = ctx.createGain(); g.gain.value = (k === 'drive' || k === 'dhat' || k === 'tense' || k === 'prog' || k === 'bassP') ? 0 : 1; g.connect(self.main); self.bus[k] = g; });
     this.sting = ctx.createGain(); this.sting.gain.value = MAP.stingers.vol; this.sting.connect(this.main); }
   Transport.prototype.start = function (t0, intro) { this.on = true; this.t = t0; this.q = intro ? ['I'] : []; this.si = 0; this.sec = null; this.bi = 0; this.pend = null;
     var g = this.main.gain; g.cancelScheduledValues(t0); g.setValueAtTime(g.value, Math.max(this.ctx.currentTime, t0 - .3)); g.linearRampToValueAtTime(MAP.loopVol, t0 + MAP.fadeIn); };
   Transport.prototype.stop = function (f) { this.on = false; var t = this.ctx.currentTime, g = this.main.gain; g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(0, t + (f || MAP.fadeOut)); };
   Transport.prototype.setMode = function (m) { if (m !== this.mode) { this.mode = m; this.pend = m; this.si = 0; } };   // jump at next bar via fill
-  Transport.prototype.levels = function (drive, tension, at) { var B = this.bus, k = .35;
+  Transport.prototype.levels = function (drive, tension, at, prog) { prog = prog || 0; var B = this.bus, k = .35;
     var self = this, R = this.ramps = this.ramps || {};
     function set(n, v) { if (self.stol === n && at < self.stolT) return; var r = R[n] || { a: B[n].gain.value, b: B[n].gain.value, t0: 0, t1: 0 }, now = r.t1 <= r.t0 || at >= r.t1 ? r.b : r.a + (r.b - r.a) * (at - r.t0) / (r.t1 - r.t0);
       if (Math.abs(v - r.b) < .02) return; var g = B[n].gain, dur = k * 2; g.cancelScheduledValues(at); g.setValueAtTime(now, at); g.linearRampToValueAtTime(v, at + dur); R[n] = { a: now, b: v, t0: at, t1: at + dur }; }
-    set('drive', drive); set('dhat', drive * .8); set('arp', 1 - drive); set('tense', tension); set('pad', 1 - tension * .85); };
+    set('drive', drive); set('dhat', drive * .8); set('arp', 1 - drive); set('tense', tension); set('pad', 1 - tension * .85); set('prog', prog); set('bassP', prog); set('bass', 1 - prog); };
   Transport.prototype.nextSection = function () { var q = MAP.seq[this.mode]; var s = q[this.si % q.length]; this.si++; return s; };
   Transport.prototype.pump = function (now) { if (!this.on) return; while (this.t < now + 1.0) {
       if (this.pend && this.sec && this.sec !== 'F' && this.sec !== 'I') { this.sec = 'F'; this.bi = 0; this.pend = null; }   // urgent jump: 1-bar fill then new mode's order
@@ -143,11 +150,11 @@
     else if (goalNow && pv.msg !== 'GOAL!') { st = 'goal'; go('goal', { fade: .2 }); }
     else if (st === 'goal' && !rep && (pv.rep || s.pause <= SETTLE_FILL + .6 || !goalNow)) { st = 'settle'; var lead = Math.max(0, s.pause - .45 - SETTLE_FILL); API.lastSettleLead = lead; go('settle', { fade: .5 + lead, at: ctx ? ctx.currentTime + lead : 0 }); }
     if (pv.pause > 0 && s.pause <= 0 && s.over < 0 && (st === 'settle' || st === 'goal')) { st = 'play'; note('drop'); go('play', { fade: .35 }); }
-    if (st === 'play' && ctx && tp) { tp.setMode(g.mode); tp.levels(g.heat, MAP.layers.tension(g), ctx.currentTime);
+    if (st === 'play' && ctx && tp) { tp.setMode(g.mode); tp.levels(g.heat, MAP.layers.tension(g), ctx.currentTime, MAP.layers.prog(g));
       var ev = s.ev || ''; if (now - lastSt > MAP.stingers.cooldown) { if (MAP.stingers.save.indexOf(ev) >= 0) { lastSt = now; go('save'); } else if (MAP.stingers.check.indexOf(ev) >= 0) { lastSt = now; go('check'); } } }
     pv = { pause: s.pause, msg: s.msg, rep: rep, demo: false, over: s.over }; }
   var API = root.BHMUSIC = { tick: tick, go: go, setMute: setMute, unlock: unlock, fired: fired, log: log, MAP: MAP, state: function () { return st; }, tp: function () { return tp; }, ver: 'v02' };
   // dev preview: ?music=rush|goal|settle|win|save|check|play  plus &mode=norm|late|final|ot &drive=0..1 &tension=0..1 (play = adaptive loop)
   var Q = new URLSearchParams(location.search), q = Q.get('music');
-  if (q) window.addEventListener('pointerdown', function f() { window.removeEventListener('pointerdown', f, true); setTimeout(function () { st = 'preview'; if (q === 'play') { go('play'); var m = Q.get('mode'), d = +Q.get('drive') || 0, te = +Q.get('tension') || 0; setInterval(function () { if (m) tp.setMode(m); tp.levels(d, te, ctx.currentTime); }, 200); } else go(q); }, 60); }, true);
+  if (q) window.addEventListener('pointerdown', function f() { window.removeEventListener('pointerdown', f, true); setTimeout(function () { st = 'preview'; if (q === 'play') { go('play'); var m = Q.get('mode'), d = +Q.get('drive') || 0, te = +Q.get('tension') || 0, pr = +Q.get('prog') || 0; setInterval(function () { if (m) tp.setMode(m); tp.levels(d, te, ctx.currentTime, pr); }, 200); } else go(q); }, 60); }, true);
 })(typeof window !== 'undefined' ? window : this);
