@@ -418,7 +418,7 @@
   function qn(k, d) { var m = new RegExp('[?&]' + k + '=([\\d.]+)').exec(Q); return m ? parseFloat(m[1]) : d; }
   var FT = { on: !/[?&]fight=0/.test(Q), now: /[?&]fightnow=1/.test(Q), n: Math.max(1, qn('fightn', 3)), win: 25, intro: 1.6, end: 2.6, cd: 20,
     wind: { hi: .30, lo: .26, grab: .32, esc: .22 }, busy: { hi: .55, lo: .5, grab: .6, dh: .5, dl: .5, esc: .55 }, dodge: .45,
-    dmg: { hi: .2, lo: .14 }, held: 1.35, blind: .4, escP: .75, aiRate: [.35, .8], aiDodge: .5 };
+    dmg: { hi: .2, lo: .14 }, held: 1.35, blind: .4, escP: .75, aiRate: [.35, .8], aiDodge: .5, fcd: qn('fcd', .5) };
   B.FT = FT;
   var oReset = S.reset, oStep = S.step, oInput = S.input0, oChecks = S.checks, oSnap = S.snap;
   S.reset = function () { oReset.call(this); this.ft = null; this.ftLog = TR().map(function () { return []; }); this.ftNow = FT.now; this.ftEnd = -99; this.ftN = 0; };
@@ -432,7 +432,7 @@
     this.c = -1; this.v = [0, 0]; this.vz = 0; this.z = 0; this.air = false; this.arc = null; this.to = -1; this.ot = [null, null]; this.fire = 0; this.rt = 0;
     for (var h = 0; h < 10; h++) { this.grab[h] = -1; this.fing[h] = null; } this.msg = 'FIGHT!'; this.ev = 'fight'; this.wh = (this.wh || 0) + 1; this.dn[a] = this.dn[b] = 0; };
   S.fighter = function (team) { var F = this.ft; if (!F) return -1; return this.team(F.a) === team ? 0 : this.team(F.b) === team ? 1 : -1; };
-  S.fightAct = function (s, a) { var F = this.ft; if (!F || F.ph !== 'fight' || F.w >= 0) return; if (F.t - F.kt[s] < (FT.busy[F.k[s]] || 0)) return;
+  S.fightAct = function (s, a) { var F = this.ft; if (!F || F.ph !== 'fight' || F.w >= 0) return; if (F.t - F.kt[s] < (FT.busy[F.k[s]] || 0) * (1 + FT.fcd)) return;   // v0.9.41: move + cooldown (fcd x move length), CPU too
     if (a === 'grab' && F.gr >= 0) a = 'hi';   // already tangled up: grab = another shot
     F.k[s] = a; F.kt[s] = F.t; F.n[s]++; F.done[s] = 0; if (a === 'hi' || a === 'lo') F.side[s] = 1 - F.side[s]; };
   S.fightStep = function (dt) { var F = this.ft, me = this; F.t += dt; this.clk = (this.clk || 0) + dt;
@@ -462,7 +462,7 @@
   S.input0 = function (team, m, hand, allow) { if (this.ft) { if (m.t === 'fight') { var s = this.fighter(team); if (s >= 0) this.fightAct(s, m.a); } else if (m.t === 'rel') { if (hand == null) hand = team; this.grab[hand] = -1; this.fing[hand] = null; } return; }
     if (m.t === 'fight') return; oInput.call(this, team, m, hand, allow); };
   S.snap = function () { var o = oSnap.call(this), F = this.ft; if (F) { var r = function (x) { return Math.round(x * 100) / 100; };
-      o.ft = { a: F.a, b: F.b, ph: F.ph, t: r(F.t), hp: F.hp.map(r), k: F.k.slice(), n: F.n.slice(), sd: F.side.slice(), gr: F.gr, w: F.w, res: F.res, rs: F.rs, rn: F.rn, id: F.id }; } return o; };
+      o.ft = { a: F.a, b: F.b, ph: F.ph, t: r(F.t), hp: F.hp.map(r), k: F.k.slice(), n: F.n.slice(), sd: F.side.slice(), gr: F.gr, w: F.w, res: F.res, rs: F.rs, rn: F.rn, id: F.id, cd: [0, 1].map(function (q) { return r(Math.max(0, (FT.busy[F.k[q]] || 0) * (1 + FT.fcd) - (F.t - F.kt[q]))); }) }; } return o; };
 })(window);
 
 /* v0.9.41 add-ons. slowS: set by the TV during the after-goal settle; players drift to their spots so they arrive as the pause ends (cleared when the pause hands over to the face-off).
