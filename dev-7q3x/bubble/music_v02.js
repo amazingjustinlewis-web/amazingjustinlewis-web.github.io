@@ -118,11 +118,14 @@
   function stopAll(f) { if (!ctx) { st = 'off'; return; } if (cur) drop(cur.bus, f || .8); cur = null; tp.stop(f || .8); st = 'off'; }
   function unlock() { if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); chip = new Chip(ctx); master = ctx.createGain(); master.gain.value = muted ? 0 : MAP.master; master.connect(ctx.destination); tp = new Transport(ctx, chip, master); setInterval(pump, 50); note('unlock'); } catch (e) { ctx = null; } }
-  ['pointerdown', 'keydown', 'touchstart'].forEach(function (k) { window.addEventListener(k, unlock, { capture: true, passive: true }); });
+  // mobile unlock (v0.9.32): iOS only lets audio start inside touchend/pointerup/click, so resume there too and play a 1-sample silent buffer
+  function kick() { unlock(); if (!ctx) return; try { if (ctx.state !== 'running') ctx.resume(); if (!kick.done) { var b = ctx.createBuffer(1, 1, 22050), s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination); s.start(0); kick.done = ctx.state === 'running'; } } catch (e) {} }
+  ['pointerdown', 'keydown', 'touchstart', 'touchend', 'pointerup', 'click'].forEach(function (k) { window.addEventListener(k, kick, { capture: true, passive: true }); });
+  document.addEventListener('visibilitychange', function () { if (ctx && !document.hidden && ctx.state !== 'running') try { ctx.resume(); } catch (e) {} });
   var btn = null;
   function setMute(m) { muted = m; try { localStorage.setItem(LS, m ? '1' : '0'); } catch (e) {} if (master) master.gain.setTargetAtTime(m ? 0 : MAP.master, ctx.currentTime, .05); if (btn) { btn.textContent = m ? '♪̸' : '♪'; btn.style.opacity = m ? .45 : .85; btn.title = m ? 'Music off (M)' : 'Music on (M)'; } }
-  function mkBtn() { btn = document.createElement('button'); btn.id = 'bhMusic'; btn.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:60;width:40px;height:40px;border-radius:20px;border:1px solid #fff4;background:#0008;color:#ffd24a;font:20px sans-serif;cursor:pointer';
-    btn.addEventListener('pointerdown', function (e) { e.stopPropagation(); unlock(); setMute(!muted); }); document.body.appendChild(btn); setMute(muted); }
+  function mkBtn() { btn = document.createElement('button'); btn.id = 'bhMusic'; btn.style.cssText = (root.BHMUSIC_BTN || 'position:fixed;left:10px;bottom:10px;width:40px;height:40px;border-radius:20px;font-size:20px') + ';z-index:60;border:1px solid #fff4;background:#0008;color:#ffd24a;font-family:sans-serif;cursor:pointer;padding:0;touch-action:manipulation';
+    btn.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); btn.addEventListener('touchstart', function (e) { e.stopPropagation(); }, { passive: true }); btn.addEventListener('click', function (e) { e.stopPropagation(); kick(); setMute(!muted); }); document.body.appendChild(btn); setMute(muted); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mkBtn); else mkBtn();
   window.addEventListener('keydown', function (e) { if ((e.key === 'm' || e.key === 'M') && !e.repeat) setMute(!muted); });
   var L = 2.0, GY = .128;
