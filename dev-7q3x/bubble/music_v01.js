@@ -92,6 +92,7 @@
   function schedule(chip, name, t0, out) { var c = CUES[name]; c.ev.forEach(function (e) { var x = {}; for (var k in e) x[k] = e[k]; x.t = t0 + e.s * S; x.d = e.len * S; chip.play(x, out); }); return t0 + c.len * S; }
   var core = { CUES: CUES, Chip: Chip, schedule: schedule, S: S, BPM: BPM, SETTLE_FILL: SETTLE_FILL, MASTER: MASTER };
   if (typeof module !== 'undefined' && module.exports) { module.exports = core; return; }
+  root.BHMUSIC_CORE = core; if (root.BHMUSIC_CORE_ONLY) return;   // v0.9.31: music_v02.js reuses this core and supplies the live player
 
   // ---------- live player ----------
   var LS = 'bh_music_mute', muted = false; try { muted = localStorage.getItem(LS) === '1'; } catch (e) {}
