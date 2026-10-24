@@ -15,7 +15,7 @@
     modes: [
       { id: 'ot',    when: function (g) { return g.sudden; } },                         // sudden death / overtime
       { id: 'final', when: function (g) { return g.time < 60; } },                      // final minute
-      { id: 'late',  when: function (g) { return g.time < 90 && g.diff <= 1; } },       // close game, second half
+      { id: 'late',  when: function (g) { return (g.p3 || g.time < 90) && g.diff <= 1; } },       // close game, second half
       { id: 'norm',  when: function () { return true; } } ],
     // section order per mode (2 bars each); the transport walks the list and wraps
     seq: { norm: ['A', 'A', 'B', 'A', 'C', 'B', 'A', 'Br'], late: ['A', 'C', 'B', 'C'], final: ['B', 'C', 'B', 'OT'], ot: ['OT', 'OT', 'C', 'OT'] },
@@ -24,7 +24,7 @@
       drive:   function (g) { return g.heat; },                                          // puck near a net / on a rush
       tension: function (g) { return g.mode === 'ot' || g.mode === 'final' ? .9 : g.mode === 'late' ? .65 : 0; },
       // v0.9.33 build-up: elapsed game fraction (0 at puck drop -> 1 at the horn), eased, capped so it stays subtle
-      prog: function (g) { var f = g.sudden ? 1 : Math.max(0, Math.min(1, 1 - g.time / 180)); return Math.min(.7, f * f * (3 - 2 * f) * .75 + (g.sudden ? .1 : 0)); } },
+      prog: function (g) { var f = g.sudden ? 1 : g.gf != null ? g.gf : Math.max(0, Math.min(1, 1 - g.time / 180)); return Math.min(.7, f * f * (3 - 2 * f) * .75 + (g.sudden ? .1 : 0)); } },
     heat: { netDist: .42, rushSpeed: 1.15, rise: .25, fall: 1.6 },   // seconds-ish smoothing (rise fast, fall slow)
     stingers: { save: ['save', 'glove'], check: ['bigcheck', 'knockdown'], cooldown: 1.6, vol: .8 },
     fadeIn: .5, fadeOut: .9
@@ -138,7 +138,8 @@
   var L = 2.0, GY = .128;
   function gameInfo(s, dt) { var sc = s.sc || [0, 0], p = s.p || [.5, 1], v = s.v || [0, 0], near = Math.min(Math.abs(p[1] - GY), Math.abs(p[1] - (L - GY))) < MAP.heat.netDist, rush = s.c >= 0 && Math.hypot(v[0], v[1]) > MAP.heat.rushSpeed;
     var tgt = (near || rush) && !(s.pause > 0) ? 1 : 0, k = tgt > heat ? MAP.heat.rise : MAP.heat.fall; heat += (tgt - heat) * Math.min(1, dt / k);
-    var g = { time: s.time == null ? 180 : s.time, diff: Math.abs(sc[0] - sc[1]), sudden: s.msg === 'SUDDEN DEATH' || (s.time <= 0 && sc[0] === sc[1]), heat: heat };
+    var per = s.per || 1, pon = s.pon != null ? !!s.pon : !!(s.per != null && root.Bubble && root.Bubble.PER && root.Bubble.PER.on);   // v0.9.35 periods: late/final only in the 3rd, ot = overtime
+    var g = { time: s.time == null ? 180 : (pon && per < 3 ? 999 : s.time), diff: Math.abs(sc[0] - sc[1]), sudden: pon ? per > 3 : (s.msg === 'SUDDEN DEATH' || (s.time <= 0 && sc[0] === sc[1])), heat: heat, p3: pon && per === 3, gf: pon ? Math.min(1, ((per - 1) * 180 + 180 - (s.time == null ? 180 : s.time)) / 540) : null };
     for (var i = 0; i < MAP.modes.length; i++) if (MAP.modes[i].when(g)) { g.mode = MAP.modes[i].id; break; } return g; }
   // once per frame from the game loop
   var lastT = 0;
