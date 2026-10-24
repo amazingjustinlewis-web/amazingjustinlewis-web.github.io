@@ -81,4 +81,5 @@
   function applyFrame(f) { var vm = vehM; vm.position.set(f[0], f[1], f[2]); vm.quaternion.set(f[3], f[4], f[5], f[6]); for (var i = 0; i < crateM.length; i++) { var o = (i + 1) * 7; crateM[i].position.set(f[o], f[o + 1], f[o + 2]); crateM[i].quaternion.set(f[o + 3], f[o + 4], f[o + 5], f[o + 6]); } }
   requestAnimationFrame(frame);
 })();
-</script></body></html>
+</script><script src="../js/ztp-playbar.js" data-here="screen" data-screen="index.html" data-phone=""></script>
+</body></html>

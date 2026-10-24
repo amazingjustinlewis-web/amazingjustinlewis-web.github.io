@@ -22,7 +22,7 @@
   };
   root.ZTP_PHASE = 'lobby';
   Kit.host = function (o) {
-    var h = { players: [], code: '', status: 'connecting', qrEls: [] };
+    var h = { players: [], code: '', status: 'connecting', qrEls: [] }; root.Kit.lastHost = h; // read by js/ztp-playbar.js for the Screen-mode join QR
     var mk = LOCAL ? root.LSNet.LocalHost : root.LSNet.Host;
     function padUrl() { return root.ZTP_QR || (base() + 'pad.html?room=' + h.code + (LOCAL ? '&local=1' : '') + (o.padQuery || '')); }
     function paint() { h.qrEls.forEach(function (el) { if (h.status !== 'online') { el.innerHTML = '<div class="kq">connecting\u2026</div>'; return; } el.innerHTML = '<div class="kqr">' + qrSvg(padUrl()) + '</div><div class="kcode">' + h.code + '</div>'; }); if (o.onStatus) o.onStatus(h.status, h.code); }
