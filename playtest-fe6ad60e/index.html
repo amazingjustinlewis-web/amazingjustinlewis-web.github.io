@@ -10,13 +10,16 @@ main{max-width:560px;margin:0 auto;padding:28px 18px 60px}h1{font-size:15px;lett
 .meta{font-size:13px;opacity:.55;margin:2px 0 10px}.card ul{margin:0 0 14px;padding-left:18px;font-size:14px;opacity:.85}.lab{font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.45;margin-bottom:4px}
 .row{display:flex;gap:8px}.row a{flex:1;text-align:center;padding:12px;border-radius:10px;text-decoration:none;font-weight:600}.play{background:#ffb300;color:#000}.fb{background:#1c1c1c;color:#fff;border:1px solid #fff2}
 .foot{margin-top:24px;display:flex;justify-content:space-between;align-items:center;font-size:13px}.foot a{color:#fff;opacity:.7}#mode{background:none;border:0;color:#fff;opacity:.6;text-decoration:underline;font:13px system-ui;cursor:pointer;padding:0}
+.hi{font-size:15px;opacity:.85;margin:0 0 22px}.fbox{border:1px solid #ffb30055;background:#120d00;border-radius:14px;padding:16px;margin:18px 0 0;text-align:center}.big{display:block;padding:14px;border-radius:10px;background:#ffb300;color:#000;font-weight:700;text-decoration:none;font-size:17px}.fbox p{font-size:13px;opacity:.7;margin:10px 0 0}
 </style></head><body><main>
-<h1>Zero to Phi</h1><p class="sub">Playtest - always the current build. Thanks for testing.</p>
+<h1>Zero to Phi</h1><p class="sub">Invite-only playtest</p>
+<div class="hi">You're invited! 👋 Play casually, just for fun. Everything here is a work in progress, and your honest take helps Zero to Phi get better. Thank you for being part of it.</div>
 <div id="pick"><div class="ask">Which is this device?</div><div class="two">
 <button data-m="tv">Viewing screen<small>TV, laptop or tablet everyone watches</small></button>
 <button data-m="phone">Phone controller<small>the phone in your hand</small></button></div></div>
 <div id="list" hidden></div>
-<div class="foot" id="foot" hidden><button id="mode"></button><a id="fbAll" href="#">Send feedback</a></div>
+<div class="fbox" id="fbox" hidden><a id="fbAll" class="big" href="#">💬 Send feedback</a><p>Tap the mic on your keyboard and just talk it out, then hit send. Attaching a voice memo works too. Game, build, device and date are filled in for you.</p></div>
+<div class="foot" id="foot" hidden><button id="mode"></button></div>
 </main>
 <script>
 (function () {
@@ -25,11 +28,11 @@ main{max-width:560px;margin:0 auto;padding:28px 18px 60px}h1{font-size:15px;lett
     var br = /Edg\//.test(u) ? 'Edge' : /CriOS|Chrome\//.test(u) ? 'Chrome' : /FxiOS|Firefox\//.test(u) ? 'Firefox' : /Safari\//.test(u) ? 'Safari' : 'browser';
     return os + ' / ' + br + ' / ' + screen.width + 'x' + screen.height + ' / ' + (mode === 'tv' ? 'viewing screen' : 'phone controller'); }
   function mail(game, ver) {
-    var s = 'Playtest feedback: ' + (game ? game + ' ' + ver : 'general'), b = 'Device: ' + dev() + '\n' + (game ? 'Build: ' + game + ' ' + ver + '\n' : '') + '\nWhat I played:\n\n\nWhat felt great:\n\n\nWhat felt off or broke:\n\n\nAnything else:\n\n';
+    var s = 'Playtest feedback: ' + (game ? game + ' ' + ver : 'general'), b = 'Date: ' + new Date().toLocaleString() + '\nDevice: ' + dev() + '\n' + (game ? 'Game: ' + game + '\nBuild: ' + ver + '\n' : '') + '\nWhat I played:\n\n\nWhat felt great:\n\n\nWhat felt off or broke:\n\n\nAnything else:\n\n';
     return 'mailto:' + CFG.feedback_email + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b); }
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function render() {
-    $('pick').hidden = true; $('list').hidden = false; $('foot').hidden = false; $('mode').textContent = (mode === 'tv' ? 'Viewing screen' : 'Phone controller') + ' - change';
+    $('pick').hidden = true; $('list').hidden = false; $('foot').hidden = false; $('fbox').hidden = false; $('mode').textContent = (mode === 'tv' ? 'Viewing screen' : 'Phone controller') + ' - change';
     $('fbAll').href = mail(null);
     $('list').innerHTML = CFG.games.map(function (g, i) { return '<div class="card"><h2>' + esc(g.name) + '<span class="ver" id="v' + i + '">' + esc(g.build || '...') + '</span></h2><div class="meta">' + esc(g.players || '') + '</div>' +
       (g.new && g.new.length ? '<div class="lab">New in this build</div><ul>' + g.new.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>' : '') +
@@ -42,7 +45,7 @@ main{max-width:560px;margin:0 auto;padding:28px 18px 60px}h1{font-size:15px;lett
   }
   function choose(m) { mode = m; localStorage.setItem('ztp-pt-mode', m); if (CFG) render(); }
   document.querySelectorAll('.two button').forEach(function (b) { b.onclick = function () { choose(b.dataset.m); }; });
-  $('mode').onclick = function () { $('list').hidden = true; $('foot').hidden = true; $('pick').hidden = false; };
+  $('mode').onclick = function () { $('list').hidden = true; $('foot').hidden = true; $('fbox').hidden = true; $('pick').hidden = false; };
   fetch('playtest.json?t=' + Date.now()).then(function (r) { return r.json(); }).then(function (c) { CFG = c; if (mode) render(); });
   window.PT = { get cfg() { return CFG; }, mail: mail };
 })();
