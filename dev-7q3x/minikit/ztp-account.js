@@ -28,8 +28,9 @@
       return timeout(new Promise(function (res) { var un = M.auth.onAuthStateChanged(S.auth, function (u) { un(); res(u); }); }), 6000);
     })
     .then(function (u) { if (u) return u; return timeout(M.auth.signInAnonymously(S.auth), 6000).then(function (c) { return c.user; }); })
-    .then(function (u) { S.user = u; S.online = true; M.auth.onAuthStateChanged(S.auth, function (v) { S.user = v; }); return S; })
-    .catch(function (e) { S.online = false; S.why = (e && (e.code || e.message)) || 'offline'; console.info('[ztp-account] local mode:', S.why); return S; });
+    .then(function (u) { S.user = u; S.online = true; S.why = ''; return S; })
+    .catch(function (e) { S.online = false; S.why = (e && (e.code || e.message)) || 'offline'; console.warn('[ztp-account] local mode:', S.why); return S; })
+    .then(function (s) { if (S.auth) M.auth.onAuthStateChanged(S.auth, function (v) { S.user = v; S.online = !!(v && S.db); }); return s; });
 
   function user() { var u = S.user; if (!u) return null; return { uid: u.uid, anon: u.isAnonymous, name: u.isAnonymous ? '' : clean(jget('ztp:dname', '') || 'Player', 16) }; }
   function signIn() {
@@ -38,7 +39,7 @@
       var p = new M.auth.GoogleAuthProvider(), cur = S.auth.currentUser;
       var go = cur && cur.isAnonymous ? M.auth.linkWithPopup(cur, p).catch(function (e) { if (e && e.code === 'auth/credential-already-in-use') return M.auth.signInWithPopup(S.auth, p); throw e; }) : M.auth.signInWithPopup(S.auth, p);
       return go.catch(function (e) { if (e && /popup-blocked|operation-not-supported/.test(e.code || '')) return M.auth.signInWithRedirect(S.auth, p); throw e; });
-    }).then(function (c) { if (c && c.user) S.user = c.user; return user(); });
+    }).then(function (c) { if (c && c.user) { S.user = c.user; S.online = true; S.why = ''; return c.user.getIdToken(true); } }).then(function () { return user(); });
   }
   function signOut() { return ready.then(function () { if (S.auth) return M.auth.signOut(S.auth); }).then(function () { S.user = null; }); }
 
@@ -55,7 +56,7 @@
       if (!S.online || !S.user) { e.local = true; return localAdd(game, e); }
       var d = { name: e.name, score: e.score, label: e.label, ver: e.ver, uid: S.user.uid, ts: M.fs.serverTimestamp() };
       return timeout(M.fs.addDoc(M.fs.collection(S.db, 'games', game, 'scores'), d), 8000).then(function (ref) { e.id = ref.id; return e; })
-        .catch(function (err) { console.info('[ztp-account] score saved locally:', err && (err.code || err.message)); e.local = true; return localAdd(game, e); });
+        .catch(function (err) { S.lastError = (err && (err.code || err.message)) || 'error'; console.warn('[ztp-account] score saved locally:', S.lastError); e.local = true; e.err = S.lastError; return localAdd(game, e); });
     });
   }
   function top(game, o) {
@@ -85,7 +86,7 @@
           (l.length ? l.map(function (e, i) { var me = mine.some(function (m) { return m && ((m.id && m.id === e.id) || (m.t && m.t === e.t && m.name === e.name)); });
             return '<div class="row' + (me ? ' me' : '') + '"><span class="rk">' + (i + 1) + '</span><span class="nm">' + esc(e.name) + '</span><span class="lb">' + esc(e.label || '') + '</span><span class="sc">' + esc(o.fmt ? o.fmt(e.score) : e.score) + '</span><span class="vr">' + esc(e.ver) + (e.local ? ' · local' : '') + '</span></div>'; }).join('') : '<div style="opacity:.6">No scores yet. Be the first!</div>') +
           '<div class="bar" style="margin-top:10px">Initials <input maxlength="3" value="' + esc(initials()) + '" data-i> <span style="font-size:12px;opacity:.6">used for your next score</span></div>' +
-          '<div class="ft">' + (S.online ? 'Online board' : 'This device only (online board not reachable)') + ' · ' + esc(o.meaning || '') + '</div>';
+          '<div class="ft">' + (S.online ? 'Online board' : 'This device only (online board not reachable: ' + esc(S.why) + ')') + (mine.some(function (m) { return m && m.err; }) ? ' · <b style="color:#ffd27a">online save failed: ' + esc(mine.filter(function (m) { return m && m.err; })[0].err) + '</b>' : '') + ' · ' + esc(o.meaning || '') + '</div>';
       }); });
     }
     el.onclick = function (ev) { var b = ev.target.closest('button'); if (!b) return; if (b.hasAttribute('data-x')) { hide(); return; } mode = b.getAttribute('data-m'); draw(); };
@@ -105,8 +106,8 @@
     var d = { name: clean(p.name, 16) || 'Player', initials: setInitials(p.initials), dials: (p.dials || []).slice(0, 6).map(function (n) { n = Math.round(Number(n) || 0); return Math.max(0, Math.min(99, n)); }) };
     jset('ztp:dname', d.name);
     return ready.then(function () {
-      if (!S.online || !S.user) { var lp = Object.assign(jget('ztp:profile', {}) || {}, d); jset('ztp:profile', lp); return lp; }
-      var pref = M.fs.doc(S.db, 'profiles', S.user.uid), cref = M.fs.doc(S.db, 'meta', 'founders'), google = !S.user.isAnonymous;
+      if (!S.online || !S.user) { var lp = Object.assign(jget('ztp:profile', {}) || {}, d); lp.local = true; lp.why = S.why || 'not signed in'; jset('ztp:profile', lp); return lp; }
+      return S.user.getIdToken(true).then(function () { var pref = M.fs.doc(S.db, 'profiles', S.user.uid), cref = M.fs.doc(S.db, 'meta', 'founders'), google = !S.user.isAnonymous;
       return M.fs.runTransaction(S.db, function (tx) {
         return tx.get(pref).then(function (ps) {
           if (ps.exists()) { tx.update(pref, { name: d.name, initials: d.initials, dials: d.dials }); return Object.assign(ps.data(), d); }
@@ -116,7 +117,8 @@
             var full = { name: d.name, initials: d.initials, dials: d.dials, founder: f, ts: M.fs.serverTimestamp() }; tx.set(pref, full); return full;
           });
         });
-      }).then(function (r) { jset('ztp:profile', r); return r; });
+      }); }).then(function (r) { r = Object.assign({}, r); delete r.ts; jset('ztp:profile', r); return r; })
+        .catch(function (err) { S.lastError = (err && (err.code || err.message)) || 'error'; console.warn('[ztp-account] profile save failed:', S.lastError); throw err; });
     });
   }
 
