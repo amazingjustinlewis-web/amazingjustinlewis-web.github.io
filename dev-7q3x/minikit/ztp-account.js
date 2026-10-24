@@ -10,7 +10,8 @@
   var CFG = { apiKey: 'AIzaSyAPNpKNKZalEYWSMdao-jMEjgVtkYqsmnU', authDomain: 'zero-to-phi.firebaseapp.com', projectId: 'zero-to-phi',
     storageBucket: 'zero-to-phi.firebasestorage.app', messagingSenderId: '550444003584', appId: '1:550444003584:web:054ad6eb8cbb26315fc3e5' };
   var SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
-  var FOUNDER_CAP = 100;
+  var FOUNDER_CAP = 100, GAMES = ['bubble', 'orbit', 'red-deer-rich'];
+  var PROFILE = (document.currentScript && document.currentScript.src || '').replace(/minikit\/ztp-account\.js.*$/, 'profile.html') || 'profile.html';
   var off = /[?&]acct=0/.test(location.search);
   var S = { fb: null, auth: null, db: null, user: null, online: false, why: '' }, M = {};
   function jget(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
@@ -66,7 +67,7 @@
     return ready.then(function () {
       if (!S.online) return pick(loc);
       var q = M.fs.query(M.fs.collection(S.db, 'games', game, 'scores'), M.fs.orderBy('score', 'desc'), M.fs.limit(200));
-      return timeout(M.fs.getDocs(q), 8000).then(function (snap) { var l = []; snap.forEach(function (d) { var x = d.data(); l.push({ id: d.id, name: x.name, score: x.score, label: x.label, ver: x.ver, t: x.ts && x.ts.toMillis ? x.ts.toMillis() : 0 }); });
+      return timeout(M.fs.getDocs(q), 8000).then(function (snap) { var l = []; snap.forEach(function (d) { var x = d.data(); l.push({ id: d.id, uid: x.uid, name: x.name, score: x.score, label: x.label, ver: x.ver, t: x.ts && x.ts.toMillis ? x.ts.toMillis() : 0 }); });
         return pick(l.concat(loc.filter(function (e) { return e.local; }))); }).catch(function () { return pick(loc); });
     });
   }
@@ -84,7 +85,7 @@
       ver(game, o.buildUrl).then(function (cv) { return top(game, mode === 'this' ? { ver: cv } : {}).then(function (l) {
         el.innerHTML = '<h3>' + esc(o.title || 'Top 10') + '</h3><div class="bar"><button data-m="all" class="' + (mode === 'all' ? 'on' : '') + '">All versions</button><button data-m="this" class="' + (mode === 'this' ? 'on' : '') + '">This version (' + esc(cv) + ')</button><span style="flex:1"></span><button data-x>✕</button></div>' +
           (l.length ? l.map(function (e, i) { var me = mine.some(function (m) { return m && ((m.id && m.id === e.id) || (m.t && m.t === e.t && m.name === e.name)); });
-            return '<div class="row' + (me ? ' me' : '') + '"><span class="rk">' + (i + 1) + '</span><span class="nm">' + esc(e.name) + '</span><span class="lb">' + esc(e.label || '') + '</span><span class="sc">' + esc(o.fmt ? o.fmt(e.score) : e.score) + '</span><span class="vr">' + esc(e.ver) + (e.local ? ' · local' : '') + '</span></div>'; }).join('') : '<div style="opacity:.6">No scores yet. Be the first!</div>') +
+            return '<div class="row' + (me ? ' me' : '') + '"><span class="rk">' + (i + 1) + '</span><span class="nm">' + (e.uid ? '<a style="color:inherit;text-decoration:none" target="_blank" href="' + PROFILE + '?u=' + encodeURIComponent(e.uid) + '">' + esc(e.name) + '</a>' : esc(e.name)) + '</span><span class="lb">' + esc(e.label || '') + '</span><span class="sc">' + esc(o.fmt ? o.fmt(e.score) : e.score) + '</span><span class="vr">' + esc(e.ver) + (e.local ? ' · local' : '') + '</span></div>'; }).join('') : '<div style="opacity:.6">No scores yet. Be the first!</div>') +
           '<div style="margin-top:8px;font-size:12px;opacity:.7">Set your name, initials and avatar on your phone (\uD83D\uDC64 button).</div>' +
           '<div class="ft">' + (S.online ? 'Online board' : 'This device only (online board not reachable: ' + esc(S.why) + ')') + (mine.some(function (m) { return m && m.err; }) ? ' · <b style="color:#ffd27a">online save failed: ' + esc(mine.filter(function (m) { return m && m.err; })[0].err) + '</b>' : '') + ' · ' + esc(o.meaning || '') + '</div>';
       }); });
@@ -102,6 +103,14 @@
     return ready.then(function () { if (!S.online || !S.user) return jget('ztp:profile', null);
       return M.fs.getDoc(M.fs.doc(S.db, 'profiles', S.user.uid)).then(function (d) { return d.exists() ? d.data() : null; }).catch(function () { return jget('ztp:profile', null); }); });
   }
+  function today() { return new Date().toISOString().slice(0, 10); }
+  // public profile of any player (by uid) + their recent scores across games (no index needed: one equality query per game)
+  function publicProfile(uid) {
+    return ready.then(function () { if (!S.db) throw new Error(S.why || 'offline');
+      return Promise.all([M.fs.getDoc(M.fs.doc(S.db, 'profiles', uid)).then(function (d) { return d.exists() ? d.data() : null; }).catch(function () { return null; })].concat(GAMES.map(function (g) {
+        return M.fs.getDocs(M.fs.query(M.fs.collection(S.db, 'games', g, 'scores'), M.fs.where('uid', '==', uid), M.fs.limit(50))).then(function (sn) { var l = []; sn.forEach(function (d) { var x = d.data(); l.push({ game: g, name: x.name, score: x.score, label: x.label, ver: x.ver, t: x.ts && x.ts.toMillis ? x.ts.toMillis() : 0 }); }); return l; }).catch(function () { return []; }); })))
+      .then(function (r) { var games = [].concat.apply([], r.slice(1)).sort(function (a, b) { return b.t - a.t; }); return { profile: r[0], scores: games.slice(0, 30) }; }); });
+  }
   function saveProfile(p) {
     var d = { name: clean(p.name, 16) || 'Player', initials: setInitials(p.initials), avatar: cleanAv(p.avatar), dials: (p.dials || []).slice(0, 6).map(function (n) { n = Math.round(Number(n) || 0); return Math.max(0, Math.min(99, n)); }) };
     jset('ztp:dname', d.name);
@@ -110,11 +119,12 @@
       return S.user.getIdToken(true).then(function () { var pref = M.fs.doc(S.db, 'profiles', S.user.uid), cref = M.fs.doc(S.db, 'meta', 'founders'), google = !S.user.isAnonymous;
       return M.fs.runTransaction(S.db, function (tx) {
         return tx.get(pref).then(function (ps) {
-          if (ps.exists()) { tx.update(pref, { name: d.name, initials: d.initials, dials: d.dials, avatar: d.avatar }); return Object.assign(ps.data(), d); }
+          if (ps.exists()) { var old = ps.data(), ih = (old.ih || []).slice(), last = ih.length ? ih[ih.length - 1].split('@')[0] : ''; var up = { name: d.name, initials: d.initials, dials: d.dials, avatar: d.avatar };
+            if (d.initials && d.initials !== last && ih.length < 200) { ih.push(d.initials + '@' + today()); up.ih = ih; } tx.update(pref, up); return Object.assign(old, up); }
           return tx.get(cref).then(function (cs) {
             var n = cs.exists() ? cs.data().n : 0, f = 0;
             if (google && n < FOUNDER_CAP) { f = n + 1; if (cs.exists()) tx.update(cref, { n: f }); else tx.set(cref, { n: f }); }
-            var full = { name: d.name, initials: d.initials, dials: d.dials, avatar: d.avatar, founder: f, ts: M.fs.serverTimestamp() }; tx.set(pref, full); return full;
+            var full = { name: d.name, initials: d.initials, dials: d.dials, avatar: d.avatar, ih: d.initials ? [d.initials + '@' + today()] : [], founder: f, ts: M.fs.serverTimestamp() }; tx.set(pref, full); return full;
           });
         });
       }); }).then(function (r) { r = Object.assign({}, r); delete r.ts; jset('ztp:profile', r); return r; })
@@ -164,8 +174,28 @@
     }
     chip.onclick = open; paint(); ready.then(function () { profile().then(function (p) { if (p) { var q = Object.assign({}, p); delete q.ts; jset('ztp:profile', q); if (p.initials && !initials()) setInitials(p.initials); } paint(); }); });
   }
-  function myName(fallback) { var p = jget('ztp:profile', null); return clean((p && p.name) || initials() || fallback || '', 16); }
+  // end of game on the phone: enter arcade initials (or sign in) then post. Auto-posts after o.wait s with what's there.
+  function endPrompt(o) {
+    var el = document.getElementById('ztpEnd'); if (el) el.remove(); el = document.createElement('div'); el.id = 'ztpEnd';
+    el.style.cssText = 'position:fixed;left:6vw;right:6vw;top:18vh;z-index:70;background:#0c1226f7;color:#fff;border:2px solid #ffc83a;border-radius:16px;padding:18px;font:16px system-ui,sans-serif;text-align:center';
+    var u = user(), n = o.wait || 25, done = false;
+    el.innerHTML = '<div style="font-size:22px;font-weight:800">' + esc(o.title || 'You made the board!') + '</div><div style="opacity:.75;margin:4px 0 12px">' + esc(o.sub || '') + '</div>' +
+      '<input id="zeI" maxlength="3" placeholder="AAA" value="' + esc(initials()) + '" style="font:800 34px monospace;letter-spacing:.3em;width:5.2em;text-align:center;text-transform:uppercase;padding:6px;border-radius:10px;border:2px solid #fff5;background:#0008;color:#fff">' +
+      '<div style="margin-top:12px"><button id="zeP" style="font:700 17px system-ui;padding:10px 18px;border-radius:10px;border:0;background:#ffc83a;color:#211">Post score (<span id="zeN">' + n + '</span>)</button></div>' +
+      (u && !u.anon ? '' : '<div style="margin-top:10px"><button id="zeG" style="font:600 14px system-ui;padding:8px 12px;border-radius:9px;border:1px solid #fff5;background:#ffffff1a;color:#fff">Sign in with Google to keep your scores</button></div>') +
+      '<div id="zeM" style="font-size:12px;opacity:.7;margin-top:8px">Your initials stay on this score forever, arcade style.</div>';
+    document.body.appendChild(el);
+    var iv = setInterval(function () { n--; var e = el.querySelector('#zeN'); if (e) e.textContent = n; if (n <= 0) go(); }, 1000);
+    function go() { if (done) return; done = true; clearInterval(iv); var v = el.querySelector('#zeI').value; if (v) setInitials(v);
+      var pr = jget('ztp:profile', null); if (pr && v && S.online) saveProfile(Object.assign({}, pr, { initials: v })).catch(function () {});
+      el.querySelector('#zeM').textContent = 'Posting\u2026'; Promise.resolve(o.post(myName(o.fallback))).then(function (e) { el.querySelector('#zeM').innerHTML = e && e.local ? 'Saved on this phone only (' + esc(e.err || S.why || 'offline') + ')' : 'Posted! ' + (e && e.uid !== undefined ? '' : ''); setTimeout(function () { el.remove(); }, 2500); }); }
+    el.querySelector('#zeP').onclick = go;
+    el.querySelector('#zeI').oninput = function () { n = Math.max(n, 15); };
+    var g = el.querySelector('#zeG'); if (g) g.onclick = function () { n = 99; signIn().then(function () { g.remove(); n = 15; }).catch(function (e) { el.querySelector('#zeM').textContent = 'Sign-in failed: ' + (e.code || e.message); n = 15; }); };
+    return { post: go };
+  }
+  function myName(fallback) { var p = jget('ztp:profile', null); return clean(initials() || (p && p.name) || fallback || '', 16); }
 
   root.Acct = { ready: ready, state: S, user: user, signIn: signIn, signOut: signOut, initials: initials, setInitials: setInitials, ver: ver,
-    submit: submit, top: top, watch: watch, board: board, hide: hide, profile: profile, saveProfile: saveProfile, avatar: avatar, avatarSVG: avatarSVG, cleanAvatar: cleanAv, phoneChip: phoneChip, myName: myName, FOUNDER_CAP: FOUNDER_CAP, clean: clean };
+    submit: submit, top: top, watch: watch, board: board, hide: hide, profile: profile, saveProfile: saveProfile, avatar: avatar, avatarSVG: avatarSVG, cleanAvatar: cleanAv, phoneChip: phoneChip, endPrompt: endPrompt, myName: myName, publicProfile: publicProfile, today: today, PROFILE: PROFILE, FOUNDER_CAP: FOUNDER_CAP, clean: clean };
 })(window);

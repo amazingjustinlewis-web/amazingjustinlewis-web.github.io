@@ -18,9 +18,10 @@ button{font:inherit;padding:9px 14px;border-radius:9px;border:0;background:#5ef2
 <label>Arcade initials (3 letters, public)</label><input id="in" maxlength="3" style="text-transform:uppercase;width:6em">
 <label>Dial numbers (0–99)</label><div class="dials" id="dl"></div>
 <button id="sv">Save profile</button><div id="msg"></div></div>
+<div class="card" id="hist"><div class="mut">Initials history</div><div id="ih">–</div><div class="mut" style="margin-top:12px">Recent scores</div><div id="gh">–</div></div>
 <div class="mut">Founder # goes to the first <span id="cap">100</span> people who save a profile while signed in with Google.</div>
 </main>
-<script src="minikit/ztp-account.js?b=3"></script>
+<script src="minikit/ztp-account.js?b=4"></script>
 <script>
 (function () {
   var $ = function (i) { return document.getElementById(i); };
@@ -39,12 +40,24 @@ button{font:inherit;padding:9px 14px;border-radius:9px;border:0;background:#5ef2
     $('st').textContent = !S.online ? 'Local mode: the online service is not reachable yet, so this profile saves on this device only.' : u && !u.anon ? 'Signed in with Google.' : 'Playing as a guest. Sign in with Google to keep your profile and get a Founder #.';
     $('pid').textContent = u ? u.uid.slice(0, 8).toUpperCase() : 'LOCAL'; $('si').style.display = u && !u.anon ? 'none' : ''; $('so').style.display = u && !u.anon ? '' : 'none';
     return Acct.profile().then(fill); }
-  Acct.ready.then(refresh);
+  var GN = { bubble: 'Bubble Hockey', orbit: 'Orbit Brawl', 'red-deer-rich': 'Red Deer Rich' }, esc = function (x) { return String(x == null ? '' : x).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); };
+  function hist(uid) { Acct.publicProfile(uid).then(function (r) { var p = r.profile || {};
+      $('ih').innerHTML = (p.ih || []).length ? p.ih.slice().reverse().map(function (x) { var q = x.split('@'); return '<b style="font-family:monospace;font-size:18px">' + esc(q[0]) + '</b> <span class="mut">since ' + esc(q[1]) + '</span>'; }).join('<br>') : '<span class="mut">none yet</span>';
+      $('gh').innerHTML = r.scores.length ? r.scores.map(function (e) { return '<div style="display:flex;gap:8px;padding:2px 0"><span style="flex:1">' + esc(GN[e.game] || e.game) + '</span><b style="font-family:monospace">' + esc(e.name) + '</b><span>' + esc(e.score) + '</span><span class="mut">' + esc(e.label || '') + '</span><span class="mut">' + esc(e.ver) + '</span></div>'; }).join('') : '<span class="mut">no online scores yet</span>';
+      return p; }).catch(function (e) { $('gh').textContent = 'History unavailable (' + (e.message || e) + ')'; }); }
+  var VIEW = new URLSearchParams(location.search).get('u');
+  Acct.ready.then(function () { var me = Acct.user();
+    if (VIEW && (!me || me.uid !== VIEW)) {   // public view of another player: read-only, no email anywhere
+      document.querySelector('h1').textContent = 'Player profile'; [].forEach.call(document.querySelectorAll('.card'), function (c) { if (c.id !== 'hist' && !c.querySelector('#av') && !c.querySelector('#pid')) c.style.display = 'none'; });
+      [].forEach.call(document.querySelectorAll('.av input,#hs,#sk'), function (e) { e.style.pointerEvents = 'none'; }); $('pid').textContent = VIEW.slice(0, 8).toUpperCase();
+      Acct.publicProfile(VIEW).then(function (r) { var p = r.profile || {}; AV = Acct.cleanAvatar(p.avatar); avUI(); $('fd').textContent = p.founder ? '#' + p.founder : '–'; document.querySelector('h1').textContent = (p.name || 'Player') + (p.initials ? ' (' + p.initials + ')' : ''); });
+      hist(VIEW); return; }
+    refresh().then(function () { if (me) hist(me.uid); }); });
   $('si').onclick = function () { $('msg').textContent = ''; Acct.signIn().then(refresh).catch(function (e) { $('msg').textContent = 'Sign-in failed: ' + (e.code || e.message); }); };
   $('so').onclick = function () { Acct.signOut().then(function () { location.reload(); }); };
   $('sv').onclick = function () { $('msg').textContent = 'Saving…';
     Acct.saveProfile({ name: $('nm').value, initials: $('in').value, avatar: AV, dials: [].map.call($('dl').children, function (x) { return x.value; }) })
-      .then(function (p) { fill(p); $('msg').textContent = p.local ? 'Saved ON THIS DEVICE ONLY, not online (' + p.why + '). Reload the page and try again.' : 'Saved online' + (p.founder ? ', Founder #' + p.founder : '') + '.'; })
+      .then(function (p) { fill(p); var u = Acct.user(); if (u) hist(u.uid); $('msg').textContent = p.local ? 'Saved ON THIS DEVICE ONLY, not online (' + p.why + '). Reload the page and try again.' : 'Saved online' + (p.founder ? ', Founder #' + p.founder : '') + '.'; })
       .catch(function (e) { $('msg').textContent = 'Could not save: ' + (e.code || e.message); }); };
 })();
 </script></body></html>

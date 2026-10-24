@@ -16,7 +16,7 @@
       hs.forEach(function (p, k) { var R = ROLE[hs.length][k]; p.hand = t + 2 * k; p.allow = R[1].map(function (j) { return j + t * 6; }); p.role = R[0]; sim.input(t, { t: 'rel' }, p.hand); host.send(p, { t: 'team', team: t, hand: p.hand, allow: hs.length > 1 ? p.allow : null, role: hs.length > 1 ? NICE[R[0]] : null, col: p.col }); }); }); }
   function nm(i, roles) { if (mirroring()) return mir.names[i]; if (attract) return 'Computer'; var hs = plist.filter(function (p) { return p.tm === i; }); if (!hs.length) return 'Computer'; return hs.map(function (p) { return (roles ? '<span style="display:inline-block;width:.55em;height:.55em;border-radius:50%;margin-right:.2em;vertical-align:middle;background:' + p.col + '"></span>' : '') + String(p.name).replace(/</g, '') + (roles && hs.length > 1 ? ' <small style="opacity:.7">(' + p.role + ')</small>' : ''); }).join(' \u00b7 '); }
   var host = Kit.host({ max: 10, onJoin: function (p) { if (plist.indexOf(p) < 0) { var n0 = plist.filter(function (q) { return q.tm === 0; }).length, n1 = plist.length - n0; p.tm = n0 <= n1 ? (n0 < 5 ? 0 : 1) : (n1 < 5 ? 1 : 0); if (!p.col) { p.col = PAL.filter(function (c) { return !usedCol[c]; })[0] || '#ffffff'; usedCol[p.col] = 1; } plist.push(p); } endWatch(); assign(); netForce = true; if (demo) { demo = false; endAttract(); sim.reset(); Kit.phase('play'); } },
-    onLeave: function (p) { if (p.col) delete usedCol[p.col]; plist = plist.filter(function (q) { return q !== p; }); if (p.hand != null) sim.input(p.tm, { t: 'rel' }, p.hand); assign(); }, onMsg: function (p, m) { if (m.t === 'acctok') { p.acctok = m; return; } if (m.t === 'mirror') { if (!p.mir) { p.mir = 1; plist = plist.filter(function (q) { return q !== p; }); assign(); } mir = m.s; mirAt = performance.now(); if (demo) { demo = false; Kit.phase('play'); } return; } if (p.mir || p.hand == null) return; if (reelSt === 2 || reelSt === 1) { if (m.t === 'tap' || m.t === 'skip' || m.t === 'grab') skipReel(); return; } if (attract && demo) { demo = false; endAttract(); sim.reset(); assign(); Kit.phase('play'); return; } sim.input(p.tm, m, p.hand, p.allow); } });
+    onLeave: function (p) { if (p.col) delete usedCol[p.col]; plist = plist.filter(function (q) { return q !== p; }); if (p.hand != null) sim.input(p.tm, { t: 'rel' }, p.hand); assign(); }, onMsg: function (p, m) { if (m.t === 'acctwait') { p.acctwait = 1; return; } if (m.t === 'acctok') { p.acctok = m; if (window.BHBoard) BHBoard(); return; } if (m.t === 'mirror') { if (!p.mir) { p.mir = 1; plist = plist.filter(function (q) { return q !== p; }); assign(); } mir = m.s; mirAt = performance.now(); if (demo) { demo = false; Kit.phase('play'); } return; } if (p.mir || p.hand == null) return; if (reelSt === 2 || reelSt === 1) { if (m.t === 'tap' || m.t === 'skip' || m.t === 'grab') skipReel(); return; } if (attract && demo) { demo = false; endAttract(); sim.reset(); assign(); Kit.phase('play'); return; } sim.input(p.tm, m, p.hand, p.allow); } });
   // post-game: short wait -> highlight reel (any tap skips) -> attract mode (quiet computer-vs-computer, slow dome orbits) until a phone starts a game
   var REEL = { delay: 3, dur: 180 }, reelSt = 0, reelT = 0, attract = false; window.BHREEL = REEL;
   function skipReel() { if (reelSt === 2 && R3) R3.skipReel(); reelSt = 3; }
@@ -112,20 +112,23 @@
   addEventListener('keydown', function (e) { if (e.key === 'c' || e.key === 'C') CT.start(); }); window.BHCT = CT;
   Kit.over(function () { return !demo && sim.over >= 0 && reelSt === 0; }, 40000); window.BHT = { sim: sim, host: host, get R3() { return R3; }, get plist() { return plist; }, get reelSt() { return reelSt; }, get attract() { return attract; }, get demo() { return demo; }, get watch() { return watch; }, startWatch: startWatch, SET: SET, devPlay: function () { demo = false; attract = false; sim.reset(); sim.ai = [true, true]; } };
 })();
-</script><script src="../minikit/ztp-account.js?b=3"></script>
+</script><script src="../minikit/ztp-account.js?b=4"></script>
 <script>/* v0.9.45 leaderboard: at the final whistle (real games only) the TV broadcasts the result; each phone on the winning team posts the goal margin
    under its own account + chosen name and replies acctok. After 5 s the TV posts for any winning phone that could not (guest/offline fallback), then shows the top 10. */
 Acct.watch(function () { return window.BHT && !BHT.demo && BHT.sim.over >= 0; }, function () {
   var sim = BHT.sim, w = sim.over, sc = sim.sc.slice(), hs = BHT.plist.filter(function (p) { return p.tm === w; }), meta = { title: 'Bubble Hockey: Top 10 wins', meaning: 'Score = winning goal margin' };
-  BHT.plist.forEach(function (p) { p.acctok = null; });
+  BHT.plist.forEach(function (p) { p.acctok = null; p.acctwait = 0; });
   try { BHT.host.all({ t: 'bhfinal', w: w, sc: sc }); } catch (e) {}
-  if (!hs.length) { Acct.board('bubble', meta); return; }
-  setTimeout(function () {
-    var mine = [], left = hs.filter(function (p) { if (p.acctok && p.acctok.ok) { mine.push(p.acctok.e); return false; } return true; });
-    var nm = left.map(function (p) { return String(p.name || '').replace(/</g, ''); }).filter(Boolean).join(' + ');
-    (left.length ? Acct.submit('bubble', { name: nm || '???', score: sc[w] - sc[1 - w], label: sc[w] + '\u2013' + sc[1 - w] }).then(function (e) { mine.push(e); }) : Promise.resolve())
-      .then(function () { meta.mine = mine; Acct.board('bubble', meta); });
-  }, 5000);
+  var fb = [];
+  window.BHBoard = function () { meta.mine = hs.filter(function (p) { return p.acctok && p.acctok.ok; }).map(function (p) { return p.acctok.e; }).concat(fb); Acct.board('bubble', meta); };
+  BHBoard(); if (!hs.length) return;
+  // phones that said they're entering initials get 32 s; silent ones (old/offline phones) get 5 s; then the TV posts for them (guest fallback)
+  function fallback(list) { list = list.filter(function (p) { return !(p.acctok && p.acctok.ok) && !p.fbDone; }); if (!list.length) return; list.forEach(function (p) { p.fbDone = 1; });
+    var nm = list.map(function (p) { return String(p.name || '').replace(/</g, ''); }).filter(Boolean).join(' + ');
+    Acct.submit('bubble', { name: nm || '???', score: sc[w] - sc[1 - w], label: sc[w] + '\u2013' + sc[1 - w] }).then(function (e) { fb.push(e); BHBoard(); }); }
+  hs.forEach(function (p) { p.fbDone = 0; });
+  setTimeout(function () { fallback(hs.filter(function (p) { return !p.acctwait; })); }, 5000);
+  setTimeout(function () { fallback(hs); }, 32000);
 });
 Acct.watch(function () { return window.BHT && BHT.sim.over < 0; }, Acct.hide);</script>
 <script src="../js/ztp-playbar.js" data-here="screen" data-screen="index.html" data-phone="pad.html"></script>
