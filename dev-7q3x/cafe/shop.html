@@ -7,10 +7,14 @@ a{color:#7fd3ff}input,button{font:inherit;padding:7px 10px;border-radius:8px;bor
 <h1 id="nm">Loading…</h1><div id="meta" class="mut"></div>
 <div class="card" id="joinC" style="display:none"><b>Join this shop</b><div class="mut">Members can post scores tagged to this shop. Ask the owner for the join code.</div>
 <p><input id="jn" placeholder="Your name" maxlength="16"> <input id="jc" placeholder="Join code" type="password"> <button id="jb">Join</button></p><div id="jm" class="mut"></div></div>
+<div class="card"><b>Venue content cap</b><div class="mut">The most mature mode games may play here (sessions use the cleanest of this and every player).</div>
+<p><select id="vcap" style="font:inherit;padding:7px;border-radius:8px;background:#0008;color:#fff"><option value="kid">Kid</option><option value="family">Family</option><option value="mature">Mature (only if every player opted in)</option></select> <span id="vcm" class="mut"></span></p></div>
 <div id="games"></div>
 <div class="mut">Shop scores also appear on each game's global board, tagged “@ shop”. This page shows the shop-filtered board.</div>
 </div>
 <script src="../minikit/ztp-account.js?b=5"></script>
+<script src="../minikit/ztp-mode_v01.js?b=954"></script>
+<script>(function () { var s = document.getElementById('vcap'); s.value = ZTP.venueCap(); s.onchange = function () { ZTP.setVenueCap(s.value); document.getElementById('vcm').textContent = 'Saved on this device (venue screens read it).'; }; })();</script>
 <script>
 (function(){ var $=function(i){return document.getElementById(i)}, esc=function(x){return String(x==null?'':x).replace(/[&<>"']/g,function(c){return '&#'+c.charCodeAt(0)+';'})};
  var NAMES={battleship:'Battleship',connect4:'Connect Four',bubble:'Bubble Hockey',orbit:'Orbit Brawl','red-deer-rich':'Red Deer Rich'};

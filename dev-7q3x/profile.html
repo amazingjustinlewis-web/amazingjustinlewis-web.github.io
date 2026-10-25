@@ -18,10 +18,23 @@ button{font:inherit;padding:9px 14px;border-radius:9px;border:0;background:#5ef2
 <label>Arcade initials (3 letters, public)</label><input id="in" maxlength="3" style="text-transform:uppercase;width:6em">
 <label>Dial numbers (0–99)</label><div class="dials" id="dl"></div>
 <button id="sv">Save profile</button><div id="msg"></div></div>
+<div class="card" id="cmode"><div class="mut">Content mode (this device)</div><div id="cmq" style="display:flex;gap:8px;margin:6px 0"></div>
+<div class="mut">Levels you say yes to (anything unticked is a no). Shared games play at the cleanest mode of everyone there and the venue.</div><div id="cmy" style="display:flex;gap:14px;margin-top:6px"></div><div id="cmm" class="mut"></div></div>
 <div class="card" id="hist"><div class="mut">Initials history</div><div id="ih">–</div><div class="mut" style="margin-top:12px">Recent scores</div><div id="gh">–</div></div>
 <div class="mut">Founder # goes to the first <span id="cap">100</span> people who save a profile while signed in with Google.</div>
 </main>
 <script src="minikit/ztp-account.js?b=5"></script>
+<script src="minikit/ztp-mode_v01.js?b=954"></script>
+<script>
+(function () { var Z = window.ZTP, q = document.getElementById('cmq'), y = document.getElementById('cmy'), m = document.getElementById('cmm'), NM = { kid: 'Kid', family: 'Family', mature: 'Mature' };
+  function draw() { var me = Z.me(); if (!me.known) { q.innerHTML = ''; y.innerHTML = ''; m.textContent = 'Set your initials or sign in first; guests always play Family.'; return; }
+    q.innerHTML = Z.MODES.map(function (k) { return '<button data-q="' + k + '" style="' + (me.mode === k ? '' : 'background:#0008;color:#fff;border:1px solid #fff4') + '">' + NM[k] + '</button>'; }).join('');
+    y.innerHTML = Z.MODES.map(function (k) { return '<label><input type="checkbox" data-y="' + k + '"' + (me.yes.indexOf(k) >= 0 ? ' checked' : '') + '> ' + NM[k] + '</label>'; }).join(''); m.textContent = 'Now: ' + NM[me.mode]; }
+  q.onclick = function (e) { var b = e.target.closest('[data-q]'); if (!b) return; Z.setMine(b.getAttribute('data-q')); draw(); };
+  y.onchange = function () { var yes = [].filter.call(y.querySelectorAll('input'), function (i) { return i.checked; }).map(function (i) { return i.getAttribute('data-y'); }), me = Z.me();
+    var mode = yes.indexOf(me.mode) >= 0 ? me.mode : (yes.length ? yes[0] : 'kid'); if (!yes.length) yes = ['kid']; Z.setMine(mode, yes); draw(); };
+  document.getElementById('in').addEventListener('input', function () { setTimeout(draw, 50); }); draw(); })();
+</script>
 <script>
 (function () {
   var $ = function (i) { return document.getElementById(i); };
