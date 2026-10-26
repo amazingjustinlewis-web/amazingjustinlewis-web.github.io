@@ -1,0 +1,77 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="robots" content="noindex"><title>0-Phi pad (dev)</title>
+<link rel="stylesheet" href="../minikit/kit.css">
+<style>
+#pad{position:fixed;inset:0;display:flex;flex-direction:row}
+#stick,#btns{flex:1;position:relative}
+#stick{background:radial-gradient(circle at 50% 50%,#26325a,#1b2440 70%)}
+#btns{display:flex;align-items:center;justify-content:center;gap:6vmin}
+@media (orientation:portrait){#pad{flex-direction:column}}
+.ring{position:absolute;width:38vmin;height:38vmin;margin:-19vmin 0 0 -19vmin;border-radius:50%;border:3px solid #fff3;background:#fff1;left:50%;top:50%;pointer-events:none}
+.knob{position:absolute;width:17vmin;height:17vmin;margin:-8.5vmin 0 0 -8.5vmin;border-radius:50%;background:#ffe7a0;box-shadow:0 6px 0 #a5843a;left:50%;top:50%;pointer-events:none}
+.b{width:32vmin;height:32vmin;border-radius:50%;border:0;font:700 12vmin Fredoka,system-ui,sans-serif;color:#fff;touch-action:none;box-shadow:0 1.6vmin 0 #0006}
+#A{background:#ff5a6e}#B{background:#3aa8ff;width:26vmin;height:26vmin;font-size:10vmin;align-self:flex-start;margin-top:12vmin}
+.b.on{transform:translateY(1.2vmin);box-shadow:0 .4vmin 0 #0006;filter:brightness(1.25)}
+#top{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;gap:8px;padding:6px 10px;font-size:14px;z-index:3;pointer-events:none}
+#top>*{pointer-events:auto;background:#0008;border-radius:10px;padding:4px 10px}
+#tilt{font:inherit;color:#fff;border:0}
+#tilt.on{background:#5fdc7a;color:#032}
+.hint{position:absolute;left:0;right:0;bottom:8px;text-align:center;opacity:.5;font-size:13px;pointer-events:none}
+</style></head><body>
+<div id="pad"><div id="stick"><div class="ring" id="ring"></div><div class="knob" id="knob"></div><div class="hint">drag anywhere here</div></div>
+<div id="btns"><button class="b" id="B">B</button><button class="b" id="A">A</button></div></div>
+<div id="top"><span id="st">connecting…</span><button id="tilt">tilt: off</button></div>
+<script>window.MINI = 'gpad';</script>
+<script src="../minikit/peerjs.min.js"></script>
+<script src="../minikit/kit.js"></script>
+<script src="../minikit/net.js"></script>
+<script>
+(function () {
+  'use strict';
+  var S = { x: 0, y: 0, a: 0, b: 0 }, tilt = false, tx = 0, ty = 0, last = '', st = document.getElementById('st');
+  var c = Kit.pad({ onStatus: function (s) { st.textContent = s === 'online' ? 'connected' : s + '\u2026'; },
+    onMsg: function (m) { if (m.t === 'you') { st.textContent = (m.name || 'Player') + ' \u00b7 P' + (m.seat + 1); st.style.background = m.color; window.GPAD_YOU = m; if (m.help) document.querySelector('.hint').textContent = m.help; if (m.label) document.title = m.label + ' pad'; }
+      else if (m.t === 'full') st.textContent = 'game is full'; } });
+  window.GPAD_C = c;
+  if (!c.room) Kit.joinCard('Phone pad', c);
+  function out() {
+    var x = tilt ? tx : S.x, y = tilt ? ty : S.y, m = { t: 'in', x: +x.toFixed(2), y: +y.toFixed(2), a: S.a, b: S.b, tilt: tilt }, k = JSON.stringify(m);
+    if (k !== last) { last = k; c.send(m); }
+  }
+  setInterval(function () { last = ''; out(); }, 300);   // keep-alive / resend latest
+  // stick: floating origin where the finger lands
+  var zone = document.getElementById('stick'), ring = document.getElementById('ring'), knob = document.getElementById('knob'), sid = null, ox = 0, oy = 0;
+  function place(el, x, y) { el.style.left = x + 'px'; el.style.top = y + 'px'; }
+  function centre() { var r = zone.getBoundingClientRect(); place(ring, r.width / 2, r.height / 2); place(knob, r.width / 2, r.height / 2); }
+  zone.addEventListener('pointerdown', function (e) { if (sid !== null) return; sid = e.pointerId; try { zone.setPointerCapture(sid); } catch (x) {} var r = zone.getBoundingClientRect(); ox = e.clientX - r.left; oy = e.clientY - r.top; place(ring, ox, oy); place(knob, ox, oy); e.preventDefault(); });
+  zone.addEventListener('pointermove', function (e) {
+    if (e.pointerId !== sid) return; var r = zone.getBoundingClientRect(), R = Math.min(innerWidth, innerHeight) * 0.19;
+    var dx = e.clientX - r.left - ox, dy = e.clientY - r.top - oy, d = Math.hypot(dx, dy); if (d > R) { dx *= R / d; dy *= R / d; }
+    place(knob, ox + dx, oy + dy); S.x = dx / R; S.y = dy / R; out();
+  });
+  function sup(e) { if (e.pointerId !== sid) return; sid = null; S.x = S.y = 0; centre(); out(); }
+  zone.addEventListener('pointerup', sup); zone.addEventListener('pointercancel', sup);
+  ['A', 'B'].forEach(function (id) {
+    var el = document.getElementById(id), k = id.toLowerCase(), ids = {};
+    function set() { var on = Object.keys(ids).length ? 1 : 0; if (on && !S[k] && navigator.vibrate) navigator.vibrate(12); S[k] = on; el.classList.toggle('on', !!on); out(); }
+    el.addEventListener('pointerdown', function (e) { ids[e.pointerId] = 1; try { el.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault(); set(); });
+    function up(e) { delete ids[e.pointerId]; set(); }
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
+    el.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  });
+  // tilt: phone held flat-ish; left/right roll = x, forward/back pitch = y
+  var tb = document.getElementById('tilt'), base = null;
+  function ori(e) { if (e.beta == null) return; var land = Math.abs(window.orientation || (screen.orientation && screen.orientation.angle) || 0) === 90;
+    var roll = land ? e.beta : e.gamma, pitch = land ? -e.gamma : e.beta; if (!base) base = [roll, pitch];
+    tx = Math.max(-1, Math.min(1, (roll - base[0]) / 25)); ty = Math.max(-1, Math.min(1, (pitch - base[1]) / 25)); if (tilt) out(); }
+  tb.onclick = function () {
+    function go() { tilt = !tilt; base = null; tb.classList.toggle('on', tilt); tb.textContent = 'tilt: ' + (tilt ? 'on' : 'off'); out(); }
+    if (!tilt && window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) DeviceOrientationEvent.requestPermission().then(function (r) { if (r === 'granted') go(); }).catch(function () {}); else go();
+  };
+  addEventListener('deviceorientation', ori);
+  addEventListener('resize', centre); centre();
+  // test hook (headless): GPAD_TEST({x,y,a,b})
+  window.GPAD_TEST = function (m) { for (var k in m) S[k] = m[k]; out(); };
+})();
+</script></body></html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta name="robots" content="noindex">
+<meta charset="utf-8">
+<title>Charge Hop</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  html, body { margin: 0; height: 100%; background: #101218; overflow: hidden; }
+  /* touch devices: no scrolling, zooming, text selection, long-press callout or tap flash */
+  html, body { position: fixed; inset: 0; overscroll-behavior: none; touch-action: none;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  #game { display: block; position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; }
+  /* touch buttons (shown only on touch devices, see js/touch.js) */
+  .tbtn { display: none; position: fixed; z-index: 20; width: 44px; height: 44px; border-radius: 12px;
+    border: 2px solid rgba(255,255,255,0.35); background: rgba(10,12,18,0.55); color: #fff;
+    font: 900 20px/1 system-ui, sans-serif; padding: 0; touch-action: manipulation; cursor: pointer; }
+  .tbtn:active { background: rgba(255,138,31,0.6); }
+  #tmenu { display: none; position: fixed; inset: 0; z-index: 30; background: rgba(5,6,10,0.55);
+    align-items: center; justify-content: center; touch-action: none; }
+  #tmenu.open { display: flex; }
+  #tmenu .box { display: flex; flex-direction: column; gap: 12px; min-width: 240px; padding: 22px;
+    background: rgba(16,18,26,0.95); border: 2px solid #ff8a1f; border-radius: 16px; }
+  #tmenu .box div { color: #ffb02e; font: 900 26px system-ui, sans-serif; text-align: center; margin-bottom: 4px; }
+  #tmenu button { font: 800 20px system-ui, sans-serif; padding: 14px 18px; border-radius: 12px; border: 0;
+    background: #ff8a1f; color: #101218; touch-action: manipulation; cursor: pointer; }
+  #tmenu button.alt { background: #2a2e3c; color: #fff; }
+  #debug {
+    display: none; position: fixed; top: 100px; left: 12px; width: 330px; max-height: calc(100vh - 120px); overflow-y: auto;
+    background: rgba(8, 10, 16, 0.9); color: #e8e8f0; font: 12px/1.3 Consolas, monospace;
+    border: 1px solid #ff8a1f; border-radius: 8px; padding: 10px; z-index: 10;
+  }
+  #debug .dbg-title { font-weight: bold; color: #ffb02e; margin-bottom: 6px; }
+  #debug .dbg-title span { color: #888; font-weight: normal; float: right; }
+  #debug .dbg-stats { margin: 0 0 8px; color: #9ff5ff; white-space: pre-wrap; }
+  #debug .dbg-row { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+  #debug .dbg-label { width: 135px; flex: none; }
+  #debug input[type=range] { flex: 1; min-width: 0; }
+  #debug .dbg-val { width: 38px; text-align: right; color: #ffe14d; }
+  #debug button { margin-top: 8px; width: 100%; background: #ff8a1f; border: 0; border-radius: 4px; padding: 5px; font-weight: bold; cursor: pointer; }
+  #debug textarea { display: none; width: 100%; box-sizing: border-box; margin-top: 6px; background: #000; color: #7cff6b; font: 11px Consolas, monospace; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<button id="tPause" class="tbtn" aria-label="Menu">&#10074;&#10074;</button>
+<button id="tFull" class="tbtn" aria-label="Fullscreen">&#x26F6;</button>
+<div id="tmenu"><div class="box">
+  <div>PAUSED</div>
+  <button id="tmResume">&#9654; Resume</button>
+  <button id="tmRestart" class="alt">&#8635; Restart round</button>
+  <button id="tmTitle" class="alt">Title / level select</button>
+  <button id="tmSound" class="alt">Sound: on</button>
+</div></div>
+<!-- Classic scripts, in dependency order (works from file:// - no modules, no build). -->
+<script src="js/config.js"></script>
+<script src="assets/art.js"></script>
+<script src="js/input.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/fireworks.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/lanes.js"></script>
+<script src="js/dominoes.js"></script>
+<script src="js/chutes.js"></script>
+<script src="levels/level1.js"></script>
+<script src="levels/level2.js"></script>
+<script src="levels/level3.js"></script>
+<script src="js/player.js"></script>
+<script src="js/characters.js"></script>
+<script src="js/debug.js"></script>
+<script src="js/main.js"></script>
+<script src="js/touch.js"></script>
+<script src="../../assets/js/ztp-end.js"></script>
+<script>ZTPEnd.watch(function () { return ChargeHop.Game.state==='won'; }, 4000);</script>
+<!-- dev v01: phone pad hook-up (dev-7q3x/gpad). One phone: A = left half (P1 / Space), B = right half (P2 / Enter). A second phone's A = P2. -->
+<script src="../../dev-7q3x/gpad/gpad_v01.js"></script>
+<script>GPad.host({ max: 2, label: 'Charge Hop', map: [{ a: 'Space', b: 'Enter' }, { a: 'Enter', b: 'Enter' }], help: ['A = left half (P1) · B = right half (P2)', 'A = right half (P2)'] });</script>
+</body>
+</html>

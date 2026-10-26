@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>Bloat Flier – fly test v01 (dev)</title>
+<style>html,body{margin:0;height:100%;background:#12141a;color:#cde;font:14px sans-serif;overflow:hidden}#ui{position:fixed;top:10px;left:10px;background:#0008;padding:8px 12px;border-radius:6px}</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.170.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.170.0/examples/jsm/"}}</script>
+</head><body><div id="ui"><b>Bloat Flier</b> fly test v01 (temporary) · <span id="info">loading…</span><br>
+stick / arrows: steer + throttle · A / Space: puff up · B / Enter: reset · phone tilt works too · <a style="color:#8cf" href="index.html">model viewer</a></div>
+<script src="../gpad/gpad_v01.js"></script>
+<script>var FLY = { x: 0, y: 0, a: 0, b: 0 }; GPad.host({ max: 1, label: 'Bloat Flier', map: [{ a: 'Space', b: 'Enter' }], help0: 'stick or tilt = steer \u00b7 A = puff up \u00b7 B = reset',
+  onInput: function (s, st) { FLY.x = st.x; FLY.y = st.y; FLY.a = st.a; FLY.b = st.b; FLY.pad = 1; } });</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+const r=new THREE.WebGLRenderer({antialias:true});r.setPixelRatio(devicePixelRatio);r.setSize(innerWidth,innerHeight);document.body.appendChild(r.domElement);
+const s=new THREE.Scene();s.background=new THREE.Color(0x12141a);s.fog=new THREE.Fog(0x12141a,12,40);
+const cam=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,0.01,200);
+s.add(new THREE.HemisphereLight(0xbfd8ff,0x302020,1.6));const d=new THREE.DirectionalLight(0xffffff,2.5);d.position.set(3,5,4);s.add(d);
+const g=new THREE.GridHelper(200,100,0x335,0x223);g.position.y=-1.2;s.add(g);
+const ship=new THREE.Group();s.add(ship);let mix;const clock=new THREE.Clock();
+new GLTFLoader().load('BloatFlier_polish_v02b.glb',gl=>{ship.add(gl.scene);mix=new THREE.AnimationMixer(gl.scene);if(gl.animations[0])mix.clipAction(gl.animations[0]).play();document.getElementById('info').textContent='ready';},undefined,()=>{document.getElementById('info').textContent='model failed to load';});
+const K={};addEventListener('keydown',e=>{K[e.code]=1;});addEventListener('keyup',e=>{K[e.code]=0;});
+let yaw=0,vy=0,spd=0,bank=0;function reset(){ship.position.set(0,0,0);yaw=0;vy=0;spd=0;}
+window.FLYSTATE=()=>({x:ship.position.x,y:ship.position.y,z:ship.position.z,yaw});
+addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();r.setSize(innerWidth,innerHeight)});
+r.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.05);
+ // keys already include the pad (GPad replays it as arrows/Space/Enter); FLY adds the analog part
+ const kx=(K.ArrowRight||K.KeyD?1:0)-(K.ArrowLeft||K.KeyA?1:0), ky=(K.ArrowDown||K.KeyS?1:0)-(K.ArrowUp||K.KeyW?1:0); let sx=Math.abs(FLY.x)>.05?FLY.x:kx, sy=Math.abs(FLY.y)>.05?FLY.y:ky;
+ const up=K.Space||FLY.a; if(K.Enter||FLY.b)reset();
+ yaw-=sx*1.8*dt; spd+=((-sy)*4-spd)*Math.min(1,dt*2); vy+=((up?2.2:-0.9)-vy)*Math.min(1,dt*2.5);
+ ship.position.x+=Math.sin(yaw)*spd*dt; ship.position.z+=Math.cos(yaw)*spd*dt; ship.position.y=Math.max(-0.6,Math.min(12,ship.position.y+vy*dt));
+ bank+=(-sx*0.5-bank)*Math.min(1,dt*4); ship.rotation.set(sy*0.25,yaw,bank);
+ const back=new THREE.Vector3(-Math.sin(yaw)*5,2,-Math.cos(yaw)*5).add(ship.position);cam.position.lerp(back,Math.min(1,dt*3));cam.lookAt(ship.position);
+ if(mix)mix.update(dt*(1+Math.abs(spd)*.2));r.render(s,cam)});
+</script></body></html>
