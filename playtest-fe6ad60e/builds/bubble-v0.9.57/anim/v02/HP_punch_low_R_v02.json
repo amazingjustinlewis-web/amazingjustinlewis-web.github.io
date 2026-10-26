@@ -1,0 +1,39 @@
+{
+ "name": "HP_punch_low_R",
+ "source_action": "punch_low_R_qp",
+ "fps": 30.0,
+ "src_range": [
+  1,
+  315
+ ],
+ "type": "oneshot",
+ "event": "hand_stick_speed",
+ "tries": [
+  {
+   "frame": 97,
+   "peak": 3.295,
+   "jitter": 0.068,
+   "score": 1.396
+  }
+ ],
+ "best": {
+  "frame": 97,
+  "peak": 3.295,
+  "jitter": 0.068,
+  "score": 1.396
+ },
+ "hit_src": 97,
+ "clip_src": [
+  82,
+  112
+ ],
+ "frames": 31,
+ "seconds": 1.033,
+ "hit_frame": 16,
+ "hit_s": 0.5,
+ "loop": false,
+ "files": {
+  "blend": "D:\\AI\\Mocap\\Takes\\hockey\\HP_punch_low_R_v02.blend",
+  "glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_punch_low_R_v02.glb"
+ }
+}

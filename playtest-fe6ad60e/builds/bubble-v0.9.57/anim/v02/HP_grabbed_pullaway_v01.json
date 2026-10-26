@@ -1,0 +1,52 @@
+{
+ "name": "HP_grabbed_pullaway",
+ "source_action": "grabbed_pullaway_qp",
+ "fps": 30.0,
+ "src_range": [
+  1,
+  375
+ ],
+ "type": "oneshot",
+ "event": "lateral",
+ "tries": [
+  {
+   "frame": 121,
+   "peak": 1.573,
+   "jitter": 0.1685,
+   "score": 0.36
+  },
+  {
+   "frame": 217,
+   "peak": 1.283,
+   "jitter": 0.0572,
+   "score": 0.598
+  },
+  {
+   "frame": 263,
+   "peak": 1.588,
+   "jitter": 0.0605,
+   "score": 0.718
+  }
+ ],
+ "best": {
+  "frame": 263,
+  "peak": 1.588,
+  "jitter": 0.0605,
+  "score": 0.718
+ },
+ "hit_src": 263,
+ "clip_src": [
+  248,
+  278
+ ],
+ "frames": 31,
+ "seconds": 1.033,
+ "hit_frame": 16,
+ "hit_s": 0.5,
+ "loop": false,
+ "files": {
+  "blend": "D:\\AI\\Mocap\\Takes\\hockey\\HP_grabbed_pullaway_v01.blend",
+  "glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_grabbed_pullaway_v01.glb",
+  "full_glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_grabbed_pullaway_full_v01.glb"
+ }
+}

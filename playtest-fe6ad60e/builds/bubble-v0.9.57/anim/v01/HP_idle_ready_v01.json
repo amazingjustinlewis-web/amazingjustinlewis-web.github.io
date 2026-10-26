@@ -1,0 +1,29 @@
+{
+ "name": "HP_idle_ready",
+ "source_action": "idle_ready_qp",
+ "fps": 30.0,
+ "src_range": [
+  1,
+  315
+ ],
+ "type": "loop",
+ "event": "still",
+ "loop_match": 0.1184,
+ "loop_src": [
+  204,
+  276
+ ],
+ "crossfade_frames": 4,
+ "clip_src": [
+  204,
+  276
+ ],
+ "frames": 73,
+ "seconds": 2.433,
+ "loop": true,
+ "files": {
+  "blend": "D:\\AI\\Mocap\\Takes\\hockey\\HP_idle_ready_v01.blend",
+  "glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_idle_ready_v01.glb",
+  "full_glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_idle_ready_full_v01.glb"
+ }
+}

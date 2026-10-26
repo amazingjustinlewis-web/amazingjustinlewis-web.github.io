@@ -4,14 +4,23 @@
   "games": [
     {
       "name": "Bubble Hockey",
-      "build_source": "../dev-7q3x/bubble/build.json",
-      "tv": "../dev-7q3x/bubble/?tv=1",
-      "phone": "../dev-7q3x/bubble/pad.html",
+      "build": "v0.9.57",
+      "tv": "builds/bubble-v0.9.57/?tv=1",
+      "phone": "builds/bubble-v0.9.57/pad.html",
       "players": "1-10 phones, TV optional",
       "new": [
-        "A glowing line round the rink now shows which team has the puck (just the colour on your phone)",
-        "Zigzag your thumb side to side while carrying to pull a wide deke; shoot mid-deke and it comes off that side",
-        "Max rip and dispenser serves from v0.9.25 unchanged"
+        "Music plays on your phone too, not just the TV",
+        "Skaters now move with real motion-captured animation",
+        "Goalies use hand-posed saves: pads, glove, blocker and smothers",
+        "Fight mode: drop the gloves and use the round thumb pad to jab, grab and dodge",
+        "Slow-mo replays after goals, plus a highlight reel at the end",
+        "Watch AI vs AI: sit back and let the computer play both teams",
+        "A pregame intro: players skate out and the anthem plays (tap to skip)",
+        "Content modes: everyone picks a family-friendly level and the game plays at the cleanest one in the room",
+        "Phone scores now count on the shared scoreboard",
+        "Big hits can knock a player's helmet and stick flying",
+        "The puck is back to full size",
+        "Heads up: the goalies are tough right now. Scoring is still being tweaked and balanced, so tell us how it feels!"
       ]
     },
     {

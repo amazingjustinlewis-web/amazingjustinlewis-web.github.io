@@ -1,0 +1,64 @@
+{
+ "name": "HP_punch_low_L",
+ "source_action": "punch_low_L_qp",
+ "fps": 30.0,
+ "src_range": [
+  1,
+  315
+ ],
+ "type": "oneshot",
+ "event": "hand_stick_speed",
+ "tries": [
+  {
+   "frame": 76,
+   "peak": 2.602,
+   "jitter": 0.0903,
+   "score": 0.927
+  },
+  {
+   "frame": 156,
+   "peak": 3.658,
+   "jitter": 0.0773,
+   "score": 1.437
+  },
+  {
+   "frame": 192,
+   "peak": 2.941,
+   "jitter": 0.0562,
+   "score": 1.385
+  },
+  {
+   "frame": 231,
+   "peak": 2.384,
+   "jitter": 0.0499,
+   "score": 1.194
+  },
+  {
+   "frame": 288,
+   "peak": 1.732,
+   "jitter": 0.048,
+   "score": 0.884
+  }
+ ],
+ "best": {
+  "frame": 156,
+  "peak": 3.658,
+  "jitter": 0.0773,
+  "score": 1.437
+ },
+ "hit_src": 156,
+ "clip_src": [
+  141,
+  171
+ ],
+ "frames": 31,
+ "seconds": 1.033,
+ "hit_frame": 16,
+ "hit_s": 0.5,
+ "loop": false,
+ "files": {
+  "blend": "D:\\AI\\Mocap\\Takes\\hockey\\HP_punch_low_L_v01.blend",
+  "glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_punch_low_L_v01.glb",
+  "full_glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_punch_low_L_full_v01.glb"
+ }
+}

@@ -1,0 +1,64 @@
+{
+ "name": "HP_escape_lean",
+ "source_action": "escape_lean_qp",
+ "fps": 30.0,
+ "src_range": [
+  1,
+  315
+ ],
+ "type": "oneshot",
+ "event": "lateral",
+ "tries": [
+  {
+   "frame": 105,
+   "peak": 0.526,
+   "jitter": 0.0367,
+   "score": 0.304
+  },
+  {
+   "frame": 167,
+   "peak": 0.28,
+   "jitter": 0.0356,
+   "score": 0.163
+  },
+  {
+   "frame": 206,
+   "peak": 0.398,
+   "jitter": 0.0646,
+   "score": 0.174
+  },
+  {
+   "frame": 279,
+   "peak": 0.573,
+   "jitter": 0.0428,
+   "score": 0.309
+  },
+  {
+   "frame": 306,
+   "peak": 0.516,
+   "jitter": 0.0453,
+   "score": 0.135
+  }
+ ],
+ "best": {
+  "frame": 279,
+  "peak": 0.573,
+  "jitter": 0.0428,
+  "score": 0.309
+ },
+ "hit_src": 279,
+ "clip_src": [
+  264,
+  294
+ ],
+ "frames": 31,
+ "seconds": 1.033,
+ "hit_frame": 16,
+ "hit_s": 0.5,
+ "loop": false,
+ "files": {
+  "blend": "D:\\AI\\Mocap\\Takes\\hockey\\HP_escape_lean_v01.blend",
+  "glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_escape_lean_v01.glb",
+  "full_glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_escape_lean_full_v01.glb"
+ }
+}

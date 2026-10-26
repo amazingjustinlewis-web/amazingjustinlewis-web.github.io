@@ -1,0 +1,29 @@
+{
+ "name": "HP_fight_stance",
+ "source_action": "fight_stance_qp",
+ "fps": 30.0,
+ "src_range": [
+  1,
+  315
+ ],
+ "type": "loop",
+ "event": "still",
+ "loop_match": 0.0977,
+ "loop_src": [
+  186,
+  258
+ ],
+ "crossfade_frames": 4,
+ "clip_src": [
+  186,
+  258
+ ],
+ "frames": 73,
+ "seconds": 2.433,
+ "loop": true,
+ "files": {
+  "blend": "D:\\AI\\Mocap\\Takes\\hockey\\HP_fight_stance_v01.blend",
+  "glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_fight_stance_v01.glb",
+  "full_glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_fight_stance_full_v01.glb"
+ }
+}
