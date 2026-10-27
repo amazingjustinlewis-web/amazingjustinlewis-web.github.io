@@ -379,14 +379,14 @@
     {
       "name": "Arcade Showcase",
       "status": "In development",
-      "ver": "v0.3",
+      "ver": "v0.4",
       "public": false,
       "fit": [
         "TV",
         "phone"
       ],
-      "url": "showcase/index_v03.html",
-      "notes": "v0.3: hips on seats, bartender/barista serve beers/coffees/plates (cleared later), ~1/3 customers non-players. Screens show REAL games via hidden iframes: Bubble Hockey AI watch on bar TV, Orbit Brawl bots + Drift Signal autopilot (games/space/attract_v01.html) on arcade split screen, pod sessions mix / all-Orbit-Brawl. View All Games menu previews any dev game on the shop screen."
+      "url": "showcase/index_v04.html",
+      "notes": "v0.4: arcade ONE MATCH phase (pods 1-4 share one Orbit Brawl full-width), proxy cabinets + pinball (SWAP_ slots) used by customers, Change View over-the-shoulder phone close-up (live top-down Bubble Hockey on bar phone), muted previews, bot auto-play past title screens, high-score ticker, split-flap ad slot, Today's Sponsor boards, Rush Hour, Shop Admin tablet. v0.3: hips on seats, bartender/barista serve beers/coffees/plates (cleared later), ~1/3 customers non-players. Screens show REAL games via hidden iframes: Bubble Hockey AI watch on bar TV, Orbit Brawl bots + Drift Signal autopilot (games/space/attract_v01.html) on arcade split screen, pod sessions mix / all-Orbit-Brawl. View All Games menu previews any dev game on the shop screen."
     }
   ]
 }
