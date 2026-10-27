@@ -364,6 +364,17 @@
       ],
       "url": "buddy/",
       "notes": "v0.1.1: guess the word and Buddy lets go, lands on the grass and does a victory dance scaled by balloons left (7 = full bouncy jig, down to a wobbly one-balloon shuffle, labelled on screen), balloons float off, confetti stays. v0.1: Silly hangman. One player hides a word on their phone; the others tap letters. Each wrong letter pops one of Buddy's 7 balloons and he sinks toward a kiddie pool; out of balloons = a happy, soggy splash (floaties). Solo: Buddy picks the word. Phone-only: the host phone shows the scene and friends scan its code."
+    },
+    {
+      "name": "Safety Third",
+      "status": "In development",
+      "ver": "v0.1",
+      "public": false,
+      "fit": [
+        "phone"
+      ],
+      "url": "safety3/index.html",
+      "notes": "v0.1: top-down construction site, 12-30 workers, catch violators inside their pulsing bubble with an on-screen joystick; misses cost money; 2.5 min round, summary + restart. Family-clean only."
     }
   ]
 }
