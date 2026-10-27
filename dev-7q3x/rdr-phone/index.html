@@ -105,7 +105,7 @@
 <script src="js/host.js"></script>
 <script src="../../assets/js/ztp-end.js"></script>
 <script>ZTPEnd.watch(function () { return RDR.game.phase==='over'; }, 20000);</script>
-<script src="../minikit/ztp-account.js?b=5"></script>
+<script src="../minikit/ztp-account_v01.js?b=1"></script>
 <script>/* v0.7.1 leaderboard: at the winner screen, a human winner posts their final net worth (bankrupt = 0, so a winner always has worth > 0). */
 Acct.watch(function () { return RDR.game.phase === 'over'; }, function () {
   var g = RDR.game, r = (g.results || [])[0]; if (!r) return; var p = (g.players || []).filter(function (q) { return q.id === r.pid; })[0];
