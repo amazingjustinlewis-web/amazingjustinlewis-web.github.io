@@ -379,14 +379,14 @@
     {
       "name": "Arcade Showcase",
       "status": "In development",
-      "ver": "v0.1",
+      "ver": "v0.2",
       "public": false,
       "fit": [
         "TV",
         "phone"
       ],
-      "url": "showcase/index.html",
-      "notes": "v0.1: three.js arcade room presentation for Joe: 6 scene buttons (scan, play together, high score, GyroForge pods, sponsors, auto tour), capsule stand-ins with swappable state system (CHARACTER_SPEC_v01.md)."
+      "url": "showcase/index_v02.html",
+      "notes": "v0.2: Joe sales game. Red Deer proxy street -> Bar / Coffee Shop / Arcade; SELL lights TV, pops per-shop QR codes (join?shop=id), sliding proxy patrons drift in/scan/play/leave. v0.1 kept at showcase/index.html."
     }
   ]
 }
