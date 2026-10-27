@@ -375,6 +375,18 @@
       ],
       "url": "safety3/index.html",
       "notes": "v0.1: top-down construction site, 12-30 workers, catch violators inside their pulsing bubble with an on-screen joystick; misses cost money; 2.5 min round, summary + restart. Family-clean only."
+    },
+    {
+      "name": "Arcade Showcase",
+      "status": "In development",
+      "ver": "v0.1",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "showcase/index.html",
+      "notes": "v0.1: three.js arcade room presentation for Joe: 6 scene buttons (scan, play together, high score, GyroForge pods, sponsors, auto tour), capsule stand-ins with swappable state system (CHARACTER_SPEC_v01.md)."
     }
   ]
 }
