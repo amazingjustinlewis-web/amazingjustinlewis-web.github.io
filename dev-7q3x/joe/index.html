@@ -1,0 +1,70 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><title>Zero to Phi · Game Library Preview</title>
+<link rel="icon" href="../../assets/img/favicon.svg">
+<style>
+:root{--bg:#0b0b0d;--card:#141418;--line:#26262c;--tx:#e9e6df;--mut:#8d8a84;--gold:#d4af6a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:28px 18px 8px;max-width:980px;margin:auto;position:relative;overflow:hidden}
+header svg{position:absolute;right:-30px;top:-20px;width:220px;opacity:.13}
+h1{font-weight:300;letter-spacing:.06em;margin:0 0 6px;font-size:24px}h1 b{color:var(--gold);font-weight:500}
+.sub{color:var(--mut);margin:0 0 14px;max-width:620px}
+.key{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--mut)}
+main{max-width:980px;margin:auto;padding:10px 14px 50px;display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(290px,1fr))}
+.c{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.th{aspect-ratio:16/9;background:#101013 center/cover no-repeat;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--line)}
+.th svg{width:34%;opacity:.35}
+.b{padding:12px 14px 14px;display:flex;flex-direction:column;gap:7px;flex:1}
+.t{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.t h2{margin:0;font-size:17px;font-weight:500}.v{color:var(--mut);font-size:12px}
+.p{color:#c9c5bd;margin:0;flex:1}
+.tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.bd{font-size:11px;padding:3px 8px;border-radius:99px;border:1px solid;letter-spacing:.03em}
+.e{color:#9aa3b5;border-color:#3a4050}.r{color:#8fc7a8;border-color:#2f5040}.o{color:var(--gold);border-color:#6b5733}
+.ph{color:var(--mut);border-color:var(--line)}
+a.go{margin-top:4px;text-align:center;color:var(--bg);background:var(--gold);border-radius:9px;padding:9px;text-decoration:none;font-weight:600}
+footer{color:var(--mut);text-align:center;font-size:12px;padding:0 0 30px}
+</style></head><body>
+<header><svg viewBox="0 0 100 62" fill="none" stroke="#d4af6a" stroke-width=".8"><rect x="0" y="0" width="100" height="61.8"/><path d="M61.8 0v61.8M61.8 38.2H100M85.4 38.2v23.6M76.4 47.2h9M0 61.8A61.8 61.8 0 0 1 61.8 0A38.2 38.2 0 0 1 100 38.2A23.6 23.6 0 0 1 76.4 61.8"/></svg>
+<h1>ZERO TO PHI <b>· Game Library</b></h1>
+<p class="sub">Everything in development, in one scroll. Each card is honest about where it stands — most are played on a TV with phones as controllers.</p>
+<div class="key"><span class="bd o">Polished</span><span class="bd r">Playable prototype</span><span class="bd e">Early concept</span><span class="bd ph">📱 Phone-playable</span></div></header>
+<main id="g"></main>
+<footer>Private preview · work in progress · Zero to Phi, Red Deer</footer>
+<script>
+var S='../shots/',SP='<svg viewBox="0 0 100 62" fill="none" stroke="#d4af6a" stroke-width="1.2"><path d="M0 61.8A61.8 61.8 0 0 1 61.8 0A38.2 38.2 0 0 1 100 38.2A23.6 23.6 0 0 1 76.4 61.8A14.6 14.6 0 0 1 61.8 47.2"/></svg>';
+// [title, version, pitch, url, phone-playable, polish o/r/e, thumb]
+var G=[
+['Red Deer Rich','v0.8','A Red Deer property-trading board game — scan in from the couch, shake your phone to roll.','../../games/red-deer-rich/',1,'o','g-rdr.png'],
+['Bubble Hockey','v0.9.62','Arcade bubble hockey with phone-controlled players, replays, goalie saves and arena pans.','../bubble/',1,'o'],
+['Red Deer Rich · phone mode','v0.9-dev','The whole board game hosted on a single phone — no TV needed.','../rdr-phone/phone.html',1,'o'],
+['Orbit Brawl','v0.7.1','Space dogfighting arena; every phone is a cockpit.','../orbit/',1,'r'],
+['Zombie Tiles','v0.5','Tile-laying zombie board game for 1–4 players — race for the helipad.','../../games/zombie-tiles/',1,'r','g-zt.png'],
+['Drift Signal','v0.4','Co-op space crew game: phones become crew stations while an AI pilot explores.','../../games/space/',1,'r','g-space.png'],
+['Walker','v0.4.2','A cozy walk-around world with a playground to explore.','../../games/walker/',1,'r','g-walker.png'],
+['Iron Stride','v0.4.2','Mech piloting with phone or controller.','../../games/mech/',1,'r','g-mech.png'],
+['Iron Stride Squad','v0.6-dev','Top-down mech brawler — phones are Titans, controllers are Striders.','../mech-squad/',1,'r'],
+['Iron Stride: Cockpit','v0.5-dev','First-person mech cockpit in an open world.','../mech-open/',1,'r'],
+['RTS Shapes','v0.5.1','Living-room real-time strategy, including flying dragons.','../rts/',1,'r'],
+['Demolition Derby','v0.4.2-dev','Smash-up derby and races — each player drives on their own phone.','../derby/',1,'r'],
+['Lost Sock','v0.3','Hunt the lost sock — play on the TV or right on your phone.','../lostsock/',1,'r'],
+['Charge Hop','v0.3','Charge-and-jump platformer for keyboard or gamepad.','../../games/charge-hop/',0,'r','g-hop.png'],
+['Stunt Smash','v0.2','Draw your launch line on your phone, then watch the crash on the TV.','../stunt/',1,'r'],
+['Marble Rush','v0.2','Tilt-and-hop marble racing.','../marble/',1,'r'],
+['Foosball','v0.2','Table foosball — spin the rods with your thumb.','../foosball/',1,'r'],
+['Glide Puck','v0.2.1','Fast air-hockey style puck battles.','../puck/',1,'r'],
+['Stack Attack','v0.2.1','Build towers, then survive the disaster.','../stack/',1,'r'],
+['Laser Range','v0.1.2','Light-gun gallery: point your phone at the TV and shoot.','../../games/laser-range/',1,'e','g-laser.png'],
+['Dangerous Waters','v0.1.2','Battleship-style naval duel with explosive hits.','../broadside/',1,'e'],
+['Hop Top','v0.1','Classic triangle peg solitaire, beautifully simple.','../hoptop/',1,'e'],
+['Swish Flick','v0.1.1','Flick-to-shoot arcade basketball.','../swish/',1,'e'],
+['Splash Clown','v0.1.1','Dunk-tank throwing game — flick to throw.','../dunk/',1,'e'],
+['Balloon Buddy','v0.1.1','Word-guessing party game; save Buddy\u2019s balloons.','../buddy/',1,'e'],
+['Red Deer Rescue','v0.2','Hero adventure in Red Deer (early blockout).','../../games/rescue/',1,'e'],
+['Safety Third','v0.1','Comedy site-inspector game: catch the workers breaking the rules before they cost you.','../safety3/',1,'e'],
+['Arcade Showcase','v0.1','A walkthrough of the Zero to Phi arcade concept: scan in, play together, sponsors, pods.','../showcase/',1,'e'],
+['Bloat Flier','v02b','Flight test of a rigged creature model.','../bloatflier/fly_v01.html',0,'e']
+];
+var N={o:'Polished',r:'Playable prototype',e:'Early concept'};
+document.getElementById('g').innerHTML=G.map(function(g){
+ return '<div class="c"><div class="th"'+(g[6]?' style="background-image:url('+S+g[6]+')">':'>'+SP)+'</div><div class="b"><div class="t"><h2>'+g[0]+'</h2><span class="v">'+g[1]+'</span></div><p class="p">'+g[2]+'</p><div class="tags"><span class="bd '+g[5]+'">'+N[g[5]]+'</span>'+(g[4]?'<span class="bd ph">📱 Phone-playable</span>':'')+'</div><a class="go" href="'+g[3]+'">Play</a></div></div>'}).join('');
+</script></body></html>
