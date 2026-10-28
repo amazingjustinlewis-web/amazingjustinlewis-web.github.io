@@ -1,0 +1,78 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<title>Orbit Brawl v0.8 (dev)</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>body{background:#05040d}
+#feed{position:fixed;right:2vw;top:2vh;z-index:4;font-size:2.2vh;text-align:right}#feed div{background:#0008;border-radius:8px;padding:2px 10px;margin-bottom:4px}
+#board{position:fixed;left:2vw;top:2vh;z-index:4;font-size:2vh;background:#0007;border-radius:12px;padding:8px 12px;min-width:16vw}#board div{display:flex;justify-content:space-between;gap:12px}
+#cap{position:fixed;left:0;right:0;bottom:4vh;text-align:center;z-index:4;font-size:3vh;font-weight:600;text-shadow:0 2px 8px #000;transition:opacity .4s}
+#tm{position:fixed;left:50%;top:2vh;transform:translateX(-50%);z-index:4;font-size:4vh;font-weight:700;background:#0007;border-radius:12px;padding:2px 16px}
+#join{width:150px}#bars{position:fixed;left:0;right:0;height:7vh;background:#000;z-index:3;transition:height .4s}#bars.t{top:0}#bars.b{bottom:0}
+#end{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#0009;z-index:7;flex-direction:column;font-size:3vh}#end h1{color:#ffe7a0;font-size:7vh;margin:0 0 2vh}#end div.r{display:flex;gap:3vw;min-width:40vw;justify-content:space-between}</style></head><body>
+<canvas id="cv" class="full"></canvas><div id="bars" class="t"></div><div id="bars2" style="position:fixed;left:0;right:0;bottom:0;height:7vh;background:#000;z-index:3"></div>
+<div id="board"></div><div id="tm"></div><div id="feed"></div><div id="cap"></div><div id="join"></div><div id="end"></div>
+<div class="big" id="big"></div>
+<script>window.MINI = 'orbit'; if (window.Kit === undefined && (new URLSearchParams(location.search).get('tv') !== '1') && Math.min(screen.width, screen.height) < 600) location.replace('pad_v08.html' + location.search);</script>
+<script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/perf.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script>
+<script src="three.min.js"></script><script src="sim_v08.js?b=080"></script><script src="view_v08.js?b=080"></script><script src="game_v08.js?b=080"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, T = THREE, V = new OrbitView($('cv'), {}), shot = null, shotT = 0, joined = false, pending = null;
+  addEventListener('resize', function () { V.size(); }); V.size();
+  var G = new OrbitGame({ onJoin: function () { if (!joined) { joined = true; $('big').style.opacity = 0; } },
+    onEv: function (e) { if (e.e === 'hit' || e.e === 'kill' || e.e === 'boom' || e.e === 'man') heat.push(G ? G.sim.t : 0); if (e.e === 'boom' && e.hits >= 1) pending = { id: e.id, at: new T.Vector3(e.x, e.y, e.z), why: 'BOMB!', w: 3 + e.hits };
+      else if (e.e === 'kill' && e.by && (!pending || pending.w < 3)) pending = { id: e.by, vic: e.id, why: 'KILL', w: 2 }; },
+    onRound: function () { $('end').style.display = 'none'; } });
+  G.host.qr($('join'));
+  $('big').innerHTML = 'ORBIT BRAWL<div style="font-size:.4em;color:#fff">scan to fly \u00b7 your phone is the cockpit \u00b7 2\u201320 pilots</div>';
+  function ship(id) { return G.sim.ships.filter(function (s) { return s.id === id; })[0]; }
+  function busiest() { var best = null, bs = -1; G.sim.ships.forEach(function (s) { if (!s.alive) return; var sc = (s.bot ? 0 : 2) + Math.random() * 1.5;
+      G.sim.ships.forEach(function (o) { if (o !== s && o.alive && o.p.distanceTo(s.p) < 120) sc += 1; }); sc += s.k * .3; if (sc > bs) { bs = sc; best = s; } }); return best; }
+  var KINDS = ['chase', 'flyby', 'duel', 'wide', 'wing', 'wing', 'vwide'], heat = [];
+  function action() { var t = G.sim.t; heat = heat.filter(function (x) { return t - x < 3; }); return heat.length; }   // events in the last 3 s
+  function shooter() { var best = null, bs = 0; G.sim.ships.forEach(function (s) { if (!s.alive || !s.inp.fire) return; var f = G.sim.fwd(s); G.sim.ships.forEach(function (o) { if (o === s || !o.alive) return; var to = o.p.clone().sub(s.p), d = to.length(); if (d > 220) return; var c = to.normalize().dot(f); if (c > .97 && c + (s.bot ? 0 : .5) > bs) { bs = c + (s.bot ? 0 : .5); best = s; } }); }); return best; }
+  function cut(force) {   // pick a new shot
+    var kind = force ? (force.why === 'BOMB!' ? 'wide' : 'chase') : KINDS[(Math.random() * KINDS.length) | 0], sh = !force && (kind === 'wing' || Math.random() < .3) ? shooter() : null; if (sh) kind = 'wing';
+    var subj = sh || (force ? ship(force.id) : busiest()); if (!subj || !subj.alive) subj = busiest(); if (!subj) return; if (kind === 'vwide' && force) kind = 'wide';
+    var foe = null, fd = 1e9; G.sim.ships.forEach(function (o) { if (o !== subj && o.alive) { var d = o.p.distanceTo(subj.p); if (d < fd) { fd = d; foe = o; } } });
+    var A = action(), base = A > 8 ? 2.6 : A > 3 ? 4 : 7; shot = { s: subj, kind: kind, foe: foe, side: Math.random() < .5 ? -1 : 1, orb: Math.random() * 6.28, len: force ? 3.5 : kind === 'vwide' ? base + 4 : base + Math.random() * base * .4, why: force ? force.why : '', at: force && force.at, fixed: null }; shotT = 0;
+    if (kind === 'flyby') shot.fixed = subj.p.clone().add(subj.v.clone().multiplyScalar(1.6)).add(new T.Vector3(Math.random() * 30 - 15, 8 + Math.random() * 10, Math.random() * 30 - 15));
+    if (kind === 'wide') shot.fixed = (shot.at || subj.p).clone().add(new T.Vector3(60, 30, 60));
+    $('cap').innerHTML = (shot.why ? '<span style="color:#ffe7a0">' + shot.why + '</span> \u00b7 ' : '') + '<span style="color:' + subj.col + '">' + subj.name + '</span>' + (kind === 'vwide' ? ' \u00b7 the whole fight' : '') + (foe && (kind === 'duel' || kind === 'wing') ? ' vs <span style="color:' + foe.col + '">' + foe.name + '</span>' : '');
+    place(1 / 60, true);
+  }
+  function place(dt, snap) { var s = shot.s, U = new T.Vector3(0, 1, 0);
+    if (shot.kind === 'chase') V.chase(s, dt, 18, 5, snap);
+    else if (shot.kind === 'flyby') V.look(shot.fixed, s.p, U, dt, snap);
+    else if (shot.kind === 'wide') { shot.fixed.applyAxisAngle(U, dt * .15); V.look(shot.fixed, shot.at || s.p, U, dt, snap); }
+    else if (shot.kind === 'wing') { var off = new T.Vector3(shot.side * 3.4, 1.2, 2.4).applyQuaternion(s.q); V.cam.position.copy(s.p).add(off); V.look(null, s.p.clone().add(G.sim.fwd(s).multiplyScalar(70)), new T.Vector3(0, 1, 0).applyQuaternion(s.q), dt * 2, snap); }
+    else if (shot.kind === 'vwide') { var cen = new T.Vector3(), n = 0, R = 0; G.sim.ships.forEach(function (o) { if (o.alive) { cen.add(o.p); n++; } }); if (n) cen.divideScalar(n); G.sim.ships.forEach(function (o) { if (o.alive) R = Math.max(R, o.p.distanceTo(cen)); });
+      shot.orb += dt * .05; shot.cen = shot.cen ? shot.cen.lerp(cen, dt * .5) : cen; var D = R * 1.4 + 90; V.look(shot.cen.clone().add(new T.Vector3(Math.cos(shot.orb) * D, D * .35, Math.sin(shot.orb) * D)), shot.cen, U, dt, snap); }
+    else { var f = shot.foe && shot.foe.alive ? shot.foe : s, mid = s.p.clone().lerp(f.p, .5), d = Math.max(30, s.p.distanceTo(f.p)), side = s.p.clone().sub(f.p).cross(U).normalize().multiplyScalar(d * .9);
+      V.look(mid.clone().add(side).add(new T.Vector3(0, d * .25, 0)), mid, U, dt, snap); } }
+  var last = 0;
+  (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; G.step(dt); var sim = G.sim;
+    shotT += dt; if (!shot || shot.s && !G.sim.ships.includes(shot.s)) cut();
+    else if (pending && shotT > 1.2) { var p = pending; pending = null; cut(p); }
+    else if (shotT > shot.len || (!shot.s.alive && shotT > 1.5 && shot.kind !== 'wide')) cut(); else place(dt);
+    var st = { seed: sim.seed, ships: sim.ships.map(function (s) { return { id: s.id, p: s.p, q: s.q, col: s.col, alive: s.alive, sh: s.sh, hit: s.hitT < .25 }; }), bul: sim.snap().b, bombs: sim.bombs.map(function (b) { return [b.p.x, b.p.y, b.p.z, b.c]; }), fx: sim.fx.map(function (f) { return [f.k, f.x, f.y, f.z, f.r, f.t, f.life, f.col]; }) };
+    V.draw(st);
+    if (!(t % 4 < 1) || true) hud(sim);
+    requestAnimationFrame(loop); })(0);
+  var hudT = 0;
+  function hud(sim) { if (performance.now() - hudT < 250) return; hudT = performance.now();
+    var rows = sim.ships.slice().sort(function (a, b) { return b.k - a.k || a.d - b.d; });
+    $('board').innerHTML = rows.slice(0, 10).map(function (s) { return '<div><span style="color:' + s.col + '">' + (s.bot ? '\u25E6 ' : '\u25CF ') + s.name + '</span><span>' + s.k + ' / ' + s.d + '</span></div>'; }).join('') + (rows.length > 10 ? '<div style="opacity:.6">+' + (rows.length - 10) + ' more</div>' : '');
+    $('feed').innerHTML = sim.feed.slice(0, 4).map(function (f) { return '<div>' + (f.a ? '<span style="color:' + f.ac + '">' + f.a + '</span> ' : '') + (f.kind === 'bomb' ? '\uD83D\uDCA3' : f.kind === 'rock' ? '\u2604' : '\u2716') + ' <span style="color:' + f.bc + '">' + f.b + '</span></div>'; }).join('');
+    $('tm').textContent = Math.floor(sim.time / 60) + ':' + ('0' + Math.floor(sim.time % 60)).slice(-2);
+    var e = $('end'); if (sim.over) { e.style.display = 'flex'; e.innerHTML = '<h1>' + (rows[0] ? rows[0].name + ' wins!' : 'Round over') + '</h1>' + rows.slice(0, 8).map(function (s, i) { return '<div class="r"><span style="color:' + s.col + '">' + (i + 1) + '. ' + s.name + '</span><span>' + s.k + ' kills \u00b7 ' + s.d + ' deaths</span></div>'; }).join('') + '<p style="opacity:.7">next round in a moment</p>'; } }
+  Kit.over(function () { return joined && G.sim.over; }, 40000);
+  window.OBT = { G: G, V: V, get shot() { return shot; }, force: function (k) { cut(); shot.kind = k; place(1 / 60, true); } };
+})();
+</script><script src="../minikit/ztp-account_v01.js?b=1"></script>
+<script>/* v0.7.1 leaderboard: at match end each human pilot posts their KOs (label shows KOs/deaths). */
+Acct.watch(function () { return window.OBT && OBT.G.sim && OBT.G.sim.over; }, function () {
+  var sim = OBT.G.sim, hs = sim.ships.filter(function (s) { return !s.bot; }), meta = { title: 'Orbit Brawl: Top 10 pilots', meaning: 'Score = KOs in one match' };
+  Promise.all(hs.map(function (s) { return Acct.submit('orbit', { name: s.name, score: s.k, label: s.k + ' KO / ' + s.d + ' D' }); })).then(function (es) { meta.mine = es; Acct.board('orbit', meta); });
+});
+Acct.watch(function () { return window.OBT && OBT.G.sim && !OBT.G.sim.over; }, Acct.hide);</script>
+<script src="../js/ztp-playbar.js" data-here="screen" data-screen="index.html" data-phone="pad_v08.html"></script>
+</body></html>
