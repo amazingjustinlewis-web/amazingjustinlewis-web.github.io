@@ -1,5 +1,6 @@
 /* Dev launcher catalogue. url is relative to /dev-7q3x/. mode: 'frame' (runs inside the launcher) or 'tab' (fallback: opens on its own). */
 window.DEV_GAMES = [
+  { id: 'fightart', name: 'Fight Art', ver: 'v0.1', url: 'fightart/index_v01.html?b=1', img: 'fightart/shot.jpg', tag: 'Zero to Phi concept art \u00b7 80 silhouettes \u00b7 slideshow', mode: 'tab' },
   { id: 'zerostatic', name: 'Zero logo STATIC', ver: 'v0.1', url: 'zero/logo-static.html', img: 'zero/static-shot.png', tag: 'Thin crisp logo \u00b7 breathing QR', mode: 'tab' },
   { id: 'zerolive', name: 'Zero logo LIVE', ver: 'v0.1', url: 'zero/logo-live.html', img: 'zero/live-shot.png', tag: 'Procedural logo \u00b7 energy + strike \u00b7 QR', mode: 'tab' },
   { id: 'zerologo', name: 'Zero logo + QR', ver: 'v0.1', url: 'zero/logo.html', img: 'zero/logo-shot.png', tag: 'Logo pulse \u00b7 3 light modes', mode: 'tab' },
