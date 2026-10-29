@@ -18,7 +18,7 @@ window.DEV_GAMES = [
   { id: 'bubble', name: 'Bubble Hockey', ver: 'v0.9.63', url: 'bubble/index.html?b=963', img: 'bubble/shot.jpg', tag: 'Table-top rod hockey \u00b7 drag, dangle, flick to pass' },
   { id: 'rts', name: 'RTS Shapes', ver: 'v0.5', url: 'rts/index.html', img: 'rts/shot.png', tag: 'Lasso shapes, tap to attack-move, hold for the command wheel \u00b7 v0.1 flight test at ?mode=flight' },
   { id: 'marble', name: 'Marble Rush', ver: 'v0.2', url: 'marble/index.html', img: 'marble/shot.png', tag: 'Tilt-to-steer marble race \u00b7 drops, jumps, a loop \u00b7 2\u20138 phones' },
-  { id: 'minigolf', name: 'Mini Golf', ver: 'v0.1', url: 'minigolf/index.html', img: 'minigolf/shot.png', tag: 'Physics mini golf \u00b7 flick to putt \u00b7 prototype' },
+  { id: 'minigolf', name: 'Mini Golf', ver: 'v0.2', url: 'minigolf/index_v02.html?b=2', img: 'minigolf/shot.png', tag: 'Physics mini golf \u00b7 flick to putt \u00b7 prototype' },
   { id: 'leaderboards', name: 'Global Leaderboards', ver: 'v0.1', url: 'leaderboards/index_v01.html?b=1', img: 'leaderboards/shot.png', tag: 'Studio score hub \u00b7 counts by version \u00b7 live vs dev boards', mode: 'tab' },
   { id: 'rigmystery', name: 'Rig Mystery', ver: 'v0.2', url: 'rig-mystery/index_v02.html?b=1', img: 'rig-mystery/shot.png', tag: 'Oil rig safety detective \u00b7 talk to the crew, read the logbook, catch it early' },
   { id: 'stunt', name: 'Stunt Smash', ver: 'v0.2', url: 'stunt/index.html', img: 'stunt/shot.png', tag: 'Draw your line, pick bike/car/bus, launch into crates \u00b7 take turns' },
