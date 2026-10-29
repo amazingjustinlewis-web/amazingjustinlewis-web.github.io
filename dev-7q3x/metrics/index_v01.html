@@ -1,0 +1,36 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<title>0-Phi play metrics v01 (dev)</title>
+<style>body{margin:0;padding:16px;background:#0b1020;color:#e9f1ff;font:15px system-ui,sans-serif}h1{font-size:20px;margin:0 0 4px}.s{opacity:.7;font-size:13px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:12px}.c{background:#151c33;border-radius:12px;padding:12px}
+.c h3{margin:0 0 8px;font-size:15px;color:#f5b82e}.r{display:flex;gap:8px;align-items:center;margin:3px 0;font-size:13px}.r span:first-child{width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.b{height:10px;background:#3ad1a0;border-radius:4px}.big{font-size:30px;font-weight:800}button{background:#2a3560;color:#fff;border:0;border-radius:8px;padding:6px 12px;margin-right:6px}button.on{background:#3ad1a0;color:#000}</style></head><body>
+<h1>Play metrics (dev)</h1><div class="s" id="src">Loading…</div>
+<div style="margin-top:8px"><button data-d="1">24 h</button><button data-d="7" class="on">7 days</button><button data-d="30">30 days</button><button id="si">Sign in (Google)</button><button id="tr"></button></div>
+<div class="g" id="g"></div>
+<script src="../minikit/ztp-account_v01.js?b=1"></script><script src="../js/ztp-kit_v02.js?b=1"></script>
+<script>
+(function(){var days=7,ev=[],src='';var SDK='https://www.gstatic.com/firebasejs/10.12.2/';
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return'&#'+c.charCodeAt(0)+';'})}
+function bars(t,m){var k=Object.keys(m).sort(function(a,b){return m[b]-m[a]}),mx=Math.max.apply(0,k.map(function(x){return m[x]}).concat(1));
+ return'<div class="c"><h3>'+t+'</h3>'+(k.length?k.map(function(x){return'<div class="r"><span>'+esc(x)+'</span><div class="b" style="width:'+(m[x]/mx*150)+'px"></div><span>'+m[x]+'</span></div>'}).join(''):'<div class="s">No data yet</div>')+'</div>'}
+function draw(){var cut=Date.now()-days*864e5,E=ev.filter(function(e){return e.t>=cut}),S=E.filter(function(e){return e.type==='game_start'}),D=E.filter(function(e){return e.type==='game_end'});
+ var pg={},pv={},pm={},hr={},u={},uv={};S.forEach(function(e){pg[e.game]=(pg[e.game]||0)+1;pv[e.venue]=(pv[e.venue]||0)+1;pm[e.mode]=(pm[e.mode]||0)+1;u[e.pid]=1;(uv[e.venue]=uv[e.venue]||{})[e.pid]=1;
+  var h=('0'+new Date(e.t).getHours()).slice(-2)+':00';hr[h]=(hr[h]||0)+1});
+ var hrs={};for(var i=0;i<24;i++){var h=('0'+i).slice(-2)+':00';hrs[h]=hr[h]||0}
+ var avg=D.length?Math.round(D.reduce(function(a,e){return a+(e.dur||0)},0)/D.length):0,done=D.filter(function(e){return e.result==='done'}).length;
+ var uvc={};Object.keys(uv).forEach(function(k){uvc[k]=Object.keys(uv[k]).length});
+ var hb='<div class="c"><h3>Busy hours (this device\u2019s clock)</h3>'+Object.keys(hrs).map(function(h){return'<div class="r"><span>'+h+'</span><div class="b" style="width:'+(hrs[h]/Math.max.apply(0,Object.values(hrs).concat(1))*150)+'px"></div><span>'+hrs[h]+'</span></div>'}).join('')+'</div>';
+ document.getElementById('g').innerHTML='<div class="c"><h3>Totals</h3><div class="big">'+S.length+'</div><div class="s">games started</div><div class="big">'+Object.keys(u).length+'</div><div class="s">unique players (anonymous device ids)</div><div class="s" style="margin-top:6px">'+D.length+' ended ('+done+' finished, '+(D.length-done)+' quit) \u00b7 avg '+Math.floor(avg/60)+'m '+avg%60+'s</div></div>'
+  +bars('Plays per game',pg)+bars('Plays per venue',pv)+bars('Unique players per venue',uvc)+bars('Content mode',pm)+hb;
+ document.getElementById('src').textContent=src}
+function load(){ZTP.ready.then(function(){var A=window.Acct,u=A&&A.user();if(!u||u.anon)throw new Error('sign in with Google to read the shared events');
+ return Promise.all([import(SDK+'firebase-app.js'),import(SDK+'firebase-firestore.js')]).then(function(m){var fs=m[1],db=fs.getFirestore(m[0].getApp());
+  return fs.getDocs(fs.query(fs.collection(db,'events'),fs.where('ts','>=',fs.Timestamp.fromMillis(Date.now()-30*864e5)),fs.limit(20000)))})
+ }).then(function(sn){ev=[];sn.forEach(function(d){var x=d.data();ev.push(Object.assign({},x,{t:x.ts&&x.ts.toMillis?x.ts.toMillis():0}))});src='Firestore events (all devices) \u00b7 '+ev.length+' events, last 30 days'})
+ .catch(function(e){ev=ZTP.localEvents();src='This device only ('+ev.length+' local events) \u2014 '+(e.code||e.message)})
+ .then(draw)}
+document.querySelectorAll('[data-d]').forEach(function(b){b.onclick=function(){days=+b.dataset.d;document.querySelectorAll('[data-d]').forEach(function(x){x.classList.toggle('on',x===b)});draw()}});
+document.getElementById('si').onclick=function(){ZTP.signIn().then(load)};
+var tr=document.getElementById('tr');function trl(){tr.textContent='Tracking on this device: '+(ZTP.tracking()?'ON':'OFF (track nothing)')}trl();tr.onclick=function(){ZTP.setTracking(!ZTP.tracking());trl()};
+load()})();
+</script></body></html>

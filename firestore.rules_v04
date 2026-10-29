@@ -1,0 +1,148 @@
+rules_version = '2';
+// v04: + events/{id} anonymous play metrics (create-only, validated; readable by Google-signed-in users for the dev metrics page). Everything else = v03.
+// v03: bot profiles (isBot/role, admin-written only), private botScores board. Bots are created/written by Admin SDK from /workspace/bot_accounts.
+// Zero to Phi: leaderboards + profiles. Paste into Firebase console > Firestore Database > Rules > Publish.
+// Public reads; score entries are create-only and validated; nothing can be edited or deleted from the site.
+// Profiles hold only a chosen display name, initials, dial numbers and Founder # (never emails).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isGoogle() { return signedIn() && request.auth.token.firebase.sign_in_provider == 'google.com'; }
+    function okName(s) { return s is string && s.size() >= 1 && s.size() <= 16; }
+    function okInit(s) { return s is string && s.matches('^[A-Z0-9]{0,3}$'); }
+    function okDials(d) { return d is list && d.size() <= 6; }
+    function okCol(c) { return c is string && c.matches('^#[0-9a-f]{6}$'); }
+    function okAv(a) { return a is map && a.keys().hasOnly(['shirt', 'pants', 'shoes', 'hat', 'hatStyle', 'skin'])
+      && okCol(a.shirt) && okCol(a.pants) && okCol(a.shoes) && okCol(a.hat) && okCol(a.skin) && a.hatStyle in ['none', 'cap', 'beanie']; }
+    function okAvOpt(d) { return !('avatar' in d) || okAv(d.avatar); }
+
+    // Optional café/world tag on a global score: only members of that shop can tag it; the name must match the shop; game must be allowed there.
+    function okShopTag(game, d) {
+      return (!('shopId' in d) && !('shopName' in d))
+        || (d.shopId is string && d.shopId.matches('^[a-z0-9-]{1,32}$')
+            && exists(/databases/$(database)/documents/shops/$(d.shopId)/members/$(request.auth.uid))
+            && d.shopName == get(/databases/$(database)/documents/shops/$(d.shopId)).data.name
+            && game in get(/databases/$(database)/documents/shops/$(d.shopId)).data.games);
+    }
+
+    // Shops (cafés / worlds). Doc is public (name, games, pinned versions). Join code lives in private/join, readable by the owner only.
+    // Joining = creating members/{yourUid} carrying the right code (works with anonymous auth, so bots need no Google).
+    match /shops/{shop} {
+      function okShop(d) { return d.keys().hasOnly(['name', 'owner', 'private', 'games', 'pins', 'ts'])
+        && d.name is string && d.name.size() >= 1 && d.name.size() <= 32 && d.private is bool
+        && d.games is list && d.games.size() <= 20 && d.pins is map && d.ts == request.time; }
+      allow read: if true;
+      allow create: if signedIn() && shop.matches('^[a-z0-9-]{1,32}$') && okShop(request.resource.data)
+        && request.resource.data.owner == request.auth.uid
+        && getAfter(/databases/$(database)/documents/shops/$(shop)/private/join).data.code is string;
+      allow update: if signedIn() && resource.data.owner == request.auth.uid && okShop(request.resource.data)
+        && request.resource.data.owner == resource.data.owner;
+      allow delete: if false;
+
+      match /private/{doc} {
+        allow read: if signedIn() && get(/databases/$(database)/documents/shops/$(shop)).data.owner == request.auth.uid;
+        allow create: if signedIn() && doc == 'join' && getAfter(/databases/$(database)/documents/shops/$(shop)).data.owner == request.auth.uid
+          && !exists(/databases/$(database)/documents/shops/$(shop))
+          && request.resource.data.keys().hasOnly(['code']) && request.resource.data.code is string && request.resource.data.code.size() >= 16;
+        allow update: if signedIn() && doc == 'join' && get(/databases/$(database)/documents/shops/$(shop)).data.owner == request.auth.uid
+          && request.resource.data.keys().hasOnly(['code']) && request.resource.data.code is string && request.resource.data.code.size() >= 16;
+        allow delete: if false;
+      }
+      match /members/{uid} {
+        allow read: if signedIn() && (request.auth.uid == uid || get(/databases/$(database)/documents/shops/$(shop)).data.owner == request.auth.uid);
+        allow create: if signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['code', 'name', 'ts']) && okName(request.resource.data.name) && request.resource.data.ts == request.time
+          && request.resource.data.code == getAfter(/databases/$(database)/documents/shops/$(shop)/private/join).data.code;
+        allow update: if false;
+        allow delete: if signedIn() && get(/databases/$(database)/documents/shops/$(shop)).data.owner == request.auth.uid;
+      }
+    }
+
+    // games/{game}/scores/{entry}
+    match /games/{game}/scores/{entry} {
+      allow read: if true;
+      allow create: if signedIn()
+        && game.matches('^[a-z0-9-]{1,24}$')
+        && request.resource.data.keys().hasOnly(['name', 'score', 'label', 'ver', 'uid', 'ts', 'shopId', 'shopName'])
+        && request.resource.data.keys().hasAll(['name', 'score', 'ver', 'uid', 'ts'])
+        && okName(request.resource.data.name)
+        && request.resource.data.score is int
+        && request.resource.data.score >= -1000000 && request.resource.data.score <= 1000000000
+        && request.resource.data.ver is string && request.resource.data.ver.matches('^v[0-9.]{1,12}$')
+        && (!('label' in request.resource.data) || (request.resource.data.label is string && request.resource.data.label.size() <= 24))
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.ts == request.time
+        && okShopTag(game, request.resource.data);
+      allow update, delete: if false;
+    }
+
+    // Founder # counter: only ever +1, only alongside the new Google profile that claims that number, capped at 100.
+    match /meta/founders {
+      allow read: if true;
+      allow create: if isGoogle() && request.resource.data.keys().hasOnly(['n']) && request.resource.data.n == 1
+        && getAfter(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.founder == 1;
+      allow update: if isGoogle() && request.resource.data.keys().hasOnly(['n'])
+        && request.resource.data.n == resource.data.n + 1 && request.resource.data.n <= 100
+        && !exists(/databases/$(database)/documents/profiles/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.founder == request.resource.data.n;
+      allow delete: if false;
+    }
+
+    // initials history: list of 'ABC@YYYY-MM-DD', public, append-only (one new entry per write, old entries untouched, last = current initials)
+    function ihOk(e, d) { return e is string && e.matches('^[A-Z0-9]{1,3}@20[0-9]{2}-[0-9]{2}-[0-9]{2}$') && e.split('@')[0] == d.initials; }
+    function ihNew(d) { return !('ih' in d) || (d.ih is list && (d.ih.size() == 0 || (d.ih.size() == 1 && ihOk(d.ih[0], d)))); }
+    function ihAppend(o, d) {
+      return !('ih' in d) ? !('ih' in o)
+        : (d.ih is list && (('ih' in o) ? o.ih : []) is list
+           && (d.ih == (('ih' in o) ? o.ih : [])
+               || (d.ih.size() == (('ih' in o) ? o.ih : []).size() + 1 && d.ih.size() <= 200
+                   && d.ih.hasAll(('ih' in o) ? o.ih : []) && ihOk(d.ih[d.ih.size() - 1], d))));
+    }
+    // Internal Bot Cafe board: written only by Admin SDK (post_score.py); readable by signed-in studio users, not public.
+    match /botScores/{game}/scores/{entry} {
+      allow read: if signedIn() && !request.auth.token.firebase.sign_in_provider.matches('anonymous');
+      allow write: if false;
+    }
+
+    match /profiles/{uid} {
+      allow read: if true;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'initials', 'dials', 'avatar', 'ih', 'founder', 'ts'])
+        && okName(request.resource.data.name) && okInit(request.resource.data.initials) && okDials(request.resource.data.dials) && okAvOpt(request.resource.data) && ihNew(request.resource.data)
+        && request.resource.data.ts == request.time
+        && request.resource.data.founder is int
+        && (request.resource.data.founder == 0
+            || (isGoogle() && request.resource.data.founder >= 1 && request.resource.data.founder <= 100
+                && getAfter(/databases/$(database)/documents/meta/founders).data.n == request.resource.data.founder
+                && (request.resource.data.founder == 1
+                    ? !exists(/databases/$(database)/documents/meta/founders)
+                    : get(/databases/$(database)/documents/meta/founders).data.n == request.resource.data.founder - 1)));
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'initials', 'dials', 'avatar', 'ih'])
+        && (('isBot' in resource.data) == ('isBot' in request.resource.data))
+        && okName(request.resource.data.name) && okInit(request.resource.data.initials) && okDials(request.resource.data.dials) && okAvOpt(request.resource.data)
+        && ihAppend(resource.data, request.resource.data);
+      allow delete: if false;
+    }
+
+    // events/{id}: anonymous play metrics from ztp-kit_v02 (game_start / game_end). No names, uids or emails allowed.
+    match /events/{id} {
+      allow read: if isGoogle();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['type', 'game', 'ver', 'venue', 'pid', 'mode', 'env', 'dur', 'result', 'ts'])
+        && request.resource.data.keys().hasAll(['type', 'game', 'ver', 'venue', 'pid', 'mode', 'env', 'ts'])
+        && request.resource.data.type in ['game_start', 'game_end']
+        && request.resource.data.game is string && request.resource.data.game.matches('^[a-z0-9-]{1,24}$')
+        && request.resource.data.ver is string && request.resource.data.ver.matches('^v[0-9.]{1,12}$')
+        && request.resource.data.venue is string && request.resource.data.venue.matches('^[a-z0-9-]{1,32}$')
+        && request.resource.data.pid is string && request.resource.data.pid.matches('^[a-z0-9]{16}$')
+        && request.resource.data.mode in ['kid', 'family', 'teen', 'mature']
+        && request.resource.data.env in ['dev', 'live']
+        && (!('dur' in request.resource.data) || (request.resource.data.dur is int && request.resource.data.dur >= 0 && request.resource.data.dur <= 86400))
+        && (!('result' in request.resource.data) || request.resource.data.result in ['done', 'quit'])
+        && request.resource.data.ts == request.time;
+      allow update, delete: if false;
+    }
+  }
+}

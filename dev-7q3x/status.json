@@ -1,6 +1,18 @@
 {
-  "updated": "2026-10-28",
+  "updated": "2026-10-29",
   "games": [
+    {
+      "name": "Play metrics",
+      "status": "In development",
+      "ver": "v01",
+      "public": false,
+      "fit": [
+        "phone",
+        "TV"
+      ],
+      "url": "metrics/index_v01.html?b=1",
+      "notes": "ztp-kit_v02.js adds anonymous game_start/game_end events (game, ver, venue or 'home', random device id, mode, duration). Opt-out: ztp:track=off / ?track=0 / DNT. Tested in Mini Golf v0.3. Needs firestore.rules_v04 published (not yet) before events reach Firestore; until then the page shows this device's local events."
+    },
     {
       "name": "Accounts / Founder #",
       "status": "In development",
