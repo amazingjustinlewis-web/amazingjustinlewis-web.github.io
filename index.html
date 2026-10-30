@@ -34,6 +34,7 @@
 <script>window.LR_CONFIG={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]}</script>
 <script src="cafe/js/net.js"></script>
 <script src="assets/js/door.js"></script>
+<script src="assets/js/throb_v02.js?b=1"></script>
 <script>
 (function(){
 var qs=new URLSearchParams(location.search),still=matchMedia('(prefers-reduced-motion: reduce)').matches||qs.get('still')==='1',PULSE=qs.get('pulse')!=='0';
@@ -59,7 +60,7 @@ function col(k){return 'rgb('+[206,160,62].map(function(v){return Math.max(0,Mat
 // size follows the same envelope: 90% at the bottom of the dip, exactly 100% (pixel-snapped) at the peak
 var disc=document.getElementById('disc');if(window.ZTP_PHONE){disc.style.display='';document.getElementById('qr').style.display='none';disc.setAttribute('cx',CX);disc.setAttribute('cy',CY)}
 var ZQ=ZeroQR({still:still||!PULSE});
-function tick(ms){var T=FIXT!=null?FIXT:ms/1000,R=ZQ.frame(T),L=R.level,sc=R.scale;ql.setAttribute('fill',col(L));
+function tick(ms){var T=FIXT!=null?FIXT:ms/1000,R=ZQ.frame(T),L=R.level,sc=R.scale;ql.setAttribute('fill',col(L));if(window.ZTPThrob)ZTPThrob.level(L);
  if(window.ZTP_PHONE){disc.setAttribute('opacity',Math.min(1,L).toFixed(3));disc.setAttribute('r',(9*(0.75+0.25*Math.min(1,L))).toFixed(3))}
  qg.setAttribute('transform',sc>=0.9995?'':'translate('+QC[0]+' '+QC[1]+') scale('+sc.toFixed(4)+') translate('+(-QC[0])+' '+(-QC[1])+')');if(!still)requestAnimationFrame(tick)}
 fetch('assets/img/logo.svg').then(function(r){return r.text()}).then(function(t){
@@ -84,4 +85,10 @@ addEventListener('click',function(e){if(e.target.closest('#li'))return;if(window
 })();
 </script>
 <a id="li" href="https://www.linkedin.com/company/zerotophi/" target="_blank" rel="noopener" aria-label="Zero to Phi on LinkedIn" style="position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));color:#8f7a4a;opacity:.6;z-index:5"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="position:static;display:block;width:18px;height:18px"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg></a>
+<div id="ztpc" style="position:fixed;left:max(14px,env(safe-area-inset-left));bottom:max(14px,env(safe-area-inset-bottom));z-index:5;display:flex;gap:14px;align-items:center;font:11px/1 system-ui,sans-serif;letter-spacing:.14em;text-transform:lowercase">
+<a id="acct" href="account/index_v01.html" style="color:#8f7a4a;opacity:.55;text-decoration:none">create account &middot; sign in</a>
+<button id="snd" aria-label="Sound on or off" style="background:none;border:0;padding:0;color:#8f7a4a;opacity:.45;cursor:pointer;font:inherit;letter-spacing:inherit">sound</button></div>
+<script>(function(){var a=document.getElementById('acct'),b=document.getElementById('snd');
+function paint(){var o=window.ZTPThrob&&ZTPThrob.on();b.textContent=o?'sound on':'sound off';b.style.opacity=o?.5:.3}
+a.addEventListener('click',function(e){e.stopPropagation()});b.addEventListener('click',function(e){e.stopPropagation();if(window.ZTPThrob)ZTPThrob.toggle();paint()});paint()})();</script>
 </body></html>
