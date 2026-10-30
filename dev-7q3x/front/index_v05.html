@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<base href="../../"><meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Zero to Phi (dev front v05 ghosts)</title>
+<meta name="description" content="Zero to Phi: an indie game studio by Justin Lewis. Scan the code, pick up your phone and play.">
+<meta name="theme-color" content="#000000">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Zero to Phi"><meta property="og:title" content="Zero to Phi">
+<meta property="og:description" content="Indie games by Justin Lewis. Scan, pick up your phone, play.">
+<meta property="og:image" content="https://amazingjustinlewis-web.github.io/assets/img/og-site.jpg"><meta property="og:url" content="https://amazingjustinlewis-web.github.io/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+<script>/* phones see the zero page with a breathing gold glow instead of the QR (tap = hub); ?from=qr jumps to the hub; ?tv=1 forces the TV page */
+(function(){var q=new URLSearchParams(location.search);if(q.get('tv')==='1')return;
+ var coarse=matchMedia('(pointer: coarse)').matches,small=Math.min(screen.width,screen.height)<760;
+ if(q.get('from')==='qr')return location.replace('go/'+location.hash);
+ window.ZTP_PHONE=q.get('phone')==='1'||(coarse&&small)||innerWidth<600})();</script>
+<link rel="icon" href="assets/img/favicon.svg">
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden;cursor:pointer}svg{position:fixed;inset:0;width:100vw;height:100vh;display:block}</style>
+<style>#ghost{position:fixed;z-index:0;pointer-events:none;width:min(46vw,640px);aspect-ratio:2/1;opacity:0;border-radius:18px;object-fit:cover;-webkit-mask-image:radial-gradient(ellipse at center,#000 35%,transparent 72%);mask-image:radial-gradient(ellipse at center,#000 35%,transparent 72%);will-change:transform,opacity,filter}#s{z-index:1}</style>
+</head><body>
+<svg id="s" xmlns="http://www.w3.org/2000/svg" aria-label="Zero to Phi" shape-rendering="geometricPrecision">
+ <defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="-19.07" y1="-36.69" x2="78.98" y2="42.98"><stop offset="0" stop-color="#FBE7A1"/><stop offset=".5" stop-color="#E2B84A"/><stop offset="1" stop-color="#C08A22"/></linearGradient></defs>
+ <!-- real logo paths, thinned with a morphological erode (the union is eroded, so crossings stay intact) -->
+ <filter id="thin" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"><feMorphology id="er" operator="erode" radius="0.8"/></filter>
+ <g id="logo" fill="url(#g)" filter="url(#thin)"></g>
+ <radialGradient id="glow"><stop offset="0" stop-color="#fff1c4" stop-opacity=".95"/><stop offset=".25" stop-color="#f0cb6a" stop-opacity=".75"/><stop offset=".6" stop-color="#d4a63e" stop-opacity=".25"/><stop offset="1" stop-color="#c08a22" stop-opacity="0"/></radialGradient>
+ <circle id="disc" r="0" fill="url(#glow)" style="display:none;cursor:pointer" role="button" aria-label="Play"/>
+ <g id="qr" shape-rendering="crispEdges"><rect id="ql"/><path id="qd" fill="#000"/></g>
+</svg>
+<script src="assets/js/qrcode.js"></script>
+<script src="assets/js/zero-qr.js"></script>
+<script src="cafe/js/vendor/peerjs.min.js"></script>
+<script>if(typeof Peer!=='function')document.write('<script src="cafe/js/vendor/peerjs.legacy.min.js"><\/script>')</script>
+<script>window.LR_CONFIG={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]}</script>
+<script src="cafe/js/net.js"></script>
+<script src="assets/js/door.js"></script>
+<script src="assets/js/throb_v04.js?b=1"></script>
+<script>
+(function(){
+var qs=new URLSearchParams(location.search),still=matchMedia('(prefers-reduced-motion: reduce)').matches||qs.get('still')==='1',PULSE=qs.get('pulse')!=='0';
+var FIXT=qs.has('t')?+qs.get('t'):null,THIN=qs.has('thin')?+qs.get('thin'):0.8; // erode radius in logo units
+var svg=document.getElementById('s'),logo=document.getElementById('logo'),ql=document.getElementById('ql');
+var VB={x:-19.07,y:-36.69,w:98.05,h:79.67},CX=0.06,CY=0.1,PX=49.7,PY=0.1;
+var Q,N,QZ=4,ready=false;function setQR(u){Q=qrcode(0,'H');Q.addData(u);Q.make();N=Q.getModuleCount();window.__qrURL=u;if(ready)fit()}
+setQR('https://amazingjustinlewis-web.github.io/go/');
+function fit(){var W=innerWidth,H=innerHeight,k=Math.min(W*0.9/VB.w,H*0.78/VB.h),vw=W/k,vh=H/k,mx=VB.x+VB.w/2,my=VB.y+VB.h/2;
+ svg.setAttribute('viewBox',(mx-vw/2)+' '+(my-vh/2)+' '+vw+' '+vh);
+ window.__zc=((CX-(mx-vw/2))*k).toFixed(1)+'px '+((CY-(my-vh/2))*k).toFixed(1)+'px';window.__pc=((PX-(mx-vw/2))*k).toFixed(1)+'px '+((PY-(my-vh/2))*k).toFixed(1)+'px';
+ var dpr=devicePixelRatio||1,n=N+2*QZ,mpx=Math.max(2,Math.floor(21*k*dpr/n))/dpr,u=mpx/k,S=u*n;
+ // snap the QR's corner to the device-pixel grid
+ var sx=(CX-S/2-(mx-vw/2))*k*dpr,sy=(CY-S/2-(my-vh/2))*k*dpr,ox=(mx-vw/2)+Math.round(sx)/(k*dpr),oy=(my-vh/2)+Math.round(sy)/(k*dpr);
+ ql.setAttribute('x',ox);ql.setAttribute('y',oy);ql.setAttribute('width',S);ql.setAttribute('height',S);
+ var d='';for(var r=0;r<N;r++)for(var c=0;c<N;c++)if(Q.isDark(r,c))d+='M'+(ox+(c+QZ)*u)+' '+(oy+(r+QZ)*u)+'h'+u+'v'+u+'h-'+u+'z';
+ document.getElementById('qd').setAttribute('d',d);QC=[ox+S/2,oy+S/2]}
+var QC=[0,0],qg=document.getElementById('qr');
+// envelope (8 s): the dome 1.02*sin(pi*t/8)^0.35, windowed by a smootherstep so ~25% of each cycle rests in black with soft edges
+function qrLevel(T){if(still||!PULSE)return 1;var u=T%8,dd=Math.min(u,8-u),t=Math.max(0,Math.min(1,(dd-0.9)/0.5)),w=t*t*t*(t*(6*t-15)+10);
+ return 1.02*Math.pow(Math.sin(Math.PI*u/8),0.35)*w}
+function col(k){return 'rgb('+[206,160,62].map(function(v){return Math.max(0,Math.min(255,Math.round(v*k)))}).join(',')+')'}
+// size follows the same envelope: 90% at the bottom of the dip, exactly 100% (pixel-snapped) at the peak
+var disc=document.getElementById('disc');if(window.ZTP_PHONE){disc.style.display='';document.getElementById('qr').style.display='none';disc.setAttribute('cx',CX);disc.setAttribute('cy',CY)}
+var ZQ=ZeroQR({still:still||!PULSE});
+function tick(ms){var T=FIXT!=null?FIXT:ms/1000,R=ZQ.frame(T),L=R.level,sc=R.scale;ql.setAttribute('fill',col(L));window.__qrL=L;if(window.ZTPThrob)ZTPThrob.level(L);
+ if(window.ZTP_PHONE){disc.setAttribute('opacity',Math.min(1,L).toFixed(3));disc.setAttribute('r',(9*(0.75+0.25*Math.min(1,L))).toFixed(3))}
+ qg.setAttribute('transform',sc>=0.9995?'':'translate('+QC[0]+' '+QC[1]+') scale('+sc.toFixed(4)+') translate('+(-QC[0])+' '+(-QC[1])+')');if(!still)requestAnimationFrame(tick)}
+fetch('assets/img/logo.svg').then(function(r){return r.text()}).then(function(t){
+ var doc=new DOMParser().parseFromString(t,'image/svg+xml');[].forEach.call(doc.querySelectorAll('path'),function(p){var q=document.createElementNS('http://www.w3.org/2000/svg','path');q.setAttribute('d',p.getAttribute('d'));logo.appendChild(q)});
+ document.getElementById('er').setAttribute('radius',THIN);ready=true;fit();addEventListener('resize',fit);tick(0);document.documentElement.dataset.ready=1;requestAnimationFrame(tick)});
+// a click, tap or Enter anywhere opens the hub (TV remotes and laptops)
+// front door: a per-screen pairing room; phone remote or a local click opens the options menu
+// [id, name, typical minutes, late join?]  big-screen games fly onto the TV; phone-only games release the screen
+var GAMES=[['red-deer-rich','Red Deer Rich',60,0],['zombie-tiles','Zombie Tiles',20,0],['space','Drift Signal',30,1],['mech','Iron Stride',15,1],['laser-range','Laser Range',10,1],['walker','Walker',20,1]];
+// dev-only games: only on a screen opened once with ?dev=1 (remembered; ?dev=0 forgets). Never shown on public screens.
+(function(){try{var m=/[?&]dev=([01])/.exec(location.search);if(m){if(m[1]==='1')localStorage.setItem('ztp-dev','1');else localStorage.removeItem('ztp-dev')}if(localStorage.getItem('ztp-dev')==='1'){GAMES.push(['dev-showcase','Arcade Showcase (dev)',5,0,'dev-7q3x/showcase/index_v09.html']);GAMES.push(['dev-safety3','Safety Third (dev)',3,0,'dev-7q3x/safety3/']);GAMES.push(['lostsock','Lost Sock (dev)',15,1,'dev-7q3x/lostsock/']);GAMES.push(['dev-bubble','Bubble Hockey (dev)',10,1,'dev-7q3x/bubble/','index.html','dev-7q3x/bubble/pad.html'],['dev-orbit','Orbit Brawl v0.8 (dev)',10,1,'dev-7q3x/orbit/','index_v08.html?b=080','dev-7q3x/orbit/pad_v08.html?b=080'],['dev-foosball','Foosball (dev)',10,1,'dev-7q3x/foosball/','index.html','dev-7q3x/foosball/pad.html'],['dev-puck','Glide Puck (dev)',10,1,'dev-7q3x/puck/','index.html','dev-7q3x/puck/pad.html'],['dev-broadside','Dangerous Waters (dev)',15,1,'dev-7q3x/broadside/','index.html','dev-7q3x/broadside/pad.html'],['dev-rdr-phone','Red Deer Rich phone mode (dev)',45,1,'dev-7q3x/rdr-phone/','index.html','dev-7q3x/rdr-phone/controller.html'],['dev-stunt','Stunt Smash (dev)',10,1,'dev-7q3x/stunt/','index.html','dev-7q3x/stunt/pad.html'],['dev-rts','RTS Shapes (dev)',20,1,'dev-7q3x/rts/','index.html','dev-7q3x/rts/pad.html'],['dev-marble','Marble Rush (dev)',10,1,'dev-7q3x/marble/','index.html','dev-7q3x/marble/pad.html'],['dev-hoptop','Hop Top (dev)',10,1,'dev-7q3x/hoptop/','index.html','dev-7q3x/hoptop/pad.html'],['dev-swish','Swish Flick (dev)',10,1,'dev-7q3x/swish/','index.html','dev-7q3x/swish/pad.html'],['dev-dunk','Splash Clown (dev)',10,1,'dev-7q3x/dunk/','index.html','dev-7q3x/dunk/pad.html'],['dev-stack','Stack Attack (dev)',10,1,'dev-7q3x/stack/','index.html','dev-7q3x/stack/pad.html'],['dev-buddy','Balloon Buddy (dev)',10,1,'dev-7q3x/buddy/','index.html','dev-7q3x/buddy/pad.html'],['dev-derby','Demolition Derby (dev)',10,1,'dev-7q3x/derby/','index.html','dev-7q3x/derby/controller.html'],['dev-mech-open','Iron Stride Cockpit (dev)',15,1,'dev-7q3x/mech-open/','index.html','dev-7q3x/mech-open/controller.html'],['dev-mech-squad','Iron Stride Squad (dev)',15,1,'dev-7q3x/mech-squad/','index.html','dev-7q3x/mech-squad/phone.html'],['dev-rescue','Red Deer Rescue (dev)',15,1,'games/rescue/','index.html','games/rescue/controller.html'],['dev-chargehop','Charge Hop (dev pad)',10,1,'games/charge-hop/','gpad_v01.html','dev-7q3x/gpad/pad_v01.html'],['dev-bloatflier','Bloat Flier (dev fly test)',5,0,'dev-7q3x/bloatflier/','fly_v01.html','dev-7q3x/gpad/pad_v01.html'])}}catch(e){}})();
+var GDESC={'lostsock':'Sock-puppet artillery: play on the TV or on your phone','red-deer-rich':'Buy Red Deer streets, build shops, make deals','zombie-tiles':'Explore the city tile by tile and race for the helipad','space':'A chill space trip: every phone is a crew station','mech':'Pilot a walking mech, your phone is the cockpit','laser-range':'Point your phone at the TV to pop targets','walker':'A calm, gentle play world','Battleship':'Hide your fleet and hunt theirs, all on your phone'};
+var PHONE_GAMES=[['Battleship','cafe/play.html']];
+function gameItem(g){var b=g[4]||('games/'+g[0]+'/');return{id:g[0],label:g[1]+'  · TV',play:b+(g[5]||'index.html'),name:g[1],mins:g[2],late:g[3],kind:'tv',desc:GDESC[g[0]]||'',ctrl:g[3]?'../'+(g[6]||b+'controller.html'):'',p1ctrl:'../'+(g[6]||b+'controller.html'),spin:g[0]==='space'||g[0]==='mech'}}
+var door=window.ZTP_PHONE?null:Door({name:'Zero to Phi',title:'ZERO TO PHI',
+ games:function(){return GAMES.map(function(g){return[g[0],g[1],g[2]]})},find:function(id){var g=GAMES.filter(function(x){return x[0]===id})[0];return g&&gameItem(g)},
+ items:function(){return[{label:'Games',sub:function(){return GAMES.map(gameItem).concat(PHONE_GAMES.map(function(p){return{label:p[0]+'  · phone',kind:'phone',desc:GDESC[p[0]]||'',phoneGo:'../'+p[1],href:p[1]}}),[{label:'Back',back:1}])}},
+  {label:'Explore 0-Phi',phoneGo:'../classic.html',href:'classic.html'},
+  {label:'Set up a café screen',phone:'#biz'},{label:'Close',close:1}]},
+ onCode:function(u){setQR(u)},flyEl:function(){return svg},flyOrigin:function(){return window.__zc||'50% 50%'},spinOrigin:function(){return window.__pc||null},homes:true,onPaired:function(p){ZQ.setForced(p?true:null,3.5)}});
+addEventListener('click',function(e){if(e.target.closest('#li'))return;if(window.ZTP_PHONE){location.href='go/';return}if(door&&!door.isOpen()&&!e.target.closest('#door,#doorframe,#li'))door.menu()});
+})();
+</script>
+<a id="li" href="https://www.linkedin.com/company/zerotophi/" target="_blank" rel="noopener" aria-label="Zero to Phi on LinkedIn" style="position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));color:#8f7a4a;opacity:.6;z-index:5"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="position:static;display:block;width:18px;height:18px"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg></a>
+<div id="ztpc" style="position:fixed;left:max(14px,env(safe-area-inset-left));bottom:max(14px,env(safe-area-inset-bottom));z-index:5;display:flex;gap:14px;align-items:center;font:11px/1 system-ui,sans-serif;letter-spacing:.14em;text-transform:lowercase">
+<a id="acct" href="account/index_v01.html" style="color:#8f7a4a;opacity:.55;text-decoration:none">create account &middot; sign in</a>
+<button id="snd" aria-label="Sound on or off" style="background:none;border:0;padding:0;color:#8f7a4a;opacity:.45;cursor:pointer;font:inherit;letter-spacing:inherit">sound</button></div>
+<script>(function(){var a=document.getElementById('acct'),b=document.getElementById('snd');
+function paint(){var o=window.ZTPThrob&&ZTPThrob.on();b.textContent=o?'sound on':'sound off';b.style.opacity=o?.5:.3}
+a.addEventListener('click',function(e){e.stopPropagation()});b.addEventListener('click',function(e){e.stopPropagation();if(window.ZTPThrob)ZTPThrob.toggle();paint()});paint()})();</script>
+<script>/* v04 GHOST CLIPS: every so often a dreamy 5 s loop of a game drifts toward the camera off-centre behind the logo, then dissolves. ?ghost=0 off, ?ghost=fast for testing */
+(function(){var q=new URLSearchParams(location.search);if(q.get('ghost')==='0'||window.ZTP_PHONE)return;
+ if(matchMedia('(prefers-reduced-motion: reduce)').matches||q.get('still')==='1')return;
+ var c=navigator.connection;if(c&&(c.saveData||/2g/.test(c.effectiveType||'')))return;if(navigator.hardwareConcurrency&&navigator.hardwareConcurrency<4)return;
+ var FAST=q.get('ghost')==='fast',CLIPS=['orbit_dogfight','bubble_cinema'],last=-1,busy=false;
+ var v=document.createElement('video');v.id='ghost';v.muted=true;v.defaultMuted=true;v.playsInline=true;v.setAttribute('playsinline','');v.setAttribute('muted','');v.preload='none';v.setAttribute('aria-hidden','true');
+ document.body.insertBefore(v,document.body.firstChild);
+ var webm=v.canPlayType('video/webm; codecs="vp9"');
+ function ease(t){return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2}
+ function show(){if(busy||document.hidden)return sched();busy=true;
+  var i;do{i=Math.floor(Math.random()*CLIPS.length)}while(CLIPS.length>1&&i===last);last=i;
+  v.src='assets/ghosts_v01/'+CLIPS[i]+(webm?'.webm':'.mp4');
+  var side=Math.random()<.5?-1:1,W=innerWidth,H=innerHeight,gw=Math.min(W*.46,640),x=W/2+side*W*(.2+Math.random()*.08)-gw/2,y=H*(.12+Math.random()*.4);
+  v.style.left=x+'px';v.style.top=y+'px';var rot0=side*(-6-Math.random()*4),rot1=side*(4+Math.random()*4);
+  v.currentTime=0;var p=v.play();(p&&p.catch?p:Promise.resolve()).then(function(){
+   var t0=performance.now(),D=5000;function f(now){var t=Math.min(1,(now-t0)/D),
+    a=t<.35?ease(t/.35):t<.65?1:1-ease((t-.65)/.35),  /* ~1.5 s plateau in the middle */
+    sc=.72+.5*t,r=rot0+(rot1-rot0)*t,bl=(1-a)*8;
+    v.style.opacity=(a*(CLIPS[i]==='bubble_cinema'?.2:.32)).toFixed(3);v.style.filter='blur('+bl.toFixed(1)+'px) saturate(.8)';
+    v.style.transform='perspective(900px) translateZ('+(t*60).toFixed(0)+'px) rotateY('+(side*(12-24*t)).toFixed(1)+'deg) rotate('+r.toFixed(2)+'deg) scale('+sc.toFixed(3)+')';
+    if(t<1)requestAnimationFrame(f);else{v.style.opacity=0;v.pause();busy=false;sched()}}requestAnimationFrame(f)},function(){busy=false})}
+ /* wait for the logo/QR dark gap so a ghost begins as the logo recedes */
+ function waitGap(){var n=0;(function w(){if((window.__qrL||0)<.25||++n>80)show();else setTimeout(w,100)})()}
+ function sched(){setTimeout(waitGap,FAST?1500:35000+Math.random()*35000)}
+ addEventListener('load',function(){setTimeout(waitGap,FAST?1000:15000+Math.random()*10000)});
+})();</script>
+</body></html>
