@@ -1,0 +1,44 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="robots" content="noindex,nofollow">
+<title>Cave Cinema remote</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>html,body{margin:0;height:100%;background:#07060f;color:#fff;font-family:system-ui;overflow:hidden;overscroll-behavior:none}
+#flow{position:fixed;left:0;right:0;top:10vh;height:44vh}#ttl{position:fixed;left:0;right:0;top:55vh;text-align:center;font:800 22px system-ui;padding:0 12px}
+#ttl small{display:block;font-weight:500;opacity:.6;font-size:14px}#st{position:fixed;top:env(safe-area-inset-top);left:0;right:0;text-align:center;font-size:13px;opacity:.6;padding-top:8px}
+#btns{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 76px);display:flex;gap:10px}
+#xtra{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 146px);display:flex;gap:10px}
+#xtra button{flex:1;border:0;border-radius:14px;padding:11px 6px;font:700 15px system-ui;background:#ffffff1c;color:#fff}#xtra button.on{background:#ffe7a033;color:#ffe7a0}
+#stubs{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top) + 30px);display:flex;gap:6px;overflow-x:auto;padding:0 12px;scrollbar-width:none}
+#stubs i{flex:none;font:700 11px ui-monospace,monospace;font-style:normal;color:#2a1c05;background:#ffe7a0;border-radius:4px;padding:4px 8px;white-space:nowrap}
+#stubs i:nth-child(n+4){opacity:.6}
+#btns button{flex:1;border:0;border-radius:16px;padding:18px;font:800 20px system-ui;color:#111;background:#ffe7a0}#btns #stop{flex:.5;background:#444;color:#fff}
+#tabs{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 14px);display:flex;gap:8px;overflow-x:auto;padding:0 12px}
+#tabs button{flex:none;border:0;border-radius:99px;padding:10px 16px;font:700 15px system-ui;background:#ffffff18;color:#fffb}#tabs button.on{background:#ffe7a0;color:#111}</style></head><body>
+<div id="st">Connecting…</div><div id="flow"></div><div id="ttl"></div>
+<div id="stubs"></div><div id="xtra"><button id="spin">&#127920; Surprise me</button><button id="pause">&#9208; Intermission</button><button id="lt">&#128161; Lights</button></div>
+<div id="btns"><button id="play">&#9654; Play</button><button id="stop">&#9632;</button></div><div id="tabs"></div>
+<script>window.MINI = 'cinema'; (function () { var q = new URLSearchParams(location.search), t = q.get('table'); if (t && !q.get('room')) { q.set('room', t.toUpperCase()); q.delete('table'); history.replaceState(null, '', location.pathname + '?' + q); } })();</script>
+<script src="../minikit/peerjs.min.js"></script><script>if (typeof Peer !== 'function') document.write('<script src="../minikit/peerjs.legacy.min.js"><\/script>');</script>
+<script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="flow_v01.js"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, items = [], tabs = [], tab = 0, th = {}, c, quiet = false;
+  var F = Flow.mount($('flow'), { h: '92%', onIndex: function (i) { show(); if (!quiet && c) c.send({ t: 'go', i: i }); if (navigator.vibrate) navigator.vibrate(8); }, onPick: function () { $('play').onclick(); } });
+  function show() { var m = items[F.i]; $('ttl').innerHTML = ''; if (m) { $('ttl').textContent = m.t; var s = document.createElement('small'); s.textContent = m.y || ''; $('ttl').appendChild(s); } }
+  function draw() { F.set(items.map(function (m) { return { id: m.id, t: m.t, y: m.y, poster: th[m.id] || '' }; })); show();
+    $('tabs').innerHTML = ''; tabs.forEach(function (l, k) { var b = document.createElement('button'); b.textContent = l; b.className = k === tab ? 'on' : ''; b.onclick = function () { c.send({ t: 'tab', k: k }); }; $('tabs').appendChild(b); }); }
+  var redraw = null;
+  function onMsg(m) { if (!m || !m.t) return;
+    if (m.t === 'lib') { items = m.items; tabs = m.tabs; tab = m.k; quiet = true; F.i = m.i; draw(); quiet = false; }
+    else if (m.t === 'idx') { if (m.k !== tab) return; quiet = true; F.go(m.i); quiet = false; show(); }
+    else if (m.t === 'land') { if (m.k !== tab) return; quiet = true; F.go(m.i); quiet = false; show(); if (navigator.vibrate) navigator.vibrate([20, 40, 60]); }
+    else if (m.t === 'st') { $('pause').className = m.paused ? 'on' : ''; $('pause').innerHTML = m.paused ? '&#9654; Resume' : '&#9208; Intermission'; $('lt').className = m.lights ? 'on' : ''; var el = $('stubs'); el.innerHTML = ''; (m.stubs || []).slice().reverse().forEach(function (x) { var i = document.createElement('i'); var d = new Date(x.d); i.textContent = '\uD83C\uDF9F ' + x.t + (isNaN(d) ? '' : ' \u00B7 ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })); el.appendChild(i); }); }
+    else if (m.t === 'th') { th[m.id] = m.d; clearTimeout(redraw); redraw = setTimeout(function () { var i = F.i; draw(); quiet = true; F.go(i, true); quiet = false; }, 150); } }
+  c = Kit.pad({ onMsg: onMsg, onStatus: function (s) { $('st').textContent = s === 'online' ? 'Connected to Cave Cinema' : s === 'noroom' ? 'Screen not found - rescan the QR' : 'Connecting…'; if (s === 'online') c.send({ t: 'hello' }); } });
+  if (!c.room) $('st').textContent = 'Scan the QR on the projector';
+  $('play').onclick = function () { c.send({ t: 'play' }); if (navigator.vibrate) navigator.vibrate(30); };
+  $('stop').onclick = function () { c.send({ t: 'stop' }); };
+  $('spin').onclick = function () { c.send({ t: 'spin' }); if (navigator.vibrate) navigator.vibrate(15); };
+  $('pause').onclick = function () { c.send({ t: 'pause' }); };
+  $('lt').onclick = function () { c.send({ t: 'lights' }); };
+  $('stubs').onclick = function () { c.send({ t: 'rewind' }); };
+})();
+</script></body></html>

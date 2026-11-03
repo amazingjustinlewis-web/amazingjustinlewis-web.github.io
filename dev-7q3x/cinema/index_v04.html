@@ -1,0 +1,124 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>Cave Cinema</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>
+html,body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 35%,#1b1840,#05040c 70%);color:#fff;font-family:system-ui;overflow:hidden}
+#qr{position:fixed;left:2.2vh;top:2.2vh;width:24vh;background:#fff;border-radius:14px;padding:1vh;z-index:10;box-shadow:0 0 30px #8af5}
+#qr svg{width:100%;height:auto;display:block}#qr b{display:block;color:#111;text-align:center;font:800 2.4vh ui-monospace,monospace;letter-spacing:.15em}
+#qr small{display:block;color:#444;text-align:center;font-size:1.5vh}
+#flow{position:fixed;left:0;right:0;top:3vh;bottom:19vh;z-index:2}
+#trl{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 2.5s ease;z-index:0;pointer-events:none;filter:saturate(1.1)}
+#trl.on{opacity:.62}#vign{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,transparent 35%,#05040cdd 100%);opacity:0;transition:opacity 2.5s}#vign.on{opacity:1}
+.flow.trl .cd:not(.ctr){opacity:0!important;transition:opacity 20s linear,transform .55s!important}
+.flow.spin .cd{transition:transform .12s linear,opacity .12s linear!important}
+#stubs{position:fixed;left:0;right:0;bottom:.5vh;height:2.6vh;display:flex;gap:.8vh;justify-content:center;overflow:hidden;z-index:3;pointer-events:none}
+#stubs i{font:700 1.35vh ui-monospace,monospace;font-style:normal;color:#2a1c05;background:#ffe7a0;border-radius:.4vh;padding:.45vh 1vh;white-space:nowrap;opacity:.9;
+  -webkit-mask:radial-gradient(circle .55vh at 0 50%,#0000 98%,#000) left/51% 100% no-repeat,radial-gradient(circle .55vh at 100% 50%,#0000 98%,#000) right/51% 100% no-repeat}
+#stubs i:nth-child(n+4){opacity:.6}#stubs i:nth-child(n+8){opacity:.35}
+#rw{position:fixed;inset:6vh 18vw;background:#0b0918ee;border:1px solid #ffe7a055;border-radius:2vh;padding:3vh 4vh;z-index:20;display:none;font-size:2.2vh;overflow:hidden}
+#rw h2{margin:0 0 1vh;font-size:4vh;color:#ffe7a0}#rw.on{display:block}
+#lt{position:fixed;right:2vh;top:5vh;font-size:1.7vh;opacity:.55}
+#ttl{position:fixed;left:0;right:0;bottom:10.5vh;text-align:center;font:800 4.4vh system-ui;text-shadow:0 2px 12px #000}
+#ttl small{font-weight:500;opacity:.7;font-size:2.6vh;margin-left:.6em}
+#tabs{position:fixed;left:0;right:0;bottom:4vh;display:flex;justify-content:center;gap:1vh;flex-wrap:nowrap;overflow:hidden;white-space:nowrap}
+#tabs button{border:0;border-radius:99px;padding:.8vh 2.2vh;font:700 2.1vh system-ui;flex:none;background:#ffffff14;color:#fffb;cursor:pointer}
+#tabs button.on{background:#ffe7a0;color:#111}
+#st{position:fixed;right:2vh;top:2vh;font-size:1.8vh;opacity:.6}#toast{position:fixed;left:50%;top:45%;transform:translate(-50%,-50%);font:800 5vh system-ui;opacity:0;transition:opacity .4s;text-shadow:0 2px 20px #000}
+</style></head><body>
+<div id="qr"><div id="qrs"></div><b id="code">....</b><small>Scan to drive the screen</small></div>
+<video id="trl" muted playsinline preload="none"></video><div id="vign"></div><div id="st"></div><div id="lt"></div><div id="stubs"></div><div id="rw"></div><div id="flow"></div><div id="ttl"></div><div id="tabs"></div><div id="toast"></div>
+<script>window.MINI = 'cinema';</script>
+<script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script>
+<script src="../minikit/ztp-mode_v01.js"></script><script src="lib_v03.js"></script><script src="flow_v01.js"></script>
+<script>
+/* Cave Cinema screen v04 (projector): + lights on Play, intermission, Surprise me spin, ticket stubs, idle trailers. Host = PeerJS peer; phones join with ?table=CODE&g=cinema (pad_v01.html).
+   Protocol phone->screen: {t:'go',i} {t:'tab',k} {t:'play'} {t:'stop'} {t:'hello'} v04: {t:'pause'} {t:'spin'} {t:'lights'} {t:'rewind'}
+                screen->phone: {t:'lib',tabs,items:[{t,y}]} {t:'idx',k,i} {t:'th',id,d}(thumb) {t:'note',s} v04: {t:'st',paused,lights,stubs:[..]} {t:'land',k,i} */
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, all = [], shelves = [], tab = 0, mode = new URLSearchParams(location.search).get('mode') || 'mature' /* Cave screen = Justin's own: show everything; ?mode=kid|family to filter */, thumbs = {}, h;
+  var F = Flow.mount($('flow'), { onIndex: function () { show(); bc(); kick(); }, onPick: play });
+  function toast(s) { var t = $('toast'); t.textContent = s; t.style.opacity = 1; clearTimeout(t._t); t._t = setTimeout(function () { t.style.opacity = 0; }, 1800); }
+  function cur() { return shelves[tab] ? shelves[tab].items : []; }
+  function show() { var m = cur()[F.i]; $('ttl').innerHTML = m ? '' : '<small>Nothing here</small>'; if (m) { $('ttl').textContent = m.t; var s = document.createElement('small'); s.textContent = m.y || ''; $('ttl').appendChild(s); } }
+  function build() {
+    shelves = CineLib.shelves(all.filter(function (m) { return CineLib.fits(m, mode); }));
+    tab = Math.min(tab, shelves.length - 1);
+    $('tabs').innerHTML = ''; shelves.forEach(function (s, k) { var b = document.createElement('button'); b.textContent = s.label; b.className = k === tab ? 'on' : ''; b.onclick = function () { setTab(k); }; $('tabs').appendChild(b); });
+    F.set(cur()); show(); lib();
+  }
+  function setTab(k) { tab = Math.max(0, Math.min(shelves.length - 1, k)); [].forEach.call($('tabs').children, function (b, j) { b.className = j === tab ? 'on' : ''; }); F.i = 0; F.set(cur()); show(); lib(); kick(); }
+  var B = CineLib.base(), paused = false, playing = false, stubs = [], trailers = {}, lightsOn = localStorage.getItem('cine_lights') !== '0', idleT = 0, spinning = false;
+  function post(p, b) { return fetch(B + p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b || {}) }).then(function (r) { return r.json(); }); }
+  function lights(a) { if (lightsOn || a === 'stop') post('/lights/' + a).catch(function () {}); }
+  function shortD(d) { var t = new Date(d); return isNaN(t) ? '' : t.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
+  function drawStubs() { var el = $('stubs'); el.innerHTML = ''; stubs.slice(-12).reverse().forEach(function (x) { var i = document.createElement('i'); i.textContent = '\uD83C\uDF9F ' + x.t + ' \u00B7 ' + shortD(x.d); el.appendChild(i); }); }
+  function loadStubs() { fetch(B + '/stubs', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) { stubs = d.stubs || []; drawStubs(); stat(); }).catch(function () {}); }
+  function stat() { $('lt').textContent = (lightsOn ? '\uD83D\uDCA1 lights on' : 'lights off') + (paused ? ' \u00B7 intermission' : ''); if (h) h.all({ t: 'st', paused: paused, lights: lightsOn, stubs: stubs.slice(-20) }); }
+  function play() { var m = cur()[F.i]; if (!m) return; stopTrailer(); toast('\u25B6 ' + m.t); paused = false;
+    CineLib.play(m).then(function () { playing = true; lights('start'); post('/stubs', { id: m.id, t: m.t, y: m.y, g: m.g }).then(loadStubs).catch(function () {}); stat(); }).catch(function () { toast('Cave Cinema server not reachable'); }); }
+  function stop() { toast('\u25A0 Stopped'); playing = false; paused = false; lights('stop'); CineLib.stop().catch(function () {}); stat(); }
+  function pause() { post('/api/ctl/pause').catch(function () {}); paused = !paused; toast(paused ? '\u23F8 Intermission' : '\u25B6 Back to the movie'); lights(paused ? 'pause' : 'resume'); stat(); }
+  function toggleLights() { lightsOn = !lightsOn; localStorage.setItem('cine_lights', lightsOn ? '1' : '0'); toast(lightsOn ? '\uD83D\uDCA1 Movie lights on' : 'Movie lights off'); if (!lightsOn) lights('stop'); stat(); }
+  // Surprise me: slot-machine spin that bounces along the deck (triangle wave) and eases out on a random pick in this tab
+  function spin() { var n = cur().length; if (n < 2 || spinning) return; stopTrailer(); spinning = true; var tgt = Math.floor(Math.random() * n), m2 = 2 * (n - 1),
+      p0 = F.i, p1 = tgt + m2 * (n > 30 ? 1 : 2), D = 3600, t0 = performance.now(); $('flow').classList.add('spin'); toast('\uD83C\uDFB0');
+    function tri(x) { x = ((Math.round(x) % m2) + m2) % m2; return x <= n - 1 ? x : m2 - x; }
+    (function fr(t) { var k = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - k, 4), idx = tri(p0 + (p1 - p0) * e); if (k > .85) $('flow').classList.remove('spin');
+      if (idx !== F.i) { F.go(idx, true); show(); }
+      if (k < 1) return requestAnimationFrame(fr);
+      spinning = false; F.go(tgt, true); show(); bc(); var m = cur()[tgt]; if (m) toast('\uD83C\uDFB0 ' + m.t); if (h) h.all({ t: 'land', k: tab, i: tgt }); kick(); })(t0); }
+  // Trailers: rest 5 s on a poster -> its local trailer plays behind the deck, other posters fade out over ~20 s. Any input restores.
+  function ctr() { F.cards.forEach(function (c, k) { c.classList.toggle('ctr', k === F.i); }); }
+  function stopTrailer() { var v = $('trl'); $('flow').classList.remove('trl'); v.classList.remove('on'); $('vign').classList.remove('on'); if (!v.paused) setTimeout(function () { if (!v.classList.contains('on')) { v.pause(); v.removeAttribute('src'); v.load(); } }, 2600); }
+  function kick() { clearTimeout(idleT); stopTrailer(); if (playing && !paused) return; idleT = setTimeout(startTrailer, 5000); }
+  function startTrailer() { var m = cur()[F.i]; if (!m || !trailers[m.id] || spinning) return; var v = $('trl'), q = new URLSearchParams(location.search).get('tv');
+    v.src = B + '/cinema/trailers/' + trailers[m.id]; v.muted = !q; if (q) v.volume = Math.min(1, +q || .15);
+    v.onended = function () { stopTrailer(); }; v.onerror = function () { stopTrailer(); };
+    v.play().then(function () { ctr(); v.classList.add('on'); $('vign').classList.add('on'); setTimeout(function () { if (v.classList.contains('on')) $('flow').classList.add('trl'); }, 1500); })
+      .catch(function () { v.muted = true; v.play().then(function () { ctr(); v.classList.add('on'); $('vign').classList.add('on'); $('flow').classList.add('trl'); }).catch(stopTrailer); }); }
+  ['pointerdown', 'wheel', 'keydown'].forEach(function (ev) { addEventListener(ev, kick, true); });
+  function rewind() { var el = $('rw'); if (el.classList.toggle('on')) { var y = new Date().getFullYear();
+      fetch(B + '/stubs?year=' + y).then(function (r) { return r.json(); }).then(function (d) { el.innerHTML = '<h2>Cave Rewind ' + y + '</h2>';
+        var p = document.createElement('div'); p.textContent = d.rewind.count + ' movie nights so far'; el.appendChild(p);
+        d.rewind.top.forEach(function (kv) { var r = document.createElement('div'); r.textContent = '\uD83C\uDF9F ' + kv[0] + (kv[1] > 1 ? '  \u00D7' + kv[1] : ''); el.appendChild(r); }); }).catch(function () { el.textContent = 'Rewind unavailable'; }); } }
+  // --- phone sync
+  function msgLib() { return { t: 'lib', tabs: shelves.map(function (s) { return s.label; }), k: tab, i: F.i, items: cur().map(function (m) { return { id: m.id, t: m.t, y: m.y }; }) }; }
+  function lib() { if (h) { h.all(msgLib()); sendThumbs(null); } }
+  function bc() { if (h) h.all({ t: 'idx', k: tab, i: F.i }); }
+  function thumb(m, cb) { // small private thumbnail sent peer-to-peer only (posters never leave the house otherwise)
+    if (thumbs[m.id] !== undefined) return cb(thumbs[m.id]); if (!m.poster) { thumbs[m.id] = ''; return cb(''); }
+    var im = new Image(); im.crossOrigin = 'anonymous'; im.onload = function () { try { var c = document.createElement('canvas'); c.width = 160; c.height = 240; c.getContext('2d').drawImage(im, 0, 0, 160, 240); thumbs[m.id] = c.toDataURL('image/jpeg', .72); } catch (e) { thumbs[m.id] = ''; } cb(thumbs[m.id]); };
+    im.onerror = function () { thumbs[m.id] = ''; cb(''); }; im.src = m.poster; }
+  function sendThumbs(p) { cur().forEach(function (m) { thumb(m, function (d) { if (!d || !h) return; var msg = { t: 'th', id: m.id, d: d }; if (p) h.send(p, msg); else h.all(msg); }); }); }
+  function onMsg(p, m) { if (!m || !m.t) return;
+    if (m.t === 'hello') { h.send(p, msgLib()); sendThumbs(p); }
+    else if (m.t === 'go') F.go(m.i);
+    else if (m.t === 'tab') { setTab(m.k); }
+    else if (m.t === 'play') play(); else if (m.t === 'stop') stop();
+    else if (m.t === 'pause') pause(); else if (m.t === 'spin') spin(); else if (m.t === 'lights') toggleLights(); else if (m.t === 'rewind') rewind();
+    if (m.t !== 'hello') kick(); else stat(); }
+  // v03: fixed room code so a saved phone shortcut always works. Wraps LSNet.Host (minikit untouched); ?room=XXXX overrides.
+  (function () { var N = window.LSNet; if (!N || !N.Host || N.Host.__fixed) return; var Base = N.Host,
+      FIX = ((new URLSearchParams(location.search).get('room')) || 'CAVEEVSQSJ').toUpperCase();
+    function H(o) { var self = this, os = o.onStatus; o.code = FIX; o.fixedCode = true;
+      o.onStatus = function (s, c, d) { if (os) os(s, c, d); if (s === 'offline' && d === 'code taken') { clearTimeout(self.__rt); self.__rt = setTimeout(function () { self.tries = 0; self.setStatus('reconnecting', 'waiting for old id'); self.open(); }, 4000); } };
+      Base.call(this, o); }
+    H.prototype = Base.prototype; H.__fixed = true; N.Host = H; })();
+  try { h = Kit.host({ max: 8, onJoin: function (p) { h.send(p, msgLib()); sendThumbs(p); setTimeout(stat, 300); toast('\uD83D\uDCF1 Phone connected'); }, onMsg: onMsg });
+    window.ZTP_QR = null;
+    (function qr() { if (!h.code || (h.status && h.status !== 'online' && !/local=1/.test(location.search))) return setTimeout(qr, 400);
+      var u = (location.port === '8093' ? 'https://amazingjustinlewis-web.github.io/dev-7q3x/cinema/' : location.href.replace(/[^/]*([?#].*)?$/, '')) + 'pad_v02.html?table=' + h.code + '&g=cinema' + (/local=1/.test(location.search) ? '&local=1' : '');
+      var q = qrcode(0, 'M'); q.addData(u); q.make(); $('qrs').innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); $('code').textContent = h.code; window.CINE_PAD_URL = u; })();
+  } catch (e) { $('st').textContent = 'phone link offline'; }
+  // keyboard / remote
+  addEventListener('keydown', function (e) { var k = e.key;
+    if (k === 'ArrowRight') F.go(F.i + 1); else if (k === 'ArrowLeft') F.go(F.i - 1);
+    else if (k === 'ArrowDown') setTab(tab + 1); else if (k === 'ArrowUp') setTab(tab - 1);
+    else if (k === 'Enter' || k === ' ') play(); else if (k === 's' || k === 'Escape') stop();
+    else if (k === 'p') pause(); else if (k === 'r') spin(); else if (k === 'l') toggleLights(); else if (k === 'w') rewind(); });
+  if (window.ZTP && ZTP.onMode) ZTP.onMode(function (to) { mode = to; build(); });
+  fetch(B + '/trailers').then(function (r) { return r.json(); }).then(function (d) { var f = d.files || {}; Object.keys(f).forEach(function (i) { trailers[i] = f[i]; }); }).catch(function () {});
+  loadStubs();
+  CineLib.load().then(function (m) { all = m; build(); kick(); }).catch(function () { $('st').textContent = 'Cave Cinema not reachable at ' + CineLib.base(); });
+  window.CINE = { F: F, setTab: setTab, spin: spin, pause: pause, rewind: rewind, state: function () { return { tab: tab, i: F.i, n: cur().length, code: h && h.code, paused: paused, lights: lightsOn, stubs: stubs.length, trailer: $('trl').classList.contains('on'), trailers: Object.keys(trailers).length }; } };
+})();
+</script></body></html>
