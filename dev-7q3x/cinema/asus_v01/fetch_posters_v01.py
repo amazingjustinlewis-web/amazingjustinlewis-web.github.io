@@ -10,7 +10,7 @@ import argparse, json, os, re, sys, time, hashlib
 import requests
 from PIL import Image
 
-UA = {"User-Agent": "CaveCinema/0.1 (home projector poster cache)"}
+UA = {"User-Agent": "CaveCinema/0.1 (https://amazingjustinlewis-web.github.io; home projector poster cache)"}
 WP = "https://en.wikipedia.org/w/api.php"
 RATING = {"G": "kid", "PG": "family", "PG-13": "family", "R": "mature", "NC-17": "mature"}
 
@@ -20,7 +20,13 @@ def slug(t, y):
 
 def wp(**p):
     p.update(format="json", formatversion=2)
-    return requests.get(WP, params=p, headers=UA, timeout=20).json()
+    for k in range(6):   # Wikipedia rate-limits bursts: back off and retry
+        try:
+            r = requests.get(WP, params=p, headers=UA, timeout=20)
+            if r.status_code == 200 and r.text.strip(): return r.json()
+        except (requests.RequestException, ValueError): pass
+        time.sleep(2 * (k + 1))
+    raise RuntimeError("wikipedia not answering")
 
 def infobox_img(title):
     try:
@@ -104,7 +110,7 @@ def main():
         except Exception as x:
             print("!", t, y, x, file=sys.stderr)
         e["mode"] = ov.get(f"{t} ({y})", e["mode"])
-        print(f"{'OK ' if e['poster'] else '-- '} {e['mode']:7} {t} ({y})"); out.append(e); time.sleep(0.3)
+        print(f"{'OK ' if e['poster'] else '-- '} {e['mode']:7} {t} ({y})"); out.append(e); time.sleep(1.0)
     dst = next_manifest(a.root)
     json.dump({"v": 1, "made": time.strftime("%Y-%m-%d %H:%M"), "height": a.height, "movies": out}, open(dst, "w"), indent=1)
     print("wrote", dst, f"({sum(1 for e in out if e['poster'])}/{len(out)} posters)")
