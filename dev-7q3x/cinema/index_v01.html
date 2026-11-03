@@ -54,7 +54,7 @@ html,body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 35%,#1b
   try { h = Kit.host({ max: 8, onJoin: function (p) { h.send(p, msgLib()); sendThumbs(p); toast('\uD83D\uDCF1 Phone connected'); }, onMsg: onMsg });
     window.ZTP_QR = null;
     (function qr() { if (!h.code || (h.status && h.status !== 'online' && !/local=1/.test(location.search))) return setTimeout(qr, 400);
-      var u = location.href.replace(/[^/]*([?#].*)?$/, '') + 'pad_v01.html?table=' + h.code + '&g=cinema' + (/local=1/.test(location.search) ? '&local=1' : '');
+      var u = (location.port === '8093' ? 'https://amazingjustinlewis-web.github.io/dev-7q3x/cinema/' : location.href.replace(/[^/]*([?#].*)?$/, '')) + 'pad_v01.html?table=' + h.code + '&g=cinema' + (/local=1/.test(location.search) ? '&local=1' : '');
       var q = qrcode(0, 'M'); q.addData(u); q.make(); $('qrs').innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); $('code').textContent = h.code; window.CINE_PAD_URL = u; })();
   } catch (e) { $('st').textContent = 'phone link offline'; }
   // keyboard / remote
