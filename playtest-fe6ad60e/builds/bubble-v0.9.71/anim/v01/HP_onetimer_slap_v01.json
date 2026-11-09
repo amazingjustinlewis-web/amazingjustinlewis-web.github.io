@@ -1,0 +1,52 @@
+{
+ "name": "HP_onetimer_slap",
+ "source_action": "onetimer_slap_qp",
+ "fps": 30.0,
+ "src_range": [
+  1,
+  315
+ ],
+ "type": "oneshot",
+ "event": "hand_stick_speed",
+ "tries": [
+  {
+   "frame": 123,
+   "peak": 3.458,
+   "jitter": 0.1298,
+   "score": 0.961
+  },
+  {
+   "frame": 179,
+   "peak": 4.554,
+   "jitter": 0.1486,
+   "score": 1.147
+  },
+  {
+   "frame": 243,
+   "peak": 3.763,
+   "jitter": 0.1055,
+   "score": 1.21
+  }
+ ],
+ "best": {
+  "frame": 243,
+  "peak": 3.763,
+  "jitter": 0.1055,
+  "score": 1.21
+ },
+ "hit_src": 243,
+ "clip_src": [
+  231,
+  255
+ ],
+ "frames": 25,
+ "seconds": 0.833,
+ "hit_frame": 13,
+ "hit_s": 0.4,
+ "loop": false,
+ "files": {
+  "blend": "D:\\AI\\Mocap\\Takes\\hockey\\HP_onetimer_slap_v01.blend",
+  "glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_onetimer_slap_v01.glb",
+  "full_glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_onetimer_slap_full_v01.glb"
+ }
+}

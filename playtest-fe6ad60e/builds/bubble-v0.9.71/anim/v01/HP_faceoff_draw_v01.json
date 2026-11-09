@@ -1,0 +1,52 @@
+{
+ "name": "HP_faceoff_draw",
+ "source_action": "faceoff_draw_qp",
+ "fps": 30.0,
+ "src_range": [
+  1,
+  315
+ ],
+ "type": "oneshot",
+ "event": "stick_speed",
+ "tries": [
+  {
+   "frame": 115,
+   "peak": 2.011,
+   "jitter": 0.0281,
+   "score": 1.287
+  },
+  {
+   "frame": 194,
+   "peak": 3.4,
+   "jitter": 0.0485,
+   "score": 1.726
+  },
+  {
+   "frame": 289,
+   "peak": 3.986,
+   "jitter": 0.0333,
+   "score": 2.392
+  }
+ ],
+ "best": {
+  "frame": 289,
+  "peak": 3.986,
+  "jitter": 0.0333,
+  "score": 2.392
+ },
+ "hit_src": 289,
+ "clip_src": [
+  277,
+  301
+ ],
+ "frames": 25,
+ "seconds": 0.833,
+ "hit_frame": 13,
+ "hit_s": 0.4,
+ "loop": false,
+ "files": {
+  "blend": "D:\\AI\\Mocap\\Takes\\hockey\\HP_faceoff_draw_v01.blend",
+  "glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_faceoff_draw_v01.glb",
+  "full_glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_faceoff_draw_full_v01.glb"
+ }
+}

@@ -1,0 +1,58 @@
+{
+ "name": "HP_dodge_high",
+ "source_action": "dodge_high_qp",
+ "fps": 30.0,
+ "src_range": [
+  1,
+  315
+ ],
+ "type": "oneshot",
+ "event": "lateral",
+ "tries": [
+  {
+   "frame": 112,
+   "peak": 0.478,
+   "jitter": 0.0329,
+   "score": 0.289
+  },
+  {
+   "frame": 147,
+   "peak": 0.498,
+   "jitter": 0.0346,
+   "score": 0.294
+  },
+  {
+   "frame": 191,
+   "peak": 0.621,
+   "jitter": 0.043,
+   "score": 0.334
+  },
+  {
+   "frame": 260,
+   "peak": 0.532,
+   "jitter": 0.0312,
+   "score": 0.328
+  }
+ ],
+ "best": {
+  "frame": 191,
+  "peak": 0.621,
+  "jitter": 0.043,
+  "score": 0.334
+ },
+ "hit_src": 191,
+ "clip_src": [
+  176,
+  206
+ ],
+ "frames": 31,
+ "seconds": 1.033,
+ "hit_frame": 16,
+ "hit_s": 0.5,
+ "loop": false,
+ "files": {
+  "blend": "D:\\AI\\Mocap\\Takes\\hockey\\HP_dodge_high_v01.blend",
+  "glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_dodge_high_v01.glb",
+  "full_glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_dodge_high_full_v01.glb"
+ }
+}
