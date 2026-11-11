@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-09",
+  "updated": "2026-11-10",
   "games": [
     {
       "name": "Play metrics",
@@ -196,14 +196,14 @@
     {
       "name": "Bubble Hockey",
       "status": "Working",
-      "ver": "v0.9.71",
+      "ver": "v0.9.72",
       "public": false,
       "fit": [
         "phone",
         "TV"
       ],
-      "url": "../playtest-fe6ad60e/builds/bubble-v0.9.71/",
-      "notes": "Frozen playtest v0.9.71: 5 s goal replay with countdown + Skip, puck magnetism ramp after last touch, invite links + team lobby, softened tracks_v03, pose library / stick-in-hand / upright skaters. Freeze lives at playtest builds/bubble-v0.9.71; previous freeze v0.9.57 kept. Dev folder stays mutable. Next: scoring/goalie balance from playtest feedback."
+      "url": "bubble/index_v0972.html",
+      "notes": "v0.9.72: when the puck is loose it is pulled toward the closest player's stick (the one you're on wins the tug, so it can't hover between two guys). Pull gets stronger as the puck slows - drifting pucks get claimed quickly, fast passes and shots still fly. ?grav=0..2 (1 default, 0 off). Softened tracks_v03 on the plain bubble/ link (was still serving the old v0.9.66 lines). Frozen playtest remains at playtest builds/bubble-v0.9.71; previous freeze v0.9.57 kept. Dev folder stays mutable."
     },
     {
       "name": "Foosball",
