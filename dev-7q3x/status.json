@@ -1,6 +1,30 @@
 {
-  "updated": "2026-11-10",
+  "updated": "2026-11-16",
   "games": [
+    {
+      "name": "Joe viewing page",
+      "status": "In development",
+      "ver": "v02",
+      "public": false,
+      "fit": [
+        "phone",
+        "TV"
+      ],
+      "url": "joe/index_v02.html",
+      "notes": "v02: every game with polish level (Polished = public + finished, Playable = status Working, Prototype = In development or not in status), version, one-liner, play link, filter. Built from this status.json + js/games.js on 2026-11-16. v01 (joe/index.html) kept as is. Advertising draft for Justin's review: joe/advertising_v01.html."
+    },
+    {
+      "name": "Room lights + phone join (shared)",
+      "status": "In development",
+      "ver": "v01",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "bubble/index_v0972_lights01.html?lightsdebug=1",
+      "notes": "minikit/ztp-room_v01.js: Cave Cinema's fixed-room QR phone join (ZTPRoom.fixedRoom/qr/padUrl) and light cues (ZTPLights: tucked bulb menu, Yes/No + pick lights, 'moment' dip and the movie cue curve). Demo: Bubble Hockey v0.9.72 + lights demo 01, a goal dips the lights ~20% for 1.4 s (off until Yes). Needs cinema/asus_v03/cinema_helper_v03.py (adds POST /lights/cue). Cave Cinema v05 = v04 rebuilt on the shared module (same behaviour); v04 untouched."
+    },
     {
       "name": "Play metrics",
       "status": "In development",
