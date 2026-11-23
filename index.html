@@ -27,6 +27,8 @@
  <circle id="disc" r="0" fill="url(#glow)" style="display:none;cursor:pointer" role="button" aria-label="Play"/>
  <g id="qr" shape-rendering="crispEdges"><rect id="ql"/><path id="qd" fill="#000"/></g>
 </svg>
+<button id="hit" type="button" aria-label="Play" style="display:none;position:fixed;left:50%;top:50%;width:120px;height:120px;margin:0;padding:0;border:0;border-radius:50%;background:transparent;z-index:4;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation"></button>
+<a id="enter" href="go/" style="position:fixed;left:50%;bottom:max(46px,calc(env(safe-area-inset-bottom) + 46px));transform:translateX(-50%);z-index:6;padding:20px 28px;min-width:64px;text-align:center;color:#c9a24a;opacity:.6;text-decoration:none;font:12px/1 system-ui,sans-serif;letter-spacing:.32em;text-transform:lowercase;-webkit-tap-highlight-color:transparent;touch-action:manipulation">enter</a>
 <script src="assets/js/qrcode.js"></script>
 <script src="assets/js/zero-qr.js"></script>
 <script src="cafe/js/vendor/peerjs.min.js"></script>
@@ -51,7 +53,7 @@ function fit(){var W=innerWidth,H=innerHeight,k=Math.min(W*0.9/VB.w,H*0.78/VB.h)
  var sx=(CX-S/2-(mx-vw/2))*k*dpr,sy=(CY-S/2-(my-vh/2))*k*dpr,ox=(mx-vw/2)+Math.round(sx)/(k*dpr),oy=(my-vh/2)+Math.round(sy)/(k*dpr);
  ql.setAttribute('x',ox);ql.setAttribute('y',oy);ql.setAttribute('width',S);ql.setAttribute('height',S);
  var d='';for(var r=0;r<N;r++)for(var c=0;c<N;c++)if(Q.isDark(r,c))d+='M'+(ox+(c+QZ)*u)+' '+(oy+(r+QZ)*u)+'h'+u+'v'+u+'h-'+u+'z';
- document.getElementById('qd').setAttribute('d',d);QC=[ox+S/2,oy+S/2]}
+ document.getElementById('qd').setAttribute('d',d);QC=[ox+S/2,oy+S/2];placeHit(k)}
 var QC=[0,0],qg=document.getElementById('qr');
 // envelope (8 s): the dome 1.02*sin(pi*t/8)^0.35, windowed by a smootherstep so ~25% of each cycle rests in black with soft edges
 function qrLevel(T){if(still||!PULSE)return 1;var u=T%8,dd=Math.min(u,8-u),t=Math.max(0,Math.min(1,(dd-0.9)/0.5)),w=t*t*t*(t*(6*t-15)+10);
@@ -61,7 +63,7 @@ function col(k){return 'rgb('+[206,160,62].map(function(v){return Math.max(0,Mat
 var disc=document.getElementById('disc');if(window.ZTP_PHONE){disc.style.display='';document.getElementById('qr').style.display='none';disc.setAttribute('cx',CX);disc.setAttribute('cy',CY)}
 var ZQ=ZeroQR({still:still||!PULSE});
 function tick(ms){var T=FIXT!=null?FIXT:ms/1000,R=ZQ.frame(T),L=R.level,sc=R.scale;ql.setAttribute('fill',col(L));if(window.ZTPThrob)ZTPThrob.level(L);
- if(window.ZTP_PHONE){disc.setAttribute('opacity',Math.min(1,L).toFixed(3));disc.setAttribute('r',(9*(0.75+0.25*Math.min(1,L))).toFixed(3))}
+ if(window.ZTP_PHONE){var Lp=Math.max(0.28,Math.min(1,L));disc.setAttribute('opacity',Lp.toFixed(3));disc.setAttribute('r',(9*(0.75+0.25*Lp)).toFixed(3))}
  qg.setAttribute('transform',sc>=0.9995?'':'translate('+QC[0]+' '+QC[1]+') scale('+sc.toFixed(4)+') translate('+(-QC[0])+' '+(-QC[1])+')');if(!still)requestAnimationFrame(tick)}
 fetch('assets/img/logo.svg').then(function(r){return r.text()}).then(function(t){
  var doc=new DOMParser().parseFromString(t,'image/svg+xml');[].forEach.call(doc.querySelectorAll('path'),function(p){var q=document.createElementNS('http://www.w3.org/2000/svg','path');q.setAttribute('d',p.getAttribute('d'));logo.appendChild(q)});
@@ -81,7 +83,18 @@ var door=window.ZTP_PHONE?null:Door({name:'Zero to Phi',title:'ZERO TO PHI',
   {label:'Explore 0-Phi',phoneGo:'../classic.html',href:'classic.html'},
   {label:'Set up a café screen',phone:'#biz'},{label:'Close',close:1}]},
  onCode:function(u){setQR(u)},flyEl:function(){return svg},flyOrigin:function(){return window.__zc||'50% 50%'},spinOrigin:function(){return window.__pc||null},homes:true,onPaired:function(p){ZQ.setForced(p?true:null,3.5)}});
-addEventListener('click',function(e){if(e.target.closest('#li'))return;if(window.ZTP_PHONE){location.href='go/';return}if(door&&!door.isOpen()&&!e.target.closest('#door,#doorframe,#li'))door.menu()});
+function placeHit(k){var h=document.getElementById('hit');if(!h)return;var z=(window.__zc||'').split(' ');if(z.length<2)return;var d=Math.max(96,Math.min(innerWidth,innerHeight)*0.34);
+ h.style.width=h.style.height=d+'px';h.style.left=(parseFloat(z[0])-d/2)+'px';h.style.top=(parseFloat(z[1])-d/2)+'px'}
+var entered=false;function enter(e){if(entered)return;if(e&&e.preventDefault)e.preventDefault();entered=true;location.href='go/';setTimeout(function(){entered=false},2500)}
+(function(){var h=document.getElementById('hit'),tx=0,ty=0;
+ function down(e){var t=e.changedTouches?e.changedTouches[0]:e;tx=t.clientX;ty=t.clientY}
+ function up(e){var t=e.changedTouches?e.changedTouches[0]:e;if(Math.abs(t.clientX-tx)<24&&Math.abs(t.clientY-ty)<24)enter(e)}
+ if(window.ZTP_PHONE){h.style.display='block';
+  [h,svg].forEach(function(el){el.addEventListener('click',enter);el.addEventListener('touchstart',down,{passive:true});el.addEventListener('touchend',up,{passive:false});
+   if(window.PointerEvent){el.addEventListener('pointerdown',function(e){if(e.pointerType!=='mouse')down(e)});el.addEventListener('pointerup',function(e){if(e.pointerType!=='mouse')up(e)})}})}
+ else svg.addEventListener('click',function(){}); // makes the svg a clickable target on iPad/touch TVs so the window click below fires
+})();
+addEventListener('click',function(e){if(e.target.closest('#li,#enter,#acct,#snd'))return;if(window.ZTP_PHONE){location.href='go/';return}if(door&&!door.isOpen()&&!e.target.closest('#door,#doorframe,#li'))door.menu()});
 })();
 </script>
 <a id="li" href="https://www.linkedin.com/company/zerotophi/" target="_blank" rel="noopener" aria-label="Zero to Phi on LinkedIn" style="position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));color:#8f7a4a;opacity:.6;z-index:5"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="position:static;display:block;width:18px;height:18px"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg></a>
