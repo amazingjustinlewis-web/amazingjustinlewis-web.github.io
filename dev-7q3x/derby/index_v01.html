@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="robots" content="noindex, nofollow">
+<title>Demolition Derby (dev)</title>
+<style>
+@font-face{font-family:Fredoka;src:url(../../games/walker/assets/fredoka-latin-var.woff2) format('woff2');font-weight:300 700}
+html,body{margin:0;height:100%;overflow:hidden;background:#120c08;color:#fff;font-family:Fredoka,system-ui,sans-serif}
+canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block}
+.ov{position:fixed;inset:0;pointer-events:none}
+#tags .tag{position:absolute;transform:translate(-50%,-100%);text-align:center;font-size:1.6vh;font-weight:600;text-shadow:0 1px 3px #000}
+#tags .hb{width:6vh;height:.7vh;background:#0008;border-radius:.4vh;margin:.3vh auto 0;overflow:hidden}#tags .hb i{display:block;height:100%;background:#7ed957}
+#cards{position:fixed;left:1.5vw;top:2vh;display:flex;flex-direction:column;gap:.8vh}
+.pc{display:flex;align-items:center;gap:.8vw;background:#000a;border-radius:1.2vh;padding:.6vh 1vw;min-width:16vw;font-size:2vh;border-left:.6vh solid}
+.pc .nm{flex:1;font-weight:600}.pc .lv{color:#ffd23f}.pc .hp{width:7vw;height:1vh;background:#333;border-radius:1vh;overflow:hidden}.pc .hp i{display:block;height:100%}
+.pc.out{opacity:.4}.pc .w{color:#ffd23f;font-size:1.7vh}
+#banner{position:fixed;left:0;right:0;top:40vh;text-align:center;font-size:11vh;font-weight:700;color:#ffd23f;text-shadow:0 .6vh 0 #7a2a00,0 0 4vh #000;transition:opacity .3s}
+#feed{position:fixed;right:1.5vw;top:2vh;text-align:right;font-size:1.9vh;line-height:1.6}
+#feed div{background:#000a;border-radius:1vh;padding:.2vh .8vw;margin-bottom:.4vh;display:inline-block;clear:both;float:right}
+#lobby,#podium{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 40%,#3a1e0ecc,#120c08f0 70%)}
+.lb{display:flex;gap:5vw;align-items:center}
+h1{font-size:9vh;margin:0;color:#ffd23f;letter-spacing:.04em;text-shadow:0 .6vh 0 #7a2a00}
+.sub{font-size:2.6vh;color:#e8c9a8;margin:.5vh 0 3vh}
+#qr{width:30vh;height:30vh;background:#fff;border-radius:2vh;padding:1.5vh}#qr svg{width:100%;height:100%}
+#code{font-size:7vh;letter-spacing:.3em;font-weight:700}#joinUrl{font-size:1.8vh;color:#c9a}
+#plist{display:flex;flex-wrap:wrap;gap:1vh;max-width:40vw;margin-top:2vh}#plist span{padding:.6vh 1.2vw;border-radius:1vh;font-size:2.2vh;font-weight:600;color:#111}
+#hint{font-size:2.3vh;color:#e8c9a8;margin-top:2vh}
+#netStatus{font-size:2vh;color:#f99;margin-top:1vh}
+#cornerqr{position:fixed;right:1.5vw;bottom:2vh;background:#000a;border-radius:1.5vh;padding:1vh;display:none;text-align:center;font-size:1.6vh}
+#cornerqr div{width:11vh;height:11vh;background:#fff;border-radius:1vh;padding:.5vh}#cornerqr svg{width:100%;height:100%}
+.pod{display:flex;align-items:flex-end;gap:2vw;justify-content:center;margin:3vh 0}
+.step{width:16vw;text-align:center;font-size:2.6vh;font-weight:600}.step .blk{border-radius:1.5vh 1.5vh 0 0;display:flex;align-items:flex-start;justify-content:center;font-size:7vh;padding-top:1vh;color:#0008}
+table{border-collapse:collapse;font-size:2.1vh;margin:0 auto}td,th{padding:.5vh 1.4vw;text-align:center}th{color:#e8c9a8;font-weight:500}
+#pbar{width:40vw;height:.8vh;background:#fff2;border-radius:1vh;margin:3vh auto 0;overflow:hidden}#pbar i{display:block;height:100%;background:#ffd23f}
+#tbar{display:flex;flex-wrap:wrap;gap:1vh;margin:0 0 2vh}#tbar button,#tView{font:inherit;font-size:2.2vh;border:0;border-radius:1.2vh;padding:1vh 1.6vw;background:#3a2a1e;color:#fff;pointer-events:auto}
+#tbar .tp{display:none}body.touchplay #tbar .tp{display:inline-block}body.touchplay #tPlay{display:none}#tStart{background:#7ed957!important;color:#122!important;font-weight:700}
+#tView{position:fixed;right:1.5vw;bottom:2vh;display:none;z-index:5;background:#000a}body.touchplay #tView{display:block}body.touchplay #cornerqr{bottom:9vh}
+#tj{touch-action:none;z-index:4}body.touchplay{touch-action:none}
+@media (max-aspect-ratio:1/1){.lb{flex-direction:column;gap:2vh}h1{font-size:6vh}#qr{width:22vh;height:22vh}#cards .pc{font-size:1.6vh;min-width:0}}
+#pipLbl{position:fixed;pointer-events:none;border:.5vh solid #ffd23f;border-radius:1vh;box-sizing:border-box;z-index:3}#pipLbl span{position:absolute;left:1vh;top:.6vh;background:#ffd23f;color:#3a2000;font-weight:700;font-size:2vh;padding:.2vh .8vw;border-radius:.6vh}
+#pipLbl.full{border:0}#pipLbl.full span{font-size:4vh;left:50%;top:6vh;transform:translateX(-50%)}
+#resp{position:fixed;left:0;right:0;top:38vh;text-align:center;font-size:10vh;font-weight:700;color:#fff;text-shadow:0 0 3vh #ff5a2a;opacity:0;pointer-events:none;z-index:6}#resp.on{animation:rf .63s 3 steps(2,jump-none)}@keyframes rf{0%{opacity:1}50%{opacity:0}100%{opacity:1}}
+#shotLbl{position:fixed;left:1.5vw;bottom:2vh;font-size:1.7vh;letter-spacing:.15em;color:#fff9;background:#0006;padding:.3vh .8vw;border-radius:.6vh;pointer-events:none}#shotLbl:empty{display:none}
+</style></head><body>
+<canvas id="gl"></canvas>
+<div class="ov" id="tags"></div>
+<div id="cards"></div><div id="feed"></div><div id="banner"></div>
+<canvas id="tj" class="ov"></canvas><div id="pipLbl" style="display:none"><span></span></div><div id="resp"></div><div id="shotLbl"></div><button id="tView">View: dynamic</button>
+<div id="cornerqr"><div id="cq"></div>Join: <b id="cqcode"></b></div>
+<div id="lobby"><div class="lb">
+  <div><h1 id="h1">DEMOLITION DERBY</h1><div class="sub"><b id="modeTag" style="background:#ffd23f;color:#3a2000;padding:0 .8vw;border-radius:.8vh;margin-right:.6vw">DERBY</b><span id="sub">Pick a car on your phone. Last car rolling wins the round.</span></div>
+    <div id="tbar"><button id="tPlay">&#x1F4F1; Play on this screen</button><button id="tCar" class="tp">Car</button><button id="tBoost" class="tp">Boost</button><button id="tMode">Mode: Derby</button><button id="tStart" class="tp">START</button></div>
+    <div id="plist"></div><div id="hint"></div><div id="netStatus">Connecting to the room server&hellip;</div></div>
+  <div style="text-align:center"><div id="qr"></div><div id="code">&mdash;</div><div id="joinUrl"></div></div>
+</div></div>
+<div id="podium"><div style="text-align:center;width:80vw"><h1 id="ptitle">CHAMPION</h1><div class="pod" id="pod"></div><table id="ptab"></table><div id="pbar"><i></i></div><div class="sub" id="pnext"></div></div></div>
+<script src="js/vendor/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/vendor/three.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/net.js"></script>
+<script src="js/track.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/trackmesh.js"></script>
+<script src="../../assets/js/ztp-pad-settings.js"></script>
+<script src="js/sedan.js"></script>
+<script src="js/tv.js"></script>
+<script src="../../assets/js/ztp-end.js"></script>
+<script>ZTPEnd.watch(function () { return DD.game.phase === 'over'; }, 58000);</script>
+<script src="../js/ztp-playbar.js" data-here="screen" data-screen="index_v01.html" data-phone=""></script>
+<script src="../minikit/invite_v02.js"></script>
+<script src="../minikit/invite_hook_v01.js"></script>
+<script>ZTPInvite.attach({"title": "Demolition Derby", "join": "controller_v01.html", "role": "host", "corner": "bl"});</script>
+</body></html>
