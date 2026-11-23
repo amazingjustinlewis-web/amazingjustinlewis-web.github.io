@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>0-Φ Room venue simulator v0.3 | Zero to Phi dev kit</title>
+<link rel="stylesheet" href="css/venue_v03.css?b=1">
+</head>
+<body data-preset="arcade">
+<header id="top">
+  <div class="brand"><b>0&#8209;&Phi; ROOM</b><small>venue v0.3</small></div>
+  <div id="clock" title="Venue clock — time speed slides how fast the night and the people run">7:00 PM</div>
+  <div id="stats">
+    <div class="stat"><b id="sIn">0</b><span>In venue</span></div>
+    <div class="stat"><b id="sWatch">0</b><span>Watching</span></div>
+    <div class="stat"><b id="sPlay">0</b><span>Playing</span></div>
+    <div class="stat"><b id="sJoin">0</b><span>Joined this hour</span></div>
+    <div class="stat"><b id="sPod">0</b><span>Pod rides</span></div>
+  </div>
+  <div id="presets" title="Venue presets change colour, lighting, crowd mix and the band">
+    <button data-p="dive">Dive bar</button>
+    <button data-p="lounge">Classy lounge</button>
+    <button data-p="arcade" class="on">Arcade bar</button>
+    <button data-p="sports">Sports bar</button>
+    <button data-p="concert">Concert night</button>
+  </div>
+</header>
+
+<div id="app">
+  <div id="stageWrap">
+    <div id="cam">
+      <div id="world">
+        <div id="backwall">
+          <div class="neon" id="signRoom">0-Φ ROOM</div>
+          <div id="wallLeft" class="wallwing" aria-hidden="true">
+            <div class="speaker"></div>
+            <div class="poster p1"><b>LIVE</b><span>tonight</span></div>
+            <div class="poster p2"><b>0-Φ</b><span>games</span></div>
+            <div class="speaker lo"></div>
+          </div>
+          <div id="screen">
+            <div class="screen-face">
+              <div class="label" id="screenLbl">0-Φ site</div>
+              <iframe id="siteFrame" title="0-Phi site or game on the big wall" sandbox="allow-scripts allow-same-origin"></iframe>
+              <canvas id="adCanvas" hidden></canvas>
+              <canvas id="wallPod" hidden></canvas>
+              <div id="screenOff">PLEASE STAND BY</div>
+              <div id="screenLogo" aria-hidden="true"><i></i><span>0-Φ</span></div>
+            </div>
+          </div>
+          <div id="wallRight" class="wallwing" aria-hidden="true">
+            <div class="speaker"></div>
+            <div class="poster p3"><b>POD</b><span>rides</span></div>
+            <div class="poster p4"><b>BAR</b><span>open late</span></div>
+            <div class="speaker lo"></div>
+          </div>
+        </div>
+        <div id="floor">
+          <div id="night"></div>
+          <div id="bandstand"><div class="spots"><i></i><i></i><i></i><i></i></div><div class="lip"></div><div id="band"></div><span class="tag">Band</span></div>
+          <div class="zone" id="coat"><span class="tag">Coat Check</span><div class="rack"><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="zone" id="merch"><span class="tag">Merch</span><div class="shelf"></div><div class="tees"><i></i><i></i><i></i></div></div>
+          <div class="zone" id="green"><span class="tag">Green Room</span><div class="sofa"></div><div class="fridge"></div></div>
+          <div class="neon" id="signBar">BAR</div>
+          <div class="neon" id="podSign">G-F POD</div>
+          <div class="zone" id="wash"><span class="tag">Washrooms</span>
+            <div class="door" id="doorW">W</div>
+            <div class="door" id="doorM">M</div>
+          </div>
+          <div class="zone" id="bar"><span class="tag">Bar</span>
+            <div id="bottles"></div>
+            <div id="stools"></div>
+            <div id="tender"><div class="head"></div><div class="body"></div></div>
+          </div>
+          <div class="zone" id="food"><span class="tag">Kitchen</span><div class="window">&#127829;</div><div id="cook"><div class="head"></div><div class="body"></div></div></div>
+          <div class="zone" id="lounge"><span class="tag">Lounge</span></div>
+          <div id="tables"></div>
+          <div class="zone oval" id="oval"><span class="tag">Table</span></div>
+          <div class="zone" id="pod"><div class="ring"></div><div class="gimbal"></div><div class="core"></div></div>
+          <div id="podcam"><span class="tag">Pod cam</span><canvas id="podCanvas"></canvas></div>
+          <div class="zone arcade-label" id="arcadeTag"><span class="tag">Arcade</span></div>
+          <div class="station" id="stRdr"><span class="tag">Red Deer Rich</span><div class="tv" id="rdrTv"></div><div class="deck"></div></div>
+          <div class="station" id="stBub"><span class="tag">Bubble Hockey</span><div class="table"><div class="puck" id="puck"></div></div></div>
+          <div class="station" id="stOrb"><span class="tag">Orbit Brawl</span><div class="cabinet"><canvas class="stars" id="orbMini"></canvas></div></div>
+          <div id="door">Entrance</div>
+          <div id="actors"></div>
+          <div id="phones"></div>
+          <div id="emotes"></div>
+        </div>
+      </div>
+    </div>
+    <div id="hint">Tap anywhere to start the band · drag to pan · scroll to zoom</div>
+    <div id="dock"></div>
+  </div>
+
+  <aside id="desk">
+    <h2>The night</h2>
+    <div class="ctrl">
+      <label>Patrons <b id="vCrowd">16</b></label>
+      <input type="range" id="cCrowd" min="6" max="36" value="16">
+      <label>Arrival rate <b id="vArrive">normal</b></label>
+      <input type="range" id="cArrive" min="1" max="10" value="5">
+      <label>Curiosity <b id="vCur">6</b></label>
+      <input type="range" id="cCur" min="0" max="10" value="6">
+      <label>Competitiveness <b id="vComp">5</b></label>
+      <input type="range" id="cComp" min="0" max="10" value="5">
+      <label>Drinks flowing <b id="vDrink">5</b></label>
+      <input type="range" id="cDrink" min="0" max="10" value="5">
+      <label>Band energy <b id="vBand">6</b></label>
+      <input type="range" id="cBand" min="0" max="10" value="6">
+      <label>Time speed <b id="vSpeed">brisk</b></label>
+      <input type="range" id="cSpeed" min="1" max="10" value="5">
+    </div>
+    <h2>Band</h2>
+    <div class="ctrl">
+      <label>Tune</label>
+      <select id="cTune"></select>
+    </div>
+    <div class="row">
+      <button id="bMute" class="on" title="Mute the original procedural band">Mute</button>
+      <input type="range" id="cVol" min="0" max="100" value="42" title="Band volume" style="flex:1.4;min-width:80px">
+    </div>
+    <h2>Wall screen</h2>
+    <div id="screenPick">
+      <button data-s="site" class="on">0-Φ site</button>
+      <button data-s="game">RDR game</button>
+      <button data-s="ads">Local ads</button>
+      <button data-s="pod">Pod cam</button>
+    </div>
+    <h2>Do something</h2>
+    <div class="row">
+      <button id="bPause">Pause</button>
+      <button id="bMe" class="go">Drop me in</button>
+    </div>
+    <div class="row">
+      <button id="bEvent" title="Birthday, tournament or a power flicker">Random event</button>
+      <button id="bLabels" class="on" title="Show what people are doing">Labels on</button>
+    </div>
+    <div id="log"></div>
+  </aside>
+</div>
+
+<div id="mePanel">
+  <header><b id="meTitle">Drop me in</b><button id="bMeClose" class="ghost">Close</button></header>
+  <div id="meBody">
+    <div id="mePick">
+      <button data-j="rdr">Red Deer Rich — take a seat at the TV</button>
+      <button data-j="bubble">Bubble Hockey — jump the table</button>
+      <button data-j="orbit">Orbit Brawl — grab a cockpit</button>
+      <button data-j="pod">GyroForge — ride the pod</button>
+    </div>
+  </div>
+</div>
+
+<div id="recap">
+  <div class="card">
+    <h1>Night recap</h1>
+    <div class="sub" id="recapSub">The 0-Φ Room has closed for the night.</div>
+    <dl id="recapDl"></dl>
+    <div class="acts">
+      <button id="bAgain" class="go">Open another night</button>
+      <button id="bRecapX" class="ghost">Keep looking around</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/personas_v02.js"></script>
+<script src="js/games/rdr_v02.js"></script>
+<script src="js/venue_music_v02.js?b=1"></script>
+<script src="js/venue_screens_v02.js?b=1"></script>
+<script src="js/venue_v03.js?b=1"></script>
+<script src="../../games/minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game":"0-Phi Room venue","version":"v0.3","corner":"bl","offX":"12px","offY":"12px"});</script>
+</body>
+</html>
