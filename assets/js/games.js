@@ -164,9 +164,16 @@ window.GAMES = [
     ],
     versions: [
       {
-        id: 'v0.10',
+        id: 'v0.11',
         name: 'Solo phone + TV',
         current: true,
+        play: 'games/red-deer-rich/v0.11/index.html',
+        notes: 'Early playable build: still being tuned, things will change and may break. Feedback welcome. The TV board is the v0.7.10 playtest pass: Recap no longer stalls a turn mid-move, session selfies sit as a circular face on the pawn, property pointers only appear when the tile is off the edge of a zoomed board, the dice banner clears on a new turn, dropped phones that the game is auto-playing say Away, auto-playing, and phone join falls over to the cloud relay sooner. You can shake or tap-anywhere to smack, and the Snowbank is a little snow pile with a softer slip sound. Solo phone mode is solo v0.11. Previous public copy (v0.10) is kept.'
+      },
+      {
+        id: 'v0.10',
+        name: 'Solo phone + TV',
+        current: false,
         play: 'games/red-deer-rich/v0.10/index.html',
         notes: 'Early playable build: still being tuned, things will change and may break. Feedback welcome. New solo phone mode: a dice pad in the thumb zone, a close-up that fills the board with a colour pointer to the runner, smack replays in the centre, a selfie bobblehead, and Randomness and Secret Finds cards that rise out of their space, flip and tuck back in. The TV board keeps the recap show, a lobby zoom, a sidebar that stays visible, a picture-in-picture follow camera, walking runners and phone dice with hop-and-smack reactions. Previous public copy (v0.8) is kept.'
       },

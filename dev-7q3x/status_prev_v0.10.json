@@ -1,0 +1,439 @@
+{
+  "updated": "2026-11-23",
+  "games": [
+    {
+      "name": "Joe viewing page",
+      "status": "In development",
+      "ver": "v02",
+      "public": false,
+      "fit": [
+        "phone",
+        "TV"
+      ],
+      "url": "joe/index_v02.html",
+      "notes": "v02: every game with polish level (Polished = public + finished, Playable = status Working, Prototype = In development or not in status), version, one-liner, play link, filter. Built from this status.json + js/games.js on 2026-11-16. v01 (joe/index.html) kept as is. Advertising draft for Justin's review: joe/advertising_v01.html."
+    },
+    {
+      "name": "Room lights + phone join (shared)",
+      "status": "In development",
+      "ver": "v01",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "bubble/index_v0972_lights01.html?lightsdebug=1",
+      "notes": "minikit/ztp-room_v01.js: Cave Cinema's fixed-room QR phone join (ZTPRoom.fixedRoom/qr/padUrl) and light cues (ZTPLights: tucked bulb menu, Yes/No + pick lights, 'moment' dip and the movie cue curve). Demo: Bubble Hockey v0.9.72 + lights demo 01, a goal dips the lights ~20% for 1.4 s (off until Yes). Needs cinema/asus_v03/cinema_helper_v03.py (adds POST /lights/cue). Cave Cinema v05 = v04 rebuilt on the shared module (same behaviour); v04 untouched."
+    },
+    {
+      "name": "Play metrics",
+      "status": "In development",
+      "ver": "v01",
+      "public": false,
+      "fit": [
+        "phone",
+        "TV"
+      ],
+      "url": "metrics/index_v01.html?b=1",
+      "notes": "ztp-kit_v02.js adds anonymous game_start/game_end events (game, ver, venue or 'home', random device id, mode, duration). Opt-out: ztp:track=off / ?track=0 / DNT. Tested in Mini Golf v0.3. Needs firestore.rules_v04 published (not yet) before events reach Firestore; until then the page shows this device's local events."
+    },
+    {
+      "name": "Accounts / Founder #",
+      "status": "In development",
+      "ver": "v01",
+      "public": false,
+      "fit": [
+        "phone",
+        "TV"
+      ],
+      "url": "profile_v01.html",
+      "notes": "v01: Founder # uncapped \u2014 every Google sign-up gets the next number forever. #1\u2013#100 keep a gold special badge; #101+ get a clean studio badge. New minikit/ztp-account_v01.js + profile_v01.html (dev only). Publish firestore.rules_v02 when ready (live rules still cap at 100)."
+    },
+    {
+      "name": "Playtest invitational page",
+      "status": "In development",
+      "ver": "v0.1",
+      "public": false,
+      "fit": [
+        "phone",
+        "TV"
+      ],
+      "url": "",
+      "notes": "v0.1: unlisted page (path in BACKLOG) driven by playtest.json: device pick (viewing screen / phone controller), per-game card with live build number (from each game's build.json), New in this build notes, play link, one-tap mailto feedback (subject [Playtest] <Game> <build>, body with build + device). Open now: Bubble Hockey."
+    },
+    {
+      "name": "Stunt Smash",
+      "status": "In development",
+      "ver": "v0.2",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "stunt/",
+      "notes": "v0.2 (from Justin's phone test): dragging the aim line farther sets launch strength and the slider follows live; off-road dirt digs in (drag, sideways grip, slight sink, kicked-up dirt, sideways slides can roll/tumble, more for the bike); set up and queue your next shot any time (launches on your turn); GO glows and floods the screen, then the phone fades to near-black 'Observe display screen' until your next turn is near. v0.1: each round generates ramps + a crate tower/wall/pile. On your turn the phone shows the level from above: draw your line, pick motorbike/car/bus (mass + flip handling differ), set speed, GO. cannon.js physics on the TV; score = crates smashed + total-wreck bonus + airtime + flips. Turns rotate; slow-mo orbit replay of the round's best crash, then a new level."
+    },
+    {
+      "name": "RTS Shapes",
+      "status": "In development",
+      "ver": "v0.5.1",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "rts/",
+      "notes": "v0.5.1: Dragon flying unit (Justin's BloatFlier GLB, own skeleton + AnimationMixer playing Fly_Flap_Loop per dragon, team-tinted, casts a shadow, cruises ~7 m over ground/water, banks into turns, ignores ground separation); one Humans dragon (yours, select/command like any unit) and one Monsters dragon per match. Ground units in water sink by local depth: ~20% of their height in the shallows rising to a waist cap (50%) by ~2 m deep, smooth, with a faint ripple ring; fliers unaffected. v0.5: single tap on empty map = move, double-tap = attack-move (sweep); double-tap building = options, double-tap the selected group = options + combine tree. Orbs: tap = fire, press+hold = reopen its wheel to keep adding, drag onto the map = run there (current selection, else the orb's own). Drop rules: group bubble onto orb = ASSIGN (group runs it now); orb onto group bubble = QUEUE (runs when 70% of the group is idle; bubble shows +n). Lasso: closed loop = replace; open stroke = ADD mode (dashed lasso, '+ ADD' tag) adding with later lassos until a closed loop or blank tap. Bottom-left gear = default play style (balanced/greedy/protective/bold/careful) + NUANCE (reach, retreat wired; worker/scout share stubbed). v0.4.1: phone map hardening for the Pixel 'no markers' report (visual-viewport sizing + DPR re-read, NaN guards, draw/snap errors caught, phone asks the TV for state if none for 2.5 s, TV re-enables a phone on any message, auto-recentre if none of your shapes are on screen) + DIAG overlay (panel DIAG or ?diag=1; auto-shows when map state is missing) with FIND MY SHAPES; rolodex is now a stack of boxes (60 ms linear open, 70 ms per card, finished boxes vanish and the stack drops); distinct tap vs double-tap (single tap waits 280 ms; double-tap: empty = attack-move sweep, enemy = focus fire its pack, own unit = all of that shape on screen, building = options); wheel builds drop a placement ghost (drag body, grab dots to rotate, tap a dot or the down-arrow to face the camera, tap ghost or check to confirm, cross cancels). v0.4 (Justin's v0.3 playtest, chill+smooth): wheel reopens at its PREVIOUS screen spot (panel: or under thumb); lift crossfades the wheel into its orb along straight-up > sharp arc > zip into the slot with a tiny bounce; re-catch 330 ms (+50%); orbs 2x, wider spacing; double-tap 420 ms (panel 300/420/550); quadrant colours with concentric context rings on wheel + orbs; 3 always-on bottom nodes (tap/slide ordered combo, A/B/C = top/layer 2/layer 3, longer combos stubbed + logged; blank tap clears; combo + tap unit = its wheel at that layer); hold on selection = group-context wheel; auto group bubbles G1.. (tap = reselect); lasso enemies = red E bubble, drag onto TARGET = T1/T2, wheel Move/Attack > Targets > attack/defend T1/T2; deeper tree (Move only > Resource/Scout/Aggression, opposite bias pairs greedy/protective, bold/careful, strict; Worker priority > Rush pulls non-strict idle helpers); phone disconnect: AI takeover after timeout (panel 5/15/30/off) or optional 10 s countdown-to-pause. v0.3 phone wheel: lifting without GO snaps the wheel into a see-through green circle that drops (~0.5 s) into an orb slot ~11% down; while an orb is pending, touching the map reopens that wheel centred exactly under the thumb (reopen mode: top level / exact menu / one level up, cycled by the round button bottom-left). Quick tap on an orb = GO; double-tap anywhere (within 250 ms) = GO on the newest orb. Left-edge pull-over test panel: drop style (soft / sharp / plinko), reopen mode, wheel size, AI guess on/off, unit speed, enemy waves on/off, hold time. v0.2 Shapes control prototype: TV battlefield on the v0.1 terrain with 12 geometric unit shapes and big-shape buildings (a Workshop on wheels with a cylinder gun as the evolving-building look test). Factions: Humans (you, blue), Monsters (brown, attacks in waves), Crystal (translucent) and Steampunk (copper) neutral camps that fight back if hit. HP, range, death; workers gather green crystals, a healer shape heals, towers shoot. Phone: 2D CRT-style map, lasso to select (green glow), tap = attack-move / attack / gather, double-tap a group or building for options (share, order, auto stack, upgrade, combine-tree stub, wheel-reset toggle), pinch/wheel zoom, two-finger/right-drag pan. Hold wheel exists only while the thumb is down: slide into quarters to load a context chain, edge dots GO / RESET / BACK / AI guess, actuate bursts into gold threads + rolodex, lifting parks the chain as a green orb at the top (tap to fire). Buildings pulse gold when an upgrade is affordable; coloured share lines between overlapping selected things. Mouse works on the phone page. v0.1 flight test kept at rts/?mode=flight (flight.html). v0.1: heightmap terrain with low-poly trees/rocks, soft sun shadows; each phone gets a Bloat Flier (glb, procedural bone wing flap, proxy fallback); tap the height-tinted phone minimap to fly (arrive-easing, banking, flap rate from speed/accel, hover bob); TV camera frames the group and zooms out while flying. How-to + perf module."
+    },
+    {
+      "name": "Marble Rush",
+      "status": "In development",
+      "ver": "v0.2",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "marble/",
+      "notes": "v0.2: screen wake lock on the pad (video fallback); tap = hop, hold = charged big jump (charge ring on phone, glow on TV marble; grounded only, cooldown); TV tilt-force arrow per marble (green -> gold -> orange) + mini arrow on the phone; how-to includes jumps. v0.1.2: phone How to play (shared minikit/howto.js): ghost finger drives the real tilt dot, shows Calibrate and Portrait/Landscape; ? replays. v0.1.1: Portrait/Landscape toggle (saved) next to Recalibrate; the pad layout stays locked to the phone mid-race (orientation lock or CSS counter-rotation, touches remapped) and tilt axes follow the chosen mode from the device frame, so an OS rotation never makes steering jump. v0.1: tilt your phone to steer your marble down a shared 3D track on the TV: start gate + countdown, big drop, boost pads, two jumps, banked curves, over-drops, a loop, rollers, finish. Marbles bump each other off; falls respawn at the last checkpoint. Phone: colour, place, tilt dot, recalibrate, Tap-to-allow-tilt (iOS), drag fallback."
+    },
+    {
+      "name": "Red Deer Rich",
+      "status": "Live",
+      "ver": "v0.10",
+      "public": true,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "../games/red-deer-rich/v0.10/",
+      "notes": "Public freeze v0.10 (labelled In development on the site): solo phone mode (dice pad, centre close-up, smack replays, selfie bobblehead, cards that rise out of their space) plus the TV board from dev v0.7.7 (recap, lobby zoom, visible sidebar, PiP follow cam, walking runners). Frozen at games/red-deer-rich/v0.10/ (solo.html + index.html / controller.html). Prior public freeze v0.8 kept. Dev folder stays mutable."
+    },
+    {
+      "name": "Iron Stride",
+      "status": "Working",
+      "ver": "v0.4.2",
+      "public": true,
+      "fit": [
+        "TV",
+        "phone",
+        "controller"
+      ],
+      "url": "../games/mech/",
+      "notes": "v0.4.2: a small gear or the Menu button opens controller settings: swap sticks (southpaw), invert look up/down, invert left/right. Saved on the device. v0.4.1 frozen. v0.4.1: an Xbox controller switches to standard FPS controls (centre crosshair, right stick turns the view, both triggers fire); phone and mouse unchanged. v0.4 frozen. Buildings block shots, Xbox controller support, gyro aim. Asymmetric mechs are in a dev build: Iron Stride Squad v0.5-dev."
+    },
+    {
+      "name": "Drift Signal",
+      "status": "Working",
+      "ver": "v0.4",
+      "public": true,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "../games/space/",
+      "notes": "AI pilot with Explore / Sightsee / Gather modes, family-friendly sandworm, phones as crew stations."
+    },
+    {
+      "name": "Walker",
+      "status": "Working",
+      "ver": "v0.4.2",
+      "public": true,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "../games/walker/",
+      "notes": "v0.4.2: the playground slide is a real climb now: walk to the new ladder at the back, climb rung by rung, plop down at the top, slide with a speed-up, hop off. Swings, merry-go-round and seesaw: walk over first, then step on (no floating). v0.4.1 playtest fixes: phone stays awake (Wake Lock re-acquired on every tap/return, silent-video fallback); buttons squish, glow and buzz on touch; repeat taps while a ride or trip is starting get a soft nudge and don't restart it. Calm play world with big picture buttons. Waiting on Justin's notes for the next pass."
+    },
+    {
+      "name": "Zombie Tiles",
+      "status": "Working",
+      "ver": "v0.5",
+      "public": true,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "../games/zombie-tiles/",
+      "notes": "Tile-laying zombie board game, 1-4 players, race for the helipad. Working title."
+    },
+    {
+      "name": "Laser Range",
+      "status": "Working",
+      "ver": "v0.1.2",
+      "public": true,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "../games/laser-range/",
+      "notes": "Light-gun gallery: point your phone at the TV. Early test build."
+    },
+    {
+      "name": "Battleship",
+      "status": "Working",
+      "ver": "v0.1",
+      "public": true,
+      "fit": [
+        "phone"
+      ],
+      "url": "../cafe/play.html",
+      "notes": "Phone-only caf\u00e9 game; the only 'plays on your phone' title so far."
+    },
+    {
+      "name": "Charge Hop",
+      "status": "Working",
+      "ver": "v0.3",
+      "public": true,
+      "fit": [
+        "TV",
+        "keyboard"
+      ],
+      "url": "../games/charge-hop/",
+      "notes": "Keyboard / laptop game; reports its end to the front door."
+    },
+    {
+      "name": "Red Deer Rich \u00b7 phone mode",
+      "status": "In development",
+      "ver": "v0.9-dev",
+      "public": false,
+      "fit": [
+        "phone",
+        "TV"
+      ],
+      "url": "rdr-phone/phone.html",
+      "notes": "Play on one phone: the phone hosts the game, board on top with pinch / drag and a soft camera that glides to the action and eases out the moment you touch it, tabs along the bottom open a small sheet (swipe up for everything, down or tap outside to close), tiny dice icon + shake to roll, small QR in the corner so friends join from their own phones. Move to TV: scan a TV's 0-Phi QR (front door) or type the TV's room code, the phones vote (majority), the whole game moves to the TV and every phone becomes a normal TV controller with the same seat. Live v0.8 untouched. Before release: real-phone test over the internet, then show Red Deer Rich as Plays on your phone on the front door."
+    },
+    {
+      "name": "Red Deer Rich \u00b7 solo phone",
+      "status": "In development",
+      "ver": "v0.10",
+      "public": true,
+      "fit": [
+        "phone"
+      ],
+      "url": "../games/red-deer-rich/v0.10/solo.html",
+      "notes": "Public freeze of solo v0.10 (same package as the v0.10 TV board). Dev copies remain at rdr-phone/solo_v10.html and are still being tuned."
+    },
+    {
+      "name": "Orbit Brawl",
+      "status": "Working",
+      "ver": "v0.17",
+      "public": false,
+      "fit": [
+        "phone",
+        "TV"
+      ],
+      "url": "../playtest-fe6ad60e/builds/orbit-v0.17/",
+      "notes": "Frozen playtest v0.17: Xbox controller, kill cam with countdown, hangar loadouts, long escapes, invite links, strafe, heat-seeker bombs, aim assist, wide orbit replay cam, proxy ship + pilot, synth SFX. Freeze lives at playtest builds/orbit-v0.17 (dev folder stays mutable). Earlier playtest snapshot v0.7 kept. Next: real-phone feel test and polish from playtest notes."
+    },
+    {
+      "name": "Bubble Hockey",
+      "status": "Working",
+      "ver": "v0.9.72",
+      "public": false,
+      "fit": [
+        "phone",
+        "TV"
+      ],
+      "url": "bubble/index_v0972.html",
+      "notes": "v0.9.72: when the puck is loose it is pulled toward the closest player's stick (the one you're on wins the tug, so it can't hover between two guys). Pull gets stronger as the puck slows - drifting pucks get claimed quickly, fast passes and shots still fly. ?grav=0..2 (1 default, 0 off). Softened tracks_v03 on the plain bubble/ link (was still serving the old v0.9.66 lines). Frozen playtest remains at playtest builds/bubble-v0.9.71; previous freeze v0.9.57 kept. Dev folder stays mutable."
+    },
+    {
+      "name": "Foosball",
+      "status": "In development",
+      "ver": "v0.2",
+      "public": false,
+      "fit": [
+        "phone",
+        "TV"
+      ],
+      "url": "foosball/",
+      "notes": "v0.2: forward/back thumb now SPINS the rod (men roll up to 90 deg, swing speed from thumb speed, spring back upright on release); real ball-vs-rotating-man contact (face = straight, edge/corner = angled, swing speed adds impulse, still men absorb the ball like a blanket); old flick pass/shot gestures removed; AI winds up and threads shots through gaps, idle rods lift for shots from behind. v0.1: top-down proxy foosball. 8 rods (1-2-3-5 a side), domino men. Grab anywhere near your rod: slide along it, push forward/back to kick (no spinning). The ball sticks to a man's front so you can carry it for trick shots; flick sideways to pass to the next man on the rod; flick toward goal to shoot at that angle; tap = straight shot. Rods you aren't holding slide under the ball for you. TV + 1-4 phones (team = seat order; 2 on a side split goalie+defence / midfield+attack; computer fills empty sides), or phone vs computer, or 2 phones with one hosting. First to 5."
+    },
+    {
+      "name": "Lost Sock",
+      "status": "In development",
+      "ver": "v0.3",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "lostsock/",
+      "notes": "v0.3: phone-as-screen. After scanning: 'Play on the TV (phone as controller)' or 'Play on your phone'. Phone screens get the map with the auto camera, pinch/pan anytime (eases back slowly), bottom bar with move, aim, jump, weapon menu and hold-to-charge FIRE; corner toggle flips between controller and phone screen. Mixed play shares one game; if everyone picks phones the first phone hosts and the TV is freed. Dev door entry (screen opened with ?dev=1) for the busy-screen queue. Next: real-phone test, phone-host 'move to TV', sound."
+    },
+    {
+      "name": "Demolition Derby",
+      "status": "In development",
+      "ver": "v0.4.2-dev",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone",
+        "controller"
+      ],
+      "url": "derby/",
+      "notes": "v0.4.2-dev: Race = each player drives on their own phone (own follow camera, touch-anywhere joystick + gas bars + long-swipe boost); TV is a calm broadcast (held chase / trackside / rotating heli shots, hard cuts, prefers packs/jumps/crashes; crash cam + PiP kept). Touch controls ported to the phone controller. v0.4.1-dev: race camera 2.5x further out, soft zoom-in on packs/big hits/jumps, all the way in on a crash, with a picture-in-picture crash replay on the shared screen. Wrecked phone players get a full-screen crash replay, then RESPAWNING flashes 3 times while their car flashes on the track and drops back in. 3 lives (hearts) in Race and Derby: one per wreck, out at zero = spectate. v0.4: Race mode (long winding track: ramps, raised side ledges, puddles that slip, gravel that rattles, obstacles; 2 laps; wrecks respawn on track). Phone-screen play on the TV page: touch anywhere = floating joystick, green bars = throttle, release = neutral, long fast swipe = boost; views wide/close/dynamic. Cars last 2x longer; hits tracked in 8 zones drive the model damage. Wrecks fall apart, burn, half weight, harmless, fade to 30%, flash, respawn. Cars can flip and roof-slide (roof crush later)."
+    },
+    {
+      "name": "Red Deer Rescue",
+      "status": "In development",
+      "ver": "v0.2",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "../games/rescue/",
+      "notes": "v0.2 blockout: heroes at half size; Francis the bronze pig statue gets struck by lightning and rampages as a giant pig (heroes fight him back to bronze). Phone join lists every hero: 'in use' or 'respawning shortly'; downed heroes respawn somewhere in the city. Dev launcher only."
+    },
+    {
+      "name": "Bloat Flier",
+      "status": "In development",
+      "ver": "v02b",
+      "public": false,
+      "fit": [
+        "TV"
+      ],
+      "url": "bloatflier/",
+      "notes": "fly_v01.html: temporary fly-the-model test (stick or tilt on the generic phone pad, or arrows; A / Space puff up, B / Enter reset). Rigged proxy model (bones placed, inner wing edge fixed); feeds the fighting-game rigs."
+    },
+    {
+      "name": "Iron Stride Squad",
+      "status": "In development",
+      "ver": "v0.6-dev",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone",
+        "controller",
+        "keyboard"
+      ],
+      "url": "mech-squad/",
+      "notes": "Its own game now: the 3/4 top-down mech brawler (phones = Titans, controllers/keyboard = Striders). v0.6-dev adds booster jump/hover (mech grows a little in the air, ground shadow shrinks/grows, hard landings slam) and a collateral score: every building your shots or slams hit costs hero points. Live Iron Stride untouched."
+    },
+    {
+      "name": "Iron Stride: Cockpit",
+      "status": "In development",
+      "ver": "v0.5-dev",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone",
+        "controller",
+        "keyboard"
+      ],
+      "url": "mech-open/",
+      "notes": "Separate game: first-person cockpit open world (placeholder name; naming is Justin's call). Keyboard/mouse & controller = Striders with canopy look; phone = Titan. Big map of hills, mountains, ruins; terrain and buildings block shots. Live v0.4.2 untouched."
+    },
+    {
+      "name": "Hop Top",
+      "status": "In development",
+      "ver": "v0.1",
+      "public": false,
+      "fit": [
+        "phone",
+        "TV"
+      ],
+      "url": "hoptop/",
+      "notes": "v0.1: 15-hole triangle peg solitaire. Pull any peg to start, jump to remove, rated at the end (Peg Legend = one peg left in the top hole). Undo + hint. Opening it on a phone plays solo; on a TV, phones share one board (co-op taps)."
+    },
+    {
+      "name": "Dangerous Waters",
+      "status": "In development",
+      "ver": "v0.1.2",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "broadside/",
+      "notes": "v0.1.2: hits explode (splash, sparks, fireball, screen shake, vibration) on phones and TV; misses splash; game end reveals both fleets with unhit parts in green. v0.1.1: renamed from Broadside to Dangerous Waters; space slot is now 'Dangerous Space Waters (coming)'. v0.1: Classic battleships, 10x10, five ships, using the cafe Battleship rules (cafe/js/games.js). TV shows both waters (hits/misses only); each phone holds its private fleet (shuffle, Ready) and fires on its turn. One phone = vs computer; phone pad also has 'play the computer on this phone'. Mode picker: Classic, Dangerous Space Waters (coming, disabled). Live cafe Battleship untouched."
+    },
+    {
+      "name": "Swish Flick",
+      "status": "In development",
+      "ver": "v0.1.1",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "swish/",
+      "notes": "v0.1.1: tall up-and-over arcs; flick speed sets arc height, flick length (short snap vs long sweep) sets distance; camera shows the apex. v0.1: Arcade hoop. Flick up on the phone to shoot (harder = farther, sideways = aim), backspin softens rim bounces, net swish. 45 s rounds: 2 pts, swish 3, 3-in-a-row bonus. Everyone shoots at once on the TV; works solo on one phone. Needs real-phone flick tuning."
+    },
+    {
+      "name": "Splash Clown",
+      "status": "In development",
+      "ver": "v0.1.1",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "dunk/",
+      "notes": "v0.1.1: target has no stick, sits lower and slowly loops (along the bottom, up, across the top, down); throw as fast as you flick, several balls in flight at once (still 6 each). v0.1: Dunk tank. Flick a ball at the red target; a hit drops the proxy clown into the water (splash, sulks, climbs back, taunts on misses). 6 balls each, most dunks wins. TV with phones or solo on one phone."
+    },
+    {
+      "name": "Glide Puck",
+      "status": "In development",
+      "ver": "v0.2.1",
+      "public": false,
+      "fit": [
+        "phone",
+        "TV"
+      ],
+      "url": "puck/",
+      "notes": "v0.2.1: phone view ~15% wider, goal celebration (camera flies to the goal, scorer hops, cut back, puck drops in front of the conceding player), Also show on screen is the default when a TV is connected. v0.2: phone-native lobby (Play the computer / Host for 2 phones, optional Use the TV as the table) with an Also show on screen checkbox that mirrors the phone game to the TV. Auto cam: exact framing (your half in; with the puck on their side the far top edge comes into view, half by zooming out, half by shifting up), a leaky-integrator openness level (fills gently, drains faster), puck+paddle averaged sideways, critically damped spring on top. Subtle hit ring, paddle flames at +3, fully on fire at +6, GOAL! fireworks. Fixed: the friend joining a phone host now gets seat 2. v0.1: Air hockey, puck capped at about half real speed, drag your paddle with a finger, first to 7. Phone cams (corner button): Auto zoom, Radar (your half + a ping that grows as the puck comes), Follow (zoomed, soft-scroll, spring back so your half is in view before the puck is 20% in). Modes: vs computer on one phone, 2 phones (one hosts), or TV + 1-2 phones (computer fills a seat)."
+    },
+    {
+      "name": "Stack Attack",
+      "status": "In development",
+      "ver": "v0.2.1",
+      "public": false,
+      "fit": [
+        "phone",
+        "TV"
+      ],
+      "url": "stack/",
+      "notes": "v0.2.1: towers ~60% closer in disaster view, tighter TV disaster framing, solid ground (fallen blocks and debris rest on it). v0.2: 3D look (physics still a 2D slab, blocks drawn extruded with a perspective camera), subtle elevated view (~12 degrees), drag empty space to orbit. Block icons on the left: drag one in, it is held in the tower plane, release and it drops softly. Held blocks show x-ray through others for shuffling underneath. Two easy AI builders beside you; when the disaster hits the camera zooms out to all three towers; quake epicentre, tornado side/path and lizard target are random; results table for all towers. v0.1: Blocks appear on shelves; drag them onto the stand in 40 s, rotate with the button or a second-finger tap. Then a disaster: Earthquake, Tornado, or Big Lizard. Score = height still standing after it settles. Solo on a phone, or co-op on a TV with phones (matter.js physics)."
+    },
+    {
+      "name": "Balloon Buddy",
+      "status": "In development",
+      "ver": "v0.1.1",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "buddy/",
+      "notes": "v0.1.1: guess the word and Buddy lets go, lands on the grass and does a victory dance scaled by balloons left (7 = full bouncy jig, down to a wobbly one-balloon shuffle, labelled on screen), balloons float off, confetti stays. v0.1: Silly hangman. One player hides a word on their phone; the others tap letters. Each wrong letter pops one of Buddy's 7 balloons and he sinks toward a kiddie pool; out of balloons = a happy, soggy splash (floaties). Solo: Buddy picks the word. Phone-only: the host phone shows the scene and friends scan its code."
+    },
+    {
+      "name": "Safety Third",
+      "status": "In development",
+      "ver": "v0.1",
+      "public": false,
+      "fit": [
+        "phone"
+      ],
+      "url": "safety3/index.html",
+      "notes": "v0.1: top-down construction site, 12-30 workers, catch violators inside their pulsing bubble with an on-screen joystick; misses cost money; 2.5 min round, summary + restart. Family-clean only."
+    },
+    {
+      "name": "Arcade Showcase",
+      "status": "In development",
+      "ver": "v0.13",
+      "public": false,
+      "fit": [
+        "TV",
+        "phone"
+      ],
+      "url": "showcase/index_v13.html?b=1",
+      "notes": "v0.13: softer exit mist \u2014 puffs linger inside the pod cavity in the rider's colour, more transparent, and the tint (mist + under-glow) fades slowly (~4\u20136 s) back to the default idle blue. Attract logo puts a gold, breathing QR (same 8 s envelope as the front page, https://amazingjustinlewis-web.github.io/go/) in the 0 in place of the glow button, and hides the white corner QR while the logo is up. ?attract=1 holds the idle logo even when the arcade is busy. v0.12 kept at showcase/index_v12.html. v0.12: attract mode on the arcade big screen (0-Phi logo breathes full screen when no one is in a GyroForge; first rider = zoom through the logo's 0 into the game; last rider out = ~3 s grace then pull back out to the logo); one game running = full screen with cinematic pilot-cam cuts, split screen only when different games run at once; hex under-base glow per pod tinted to the rider's colour, red strobe when their ship is destroyed; dry-ice puffs from the seams and under the skirt on exit, tinted to the rider (sprite pool, fewer on low-end); play sessions 3x longer. v0.11 kept at showcase/index_v11.html. v0.11: Change View tour holds each view ~5 s; no stops on individual side cabinets; every 4-5 views a smooth pan across the whole arcade, then back to hero views (pods, big screen, ads, sponsors); CuteGuy seat tuned (scale 0.86, hip 0.62). v0.10: CuteGuy riders in the pods. v0.9: Change View auto tour holds each shot 2.5 s and adds a full-frame GyroForge close-up (picks a pod with a rider climbing in or out) and a floor-level look up at the big screen past GyroForge 3; under-the-hood overlay removed so the arcade screen just shows the games; original procedural chiptune for the street and each shop, synthesized street ambience (traffic, wind, footsteps), room murmur, game sounds near the cabinets/pods/bar TV, Sound menu with Ambient + Music sliders (saved), sound starts on first tap, crossfades between places; TRACK_FILES swap slot for real tracks. v0.8: pod doors rest open when empty and close only after the rider sits, turns 45\u00b0 left and leans back; doors open for exit and stay open. Change View adds an auto tour (wide room, big screen, scrolling ad slot, score ticker, sponsor board, pods, caf\u00e9) every ~5 s; over-the-shoulder view hides the focused head. v0.7: glowing ring lights (4 colours, additive sprites on ring nodes), brightness follows smoothed ring speed; no bloom, no point lights, halos drop on mobile or low FPS. v0.6: internal pod with its own inner doors (GLB v02, meshopt), rider climbs in, shrinks into seat, hidden once doors shut, reappears and climbs out on exit. v0.5: real GyroForge pods (GLB from Blender scene 49) - doors open for boarding, close while seated, rings driven by live Orbit Brawl ship orientation, doors open on exit. v0.4: arcade ONE MATCH phase (pods 1-4 share one Orbit Brawl full-width), proxy cabinets + pinball (SWAP_ slots) used by customers, Change View over-the-shoulder phone close-up (live top-down Bubble Hockey on bar phone), muted previews, bot auto-play past title screens, high-score ticker, split-flap ad slot, Today's Sponsor boards, Rush Hour, Shop Admin tablet. v0.3: hips on seats, bartender/barista serve beers/coffees/plates (cleared later), ~1/3 customers non-players. Screens show REAL games via hidden iframes: Bubble Hockey AI watch on bar TV, Orbit Brawl bots + Drift Signal autopilot (games/space/attract_v01.html) on arcade split screen, pod sessions mix / all-Orbit-Brawl. View All Games menu previews any dev game on the shop screen."
+    }
+  ]
+}

@@ -100,14 +100,14 @@
     {
       "name": "Red Deer Rich",
       "status": "Live",
-      "ver": "v0.10",
+      "ver": "v0.11",
       "public": true,
       "fit": [
         "TV",
         "phone"
       ],
-      "url": "../games/red-deer-rich/v0.10/",
-      "notes": "Public freeze v0.10 (labelled In development on the site): solo phone mode (dice pad, centre close-up, smack replays, selfie bobblehead, cards that rise out of their space) plus the TV board from dev v0.7.7 (recap, lobby zoom, visible sidebar, PiP follow cam, walking runners). Frozen at games/red-deer-rich/v0.10/ (solo.html + index.html / controller.html). Prior public freeze v0.8 kept. Dev folder stays mutable."
+      "url": "../games/red-deer-rich/v0.11/",
+      "notes": "Public freeze v0.11 (labelled In development): TV from dev v0.7.10 (Recap stall fix, selfie disc, off-edge pointers, faster phone join, smack lag, snowbank) plus solo v0.11. Previous public copy v0.10 is kept. Public freeze v0.10 (labelled In development on the site): solo phone mode (dice pad, centre close-up, smack replays, selfie bobblehead, cards that rise out of their space) plus the TV board from dev v0.7.7 (recap, lobby zoom, visible sidebar, PiP follow cam, walking runners). Frozen at games/red-deer-rich/v0.10/ (solo.html + index.html / controller.html). Prior public freeze v0.8 kept. Dev folder stays mutable."
     },
     {
       "name": "Iron Stride",
@@ -208,13 +208,13 @@
     {
       "name": "Red Deer Rich \u00b7 solo phone",
       "status": "In development",
-      "ver": "v0.10",
+      "ver": "v0.11",
       "public": true,
       "fit": [
         "phone"
       ],
-      "url": "../games/red-deer-rich/v0.10/solo.html",
-      "notes": "Public freeze of solo v0.10 (same package as the v0.10 TV board). Dev copies remain at rdr-phone/solo_v10.html and are still being tuned."
+      "url": "../games/red-deer-rich/v0.11/solo.html",
+      "notes": "Public freeze v0.11 (labelled In development): TV from dev v0.7.10 (Recap stall fix, selfie disc, off-edge pointers, faster phone join, smack lag, snowbank) plus solo v0.11. Previous public copy v0.10 is kept. Public freeze of solo v0.10 (same package as the v0.10 TV board). Dev copies remain at rdr-phone/solo_v10.html and are still being tuned."
     },
     {
       "name": "Orbit Brawl",

@@ -1,0 +1,94 @@
+/* Controller v0.7.9: Add-selfie button + solo-style bobblehead alignment overlay. */
+#selfieSheet { display: none !important; }
+
+.selfie-add-btn {
+  display: block;
+  width: 100%;
+  margin: 10px 0 4px;
+  padding: 12px 16px;
+  border: 2px solid #ffd23f;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #3a2f14, #241c0e);
+  color: #ffd23f;
+  font: 800 16px/1.2 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.selfie-add-btn[hidden] { display: none !important; }
+.selfie-add-btn.on { background: #ffd23f; color: #1a1408; }
+
+#selfieFab.selfieAddFab {
+  right: 12px;
+  bottom: calc(74px + env(safe-area-inset-bottom));
+  width: auto;
+  min-width: 44px;
+  padding: 0 12px;
+  border-radius: 22px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background: #ffd23f;
+  color: #1a1408;
+  border: 0;
+  box-shadow: 0 4px 16px rgba(0,0,0,.4);
+  z-index: 24;
+}
+#selfieFab.selfieAddFab[hidden] { display: none !important; }
+
+#rdrSelfie {
+  position: fixed; inset: 0; z-index: 40;
+  background: radial-gradient(circle at 50% 40%, #2c2246, #0b0910 75%);
+  display: flex; align-items: center; justify-content: center;
+  padding: calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
+}
+#rdrSelfie[hidden] { display: none !important; }
+#rdrSelfie .sf-in { width: min(92%, 380px); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+#rdrSelfie .sf-t { letter-spacing: .18em; color: #ffd23f; font: 800 15px/1.2 ui-sans-serif, system-ui, sans-serif; }
+#rdrSelfie .sf-ring {
+  position: relative; width: 240px; height: 240px; border-radius: 50%; overflow: hidden;
+  border: 4px solid #ffd23f; box-shadow: 0 0 30px rgba(226,184,74,.45); background: #1a1626;
+}
+#rdrSelfie video, #rdrSelfie .sf-ring img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);
+}
+#rdrSelfie .sf-ring img { transform: none; }
+#rdrSelfie .sf-msg { text-align: center; color: #e8dfff; font-size: 15px; margin: 0; }
+#rdrSelfie .sf-btns { display: flex; gap: 8px; width: 100%; }
+#rdrSelfie .sf-btns .btn, #rdrSelfie label.btn {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 12px 10px; border-radius: 12px; border: 0; cursor: pointer;
+  font: 800 15px/1.1 ui-sans-serif, system-ui, sans-serif; background: #ffd23f; color: #1a1408;
+}
+#rdrSelfie .sf-btns .btn.ghost, #rdrSelfie label.btn.ghost { background: #2a2433; color: #f4ead6; }
+#rdrSelfie .sf-cap { display: contents; }
+#rdrSelfie .sf-cap[hidden], #rdrSelfie .sf-align[hidden] { display: none; }
+#rdrSelfie .sf-align { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+#rdrSelfie .sf-stage {
+  position: relative; width: 270px; height: 270px; border-radius: 18px; overflow: hidden;
+  border: 3px solid #ffd23f; touch-action: none; background: #1a1626;
+}
+#rdrSelfie .sf-stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: none; }
+#rdrSelfie .sf-egg {
+  position: absolute; left: 13%; right: 13%; top: 4%; bottom: 4%;
+  border-radius: 50% 50% 46% 46% / 56% 56% 44% 44%;
+  border: 2px dashed rgba(255,255,255,.55); pointer-events: none;
+}
+#rdrSelfie .mk {
+  position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+  border-radius: 50%; border: 3px solid #ffd23f; background: rgba(255,210,63,.18);
+  box-shadow: 0 0 0 2px rgba(0,0,0,.5); cursor: grab; touch-action: none;
+}
+#rdrSelfie .mk.mo {
+  width: 46px; height: 28px; margin: -14px 0 0 -23px; border-radius: 14px;
+  border-color: #ff5d73; background: rgba(255,93,115,.18);
+}
+#rdrSelfie .mk s {
+  position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px;
+  border-radius: 50%; background: #fff;
+}
+#rdrSelfie .mk em {
+  position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 3px;
+  font-style: normal; font-size: 12px; font-weight: 700; color: #fff;
+  text-shadow: 0 1px 3px #000; white-space: nowrap; pointer-events: none;
+}

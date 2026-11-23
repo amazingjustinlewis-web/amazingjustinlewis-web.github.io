@@ -1,0 +1,7 @@
+/* v0.7.4 explore-after-pick lobby: the menu fades after you pick but stays swipeable */
+#lobby .carousel, #lobby .lplayers { transition: opacity .35s ease, filter .35s ease; }
+#lobby.explore .carousel { opacity: .5; filter: saturate(.45) brightness(.9); }
+#lobby.explore .lplayers { opacity: .7; }
+.exploretag { min-height: 1.5em; margin-top: 8px; text-align: center; color: #E2B84A; font-weight: 700; font-size: 14px; }
+.exploretag:empty { visibility: hidden; }
+#lobby.explore #pickBtn { border: 1px solid #E2B84A88; color: #E2B84A; background: transparent; }
