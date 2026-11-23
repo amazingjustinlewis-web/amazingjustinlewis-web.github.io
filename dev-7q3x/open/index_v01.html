@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Join a game · Zero to Phi</title>
+<meta name="theme-color" content="#14121b">
+<meta name="robots" content="noindex">
+<link rel="icon" href="../rdr-phone/assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="open_v01.css">
+</head>
+<body>
+<header class="top">
+  <img src="../rdr-phone/assets/logo.svg" alt="" width="40" height="32">
+  <div><h1>ZERO TO PHI</h1><p>Join a game</p></div>
+</header>
+<main id="main">
+  <p id="status" class="status">Looking for that room…</p>
+  <div id="choices" hidden>
+    <h2 id="choiceH">That game is full</h2>
+    <p id="choiceP">A seat is not open right now. You can wait for the next one, start a new lobby, or browse what’s on.</p>
+    <button type="button" class="big" id="btnQueue">Queue for the next game</button>
+    <button type="button" class="big alt" id="btnLobby">Start a new lobby</button>
+    <button type="button" class="big alt" id="btnOther">Start a different game</button>
+    <button type="button" class="big ghost" id="btnBrowse">Browse the games</button>
+  </div>
+  <div id="queueBox" hidden>
+    <h2>You're in line</h2>
+    <p id="queueP">We'll hold your spot for the next game in this room. Keep this page open.</p>
+    <button type="button" class="big ghost" id="btnQueueLeave">Leave the queue</button>
+  </div>
+  <p class="fine"><a id="studioLink" href="../../family.html">Zero to Phi main page</a></p>
+  <div id="openList" class="openList" hidden>
+    <h3>Open games nearby</h3>
+    <div id="openRows"></div>
+  </div>
+</main>
+<script src="../rdr-phone/js/vendor/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="../rdr-phone/js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="../rdr-phone/js/config.js"></script>
+<script src="../rdr-phone/js/net.js"></script>
+<script src="open_games_v01.js"></script>
+<script src="open_v01.js"></script>
+</body>
+</html>

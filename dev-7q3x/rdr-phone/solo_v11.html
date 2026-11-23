@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Red Deer Rich · solo on your phone (dev v0.11) | Zero to Phi</title>
+<meta name="theme-color" content="#14121b">
+<meta name="robots" content="noindex">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/solo_v11.css">
+</head>
+<body>
+<canvas id="board" aria-label="Game board"></canvas>
+
+<!-- very thin top bar: one block per player in their token colour, width = share of total net worth -->
+<div id="top" hidden>
+  <div id="bar"></div>
+  <div id="strip"><i id="turnDot"></i><b id="turnName">-</b><span id="cash"></span><span id="event"></span></div>
+  <button id="pull" aria-label="Open standings and settings">&#9662;</button>
+</div>
+<!-- pulled-down panel: standings, what's going on, settings -->
+<div id="panel" hidden><div id="panelIn"></div><div id="panelGrip">&#9652;</div></div>
+<button id="zoomOut" hidden aria-label="Show the whole board">&#8689;</button>
+<div id="camTag" hidden></div>
+<div id="bubbleMenu" hidden></div>
+<div id="toasts"></div>
+
+<!-- v0.9 dice pad: the thumb zone between the board and the drawer. The whole pad is the roll button; dice tumble inside it. -->
+<div id="dicePad" hidden>
+  <div id="padStats"></div>
+  <div id="dice"><div class="die" id="d1"></div><div class="die" id="d2"></div><div id="diceLbl"></div></div>
+</div>
+
+<!-- bottom lift-up drawer: tops of your deeds and cards peek up along the bottom edge -->
+<div id="drawer" hidden>
+  <div id="grip"><div id="peekL" class="peek"></div><span class="arrow">&#9650;</span><div id="peekR" class="peek"></div></div>
+  <div id="dTabs"><button data-tab="deeds" class="on">Deeds</button><button data-tab="cards">Cards</button><button data-tab="trade">Trade</button></div>
+  <div id="dBody"></div>
+</div>
+<div id="scrim" hidden></div>
+
+<!-- landing events and other pop-ups -->
+<div id="pop" hidden><div id="popCard"></div></div>
+<!-- drawn card: swipe up onto the board to play, down to stash it -->
+<div id="cardPop" hidden><div class="hint up">&#8679; Swipe up to play it</div><div id="drawWrap"><div id="drawCard"></div></div><div class="hint down" id="downHint">&#8681; Swipe down to stash it</div></div>
+
+<!-- setup (v0.7: zoomed to the real window so it fills any phone; swipeable character cards; rename with the pencil on the front card) -->
+<div id="setup">
+  <div class="sx">
+    <header class="shead"><img src="assets/logo.svg" alt="" class="logo"><div><h1>RED DEER RICH</h1><p class="sub">Solo on your phone &middot; dev v0.11</p></div>
+      <button type="button" id="qrFabSetup" class="qrFab" aria-label="Show join QR">QR</button></header>
+    <div id="resumeBox" hidden><button id="resumeBtn" class="big resume"><span>Resume saved game</span><small id="resumeInfo"></small></button></div>
+    <section class="pick">
+      <div class="ghead"><span>PLAY AS</span><small id="cardCount"></small></div>
+      <div id="deck" aria-label="Swipe left or right to pick your character"><div id="deckIn"></div></div>
+      <div class="dots" id="deckDots"></div>
+      <div class="look">
+        <div class="sw"><button data-look="pants"><i>&#128086;</i>Pants</button><button data-look="shoes"><i>&#128095;</i>Shoes</button><button data-look="hat"><i>&#129506;</i>Hat</button><button data-look="skin"><i>&#9995;</i>Skin</button><button data-look="rand"><i>&#127922;</i>Mix</button></div>
+      </div>
+      <div class="plink" id="plink"><span class="pl">PROFILE</span><button data-v="off">Off</button><button data-v="once">Just once</button><button data-v="always">Always</button><small id="plinkHint"></small></div>
+    </section>
+    <section class="opts">
+      <div class="row"><span class="lab">Opponents</span><div class="seg" id="oppSeg"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button></div></div>
+      <div class="row moods"><span class="lab">Moods</span><div class="seg" id="moodSeg"></div></div>
+      <div class="row"><span class="lab">They play</span><div class="seg" id="lvlSeg"><button data-v="easy">Easy</button><button data-v="normal">Normal</button><button data-v="ruthless">Ruthless</button></div></div>
+      <div class="row"><span class="lab">Length</span><div class="seg" id="lenSeg"><button data-v="regular">Full</button><button data-v="medium">Medium</button><button data-v="quick">Quick</button></div></div>
+      <div class="row"><span class="lab">Timer</span><div class="seg" id="timSeg"><button data-v="0">Off</button><button data-v="30">30m</button><button data-v="45">45m</button><button data-v="60">60m</button></div></div>
+      <div class="row"><span class="lab">Renters</span><div class="seg" id="puSeg"><button data-v="0">Auto rent</button><button data-v="1">PAY UP race</button></div></div>
+      <div class="row"><span class="lab">Deals</span><div class="seg" id="trSeg"><button data-v="open">Open table</button><button data-v="covert">Covert nearby</button></div></div>
+    </section>
+    <div id="friendsBox" class="friendsBox" hidden>
+      <div class="ghead"><span>FRIENDS IN THIS ROOM</span><small id="friendCount">0</small></div>
+      <div id="friendList" class="friendList"></div>
+    </div>
+    <div class="btnrow setupActs">
+      <button type="button" class="btn" id="inviteFriendsBtn">Invite friends</button>
+      <button type="button" class="btn" id="joinTvBtn">Join a TV</button>
+    </div>
+    <button id="startBtn" class="big go">START GAME</button>
+    <p class="fine">Tap or swipe the dice pad at the bottom. Lift the bottom edge for your stuff. Tap a player to deal or chat. Tap the board while you run past someone to smack them. A tiny QR icon opens a code friends can scan to join this phone.</p>
+  </div>
+</div>
+
+
+<!-- v0.11: tiny QR (in-game). Tap to grow, tap again to shrink. -->
+<button type="button" id="qrFab" class="qrFab inGame" hidden aria-label="Show join QR">QR</button>
+
+<!-- v0.11: big QR overlay -->
+<div id="qrBig" hidden>
+  <div class="qbCard" id="qrBigCard">
+    <div class="qbHint">Friends scan to join this phone</div>
+    <div id="qrBigCode" class="qbSvg"></div>
+    <div id="qrBigRoom" class="qbRoom">----</div>
+    <div id="qrBigUrl" class="qbUrl"></div>
+    <div id="qrBigStat" class="qbStat"></div>
+    <div class="btnrow">
+      <button type="button" class="btn go" id="qrShareBtn">Invite friends</button>
+      <button type="button" class="btn" id="qrCopyBtn">Copy link</button>
+    </div>
+    <p class="qbFine">Tap the code or outside to shrink it</p>
+  </div>
+</div>
+
+<!-- v0.11: Join a TV -->
+<div id="joinTv" hidden>
+  <div class="jtCard">
+    <h2>Join a TV</h2>
+    <p class="jtLead">Type the 4-letter room code on the TV, or scan its QR. This phone becomes a controller and the TV runs the game.</p>
+    <label class="fld">Room code<input id="tvRoom" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD"></label>
+    <label class="fld">Your name<input id="tvName" maxlength="12" autocomplete="nickname" placeholder="Name"></label>
+    <div id="tvScanBox" hidden>
+      <video id="tvScanVid" playsinline autoplay muted></video>
+      <button type="button" class="btn ghost" id="tvScanStop">Stop camera</button>
+    </div>
+    <div id="tvJoinMsg" class="jtMsg" role="status"></div>
+    <div class="btnrow">
+      <button type="button" class="btn go" id="tvJoinGo">Join the TV</button>
+      <button type="button" class="btn" id="tvScanBtn">Scan QR</button>
+    </div>
+    <button type="button" class="btn ghost" id="tvJoinX">Back</button>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/board.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/sfx.js"></script>
+<script src="js/solo_people_v04.js"></script>
+<script src="js/vendor/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/net.js"></script>
+<script src="../minikit/qrcode.js"></script>
+<script src="../minikit/invite_v02.js"></script>
+<script src="../minikit/invite_hook_v01.js"></script>
+<script src="../open/open_games_v01.js"></script>
+<script src="js/solo_host_v11.js"></script>
+<script src="js/solo_v11.js"></script>
+
+<script src="../../games/minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Red Deer Rich · solo phone", "version": "solo v0.11", "corner": "br", "offY": "76px"});</script>
+</body>
+</html>

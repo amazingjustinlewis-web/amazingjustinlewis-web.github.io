@@ -3,11 +3,21 @@
 (function () {
   (window.DEV_GAMES || []).forEach(function (g) {
     if (g.id === 'rdrsolo') {
-      g.ver = 'solo v0.10';
-      g.url = 'rdr-phone/solo_v10.html';
-      g.img = 'rdr-phone/solo_v10_shot.png';
-      g.tag = 'Solo vs 1-3 AI · cards rise out of the board space, centre replays no longer dim the board';
+      g.ver = 'solo v0.11';
+      g.url = 'rdr-phone/solo_v11.html';
+      g.img = 'rdr-phone/solo_v11_shot.png';
+      g.tag = 'Solo vs AI, or host friends from this phone \u00b7 Join a TV \u00b7 QR + invite \u00b7 shorter auction clock';
       g.mode = 'tab';
+      g.modes = {
+        phone: { label: 'Play on this phone', url: 'rdr-phone/solo_v11.html' },
+        match: { label: 'Start a match (TV/room)', url: 'rdr-phone/index_v078.html' }
+      };
+    }
+    if (g.id === 'rdrphone') {
+      g.modes = g.modes || {
+        phone: { label: 'Play on this phone', url: g.url },
+        match: { label: 'Start a match (TV/room)', url: 'rdr-phone/index_v078.html' }
+      };
     }
   });
 })();

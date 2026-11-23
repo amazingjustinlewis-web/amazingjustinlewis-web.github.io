@@ -1,0 +1,18 @@
+html,body{margin:0;background:#14121b;color:#f4f0ff;font:16px/1.45 Fredoka,system-ui,sans-serif;min-height:100%}
+body{padding:18px 18px calc(24px + env(safe-area-inset-bottom));}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.top h1{margin:0;font-size:18px;letter-spacing:.04em}
+.top p{margin:0;color:#cfc6ea;font-size:13px}
+.status{background:#1e1a2e;border:1px solid #ffffff18;border-radius:14px;padding:14px 16px}
+#choices h2,#queueBox h2{margin:8px 0 6px;font-size:22px}
+#choiceP,#queueP{color:#cfc6ea;margin:0 0 16px}
+.big{display:block;width:100%;box-sizing:border-box;margin:0 0 10px;padding:14px 16px;border:0;border-radius:14px;background:#ffd23f;color:#1a1400;font:700 16px Fredoka,system-ui,sans-serif;cursor:pointer}
+.big.alt{background:#5b6cff;color:#fff}
+.big.ghost{background:#ffffff14;color:#f4f0ff}
+.fine{margin:22px 0 10px;text-align:center}
+.fine a{color:#ffd23f;font-weight:700;text-decoration:none}
+.openList{margin-top:24px}
+.openList h3{margin:0 0 8px;font-size:14px;color:#cfc6ea;font-weight:600}
+.openList .row{display:block;background:#1e1a2e;border-radius:12px;padding:12px 14px;margin:0 0 8px;color:#fff;text-decoration:none}
+.openList .row b{color:#ffd23f}
+.openList .mut{color:#a59fb8;font-size:13px}

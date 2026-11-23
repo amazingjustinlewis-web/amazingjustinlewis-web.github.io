@@ -1,0 +1,11 @@
+// Proposed addition for project zero-to-phi (not deployed from this change).
+// If these land in firestore.rules, ZTPOpenGames.publish can write the live list.
+// Until then the join page stubs cleanly (BroadcastChannel + on-screen copy).
+//
+// match /openGames/{id} {
+//   allow read: if true;
+//   allow write: if request.resource.data.room is string
+//     && request.resource.data.game is string
+//     && request.resource.data.room.size() <= 8;
+//   allow delete: if true;
+// }
