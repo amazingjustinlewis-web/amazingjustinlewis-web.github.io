@@ -9,7 +9,7 @@ window.DEV_GAMES = [
   { id: 'zerologo', name: 'Zero logo + QR', ver: 'v0.1', url: 'zero/logo.html', img: 'zero/logo-shot.png', tag: 'Logo pulse \u00b7 3 light modes', mode: 'tab' },
   { id: 'zeroqr', name: 'Zero QR test', ver: 'v0.1', url: 'zero-qr/index.html', img: 'zero-qr/shot.png', tag: 'Hidden QR \u00b7 5 contrast presets', mode: 'tab' },
   { id: 'zero', name: 'Zero front page (draft)', ver: 'v0.1', url: 'zero/index.html', img: 'zero/shot.png', tag: 'New 0\u2011Phi home \u00b7 draft', mode: 'tab' },
-  { id: 'rdrsolo', name: 'Red Deer Rich \u00b7 solo phone', ver: 'solo v0.2', url: 'rdr-phone/solo_v02.html', img: 'rdr-phone/solo_shot.png', tag: 'Solo vs 1-3 AI \u00b7 swipe character cards \u00b7 hop landings \u00b7 tap to smack as you run past', mode: 'tab' },
+  { id: 'rdrsolo', name: 'Red Deer Rich \u00b7 solo phone', ver: 'solo v0.3', url: 'rdr-phone/solo_v03.html', img: 'rdr-phone/solo_shot.png', tag: 'Solo vs 1-3 AI \u00b7 big pop-up cards \u00b7 close-follow edge radar \u00b7 PERFECT smack combo', mode: 'tab' },
   { id: 'rdrphone', name: 'Red Deer Rich \u00b7 phone mode', ver: 'v0.9-dev', url: 'rdr-phone/phone.html', img: 'rdr-phone/shot.png', tag: 'Play on one phone \u00b7 friends join \u00b7 Move to TV', mode: 'tab' },
   { id: 'hoptop', name: 'Hop Top', ver: 'v0.1', url: 'hoptop/index.html', img: 'hoptop/shot.jpg', tag: 'Peg triangle puzzle \u00b7 solo on a phone or TV' },
   { id: 'broadside', name: 'Dangerous Waters', ver: 'v0.1.2', url: 'broadside/index.html', img: 'broadside/shot.jpg', tag: 'Classic battleships \u00b7 TV board + private phone fleets' },
