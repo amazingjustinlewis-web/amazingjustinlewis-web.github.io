@@ -35,7 +35,7 @@ body.playing #corner{display:flex}#corner.show,#corner:hover{opacity:1}
 #toast{position:fixed;left:50%;bottom:4vh;transform:translateX(-50%);background:#000c;color:#fff;padding:1vh 2vw;border-radius:1.5vh;font-size:2.4vh;opacity:0;transition:opacity .4s;z-index:30;pointer-events:none}
 #toast.on{opacity:1}
 </style>
-<link rel="stylesheet" href="css/launcher_portrait_v1.css?b=10"></head><body>
+<link rel="stylesheet" href="css/launcher_portrait_v1.css?b=11"></head><body>
 <div id="launcher">
   <header><h1>ZERO TO PHI &middot; DEV</h1><div class="st" style="padding-right:150px"><a href="../go/" target="_top" style="background:#ffd23f;color:#111;padding:.35em .8em;border-radius:999px;text-decoration:none;font-weight:700;margin-right:2vw">&#9654; Play the games</a><a href="status.html" style="color:#ffd23f;margin-right:2vw">Status</a><a href="joe/index_v02.html" style="color:#ffd23f;margin-right:2vw">Joe page</a><a href="joe/advertising_v01.html" style="color:#ffd23f;margin-right:2vw">Ad draft</a><a href="showcase/index_v13.html?b=1" style="color:#ffd23f;margin-right:2vw">Arcade showcase v0.13</a><span id="st">remote: waiting</span></div></header>
   <div id="deck"></div>
@@ -52,9 +52,9 @@ body.playing #corner{display:flex}#corner.show,#corner:hover{opacity:1}
 <script src="js/qrcode.js"></script>
 <script>window.LR_CONFIG = { peerPrefix: 'ztp-dev7q3x-v1-', iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };</script>
 <script src="js/net.js"></script>
-<script src="js/games_v2.js?b=10"></script>
+<script src="js/games_v2.js?b=11"></script>
 <script src="js/launcher.js"></script>
-<script src="js/launcher_portrait_v1.js?b=10"></script>
+<script src="js/launcher_portrait_v1.js?b=11"></script>
 <script src="minikit/ztp-account_v01.js?b=1"></script>
 <a id="ztpMe" href="profile.html" style="position:fixed;right:12px;top:12px;z-index:99;display:flex;gap:8px;align-items:center;background:#0c1226e6;color:#fff;border:1px solid #5ef2c8aa;border-radius:20px;padding:4px 12px 4px 4px;font:600 14px system-ui,sans-serif;text-decoration:none"><span id="ztpMeAv" style="width:30px;height:30px;overflow:hidden;border-radius:50%;background:#ffffff14"></span><span id="ztpMeT">Sign in with Google</span></a>
 <script>(function () { function paint() { var u = Acct.user(), p = null; try { p = JSON.parse(localStorage.getItem('ztp:profile')); } catch (e) {}
