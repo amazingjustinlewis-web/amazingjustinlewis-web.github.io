@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-17",
+  "updated": "2026-11-23",
   "games": [
     {
       "name": "Joe viewing page",
@@ -100,14 +100,14 @@
     {
       "name": "Red Deer Rich",
       "status": "Live",
-      "ver": "v0.8",
+      "ver": "v0.10",
       "public": true,
       "fit": [
         "TV",
         "phone"
       ],
-      "url": "../games/red-deer-rich/",
-      "notes": "Polished: pointed property tabs, shake-to-roll from any screen, dread hops, buy pulse, Live/Queued/Turn-only property management, rent locked at landing, AI takes dropped seats. v0.8 frozen. Next: phone solo mode, caf\u00e9 skins."
+      "url": "../games/red-deer-rich/v0.10/",
+      "notes": "Public freeze v0.10 (labelled In development on the site): solo phone mode (dice pad, centre close-up, smack replays, selfie bobblehead, cards that rise out of their space) plus the TV board from dev v0.7.7 (recap, lobby zoom, visible sidebar, PiP follow cam, walking runners). Frozen at games/red-deer-rich/v0.10/ (solo.html + index.html / controller.html). Prior public freeze v0.8 kept. Dev folder stays mutable."
     },
     {
       "name": "Iron Stride",
@@ -208,13 +208,13 @@
     {
       "name": "Red Deer Rich \u00b7 solo phone",
       "status": "In development",
-      "ver": "solo v0.1",
-      "public": false,
+      "ver": "v0.10",
+      "public": true,
       "fit": [
         "phone"
       ],
-      "url": "rdr-phone/solo_v01.html",
-      "notes": "Solo on one phone vs 1-3 computer players, no TV. Map fills the screen; thin top bar split by net worth in token colours with a pull-down for standings, facts and settings (sound, fast AI, shake, timer, camera, open vs covert proximity deals). Dice in the bottom middle: tap, swipe or shake to roll and pass; auto-pass when nothing is left. Lift the bottom edge for deeds (build/sell/mortgage), held cards and trade. Drawn cards: swipe up to play, down to stash (Tow Truck Pass). Tap a player for Make an offer / Chat (speech bubbles). Walking people in mix-and-match outfits, shirts in token colours. Turn events logged for future PiP and replays. Reuses the v0.9-dev engine files."
+      "url": "../games/red-deer-rich/v0.10/solo.html",
+      "notes": "Public freeze of solo v0.10 (same package as the v0.10 TV board). Dev copies remain at rdr-phone/solo_v10.html and are still being tuned."
     },
     {
       "name": "Orbit Brawl",

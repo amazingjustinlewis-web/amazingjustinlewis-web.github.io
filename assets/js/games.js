@@ -140,16 +140,18 @@ window.GAMES = [
   {
     id: 'red-deer-rich',
     title: 'Red Deer Rich',
-    pitch: 'Buy Red Deer, build Shops, make deals on your phone and hit PAY UP before they pass the dice. On your TV, with phones as controllers.',
+    pitch: 'Buy Red Deer, build Shops, make deals on your phone and hit PAY UP before they pass the dice. Play on your TV with phones as controllers, or solo on one phone.',
     cover: 'assets/img/red-deer-rich/cover-card.webp',
     coverAlt: 'Red Deer Rich TV board: Red Deer streets around a river, the Upper Level Youth Centre and player tokens',
     details: 'games/red-deer-rich.html',
-    status: 'Early test',
-    tags: ['2\u20138 players', 'TV + phones', 'Placeholder art'],
+    status: 'In development',
+    tags: ['2\u20138 players', 'TV + phones or solo', 'In development'],
     accent: '#f2c230',
     sections: ['family'],
     intensity: 2,
     goodToKnow: [
+      'Early playable build: still being tuned, things will change and may break. Feedback welcome.',
+      'Play solo on your phone against computer players, or open the TV board and join with phones. Those are two separate ways to play.',
       'A friendly property trading game set in Red Deer, Alberta. Players can go bankrupt; the last one standing wins.',
       'PAY UP is a reaction race: a big button pops up on the owner\u2019s phone, with a cartoon BOOM on the payer\u2019s phone when they get caught.',
       'Phones carry private chat and deals between players (the TV never shows them).',
@@ -158,13 +160,27 @@ window.GAMES = [
       'Late arrivals can scan the small QR on the TV to watch, and ask to take over a computer player\u2019s seat.',
       'Three game lengths: Regular (nothing pre-dealt), Medium (some deeds dealt, 45 min) and Quick (every deed dealt, 30 min).',
       'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi).',
-      'Early test: placeholder art, and some character perks are still marked coming soon.'
+      'Placeholder art, and some character perks are still marked coming soon.'
     ],
     versions: [
       {
+        id: 'v0.10',
+        name: 'Solo phone + TV',
+        current: true,
+        play: 'games/red-deer-rich/v0.10/index.html',
+        notes: 'Early playable build: still being tuned, things will change and may break. Feedback welcome. New solo phone mode: a dice pad in the thumb zone, a close-up that fills the board with a colour pointer to the runner, smack replays in the centre, a selfie bobblehead, and Randomness and Secret Finds cards that rise out of their space, flip and tuck back in. The TV board keeps the recap show, a lobby zoom, a sidebar that stays visible, a picture-in-picture follow camera, walking runners and phone dice with hop-and-smack reactions. Previous public copy (v0.8) is kept.'
+      },
+      {
+        id: 'v0.8',
+        name: 'Polish + front door',
+        current: false,
+        play: 'games/red-deer-rich/v0.8/index.html',
+        notes: 'Public freeze before v0.10. Pointed property tabs, shake-to-roll from any screen, dread hops, buy pulse, Live/Queued/Turn-only property management, rent locked at landing, AI takes dropped seats.'
+      },
+      {
         id: 'v0.7',
         name: 'Playtest polish',
-        current: true,
+        current: false,
         play: 'games/red-deer-rich/index.html',
         notes: 'Fixes from a 10-person family playtest. Tap any property on your phone and it bounces on the TV. Clear VIEW SET and CLOSE SET buttons, a big PAID IN FULL that sweeps across the phone, and MY TURN always jumps straight to your turn. When passing the dice is the only move left, it passes by itself and says so. Pick a 3, 5 or 8 second PAY UP catch window. A new settings vote (gear button) lets anyone propose turning the timer off or on, adding 15 minutes, pausing, changing the catch window or switching the TV zoom, which applies at 85% yes. The TV zoom now zooms in on the action, glides back after about 5 seconds and shows arrows pointing to off-screen players. Deals get a List or Map toggle.'
       },
