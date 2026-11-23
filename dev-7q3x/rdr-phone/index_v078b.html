@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Red Deer Rich - TV | Zero to Phi</title>
+<meta name="description" content="Red Deer Rich: a Red Deer property-trading board game for the TV with phones as controllers. v0.7.8b by Zero to Phi.">
+<meta name="theme-color" content="#14121b">
+<meta name="robots" content="noindex">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/tv.css">
+<link rel="stylesheet" href="css/tv075_v01.css">
+<link rel="stylesheet" href="css/tv077_v01.css">
+<link rel="stylesheet" href="css/net_help_v077b.css">
+</head>
+<body>
+<canvas id="board" aria-label="Game board"></canvas>
+
+<header id="top">
+  <div class="brand"><img src="assets/logo.svg" alt="" width="49" height="40"><span>ZERO&nbsp;TO&nbsp;PHI</span></div>
+  <div class="title">RED DEER <span class="rich">RICH</span><span class="proto">v0.7.8b · PLACEHOLDER ART</span></div>
+  <div class="top-right"><span id="roundInfo"></span><span id="potInfo"></span><span id="joinInfo"></span><span id="lightInfo"></span><span id="fxInfo"></span></div>
+</header>
+
+<aside id="side">
+  <div id="cards"></div>
+  <div id="log"></div>
+  <div id="watchQr" hidden><span>Scan to <b>watch</b><br>or take over<br>an AI seat</span><canvas id="qrSmall" width="450" height="450"></canvas></div>
+</aside>
+
+<div id="banner" hidden><canvas id="bannerDice" width="200" height="100"></canvas><div class="btxt"><div class="who" id="bWho"></div><div class="what" id="bWhat"></div></div></div>
+<div id="deedPop" class="pop" hidden></div>
+<div id="cardPop" class="pop" hidden></div>
+<div id="payupBar" hidden></div>
+<div id="auctionPop" hidden></div>
+<div id="big" aria-live="polite"></div>
+<div id="optInfo" class="optinfo" hidden></div>
+<div id="flash" aria-hidden="true"></div>
+
+<section id="lobby" class="screen">
+  <div class="lobby-left">
+    <div class="presents"><img src="assets/logo.svg" alt="" width="49" height="40"> ZERO TO PHI presents <a id="backLink" class="back" href="../../family.html">&larr; games</a></div>
+    <div id="phoneHint" class="phone-hint" hidden>On a phone? This is the <b>TV screen</b>. Open it on the TV, then join with the <a href="controller_v078b.html">phone controller</a>.</div>
+    <h1>RED DEER <span>RICH</span></h1>
+    <p class="tagline">Ten broke Red Deerians. One city. Buy up Gasoline Alley, build Shops on Ross Street, and hit <b>PAY UP</b> before your friends sneak past.</p>
+    <div class="join-box">
+      <canvas id="qr" width="300" height="300" aria-label="QR code to join"></canvas>
+      <div class="join-text">
+        <div class="join-label">JOIN ON YOUR PHONE</div>
+        <div class="code" id="code">----</div>
+        <div class="url" id="joinUrl"></div>
+        <div class="netstatus" id="netStatus">Connecting to the room server&hellip;</div>
+      </div>
+    </div>
+    <div id="huePanel" class="hue-panel off"></div>
+  </div>
+  <div class="lobby-right">
+    <h2>PLAYERS <span id="pcount">0/8</span></h2>
+    <ul id="lobbyPlayers"></ul>
+    <div class="lb-box">
+      <div class="lb-title">Add a computer player (AI): click to pick the character and difficulty. During a game, the host phone (or the I key) can add an AI to an empty seat.</div>
+      <div class="lb-row"><button id="aiChar" class="ghost wide">Character</button><button id="aiLevel" class="ghost">Normal</button><button id="aiAdd">+ ADD AI</button></div>
+      <div class="lb-title">Rules for this game</div>
+      <div class="lb-row wrap presets" id="presetRow"></div>
+      <div class="rulechips" id="ruleChips"></div>
+      <button id="optToggle" class="optline">Game options</button>
+      <div class="optrows tv" id="rulesRow" hidden></div>
+      <div class="lb-title">Game length</div>
+      <div class="lb-row" id="modeRow"><button data-mode="regular" class="ghost">REGULAR<small>nothing pre-dealt</small></button><button data-mode="medium" class="ghost">MEDIUM<small>some deeds dealt · 45 min</small></button><button data-mode="quick" class="ghost">QUICK<small>ALL deeds dealt · 30 min</small></button></div>
+      <div class="lb-row" id="timerRow"></div>
+    </div>
+    <button id="startBtn" class="start" disabled>START GAME</button>
+    <div class="howto">Phones: scan the code, type a name, swipe to pick a character. The first phone to join can also add AI, set rules and start.</div>
+  </div>
+</section>
+
+<section id="results" class="screen" hidden>
+  <canvas id="fireworks"></canvas>
+  <div id="resBody">
+  <h1 id="resTitle">WINNER!</h1>
+  <div id="podium"></div>
+  <div id="ground"></div>
+  <p class="res-key">Net worth = cash + property + shops</p>
+  <div class="res-btns"><button id="againBtn" class="start">PLAY AGAIN</button><button id="lobbyBtn" class="ghost">CHANGE PLAYERS</button></div>
+  <p class="res-note">Press Enter to play again &middot; the first player can also restart from their phone.</p>
+  </div>
+  <div id="resQr" hidden><span>Scan to join<br>the next game</span><canvas id="qrRes" width="300" height="300"></canvas></div>
+</section>
+
+<div id="netBadge"></div>
+<div id="svTv" class="svtv" hidden></div>
+<div id="autoTv" class="autotv" hidden></div>
+<div id="pauseTv" class="pausetv" hidden><div class="pz-t">&#9208; PAUSED</div><div class="pz-s">Resume with a vote from any phone (Settings &rarr; Resume) &middot; or press P</div></div>
+
+<script src="js/vendor/peerjs.min.js"></script>
+<script>/* old TV browsers (e.g. Samsung Tizen, Chromium < 80) cannot run the modern PeerJS build: load the transpiled one */ if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/config.js"></script>
+<script src="js/options.js"></script>
+<script src="js/board.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/sfx.js"></script>
+<script src="js/net_v077b.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/art.js"></script>
+<script src="js/render.js"></script>
+<script>window.RDR_CONTROLLER = 'controller_v078b.html';   /* v0.7.8b: v0.7.8 board + sturdier phone link (STUN/TURN, backup PeerJS, cloud relay) */</script>
+<script>/* If this tab is joining an existing room as an extra screen, rewrite ?screen=CODE to the existing viewer mirror before the host boots (so we do not open a second host). */
+(function(){ var u=new URL(location.href), s=(u.searchParams.get('screen')||'').toUpperCase(); if(/^[A-Z]{3,4}$/.test(s) && !u.searchParams.get('viewer')){ u.searchParams.set('viewer',s); u.searchParams.set('screen','1'); history.replaceState(null,'',u); } })();</script>
+<script src="js/host_v074.js"></script>
+<script src="../../assets/js/ztp-end.js"></script>
+<script>ZTPEnd.watch(function () { return RDR.game.phase==='over'; }, 20000);</script>
+<script src="../minikit/ztp-account_v01.js?b=1"></script>
+<script>/* v0.7.3 leaderboard: at the winner screen, a human winner posts their final net worth (bankrupt = 0, so a winner always has worth > 0). */
+Acct.watch(function () { return RDR.game.phase === 'over'; }, function () {
+  var g = RDR.game, r = (g.results || [])[0]; if (!r) return; var p = (g.players || []).filter(function (q) { return q.id === r.pid; })[0];
+  var meta = { title: 'Red Deer Rich: Top 10 fortunes', meaning: 'Score = winner\'s final net worth', fmt: function (n) { return '$' + n.toLocaleString(); } };
+  if (!p || p.ai || r.team) { Acct.board('red-deer-rich', meta); return; }
+  Acct.submit('red-deer-rich', { name: r.name, score: r.worth, label: (g.players || []).length + ' players' }).then(function (e) { meta.mine = [e]; Acct.board('red-deer-rich', meta); });
+});
+Acct.watch(function () { return RDR.game.phase !== 'over'; }, Acct.hide);</script>
+<script src="../js/ztp-playbar.js" data-here="screen" data-screen="index_v078b.html" data-phone="controller_v078b.html"></script>
+<script src="../minikit/invite_v02.js"></script>
+<script src="../minikit/invite_hook_v01.js"></script>
+<script>ZTPInvite.attach({title:"Red Deer Rich",join:"controller_v078b.html",role:"host",corner:"bl"});</script>
+<script src="js/recap_v01.js"></script>
+
+<script src="../../games/minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Red Deer Rich · TV", "version": "v0.7.8b", "corner": "br"});</script>
+
+<script src="js/solo_people_v02.js"></script>
+<script src="js/talk_queue_v01.js"></script>
+<script src="js/walkers_tv_v01.js"></script>
+<script src="js/smack_tv_v01.js"></script>
+<script src="js/lobby_overlay_tv_v01.js"></script>
+<script src="js/talk_tv_v01.js"></script>
+<script src="js/lobby_cam_tv_v01.js"></script>
+<script src="js/dice_handoff_tv_v02.js"></script>
+<script src="js/fx_tune_tv_v01.js"></script>
+<script src="js/selfie_tv_v01.js"></script>
+<script src="js/runner_fx_tv_v01.js"></script>
+<script src="js/turn_ping_tv_v01.js"></script>
+<script src="js/recap_montage_tv_v01.js"></script>
+<script src="js/queue_tv_v01.js"></script>
+<script src="js/screens_tv_v01.js"></script>
+<script src="js/chrome_tv_v01.js"></script>
+<script src="js/pip_cam_tv_v01.js"></script>
+<script src="js/tv077_boot_v01.js"></script>
+<script src="js/tv077b_qr_v01.js"></script>
+<script src="../open/open_games_v01.js"></script>
+<script src="js/auction_clock_tv_v01.js"></script>
+<script src="js/faces_react_tv_v01.js"></script>
+<script src="js/open_publish_tv_v01.js"></script>
+</body>
+</html>
