@@ -7,6 +7,7 @@
      'soft-play'  front card: soft, bright, gentle. Kids + the One-Button Series
      'family'     centre card: the main section, soft to intense, all family-appropriate
      'deep-end'   back card: darker experiments (locked for now, no games listed)
+     'arcade'     in-progress arcade games (early playable builds, still being tuned)
 
    ADD A GAME = add one object to GAMES:
      id          short unique slug, e.g. 'charge-hop'
@@ -385,6 +386,295 @@ window.GAMES = [
         current: true,
         play: 'games/laser-range/index.html',
         notes: 'Motion aiming with 5-point calibration and Re-centre, a touchpad fallback, a 90-second shooting gallery with pop-up targets, a rail of ducks and gold runners, exploding barrels with chain reactions, a charge-cannon balloon power-up, swipe blasts, scores, awards and a results screen. Auto low detail for Chromecast. Placeholder art.'
+      }
+    ]
+  }
+
+  ,{
+    id: "bubble-hockey",
+    title: "Bubble Hockey",
+    pitch: "Table-top rod hockey on your TV. Drag, dangle and flick to pass, with phones as the rods.",
+    cover: 'assets/img/bubble-hockey/cover-card.webp',
+    coverAlt: "Bubble Hockey: a table-top hockey rink under a glass dome, with skaters chasing a puck",
+    details: 'games/bubble-hockey.html',
+    status: 'In development',
+    tags: ["2 players", "TV + phones", "In development"],
+    accent: "#7ec8ff",
+    sections: ["family"],
+    intensity: 3,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Open this on a TV or big screen; phones join with the QR code (same Wi-Fi).",
+      "Cartoon table hockey. Sound comes from the TV; mute from the game if you need to."
+    ],
+    versions: [
+      {
+        id: "v0.9.72",
+        name: "Latest playable",
+        current: true,
+        play: 'games/bubble-hockey/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "orbit-brawl",
+    title: "Orbit Brawl",
+    pitch: "Phone-cockpit space dogfight. Two to twenty pilots, and the TV is the live cinematic camera.",
+    cover: 'assets/img/orbit-brawl/cover-card.webp',
+    coverAlt: "Orbit Brawl: small ships weaving through a field of rocks in open space",
+    details: 'games/orbit-brawl.html',
+    status: 'In development',
+    tags: ["2–20 players", "TV + phones", "In development"],
+    accent: "#c9a8ff",
+    sections: ["family"],
+    intensity: 4,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Open this on a TV or big screen; phones join with the QR code (same Wi-Fi). A controller on a computer also works.",
+      "Space dogfight with cartoon ships. Sound comes from the TV and phones."
+    ],
+    versions: [
+      {
+        id: "v0.17",
+        name: "Latest playable",
+        current: true,
+        play: 'games/orbit-brawl/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "swish-flick",
+    title: "Swish Flick",
+    pitch: "Flick-to-shoot arcade hoops. Drain it from mid-court or at the buzzer.",
+    cover: 'assets/img/swish-flick/cover-card.webp',
+    coverAlt: "Swish Flick: a basketball hoop and a ball mid-flick",
+    details: 'games/swish-flick.html',
+    status: 'In development',
+    tags: ["Arcade", "Phones or TV", "In development"],
+    accent: "#ff9a3c",
+    sections: ["arcade"],
+    intensity: 3,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Works on a phone, or on a TV with phones as controllers (same Wi-Fi)."
+    ],
+    versions: [
+      {
+        id: "v0.1.1",
+        name: "First arcade build",
+        current: true,
+        play: 'games/swish-flick/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "splash-clown",
+    title: "Splash Clown",
+    pitch: "Flick a ball at the target and dunk the clown. A carnival toss on your phone or TV.",
+    cover: 'assets/img/splash-clown/cover-card.webp',
+    coverAlt: "Splash Clown: a carnival dunk tank with a clown on the perch and a target",
+    details: 'games/splash-clown.html',
+    status: 'In development',
+    tags: ["Arcade", "Phones or TV", "In development"],
+    accent: "#ff5a8a",
+    sections: ["arcade"],
+    intensity: 2,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Works on a phone, or on a TV with phones as controllers (same Wi-Fi). A carnival ball-toss / clown-dunk game."
+    ],
+    versions: [
+      {
+        id: "v0.1.1",
+        name: "First arcade build",
+        current: true,
+        play: 'games/splash-clown/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "stack-attack",
+    title: "Stack Attack",
+    pitch: "Build a 3D tower against two bots, then ride out the disaster.",
+    cover: 'assets/img/stack-attack/cover-card.webp',
+    coverAlt: "Stack Attack: a colourful stack of blocks built into a tall tower",
+    details: 'games/stack-attack.html',
+    status: 'In development',
+    tags: ["Arcade", "TV + phones", "In development"],
+    accent: "#ffc93f",
+    sections: ["arcade"],
+    intensity: 3,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Open this on a TV or big screen; phones join with the QR code (same Wi-Fi)."
+    ],
+    versions: [
+      {
+        id: "v0.2.1",
+        name: "Arcade build",
+        current: true,
+        play: 'games/stack-attack/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "balloon-buddy",
+    title: "Balloon Buddy",
+    pitch: "A silly word-guessing game: pop the balloons and play with friends.",
+    cover: 'assets/img/balloon-buddy/cover-card.webp',
+    coverAlt: "Balloon Buddy: bright balloons ready to pop in a word-guessing game",
+    details: 'games/balloon-buddy.html',
+    status: 'In development',
+    tags: ["Arcade", "TV + phones", "In development"],
+    accent: "#7ad7ff",
+    sections: ["arcade"],
+    intensity: 2,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Open this on a TV or big screen; phones join with the QR code (same Wi-Fi)."
+    ],
+    versions: [
+      {
+        id: "v0.1.1",
+        name: "First arcade build",
+        current: true,
+        play: 'games/balloon-buddy/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "hop-top",
+    title: "Hop Top",
+    pitch: "A peg triangle puzzle you can play solo on a phone or a TV.",
+    cover: 'assets/img/hop-top/cover-card.webp',
+    coverAlt: "Hop Top: a triangle of pegs with one empty hole",
+    details: 'games/hop-top.html',
+    status: 'In development',
+    tags: ["Arcade", "Solo", "In development"],
+    accent: "#9d7cff",
+    sections: ["arcade"],
+    intensity: 1,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Works solo on a phone, or on a TV with a phone as the controller."
+    ],
+    versions: [
+      {
+        id: "v0.1",
+        name: "First arcade build",
+        current: true,
+        play: 'games/hop-top/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "marble-rush",
+    title: "Marble Rush",
+    pitch: "Tilt-to-steer marble racing with drops, jumps and a loop. Two to eight phones.",
+    cover: 'assets/img/marble-rush/cover-card.webp',
+    coverAlt: "Marble Rush: colourful marbles racing along a track with a loop",
+    details: 'games/marble-rush.html',
+    status: 'In development',
+    tags: ["Arcade", "2–8 phones", "In development"],
+    accent: "#5fdc7a",
+    sections: ["arcade"],
+    intensity: 3,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Open this on a TV or big screen; two to eight phones join with the QR code (same Wi-Fi). Uses the phone motion sensor."
+    ],
+    versions: [
+      {
+        id: "v0.2",
+        name: "Arcade build",
+        current: true,
+        play: 'games/marble-rush/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "stunt-smash",
+    title: "Stunt Smash",
+    pitch: "Draw your line, pick a bike, a car or a bus, and launch into the crates. Take turns.",
+    cover: 'assets/img/stunt-smash/cover-card.webp',
+    coverAlt: "Stunt Smash: a ramp and a pile of crates waiting for a launch",
+    details: 'games/stunt-smash.html',
+    status: 'In development',
+    tags: ["Arcade", "Take turns", "In development"],
+    accent: "#ff6b4a",
+    sections: ["arcade"],
+    intensity: 3,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Open this on a TV or big screen; phones join with the QR code (same Wi-Fi)."
+    ],
+    versions: [
+      {
+        id: "v0.2",
+        name: "Arcade build",
+        current: true,
+        play: 'games/stunt-smash/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "glide-puck",
+    title: "Glide Puck",
+    pitch: "Phone air hockey, with an optional TV mirror so everyone can watch.",
+    cover: 'assets/img/glide-puck/cover-card.webp',
+    coverAlt: "Glide Puck: an air-hockey table with a puck mid-slide",
+    details: 'games/glide-puck.html',
+    status: 'In development',
+    tags: ["Arcade", "Phones", "In development"],
+    accent: "#4ad2ff",
+    sections: ["arcade"],
+    intensity: 3,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Play on phones, with an optional TV mirror (same Wi-Fi)."
+    ],
+    versions: [
+      {
+        id: "v0.2.1",
+        name: "Arcade build",
+        current: true,
+        play: 'games/glide-puck/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "foosball",
+    title: "Foosball",
+    pitch: "Table foosball: slide and spin the rods, and drill the shots.",
+    cover: 'assets/img/foosball/cover-card.webp',
+    coverAlt: "Foosball: a table with rows of players on rods and a ball in play",
+    details: 'games/foosball.html',
+    status: 'In development',
+    tags: ["Arcade", "TV + phones", "In development"],
+    accent: "#e2b84a",
+    sections: ["arcade"],
+    intensity: 3,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Open this on a TV or big screen; phones join with the QR code (same Wi-Fi)."
+    ],
+    versions: [
+      {
+        id: "v0.2",
+        name: "Arcade build",
+        current: true,
+        play: 'games/foosball/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
       }
     ]
   }

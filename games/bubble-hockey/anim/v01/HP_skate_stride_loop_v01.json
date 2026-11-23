@@ -1,0 +1,53 @@
+{
+ "name": "HP_skate_stride_loop",
+ "source_action": "skate_stride_loop_qp",
+ "fps": 30.0,
+ "src_range": [
+  1,
+  465
+ ],
+ "type": "loop",
+ "event": "stride",
+ "plants": [
+  80,
+  89,
+  102,
+  117,
+  127,
+  139,
+  152,
+  159,
+  186,
+  192,
+  206,
+  219,
+  238,
+  247,
+  263,
+  286,
+  331,
+  348,
+  360,
+  386,
+  425,
+  429
+ ],
+ "loop_match": 0.1783,
+ "loop_src": [
+  186,
+  218
+ ],
+ "crossfade_frames": 4,
+ "clip_src": [
+  186,
+  218
+ ],
+ "frames": 33,
+ "seconds": 1.1,
+ "loop": true,
+ "files": {
+  "blend": "D:\\AI\\Mocap\\Takes\\hockey\\HP_skate_stride_loop_v01.blend",
+  "glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_skate_stride_loop_v01.glb",
+  "full_glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_skate_stride_loop_full_v01.glb"
+ }
+}

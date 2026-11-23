@@ -1,0 +1,4 @@
+#tray{position:fixed;left:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;z-index:6}
+.ico{width:64px;height:64px;border-radius:16px;border:0;background:#ffffffcc;box-shadow:0 4px 12px #0004;display:grid;place-items:center;touch-action:none;cursor:grab}
+#rot{position:fixed;right:14px;bottom:14px;z-index:6;font-size:20px;padding:12px 16px}#go{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:7;display:none}
+#res{position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:7;background:#000b;border-radius:14px;padding:10px 18px;font-size:clamp(15px,2.6vh,24px);display:none;text-align:left}

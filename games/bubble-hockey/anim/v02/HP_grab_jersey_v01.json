@@ -1,0 +1,46 @@
+{
+ "name": "HP_grab_jersey",
+ "source_action": "grab_jersey_qp",
+ "fps": 30.0,
+ "src_range": [
+  1,
+  315
+ ],
+ "type": "oneshot",
+ "event": "hand_stick_speed",
+ "tries": [
+  {
+   "frame": 81,
+   "peak": 3.653,
+   "jitter": 0.0741,
+   "score": 1.472
+  },
+  {
+   "frame": 207,
+   "peak": 2.772,
+   "jitter": 0.0557,
+   "score": 1.312
+  }
+ ],
+ "best": {
+  "frame": 81,
+  "peak": 3.653,
+  "jitter": 0.0741,
+  "score": 1.472
+ },
+ "hit_src": 81,
+ "clip_src": [
+  66,
+  96
+ ],
+ "frames": 31,
+ "seconds": 1.033,
+ "hit_frame": 16,
+ "hit_s": 0.5,
+ "loop": false,
+ "files": {
+  "blend": "D:\\AI\\Mocap\\Takes\\hockey\\HP_grab_jersey_v01.blend",
+  "glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_grab_jersey_v01.glb",
+  "full_glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_grab_jersey_full_v01.glb"
+ }
+}

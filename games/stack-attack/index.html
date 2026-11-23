@@ -1,0 +1,32 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Stack Attack</title><link rel="stylesheet" href="../minikit/kit.css"><link rel="stylesheet" href="stack.css">
+<style>body:not(.ph) #rot{right:150px}body.ph #join{display:none}</style></head><body>
+<canvas id="cv" class="full"></canvas><div class="hud"><div id="ph">BUILD</div><div id="tm"></div><div id="ht"></div></div><div id="tray"></div><button class="btn" id="rot">&#10227; Rotate</button><button class="btn go" id="go">Next round &#9654;</button>
+<div id="res"></div><div id="join"></div><div class="big" id="big"></div>
+<script>window.MINI = 'stack';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/qrcode.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="../../assets/js/ztp-end.js"></script><script src="../minikit/matter.min.js"></script><script src="draw.js"></script><script src="game.js"></script><script src="input.js"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, cv = $('cv'), ctx = cv.getContext('2d'), dpr = 1, phone = Kit.isPhone && !Kit.Q.get('tv'), host = null;
+  var G = new StackGame(), cam = new StackDraw.Cam(), P = null, st = G.snap();
+  if (phone) document.body.classList.add('ph');
+  else { host = Kit.host({ max: 6, onMsg: function (p, m) { var id = p.id; if (m.t === 'spawn') G.spawn(id, m.k, m.x, m.y); else if (m.t === 'pd') G.grab(id, m.x, m.y); else if (m.t === 'pm') G.move(id, m.x, m.y); else if (m.t === 'pu') G.drop(id); else if (m.t === 'rot') G.rotate(id); else if (m.t === 'next' && G.S.phase === 'score') G.newRound(); }, onLeave: function (p) { G.drop(p.id); } }); host.qr($('join')); }
+  StackInput(cv, $('tray'), cam, function () { return P; }, { spawn: function (k, x, y) { G.spawn('me', k, x, y); Kit.phase('play'); }, grab: function (x, y) { return G.grab('me', x, y); }, move: function (x, y) { G.move('me', x, y); }, drop: function () { G.drop('me'); }, rotate: function () { G.rotate('me'); } });
+  $('rot').onclick = function () { G.rotate('me'); }; $('go').onclick = function () { G.newRound(); };
+  function hud(st) {
+    $('ph').textContent = st.phase === 'build' ? 'BUILD! next: ' + G.S.dz[1].replace('!', '') : st.phase === 'disaster' ? st.name : st.phase === 'settle' ? 'Settling\u2026' : 'Your tower: ' + st.h.toFixed(1) + 'm';
+    $('tm').textContent = st.phase === 'score' ? 'best ' + st.best.toFixed(1) + 'm' : st.t + 's'; $('ht').textContent = st.phase === 'build' ? 'drag a block in from the left \u00b7 drag empty space to look around' : '';
+    var b = $('big'); b.style.opacity = st.phase === 'disaster' && G.S.t > 6.4 ? 1 : 0; b.textContent = st.name;
+    $('res').style.display = st.phase === 'score' ? 'block' : 'none'; $('go').style.display = st.phase === 'score' && phone ? 'block' : 'none';
+    if (st.phase === 'score') $('res').innerHTML = st.res.slice().sort(function (a, b) { return b[1] - a[1]; }).map(function (r, i) { return (i ? '' : '\uD83C\uDFC6 ') + r[0] + ': <b>' + r[1].toFixed(1) + ' m</b>'; }).join('<br>') + (phone ? '' : '<br><small>tap Next on your phone</small>');
+    $('tray').style.display = st.phase === 'build' ? 'flex' : 'none';
+  }
+  function size() { dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; } addEventListener('resize', size); size();
+  var last = 0, acc = 0, sendT = 0;
+  (function loop(t) { var dt = Math.min(.05, (t - last) / 1000 || 0); last = t; acc += dt; while (acc > 1 / 60) { G.step(1 / 60); acc -= 1 / 60; }
+    st = G.snap(); cam.update(st, dt, innerWidth, innerHeight); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); P = StackDraw.draw(ctx, innerWidth, innerHeight, st, cam.c, t / 1000); hud(st);
+    sendT += dt; if (host && sendT > .05) { sendT = 0; host.all({ t: 's', s: st }); } requestAnimationFrame(loop); })(0);
+  window.SA = { G: G, cam: cam, P: function () { return P; } };
+  Kit.over(function () { return G.S.phase === 'score' && G.S.round >= 3; }, 40000);
+})();
+</script>
+</body></html>
