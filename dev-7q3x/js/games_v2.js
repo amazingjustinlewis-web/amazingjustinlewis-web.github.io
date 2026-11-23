@@ -1,0 +1,74 @@
+/* Dev launcher catalogue v2 (b=8): same list as games.js, plus optional per-game fields for the portrait grid:
+   shape: {w,h} tile variation around the square baseline (each clamped to 0.75..1.25), and the folder map below.
+   Landscape deck (launcher.js) ignores both, so the TV/desktop view is unchanged.
+   Original note: url is relative to /dev-7q3x/. mode: 'frame' (runs inside the launcher) or 'tab' (fallback: opens on its own). */
+window.DEV_GAMES = [
+  { id: 'fightart', name: 'Fight Art', ver: 'v0.1', url: 'fightart/index_v01.html?b=1', img: 'fightart/shot.jpg', tag: 'Zero to Phi concept art \u00b7 80 silhouettes \u00b7 slideshow', mode: 'tab' },
+  { id: 'zerostatic', name: 'Zero logo STATIC', ver: 'v0.1', url: 'zero/logo-static.html', img: 'zero/static-shot.png', tag: 'Thin crisp logo \u00b7 breathing QR', mode: 'tab' },
+  { id: 'zerolive', name: 'Zero logo LIVE', ver: 'v0.1', url: 'zero/logo-live.html', img: 'zero/live-shot.png', tag: 'Procedural logo \u00b7 energy + strike \u00b7 QR', mode: 'tab' },
+  { id: 'zerologo', name: 'Zero logo + QR', ver: 'v0.1', url: 'zero/logo.html', img: 'zero/logo-shot.png', tag: 'Logo pulse \u00b7 3 light modes', mode: 'tab' },
+  { id: 'zeroqr', name: 'Zero QR test', ver: 'v0.1', url: 'zero-qr/index.html', img: 'zero-qr/shot.png', tag: 'Hidden QR \u00b7 5 contrast presets', mode: 'tab' },
+  { id: 'zero', name: 'Zero front page (draft)', ver: 'v0.1', url: 'zero/index.html', img: 'zero/shot.png', tag: 'New 0\u2011Phi home \u00b7 draft', mode: 'tab' },
+  { id: 'rdrsolo', name: 'Red Deer Rich \u00b7 solo phone', ver: 'solo v0.1', url: 'rdr-phone/solo_v01.html', img: 'rdr-phone/solo_shot.png', tag: 'Solo on your phone vs 1-3 AI \u00b7 swipe/shake dice \u00b7 walking people', mode: 'tab' },
+  { id: 'rdrphone', name: 'Red Deer Rich \u00b7 phone mode', ver: 'v0.9-dev', url: 'rdr-phone/phone.html', img: 'rdr-phone/shot.png', tag: 'Play on one phone \u00b7 friends join \u00b7 Move to TV', mode: 'tab' },
+  { id: 'hoptop', name: 'Hop Top', ver: 'v0.1', url: 'hoptop/index.html', img: 'hoptop/shot.jpg', tag: 'Peg triangle puzzle \u00b7 solo on a phone or TV' },
+  { id: 'broadside', name: 'Dangerous Waters', ver: 'v0.1.2', url: 'broadside/index.html', img: 'broadside/shot.jpg', tag: 'Classic battleships \u00b7 TV board + private phone fleets' },
+  { id: 'swish', shape: { w: 0.95, h: 1.06 }, name: 'Swish Flick', ver: 'v0.1.1', url: 'swish/index.html', img: 'swish/shot.jpg', tag: 'Flick-to-shoot arcade hoops' },
+  { id: 'dunk', name: 'Splash Clown', ver: 'v0.1.1', url: 'dunk/index.html', img: 'dunk/shot.jpg', tag: 'Flick at the target, dunk the clown' },
+  { id: 'puck', name: 'Glide Puck', ver: 'v0.2.1', url: 'puck/index.html', img: 'puck/shot.jpg', tag: 'Phone air hockey \u00b7 optional TV mirror' },
+  { id: 'stack', shape: { w: 0.92, h: 1.12 }, name: 'Stack Attack', ver: 'v0.2.1', url: 'stack/index.html', img: 'stack/shot.jpg', tag: '3D tower build vs 2 bots, then disaster' },
+  { id: 'buddy', shape: { w: 0.95, h: 1.1 }, name: 'Balloon Buddy', ver: 'v0.1.1', url: 'buddy/index.html', img: 'buddy/shot.jpg', tag: 'Silly word guessing \u00b7 pop the balloons' },
+  { id: 'orbit', shape: { w: 1.15, h: 0.95 }, name: 'Orbit Brawl', ver: 'v0.17', url: 'orbit/index.html', img: 'orbit/shot.jpg', tag: 'Phone cockpit space dogfight \u00b7 2\u201320 pilots \u00b7 TV = live cinematic cam' },
+  { id: 'bubble', shape: { w: 1.1, h: 0.9 }, name: 'Bubble Hockey', ver: 'v0.9.66', url: 'bubble/index.html?b=966', img: 'bubble/shot.jpg', tag: 'Table-top rod hockey \u00b7 drag, dangle, flick to pass' },
+  { id: 'rts', name: 'RTS Shapes', ver: 'v0.5', url: 'rts/index.html', img: 'rts/shot.png', tag: 'Lasso shapes, tap to attack-move, hold for the command wheel \u00b7 v0.1 flight test at ?mode=flight' },
+  { id: 'marble', shape: { w: 1.08, h: 0.94 }, name: 'Marble Rush', ver: 'v0.2', url: 'marble/index.html', img: 'marble/shot.png', tag: 'Tilt-to-steer marble race \u00b7 drops, jumps, a loop \u00b7 2\u20138 phones' },
+  { id: 'minigolf', name: 'Mini Golf', ver: 'v0.3', url: 'minigolf/index_v03.html?b=1', img: 'minigolf/shot.png', tag: 'Physics mini golf \u00b7 flick to putt \u00b7 prototype \u00b7 metrics test' },
+  { id: 'metrics', name: 'Play Metrics', ver: 'v0.1', url: 'metrics/index_v01.html?b=1', img: 'leaderboards/shot.png', tag: 'Anonymous plays per game / venue, unique players, busy hours (dev)', mode: 'tab' },
+  { id: 'leaderboards', name: 'Global Leaderboards', ver: 'v0.1', url: 'leaderboards/index_v01.html?b=1', img: 'leaderboards/shot.png', tag: 'Studio score hub \u00b7 counts by version \u00b7 live vs dev boards', mode: 'tab' },
+  { id: 'rigmystery', name: 'Rig Mystery', ver: 'v0.2', url: 'rig-mystery/index_v02.html?b=1', img: 'rig-mystery/shot.png', tag: 'Oil rig safety detective \u00b7 talk to the crew, read the logbook, catch it early' },
+  { id: 'stunt', name: 'Stunt Smash', ver: 'v0.2', url: 'stunt/index.html', img: 'stunt/shot.png', tag: 'Draw your line, pick bike/car/bus, launch into crates \u00b7 take turns' },
+  { id: 'foosball', name: 'Foosball', ver: 'v0.2', url: 'foosball/index.html', img: 'foosball/shot.png', tag: 'Table foosball \u00b7 slide and spin rods, drill shots' },
+  { id: 'lostsock', name: 'Lost Sock', ver: 'v0.3', url: 'lostsock/index.html', img: 'lostsock/shot.png', tag: 'Sock artillery \u00b7 phones \u00b7 WIP' },
+  { id: 'derby', shape: { w: 1.1, h: 0.92 }, name: 'Demolition Derby', ver: 'v0.4.2-dev', url: 'derby/index.html', img: 'derby/shot.png', tag: 'Car smash + Race mode \u00b7 phones \u00b7 play on a phone screen' },
+  { id: 'mechsquad', name: 'Iron Stride Squad', ver: 'v0.6-dev', url: 'mech-squad/index.html', img: 'mech-squad/shot.png', tag: '3/4 mech brawler \u00b7 jump/hover \u00b7 spare the city' },
+  { id: 'mechopen', name: 'Iron Stride: Cockpit', ver: 'v0.5-dev', url: 'mech-open/index.html', img: 'mech-open/shot.png', tag: 'First-person open world \u00b7 placeholder name' },
+  { id: 'rescue', name: 'Red Deer Rescue', ver: 'v0.2', url: '../games/rescue/index.html', img: '../games/rescue/shots/cover-card.webp', tag: 'Hero crawler \u00b7 pick a hero \u00b7 Francis the giant pig' },
+  { id: 'rdr', fname: 'Red Deer Rich \u00b7 TV board', name: 'Red Deer Rich', ver: 'v0.8', url: '../games/red-deer-rich/index.html', img: '../assets/img/red-deer-rich/cover-card.webp', tag: 'Board game \u00b7 phones' },
+  { id: 'walker', shape: { w: 1.05, h: 1.05 }, name: 'Walker', ver: 'v0.4.2', url: '../games/walker/index.html', img: '../assets/img/walker/cover-card.webp', tag: 'Calm play world' },
+  { id: 'space', name: 'Drift Signal', ver: 'v0.4', url: '../games/space/index.html', img: '../assets/img/space/cover-card.webp', tag: 'Space crew' },
+  { id: 'mech', fname: 'Iron Stride \u00b7 original', name: 'Iron Stride', ver: 'v0.4', url: '../games/mech/index.html', img: '../assets/img/mech/cover-card.webp', tag: 'Mech \u00b7 gyro aim' },
+  { id: 'zt', name: 'Zombie Tiles', ver: 'v0.5', url: '../games/zombie-tiles/index.html', img: '../assets/img/zombie-tiles/cover-card.webp', tag: 'Tile game \u00b7 phones' },
+  { id: 'laser', name: 'Laser Range', ver: 'v0.1', url: '../games/laser-range/index.html', img: '../assets/img/laser-range/cover-card.webp', tag: 'Gyro aim' },
+  { id: 'hop', name: 'Charge Hop', ver: 'v0.3', url: '../games/charge-hop/index.html', img: '../assets/img/charge-hop/cover-card.webp', tag: 'Keyboard \u00b7 laptop', escTwice: true },
+  { id: 'cafe', name: 'Caf\u00e9 demo screen', ver: 'v0.1', url: '../cafe/screen.html?demo=1', img: '../cafe/shots/01-screen-idle-welcome.png', tag: 'The Daily Grind' }
+];
+window.DEV_OLD = [
+  ['walker', 'Walker', ['v0.3', 'v0.2', 'v0.1']],
+  ['red-deer-rich', 'Red Deer Rich', ['v0.8', 'v0.6', 'v0.5', 'v0.4', 'v0.3', 'v0.2.1', 'v0.2', 'v0.1.2', 'v0.1.1', 'v0.1']],
+  ['space', 'Drift Signal', ['v0.2', 'v0.1']],
+  ['mech', 'Iron Stride', ['v0.2', 'v0.1']],
+  ['zombie-tiles', 'Zombie Tiles', ['v0.4', 'v0.3', 'v0.2', 'v0.1']]
+].reduce(function (a, g) {
+  var img = { 'red-deer-rich': 'red-deer-rich', 'zombie-tiles': 'zombie-tiles' }[g[0]] || g[0];
+  g[2].forEach(function (v) { a.push({ id: g[0] + '-' + v, name: g[1], ver: v, url: '../games/' + g[0] + '/' + v + '/index.html', img: '../assets/img/' + img + '/cover-card.webp', tag: 'Older version', old: true }); });
+  return a;
+}, []);
+
+/* Portrait-only extras: pages that sit in the landscape header bar. Opened in the same tab (like the header links). */
+window.DEV_EXTRA = [
+  { id: 'x-showcase', name: 'Arcade showcase', ver: 'v0.13', url: 'showcase/index_v13.html?b=1', icon: '\uD83C\uDFB0', tag: 'Arcade big screen \u00b7 attract mode \u00b7 split screen' },
+  { id: 'x-attract', name: 'Showcase attract logo', ver: 'v0.13', url: 'showcase/index_v13.html?b=1&attract=1', icon: '\u2B55', tag: 'Holds the breathing 0-Phi idle logo' },
+  { id: 'x-status', name: 'Status', ver: 'live', url: 'status.html', icon: '\uD83D\uDCCA', tag: 'Studio status page' },
+  { id: 'x-joe', name: 'Joe page', ver: 'v0.2', url: 'joe/index_v02.html', icon: '\uD83E\uDD1D', tag: 'Partner page' },
+  { id: 'x-ad', name: 'Ad draft', ver: 'v0.1', url: 'joe/advertising_v01.html', icon: '\uD83D\uDCE3', tag: 'Advertising draft' }
+];
+/* Folders for the portrait grid. A folder takes the grid slot of its first member; members are hidden from the grid.
+   Only the current build of each variant is listed (frozen versions stay in their folders / Older versions). */
+window.DEV_FOLDERS = [
+  { id: 'f-rdr', name: 'Red Deer Rich', img: '../assets/img/red-deer-rich/cover-card.webp', items: ['rdrsolo', 'rdrphone', 'rdr'] },
+  { id: 'f-zero', name: 'Zero logo + front', img: 'zero/live-shot.png', items: ['zero', 'zerostatic', 'zerolive', 'zerologo', 'zeroqr'] },
+  { id: 'f-iron', name: 'Iron Stride', img: 'mech-squad/shot.png', items: ['mechsquad', 'mechopen', 'mech'] },
+  { id: 'f-show', name: 'Arcade showcase', icon: '\uD83C\uDFB0', items: ['x-showcase', 'x-attract'], first: true },
+  { id: 'f-studio', name: 'Studio pages', icon: '\uD83D\uDDC2\uFE0F', items: ['x-status', 'metrics', 'leaderboards', 'x-joe', 'x-ad'], end: true },
+  { id: 'f-old', name: 'Older versions', icon: '\uD83D\uDCE6', items: '_old', end: true }
+];
