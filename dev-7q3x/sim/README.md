@@ -20,3 +20,14 @@ simulated person, so you can watch every phone screen side by side and study how
 - **Adding a game.** Add `js/games/<id>_v01.js` registering `ZTPSimGames.<id>` (contract at the top of
   `rdr_v01.js`) and a script tag in the panel.
 - **Later.** `js/hooks_v01.js` holds the venue hook (cafe / pub / stage) and the group menu vote hook.
+
+## v0.2 (`panel_v02.html`, v0.1 untouched)
+- Phone layout (logical width < 820 px): settings in a gear drawer, TV full width on top, phones in a scrolling
+  2-column grid (landscape phones span both), event log collapsed. Android "desktop site" mode (layout ~980 px on a
+  ~400 px screen) is zoomed back up by `screen.width` (`?zoom=x` overrides).
+- No text selection, long-press callout or Touch to Search anywhere; the TV hint has a real START button.
+- Seats: every phone caption has an **AI / Me** switch (also in Edit players, or `?me=2`). Me = autopilot off, the
+  controller is yours. A Me seat set before Start joins with "Your name".
+- Double-tap any phone or the TV to zoom it to full screen (phone: the controller at the real screen size; desktop:
+  as big as fits). Your seat is playable while zoomed; AI phones and the TV are watch-only. The gold tab at the top
+  right (or Esc) zooms back out. Nothing is moved or paused: every iframe keeps running underneath.
