@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>AI playtest panel v0.1 | Zero to Phi dev kit</title>
+<link rel="stylesheet" href="css/panel_v01.css?b=1">
+</head>
+<body>
+<header id="bar">
+  <div class="brand"><b>0&#8209;&Phi;</b> AI PLAYTEST <small>v0.1</small></div>
+  <label>Game <select id="cGame"></select></label>
+  <label>Players <select id="cN"></select></label>
+  <label>Length <select id="cLen"></select></label>
+  <label title="Online: a real room your phone can scan into. Offline: same-browser only (no broker, for flaky networks).">Room <select id="cNet"><option value="online">Online (scan in)</option><option value="local">Offline (this browser)</option></select></label>
+  <label class="chk" title="Keep the lobby open so you can scan in before the game starts"><input type="checkbox" id="cHold"> Wait for me</label>
+  <label title="Coming soon: simulated cafe, pub or stage">Venue <select id="cVenue" disabled><option>none (v0.2+)</option></select></label>
+  <button id="bPlayers" class="ghost">&#128101; Edit players</button>
+  <button id="bRand" class="ghost" title="New random people">&#127922; Randomise</button>
+  <span class="sp"></span>
+  <button id="bStart" class="go">&#9654; START</button>
+  <button id="bStartGame" class="go2" hidden>START GAME NOW</button>
+  <button id="bPause" disabled>&#10074;&#10074; Pause</button>
+  <div class="seg" id="cSpeed"><button data-x="1" class="on">1&times;</button><button data-x="2">2&times;</button><button data-x="4">4&times;</button></div>
+  <button id="bRestart" disabled>&#8635; Restart</button>
+  <button id="bSound" class="ghost" title="TV sound">&#128263;</button>
+</header>
+<section id="people" hidden><div class="ph"><b>Players</b> <span class="muted">Stats change live. Name, look and orientation apply on the next Start / Restart.</span><button id="bPeopleClose" class="ghost">Close</button></div><div id="cards"></div></section>
+<main id="main">
+  <aside id="left">
+    <div id="tvTile"><div id="tvBox"><div class="empty">Press <b>START</b>: the panel opens the real TV board, the AI phones join its room, and you can scan in too.</div></div><div id="tvStat">TV board</div></div>
+    <div id="room"><canvas id="qr" width="148" height="148"></canvas><div class="rt"><div class="rc">Room <b id="rCode">&mdash;</b></div><div id="rNote" class="muted">Scan with your phone to play alongside the AIs.</div><a id="rUrl" target="_blank" rel="noopener"></a><div id="rMeta"></div></div></div>
+    <div id="logBox"><div class="lh"><b>Event log</b><div class="seg" id="lFilter"><button data-f="all" class="on">All</button><button data-f="ai">AI</button><button data-f="game">Game</button></div><button id="lClear" class="ghost">Clear</button></div><div id="log"></div></div>
+  </aside>
+  <section id="grid"></section>
+</main>
+<script src="../rdr-phone/js/vendor/qrcode.js"></script>
+<script src="js/personas_v01.js?b=1"></script>
+<script src="js/hooks_v01.js?b=1"></script>
+<script src="js/games/rdr_v01.js?b=1"></script>
+<script src="js/panel_v01.js?b=1"></script>
+</body>
+</html>
