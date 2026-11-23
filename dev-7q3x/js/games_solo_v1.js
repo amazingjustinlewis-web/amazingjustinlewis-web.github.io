@@ -10,13 +10,13 @@
       g.mode = 'tab';
       g.modes = {
         phone: { label: 'Play on this phone', url: 'rdr-phone/solo_v11.html' },
-        match: { label: 'Start a match (TV/room)', url: 'rdr-phone/index_v078.html' }
+        match: { label: 'Start a match (TV/room)', url: 'rdr-phone/index_v079.html' }
       };
     }
     if (g.id === 'rdrphone') {
       g.modes = g.modes || {
         phone: { label: 'Play on this phone', url: g.url },
-        match: { label: 'Start a match (TV/room)', url: 'rdr-phone/index_v078.html' }
+        match: { label: 'Start a match (TV/room)', url: 'rdr-phone/index_v079.html' }
       };
     }
   });
