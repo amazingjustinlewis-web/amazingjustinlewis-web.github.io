@@ -15,4 +15,7 @@
   ['undo', 'hint', 'new'].forEach(function (k) { document.getElementById(k).onclick = function () { c.send({ t: k }); }; });
   (function loop(t) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); P = HopTop.draw(ctx, innerWidth, innerHeight - 70, g, t / 1000); requestAnimationFrame(loop); })(0);
 })();
-</script></body></html>
+</script>
+<script src="../../games/minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Hop Top", "version": "v0.1", "corner": "br"});</script>
+</body></html>

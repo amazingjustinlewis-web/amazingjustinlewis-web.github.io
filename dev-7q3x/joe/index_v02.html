@@ -114,4 +114,7 @@ function draw(f){var h='';L.forEach(function(l){if(f!=='all'&&f!==l[0])return;va
  document.getElementById('g').innerHTML=h;document.getElementById('cnt').textContent=G.length+' games \u00B7 '+L.map(function(l){return G.filter(function(g){return g[2]===l[0];}).length+' '+l[1].toLowerCase();}).join(' \u00B7 ');}
 [].forEach.call(document.querySelectorAll('#flt button'),function(b){b.onclick=function(){[].forEach.call(document.querySelectorAll('#flt button'),function(x){x.className=x===b?'on':'';});draw(b.dataset.f);};});
 draw('all');
-</script></body></html>
+</script>
+<script src="../../games/minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Joe page", "version": "v0.2", "corner": "br"});</script>
+</body></html>

@@ -141,4 +141,7 @@ Acct.watch(function () { return window.BHT && BHT.sim.over < 0; }, Acct.hide);</
 <script>/* v0.9.54 session content mode: cleanest of every phone in the game (guests/unknown = family) and the venue cap; recomputed on join/leave. */
 function zSess() { if (!window.ZTP || !window.BHT) return; var ps = (BHT.plist || []).filter(function (q) { return !q.mir; }).map(function (q) { return q.zm || null; }); if (!ps.length) ps = [null]; ZTP.session(ps, null); }
 if (window.ZTP) { ZTP.onMode(function (to) { if (window.BHT && BHT.sim && BHT.sim.setMode) BHT.sim.setMode(to); }); setTimeout(zSess, 0); }
-</script></body></html>
+</script>
+<script src="../../games/minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Bubble Hockey", "version": "v0.9.72", "corner": "br"});</script>
+</body></html>

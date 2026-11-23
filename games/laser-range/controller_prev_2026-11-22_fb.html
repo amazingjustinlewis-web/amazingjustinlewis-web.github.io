@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Laser Range controller | Zero to Phi</title>
+<meta name="theme-color" content="#0d0a18">
+<meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/phone.css">
+</head>
+<body>
+<section id="join" class="screen">
+  <header class="jhead"><img src="assets/logo.svg" alt="" width="49" height="40"><div><div class="jt">LASER <b>RANGE</b></div><div class="jsub">prototype v0.1 &middot; phone controller</div></div></header>
+  <label class="fld">Room code<input id="room" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD"></label>
+  <label class="fld">Your name<input id="name" maxlength="12" autocomplete="nickname" placeholder="Name"></label>
+  <button id="joinBtn" class="big-btn">JOIN</button>
+  <div id="joinStatus" class="jstatus" role="status"></div>
+  <p class="jhelp">Hold your phone like a remote and point its <b>top edge</b> at the TV to aim.</p>
+</section>
+
+<section id="main" class="screen" hidden>
+  <header class="mhead"><span class="chip" id="chip"></span><span id="myName"></span><span id="myScore">0</span><span id="conn" class="conn"></span></header>
+  <div id="panel"></div>
+  <div id="zone"><div id="zoneHint"></div></div>
+  <div id="tools">
+    <button id="recBtn" class="tool">&#9678; Re-centre</button>
+    <button id="modeBtn" class="tool">Touchpad</button>
+    <button id="calBtn" class="tool">Recalibrate</button>
+  </div>
+  <button id="shoot"><span id="shootLbl">SHOOT</span><i id="chargeRing"></i></button>
+</section>
+
+<div id="perm" class="takeover" hidden>
+  <div class="pm-t">One more step</div>
+  <p>Laser Range uses your phone's motion sensor to aim.</p>
+  <button id="permBtn" class="big-btn">Tap to enable aiming</button>
+  <button id="permPad" class="linkbtn">No motion sensor? Use the touchpad instead</button>
+  <p id="permMsg" class="pm-msg"></p>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="js/vendor/peerjs.min.js"></script>
+<script>/* old TV browsers (e.g. Samsung Tizen, Chromium < 80) cannot run the modern PeerJS build: load the transpiled one */ if (typeof Peer !== 'function') document.write('<script src="js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="js/config.js"></script>
+<script src="js/aim.js"></script>
+<script src="js/sfx.js"></script>
+<script src="js/net.js"></script>
+<script src="js/controller.js"></script>
+</body>
+</html>

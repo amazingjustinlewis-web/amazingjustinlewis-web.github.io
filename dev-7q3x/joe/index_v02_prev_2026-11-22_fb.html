@@ -1,0 +1,117 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow,noarchive"><title>Zero to Phi · Game Library for Joe</title>
+<link rel="icon" href="../../assets/img/favicon.svg">
+<style>
+:root{--bg:#0b0b0d;--card:#141418;--line:#26262c;--tx:#e9e6df;--mut:#8d8a84;--gold:#d4af6a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:28px 18px 8px;max-width:1040px;margin:auto;position:relative;overflow:hidden}
+header svg{position:absolute;right:-30px;top:-20px;width:220px;opacity:.13}
+h1{font-weight:300;letter-spacing:.06em;margin:0 0 6px;font-size:24px}h1 b{color:var(--gold);font-weight:500}
+.sub{color:var(--mut);margin:0 0 12px;max-width:660px}
+.key{display:grid;gap:6px;font-size:13px;color:var(--mut);max-width:720px;margin:8px 0 6px}
+.key div{display:flex;gap:10px;align-items:baseline}.key .bd{flex:none;min-width:84px;text-align:center}
+.cnt{color:var(--mut);font-size:13px;margin:10px 0 0}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}nav button{font:inherit;font-size:13px;color:var(--tx);background:#ffffff0d;border:1px solid var(--line);border-radius:99px;padding:5px 12px;cursor:pointer}nav button.on{background:var(--gold);color:var(--bg);border-color:var(--gold)}
+h3{max-width:1040px;margin:22px auto 0;padding:0 18px;font-weight:400;letter-spacing:.05em;color:var(--gold);font-size:15px;text-transform:uppercase}
+.grid{max-width:1040px;margin:auto;padding:10px 14px 10px;display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(290px,1fr))}
+.c{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.th{aspect-ratio:16/9;background:#101013 center/cover no-repeat;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--line)}
+.th svg{width:34%;opacity:.35}
+.b{padding:12px 14px 14px;display:flex;flex-direction:column;gap:7px;flex:1}
+.t{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.t h2{margin:0;font-size:17px;font-weight:500}.v{color:var(--mut);font-size:12px;white-space:nowrap}
+.p{color:#c9c5bd;margin:0;flex:1}
+.tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.bd{font-size:11px;padding:3px 8px;border-radius:99px;border:1px solid;letter-spacing:.03em}
+.prototype{color:#9aa3b5;border-color:#3a4050}.playable{color:#8fc7a8;border-color:#2f5040}.polished{color:var(--gold);border-color:#6b5733}
+.ph{color:var(--mut);border-color:var(--line)}
+a.go{margin-top:4px;text-align:center;color:var(--bg);background:var(--gold);border-radius:9px;padding:9px;text-decoration:none;font-weight:600}
+footer{color:var(--mut);text-align:center;font-size:12px;padding:20px 18px 34px;max-width:760px;margin:auto}
+</style></head><body>
+<header><svg viewBox="0 0 100 62" fill="none" stroke="#d4af6a" stroke-width=".8"><rect x="0" y="0" width="100" height="61.8"/><path d="M61.8 0v61.8M61.8 38.2H100M85.4 38.2v23.6M76.4 47.2h9M0 61.8A61.8 61.8 0 0 1 61.8 0A38.2 38.2 0 0 1 100 38.2A23.6 23.6 0 0 1 76.4 61.8"/></svg>
+<h1>ZERO TO PHI <b>· Game Library</b></h1>
+<p class="sub">Every Zero to Phi game in one place, with an honest note on how finished each one is. Most are played on a TV, with phones as the controllers: scan the code on the screen and you&rsquo;re in.</p>
+<div class="key">
+<div><span class="bd polished">Polished</span><span>On the public site and finished enough to hand to anyone.</span></div>
+<div><span class="bd playable">Playable</span><span>Plays start to finish and is being tested with real players; still getting tuned.</span></div>
+<div><span class="bd prototype">Prototype</span><span>An early build to try an idea. Expect rough edges and missing pieces.</span></div>
+</div>
+<nav id="flt"><button data-f="all" class="on">All</button><button data-f="polished">Polished</button><button data-f="playable">Playable</button><button data-f="prototype">Prototype</button></nav>
+<p class="cnt" id="cnt"></p></header>
+<div id="g"></div>
+<footer>Private preview &middot; work in progress &middot; Zero to Phi, Red Deer<br>Versions and status come from the studio&rsquo;s own build notes (status updated Nov 10, 2026; page built Nov 16, 2026).</footer>
+<script>
+var SP='<svg viewBox="0 0 100 62" fill="none" stroke="#d4af6a" stroke-width="1.2"><path d="M0 61.8A61.8 61.8 0 0 1 61.8 0A38.2 38.2 0 0 1 100 38.2A23.6 23.6 0 0 1 76.4 61.8A14.6 14.6 0 0 1 61.8 47.2"/></svg>';
+// [name, version, level, one-liner, play url, thumb, plays on, on public site]  (from dev-7q3x/status.json + js/games.js)
+var G=[["Red Deer Rich", "v0.8", "polished", "A Red Deer property-trading board game for the TV: scan in from the couch and shake your phone to roll.", "../../games/red-deer-rich/", "../../assets/img/red-deer-rich/cover-card.webp", ["TV", "phone"],
+ 1],
+ ["Red Deer Rich · phone mode", "v0.9-dev", "prototype", "The same board game hosted on one phone, so no TV is needed; friends can join and move it to a TV later.", "../rdr-phone/phone.html", "../rdr-phone/shot.png", ["phone", "TV"],
+ 0],
+ ["Bubble Hockey", "v0.9.72", "playable", "Table-top rod hockey for up to ten phones, with replays, goalie saves and a CPU-vs-CPU watch mode.", "../bubble/index.html", "../bubble/shot.jpg", ["phone", "TV"],
+ 0],
+ ["Orbit Brawl", "v0.17", "playable", "A space dogfight where every phone is a cockpit and the TV follows the action like a broadcast.", "../../playtest-fe6ad60e/builds/orbit-v0.17/", "../orbit/shot.jpg", ["phone", "TV"],
+ 0],
+ ["Iron Stride", "v0.4.2", "playable", "Pilot a mech with a phone or a game controller, with gyro aim and southpaw-friendly settings.", "../../games/mech/", "../../assets/img/mech/cover-card.webp", ["TV", "phone", "controller"],
+ 1],
+ ["Drift Signal", "v0.4", "playable", "A co-op space crew game: phones become crew stations while an AI pilot explores.", "../../games/space/", "../../assets/img/space/cover-card.webp", ["TV", "phone"],
+ 1],
+ ["Walker", "v0.4.2", "playable", "A calm walk-around world with a playground, a ladder and a slide.", "../../games/walker/", "../../assets/img/walker/cover-card.webp", ["TV", "phone"],
+ 1],
+ ["Zombie Tiles", "v0.5", "playable", "A tile-laying zombie board game for 1 to 4 players: race your friends to the helipad.", "../../games/zombie-tiles/", "../../assets/img/zombie-tiles/cover-card.webp", ["TV", "phone"],
+ 1],
+ ["Laser Range", "v0.1.2", "playable", "A light-gun gallery: point your phone at the TV and shoot.", "../../games/laser-range/", "../../assets/img/laser-range/cover-card.webp", ["TV", "phone"],
+ 1],
+ ["Battleship", "v0.1", "playable", "A phone-only naval guessing game for two at a café table.", "../../cafe/play.html", "../../cafe/shots/01-screen-idle-welcome.png", ["phone"],
+ 1],
+ ["Charge Hop", "v0.3", "playable", "A charge-and-jump platformer for a keyboard or laptop.", "../../games/charge-hop/", "../../assets/img/charge-hop/cover-card.webp", ["TV", "keyboard"],
+ 1],
+ ["Demolition Derby", "v0.4.2-dev", "prototype", "Car smash-ups and races where each player drives on their own phone.", "../derby/", "../derby/shot.png", ["TV", "phone", "controller"],
+ 0],
+ ["Iron Stride Squad", "v0.6-dev", "prototype", "A top-down mech brawler: phones play the big Titans, controllers and keyboards play the Striders.", "../mech-squad/", "../mech-squad/shot.png", ["TV", "phone", "controller", "keyboard"],
+ 0],
+ ["Iron Stride: Cockpit", "v0.5-dev", "prototype", "A first-person mech cockpit in an open world (working name).", "../mech-open/", "../mech-open/shot.png", ["TV", "phone", "controller", "keyboard"],
+ 0],
+ ["RTS Shapes", "v0.5.1", "prototype", "Living-room strategy: lasso your shapes on the phone, command them on the TV, including dragons.", "../rts/", "../rts/shot.png", ["TV", "phone"],
+ 0],
+ ["Lost Sock", "v0.3", "prototype", "Sock artillery for phones, played on the TV or right on the phone.", "../lostsock/", "../lostsock/shot.png", ["TV", "phone"],
+ 0],
+ ["Stunt Smash", "v0.2", "prototype", "Draw your launch line on the phone, pick a bike, car or bus, and watch the crash on the TV.", "../stunt/", "../stunt/shot.png", ["TV", "phone"],
+ 0],
+ ["Marble Rush", "v0.2", "prototype", "Tilt your phone to steer a marble down a shared track with jumps and a loop.", "../marble/", "../marble/shot.png", ["TV", "phone"],
+ 0],
+ ["Foosball", "v0.2", "prototype", "Table foosball: slide and spin the rods with your thumb.", "../foosball/", "../foosball/shot.png", ["phone", "TV"],
+ 0],
+ ["Glide Puck", "v0.2.1", "prototype", "Air-hockey style puck battles on the phone, with an optional TV view.", "../puck/", "../puck/shot.jpg", ["phone", "TV"],
+ 0],
+ ["Stack Attack", "v0.2.1", "prototype", "Build a tower against two computer players, then see whose survives the disaster.", "../stack/", "../stack/shot.jpg", ["phone", "TV"],
+ 0],
+ ["Mini Golf", "v0.3", "prototype", "Physics mini golf: flick to putt.", "../minigolf/index_v03.html?b=1", "", ["TV", "phone"],
+ 0],
+ ["Rig Mystery", "v0.2", "prototype", "An oil-rig safety detective story: talk to the crew, read the logbook, catch the problem early.", "../rig-mystery/index_v02.html?b=1", "../rig-mystery/shot.png", ["TV", "phone"],
+ 0],
+ ["Dangerous Waters", "v0.1.2", "prototype", "The classic hidden-fleet guessing game: the board is on the TV and each fleet stays private on its owner’s phone.", "../broadside/", "../broadside/shot.jpg", ["TV", "phone"],
+ 0],
+ ["Hop Top", "v0.1", "prototype", "Triangle peg solitaire, solo on a phone or the TV.", "../hoptop/", "../hoptop/shot.jpg", ["phone", "TV"],
+ 0],
+ ["Swish Flick", "v0.1.1", "prototype", "Flick-to-shoot arcade basketball.", "../swish/", "../swish/shot.jpg", ["TV", "phone"],
+ 0],
+ ["Splash Clown", "v0.1.1", "prototype", "Flick balls at the target and dunk the clown.", "../dunk/", "../dunk/shot.jpg", ["TV", "phone"],
+ 0],
+ ["Balloon Buddy", "v0.1.1", "prototype", "A silly word-guessing game: guess right before Buddy’s balloons pop.", "../buddy/", "../buddy/shot.jpg", ["TV", "phone"],
+ 0],
+ ["Safety Third", "v0.1", "prototype", "A comedy construction-site game: catch the workers breaking the rules before they cost you.", "../safety3/index.html", "", ["phone"],
+ 0],
+ ["Red Deer Rescue", "v0.2", "prototype", "A hero adventure in Red Deer, where Francis the bronze pig becomes a giant (early blockout).", "../../games/rescue/", "../../games/rescue/shots/cover-card.webp", ["TV", "phone"],
+ 0],
+ ["Arcade Showcase", "v0.13", "prototype", "A walk-through of the Zero to Phi arcade idea: scan in, play together, pods and sponsor spots.", "../showcase/index_v13.html?b=1", "", ["TV", "phone"],
+ 0],
+ ["Bloat Flier", "v02b", "prototype", "A flight test of a rigged creature model.", "../bloatflier/", "", ["TV"],
+ 0]];
+var L=[['polished','Polished'],['playable','Playable'],['prototype','Prototype']], ICON={TV:'\uD83D\uDCFA TV',phone:'\uD83D\uDCF1 Phone',controller:'\uD83C\uDFAE Controller',keyboard:'\u2328\uFE0F Keyboard'};
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function card(g){return '<div class="c"><div class="th"'+(g[5]?' style="background-image:url(\''+g[5]+'\')">':'>'+SP)+'</div><div class="b"><div class="t"><h2>'+esc(g[0])+'</h2><span class="v">'+esc(g[1])+'</span></div><p class="p">'+esc(g[3])+'</p><div class="tags"><span class="bd '+g[2]+'">'+L.filter(function(l){return l[0]===g[2];})[0][1]+'</span>'+g[6].map(function(f){return '<span class="bd ph">'+(ICON[f]||esc(f))+'</span>';}).join('')+'</div><a class="go" href="'+esc(g[4])+'">Play</a></div></div>';}
+function draw(f){var h='';L.forEach(function(l){if(f!=='all'&&f!==l[0])return;var a=G.filter(function(g){return g[2]===l[0];});if(!a.length)return;h+='<h3>'+l[1]+' &middot; '+a.length+'</h3><div class="grid">'+a.map(card).join('')+'</div>';});
+ document.getElementById('g').innerHTML=h;document.getElementById('cnt').textContent=G.length+' games \u00B7 '+L.map(function(l){return G.filter(function(g){return g[2]===l[0];}).length+' '+l[1].toLowerCase();}).join(' \u00B7 ');}
+[].forEach.call(document.querySelectorAll('#flt button'),function(b){b.onclick=function(){[].forEach.call(document.querySelectorAll('#flt button'),function(x){x.className=x===b?'on':'';});draw(b.dataset.f);};});
+draw('all');
+</script></body></html>

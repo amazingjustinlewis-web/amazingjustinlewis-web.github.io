@@ -33,4 +33,7 @@ document.querySelectorAll('[data-d]').forEach(function(b){b.onclick=function(){d
 document.getElementById('si').onclick=function(){ZTP.signIn().then(load)};
 var tr=document.getElementById('tr');function trl(){tr.textContent='Tracking on this device: '+(ZTP.tracking()?'ON':'OFF (track nothing)')}trl();tr.onclick=function(){ZTP.setTracking(!ZTP.tracking());trl()};
 load()})();
-</script></body></html>
+</script>
+<script src="../../games/minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Play Metrics", "version": "v0.1", "corner": "br"});</script>
+</body></html>

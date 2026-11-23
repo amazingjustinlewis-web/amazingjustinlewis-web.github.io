@@ -264,4 +264,7 @@ $('rleave').onclick=function(){if(R)R.destroy();R=null;history.replaceState(null
 var h=location.hash.slice(1);if(qs.get('pair'))startRemote(qs.get('pair').toUpperCase());else show(['login','create','biz','hub','me','games'].indexOf(h)>=0?h:(prof()&&!qs.get('biz')?'me':'hub'));
 })();
 </script>
+
+<script src="../games/minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Phone hub", "version": "go", "corner": "tr", "offX": "12px", "offY": "12px"});</script>
 </body></html>

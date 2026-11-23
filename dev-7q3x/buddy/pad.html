@@ -12,4 +12,7 @@
   function size() { dpr = devicePixelRatio || 1; cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; } addEventListener('resize', size); size();
   (function loop(t) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); Buddy.scene(ctx, cv.clientWidth, cv.clientHeight, pub, t / 1000); requestAnimationFrame(loop); })(0);
 })();
-</script></body></html>
+</script>
+<script src="../../games/minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Balloon Buddy", "version": "v0.1.1", "corner": "br"});</script>
+</body></html>

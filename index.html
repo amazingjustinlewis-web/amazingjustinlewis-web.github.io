@@ -104,4 +104,7 @@ addEventListener('click',function(e){if(e.target.closest('#li,#enter,#acct,#snd'
 <script>(function(){var a=document.getElementById('acct'),b=document.getElementById('snd');
 function paint(){var o=window.ZTPThrob&&ZTPThrob.on();b.textContent=o?'sound on':'sound off';b.style.opacity=o?.5:.3}
 a.addEventListener('click',function(e){e.stopPropagation()});b.addEventListener('click',function(e){e.stopPropagation();if(window.ZTPThrob)ZTPThrob.toggle();paint()});paint()})();</script>
+
+<script src="games/minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Zero to Phi", "version": "front", "corner": "tr", "offX": "14px", "offY": "14px"});</script>
 </body></html>

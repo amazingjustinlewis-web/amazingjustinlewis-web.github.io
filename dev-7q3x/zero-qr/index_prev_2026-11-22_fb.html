@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Zero QR test</title>
+<style>
+html,body{margin:0;height:100%;background:#030304;overflow:hidden;font-family:Georgia,serif;color:#c9a24a}
+canvas{position:fixed;inset:0;width:100vw;height:100vh}
+#lbl{position:fixed;top:1.2vh;left:1.2vw;font-size:1.6vh;letter-spacing:.2em;opacity:.45}
+#big{position:fixed;top:4vh;right:4vw;font-size:14vh;line-height:1;opacity:.55;display:none}
+#ui{position:fixed;bottom:2.5vh;left:50%;transform:translateX(-50%);display:flex;gap:1.2vh;opacity:.5;transition:opacity .4s}
+#ui:hover{opacity:1}
+#ui button{font:inherit;font-size:2.6vh;min-width:7vh;height:7vh;border-radius:1.2vh;border:1px solid #6b5422;background:#0b0905;color:#e2c46e;cursor:pointer}
+#ui button.on{background:#3a2c10;border-color:#e2b84a}
+body.cycle #ui{display:none}body.cycle #big{display:block}
+</style></head><body>
+<canvas id="c" aria-hidden="true"></canvas>
+<div id="lbl"></div><div id="big"></div>
+<div id="ui"><button data-p="1">1</button><button data-p="2">2</button><button data-p="3">3</button><button data-p="4">4</button><button data-p="5">5</button><button id="sb">S</button></div>
+<script src="../js/qrcode.js"></script>
+<script>
+(function(){
+var URL_='https://amazingjustinlewis-web.github.io/';
+var q=qrcode(0,'H');q.addData(URL_);q.make();var N=q.getModuleCount(),QZ=4;
+// light = dark-gold light modules, dark = near-black modules, sp = spiral alpha
+var P={1:{light:'#d6ad52',dark:'#050404',sp:.55,name:'OBVIOUS'},2:{light:'#9a7630',dark:'#050404',sp:.42,name:'CLEAR'},
+3:{light:'#5c4519',dark:'#050404',sp:.32,name:'SUBTLE'},4:{light:'#33270e',dark:'#050404',sp:.24,name:'FAINT'},5:{light:'#1d1609',dark:'#050404',sp:.18,name:'BARELY'}};
+var qs=new URLSearchParams(location.search),cur=+qs.get('p')||3,spiral=qs.get('s')!=='0',cycle=qs.get('cycle')==='1';
+if(!P[cur])cur=3;if(cycle)document.body.classList.add('cycle');
+var still=matchMedia('(prefers-reduced-motion: reduce)').matches||qs.get('still')==='1';
+var c=document.getElementById('c'),x=c.getContext('2d'),W,H,PHI=(1+Math.sqrt(5))/2;
+function size(){var d=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;c.width=W*d;c.height=H*d;x.setTransform(d,0,0,d,0,0)}
+function draw(ms){
+ var T=still?0:ms/1000,p=P[cur],cx=W/2,cy=H/2,rh=Math.min(H*0.45,W*0.6),rw=rh*0.72,ring=rw*0.3;
+ x.fillStyle='#030304';x.fillRect(0,0,W,H);
+ x.save();x.translate(cx,cy);
+ x.beginPath();x.ellipse(0,0,rw,rh,0,0,7);x.lineWidth=ring;x.strokeStyle='#0d0c0a';x.stroke();
+ // QR in the heart of the zero, integer pixel modules
+ var inner=Math.min(rw-ring/2,rh-ring/2)*1.25,m=Math.max(2,Math.floor(inner/(N+2*QZ))),S=m*(N+2*QZ),o=-Math.round(S/2);
+ x.fillStyle=p.light;x.fillRect(o,o,S,S);x.fillStyle=p.dark;
+ for(var r=0;r<N;r++)for(var k=0;k<N;k++)if(q.isDark(r,k))x.fillRect(o+(k+QZ)*m,o+(r+QZ)*m,m,m);
+ // soft edge so the square melts into the zero
+ var e=x.createRadialGradient(0,0,S*0.5,0,0,S*0.78);e.addColorStop(0,'rgba(3,3,4,0)');e.addColorStop(1,'rgba(13,12,10,1)');
+ x.fillStyle=e;x.beginPath();x.ellipse(0,0,rw-ring/2+1,rh-ring/2+1,0,0,7);x.rect(o-1,o-1,S+2,S+2);x.fill('evenodd');
+ if(spiral){ // thin golden spiral on top
+  var R=Math.min(rw,rh)*1.05,th=4.25*2*Math.PI,a=R/Math.pow(PHI,2*th/Math.PI),rot=T*0.018,sy=rh/rw;
+  x.globalAlpha=p.sp;x.strokeStyle='#f0cf7a';x.lineCap='round';
+  var prev=null;for(var i=0;i<=600;i++){var t=i/600,qq=t*th,rr=a*Math.pow(PHI,2*qq/Math.PI),X=Math.cos(qq+rot)*rr,Y=Math.sin(qq+rot)*rr*sy;
+   if(prev){x.lineWidth=0.4+2.6*Math.pow(t,4)*Math.pow(1-t,1)*9;x.beginPath();x.moveTo(prev[0],prev[1]);x.lineTo(X,Y);x.stroke()}prev=[X,Y]}
+  x.globalAlpha=1}
+ x.restore();
+ if(!still)requestAnimationFrame(draw);
+}
+function set(n){if(!P[n])return;cur=n;document.getElementById('lbl').textContent='PRESET '+n+' \u00b7 '+P[n].name+(spiral?'':' \u00b7 NO SPIRAL');
+ document.getElementById('big').textContent=n;
+ [].forEach.call(document.querySelectorAll('#ui button[data-p]'),function(b){b.classList.toggle('on',+b.dataset.p===n)});
+ document.getElementById('sb').classList.toggle('on',spiral);if(still)draw(0)}
+document.getElementById('ui').onclick=function(e){var b=e.target.closest('button');if(!b)return;if(b.id==='sb'){spiral=!spiral;set(cur)}else set(+b.dataset.p)};
+addEventListener('keydown',function(e){if(e.key>='1'&&e.key<='5')set(+e.key);else if(e.key==='ArrowRight'||e.key==='ArrowUp')set(Math.min(5,cur+1));
+ else if(e.key==='ArrowLeft'||e.key==='ArrowDown')set(Math.max(1,cur-1));else if(e.key==='s'||e.key==='S'){spiral=!spiral;set(cur)}});
+if(cycle)setInterval(function(){set(cur%5+1)},20000);
+addEventListener('resize',function(){size();if(still)draw(0)});
+size();set(cur);requestAnimationFrame(draw);
+})();
+</script>
+</body></html>

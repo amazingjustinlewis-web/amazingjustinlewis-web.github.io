@@ -151,4 +151,7 @@ window.addEventListener('load',function(){setTimeout(function(){try{var c=docume
     try { if (!sim && c && c.send && k !== sent) { c.send({ t: 'zmode', mode: me.mode, yes: me.yes }); sent = k; } } catch (e) {}
     if (sim && sim.setMode) { var ps = [me]; if (host && host.peer) ps.push(host.zm || null); var m = ZTP.session(ps, null); if (m !== sim.zmode()) sim.setMode(m); }
     else if (st && st.zm && st.zm !== lastZ) { if (lastZ) ZTP.modeTransition(lastZ, st.zm); lastZ = st.zm; } }; })();
-</script></body></html>
+</script>
+<script src="../minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Bubble Hockey", "version": "v0.9.72", "corner": "br"});</script>
+</body></html>

@@ -1,0 +1,18 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"><meta name="robots" content="noindex, nofollow">
+<title>Hop Top pad</title><link rel="stylesheet" href="../minikit/kit.css">
+<style>#bar{position:fixed;left:0;right:0;bottom:14px;display:flex;justify-content:center;gap:8px}#msg{position:fixed;left:0;right:0;top:14px;text-align:center;font-size:18px;color:#ffe7a0;pointer-events:none}</style></head><body>
+<canvas id="cv" class="full"></canvas><div id="msg">Connecting&hellip;</div>
+<div id="bar"><button class="btn" id="undo">&#8630; Undo</button><button class="btn" id="hint">&#128161;</button><button class="btn go" id="new">New</button></div><div class="st" id="st"></div>
+<script>window.MINI = 'hoptop';</script><script src="../minikit/peerjs.min.js"></script><script src="../minikit/kit.js"></script><script src="../minikit/net.js"></script><script src="game.js"></script>
+<script>
+(function () {
+  var cv = document.getElementById('cv'), ctx = cv.getContext('2d'), g = HopTop.New(), P = [], dpr = 1, me = null;
+  var c = Kit.pad({ onMsg: function (m) { if (m.t === 'st') { g = m.g; document.getElementById('msg').textContent = g.rate ? g.rate.title + ' \u00b7 ' + g.rate.sub : g.msg; } if (m.t === 'you') me = m; },
+    onStatus: function (s) { document.getElementById('st').textContent = s; } });
+  Kit.joinCard('HOP TOP', c, '<p>Everyone shares one board on the TV. Tap a peg, then tap where it lands.</p>');
+  function size() { dpr = devicePixelRatio || 1; cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; } addEventListener('resize', size); size();
+  cv.addEventListener('pointerdown', function (e) { var i = HopTop.hit(P, e.clientX, e.clientY); if (i >= 0) c.send({ t: 'tap', i: i }); });
+  ['undo', 'hint', 'new'].forEach(function (k) { document.getElementById(k).onclick = function () { c.send({ t: k }); }; });
+  (function loop(t) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); P = HopTop.draw(ctx, innerWidth, innerHeight - 70, g, t / 1000); requestAnimationFrame(loop); })(0);
+})();
+</script></body></html>

@@ -15,4 +15,7 @@ h1{font-weight:400;letter-spacing:.2em;color:#e2b84a;font-size:20px;margin:0 0 4
 fetch('status.json?'+Date.now()).then(function(r){return r.json()}).then(function(d){
 document.getElementById('sub').innerHTML='Updated '+d.updated+' · edit dev-7q3x/status.json · <a href="index.html">launcher</a>';
 document.getElementById('g').innerHTML=d.games.map(function(x){return '<div class="c"><h2><a href="'+x.url+'">'+x.name+'</a><span class="v">'+x.ver+'</span></h2><div class="row"><span class="b s-'+x.status.split(' ')[0]+'">'+x.status+'</span><span class="b '+(x.public?'':'pr')+'">'+(x.public?'Public':'Dev only')+'</span>'+x.fit.map(function(f){return '<span class="b pr">'+f+'</span>'}).join('')+'</div><p class="n">'+x.notes+'</p></div>'}).join('')})
-</script></body></html>
+</script>
+<script src="../games/minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Status", "version": "live", "corner": "br"});</script>
+</body></html>

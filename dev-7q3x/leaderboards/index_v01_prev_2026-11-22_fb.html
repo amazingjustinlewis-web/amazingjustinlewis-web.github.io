@@ -1,0 +1,24 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>0-Phi Leaderboards v0.1 (dev)</title>
+<style>body{margin:0;background:#070b18;color:#eef;font:15px system-ui,sans-serif}header{padding:18px 20px 6px}h1{margin:0;font-size:24px}h1 span{color:#f5b82e}.sub{opacity:.65;font-size:13px}
+.tabs{padding:6px 20px}.tabs button{background:#ffffff14;color:#fff;border:1px solid #fff3;border-radius:16px;padding:5px 12px;margin-right:6px;cursor:pointer;font:inherit}.tabs button.on{background:#5ef2c8;color:#012}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding:12px 20px 30px}.g{background:#0e1630;border:1px solid #ffffff1a;border-radius:14px;padding:12px 14px;cursor:pointer}.g:hover{border-color:#5ef2c8}
+.g h3{margin:0 0 2px;font-size:17px}.n{font-size:28px;font-weight:800;color:#f5b82e}.mut{opacity:.6;font-size:12px}.d{display:none;margin-top:8px}.g.open .d{display:block}.vr{display:inline-block;font-size:11px;background:#ffffff1f;border-radius:8px;padding:1px 6px;margin:2px 3px 0 0}
+.row{display:flex;gap:8px;padding:2px 0;font-size:14px}.row .r{width:22px;opacity:.55}.row .nm{flex:1;font-weight:600}a{color:#5ef2c8}</style></head><body>
+<header><h1><span>0-Phi</span> Global Leaderboards</h1><div class="sub">Every studio game, one hub. Tap a game for versions and top scores. <span id="who"></span></div></header>
+<div class="tabs"><button data-e="live" class="on">Live</button><button data-e="dev">Dev / test</button> <a href="../index.html" style="font-size:13px;margin-left:8px">← Dev lobby</a></div>
+<div class="grid" id="grid"></div>
+<script src="../js/games.js?b=1"></script><script src="../js/ztp-kit_v01.js?b=1"></script>
+<script>
+// Firestore board ids per game (games/{id}/scores, dev = {id}-dev). Add a game here when it plugs into the kit.
+var BOARDS=[['rig-mystery','Rig Mystery'],['orbit','Orbit Brawl'],['bubble','Bubble Hockey'],['red-deer-rich','Red Deer Rich'],['minigolf','Mini Golf'],['marble','Marble Rush'],['stack','Stack Attack'],['swish','Swish Flick'],['dunk','Splash Clown'],['hoptop','Hop Top']];
+var ENV='live',open=(location.search.match(/[?&]g=([^&]*)/)||[])[1]||'';
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return '&#'+c.charCodeAt(0)+';'})}
+function draw(){var G=document.getElementById('grid');G.innerHTML='';
+ BOARDS.forEach(function(b){var el=document.createElement('div');el.className='g'+(b[0]===open?' open':'');el.innerHTML='<h3>'+esc(b[1])+'</h3><div class="n">…</div><div class="mut">scores · '+ENV+'</div><div class="vs"></div><div class="d">loading…</div>';G.appendChild(el);
+  el.onclick=function(){el.classList.toggle('open')};
+  ZTP.counts(b[0],ENV).then(function(c){el.querySelector('.n').textContent=c.total.toLocaleString();el.querySelector('.vs').innerHTML=Object.keys(c.byVer).sort().map(function(v){return '<span class="vr">'+esc(v)+' · '+c.byVer[v]+'</span>'}).join('');if(!c.total)el.style.opacity=.55});
+  ZTP.top(b[0],{env:ENV,n:10}).then(function(l){el.querySelector('.d').innerHTML=l.length?l.map(function(e,i){return '<div class="row"><span class="r">'+(i+1)+'</span><span class="nm">'+esc(e.name)+'</span><span>'+esc(e.score.toLocaleString())+'</span><span class="vr">'+esc(e.ver)+'</span>'+(e.shop?'<span class="mut">@ '+esc(e.shop)+'</span>':'')+'</div>'}).join(''):'<span class="mut">No scores yet</span>'}).catch(function(e){el.querySelector('.d').textContent='error: '+(e.code||e.message)})});}
+document.querySelectorAll('.tabs button').forEach(function(b){b.onclick=function(){document.querySelectorAll('.tabs button').forEach(function(x){x.classList.remove('on')});b.classList.add('on');ENV=b.dataset.e;draw()}});
+if(/[?&]env=dev/.test(location.search)){ENV='dev';document.querySelectorAll('.tabs button').forEach(function(x){x.classList.toggle('on',x.dataset.e==='dev')})}
+ZTP.ready.then(function(){var p=ZTP.player();document.getElementById('who').textContent='· you: '+(p.name||'anonymous')+' · '+ZTP.mode()+' mode'});draw();
+</script></body></html>

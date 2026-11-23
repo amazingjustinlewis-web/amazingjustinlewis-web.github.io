@@ -75,4 +75,7 @@ Acct.watch(function () { return window.OBT && OBT.G.sim && OBT.G.sim.over; }, fu
   Promise.all(hs.map(function (s) { return Acct.submit('orbit', { name: s.name, score: s.k, label: s.k + ' KO / ' + s.d + ' D' }); })).then(function (es) { meta.mine = es; Acct.board('orbit', meta); });
 });
 Acct.watch(function () { return window.OBT && OBT.G.sim && !OBT.G.sim.over; }, Acct.hide);</script>
+
+<script src="../minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Orbit Brawl", "version": "v0.17", "corner": "br"});</script>
 </body></html>

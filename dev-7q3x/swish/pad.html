@@ -12,4 +12,7 @@
   Kit.joinCard('SWISH FLICK', c, '<p>Flick up on your phone to shoot at the TV hoop.</p>');
   Kit.flick($('zone'), function (f) { if (-f.dy < 200) return; c.send({ t: 'flick', dx: f.dx, dy: f.dy, curve: f.curve, len: f.len, w: f.w, h: f.h }); $('ball').classList.add('gone'); if (navigator.vibrate) navigator.vibrate(15); });
 })();
-</script></body></html>
+</script>
+<script src="../../games/minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Swish Flick", "version": "v0.1.1", "corner": "br"});</script>
+</body></html>

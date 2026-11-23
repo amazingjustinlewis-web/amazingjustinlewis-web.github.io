@@ -1,0 +1,51 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fight Art · Zero to Phi</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b0b0c;color:#ccc;font:14px/1.4 system-ui,sans-serif}
+header{position:sticky;top:0;z-index:5;background:#0b0b0cee;padding:12px 16px;border-bottom:1px solid #222;display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+h1{font-size:15px;letter-spacing:.2em;margin:0 10px 0 0;color:#eee;font-weight:600}
+.grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.grp b{color:#777;font-weight:500;margin-right:2px}
+label{cursor:pointer;padding:4px 9px;border:1px solid #333;border-radius:4px;user-select:none}
+label:has(input:checked){background:#e8e8e8;color:#111;border-color:#e8e8e8}input{display:none}
+button{background:#e8e8e8;color:#111;border:0;border-radius:4px;padding:7px 14px;font-weight:600;cursor:pointer}
+#count{color:#666}
+main{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(560px,1fr));gap:18px}
+figure{margin:0}figure img{width:100%;display:block;border-radius:3px;cursor:zoom-in;background:#ddd}
+figcaption{padding:6px 2px;color:#888;font-size:13px}
+#show{position:fixed;inset:0;background:#000;display:none;z-index:10;cursor:none}
+#show img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 1.6s ease}
+#show img.on{opacity:1}#cap{position:absolute;bottom:14px;width:100%;text-align:center;color:#555;font-size:13px;letter-spacing:.15em}
+@media(max-width:620px){main{grid-template-columns:1fr}}
+</style></head><body>
+<header><h1>FIGHT ART</h1>
+<div class="grp" id="ga"><b>Left</b></div><div class="grp" id="gb"><b>Right</b></div>
+<div class="grp" id="gs"><b>Scene</b></div>
+<button id="play">▶ Slideshow</button><span id="count"></span></header>
+<main id="grid"></main>
+<div id="show"><img id="i0"><img id="i1"><div id="cap"></div></div>
+<script>
+const F=['Boxer','Grappler','Knight','Monk','Samurai'];
+const S=[['ready','Ready'],['exhausted','Exhausted'],['win-A-crushing','Left wins · crushing'],['win-B-crushing','Right wins · crushing'],['win-A-barely','Left wins · barely'],['win-B-barely','Right wins · barely']];
+const ALL=[];F.forEach((a,i)=>F.slice(i).forEach(b=>S.forEach(([s,l])=>{if(a===b&&s.includes('-B-'))return;ALL.push({a,b,s,f:`img/${a}_vs_${b}_${s}.jpg`,
+ cap:`${a} vs ${b} — `+(s.startsWith('win')?`${s.includes('-A-')?a:b} wins${a===b?' (left)':''} · ${s.split('-')[2]}`:l)})})));
+function mk(id,items,name){const g=document.getElementById(id);items.forEach(([v,l])=>{const L=document.createElement('label');L.innerHTML=`<input type=checkbox name=${name} value="${v}" checked>${l}`;g.appendChild(L)});g.onchange=draw}
+mk('ga',F.map(f=>[f,f]),'a');mk('gb',F.map(f=>[f,f]),'b');mk('gs',[['ready','Ready'],['exhausted','Exhausted'],['crushing','Crushing win'],['barely','Barely win']],'s');
+const on=n=>[...document.querySelectorAll(`input[name=${n}]:checked`)].map(x=>x.value);
+let cur=[];
+function draw(){const A=on('a'),B=on('b'),Sc=on('s');
+ cur=ALL.filter(x=>((A.includes(x.a)&&B.includes(x.b))||(A.includes(x.b)&&B.includes(x.a)))&&Sc.some(k=>x.s.endsWith(k)));
+ grid.innerHTML=cur.map((x,i)=>`<figure><img loading=lazy src="${x.f}" data-i=${i} alt=""><figcaption>${x.cap}</figcaption></figure>`).join('');
+ count.textContent=cur.length+' images'}
+grid.onclick=e=>{if(e.target.dataset.i!=null)start(+e.target.dataset.i)};
+let idx=0,t=null,flip=0;const im=[i0,i1];
+function showAt(i){idx=(i+cur.length)%cur.length;const n=im[flip^=1],o=im[flip^1];n.src=cur[idx].f;
+ const go=()=>{n.classList.add('on');o.classList.remove('on');cap.textContent=cur[idx].cap};n.decode?n.decode().then(go,go):go();
+ clearTimeout(t);t=setTimeout(()=>showAt(idx+1),5000)}
+function start(i=0){if(!cur.length)return;show.style.display='block';show.requestFullscreen?.().catch(()=>{});showAt(i)}
+function stop(){clearTimeout(t);show.style.display='none';im.forEach(x=>x.classList.remove('on'));if(document.fullscreenElement)document.exitFullscreen()}
+play.onclick=()=>start(0);
+show.onclick=e=>{e.clientX<innerWidth/4?showAt(idx-1):showAt(idx+1)};
+document.onkeydown=e=>{if(show.style.display!=='block')return;if(e.key==='Escape')stop();else if(e.key==='ArrowLeft')showAt(idx-1);else if(['ArrowRight',' ','Enter'].includes(e.key)){e.preventDefault();showAt(idx+1)}};
+document.onfullscreenchange=()=>{if(!document.fullscreenElement&&show.style.display==='block')stop()};
+draw();
+</script></body></html>

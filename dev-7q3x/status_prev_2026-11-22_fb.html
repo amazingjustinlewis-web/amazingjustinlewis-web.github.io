@@ -1,0 +1,18 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>0-Phi · status</title>
+<style>
+body{margin:0;background:#050403;color:#e9dcc0;font:15px/1.5 Georgia,serif;padding:24px 16px 48px}
+h1{font-weight:400;letter-spacing:.2em;color:#e2b84a;font-size:20px;margin:0 0 4px}.sub{color:#8a7c60;font-size:13px;margin:0 0 20px}.sub a{color:#e2b84a}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.c{border:1px solid rgba(226,184,74,.28);border-radius:12px;padding:14px 16px;background:#0a0805}
+.c h2{margin:0;font-weight:400;font-size:18px;display:flex;justify-content:space-between;gap:8px}.c h2 a{color:#f2e3bd;text-decoration:none}
+.v{color:#e2b84a;font-size:13px}.row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.b{font-size:11px;letter-spacing:.08em;padding:2px 8px;border-radius:999px;border:1px solid rgba(226,184,74,.4);color:#e2b84a}
+.s-Live{background:#e2b84a;color:#120d03}.s-Polished{background:#b8913a;color:#120d03}.s-Working{color:#f2e3bd}.s-In{color:#8a7c60;border-color:#3a3020}
+.pr{color:#8a7c60;border-color:#3a3020}.n{color:#b9aa88;font-size:14px;margin:0}
+</style></head><body>
+<h1>ZERO TO PHI · STATUS</h1><p class="sub" id="sub">Loading…</p><div class="grid" id="g"></div>
+<script>
+fetch('status.json?'+Date.now()).then(function(r){return r.json()}).then(function(d){
+document.getElementById('sub').innerHTML='Updated '+d.updated+' · edit dev-7q3x/status.json · <a href="index.html">launcher</a>';
+document.getElementById('g').innerHTML=d.games.map(function(x){return '<div class="c"><h2><a href="'+x.url+'">'+x.name+'</a><span class="v">'+x.ver+'</span></h2><div class="row"><span class="b s-'+x.status.split(' ')[0]+'">'+x.status+'</span><span class="b '+(x.public?'':'pr')+'">'+(x.public?'Public':'Dev only')+'</span>'+x.fit.map(function(f){return '<span class="b pr">'+f+'</span>'}).join('')+'</div><p class="n">'+x.notes+'</p></div>'}).join('')})
+</script></body></html>

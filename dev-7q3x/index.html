@@ -64,4 +64,7 @@ body.playing #corner{display:flex}#corner.show,#corner:hover{opacity:1}
   document.getElementById('ztpMeT').textContent = u && !u.anon ? ((p && p.name) || 'My profile') : 'Sign in with Google'; }
   paint(); Acct.ready.then(function () { setTimeout(paint, 300); Acct.profile().then(function (p) { if (p) { delete p.ts; localStorage.setItem('ztp:profile', JSON.stringify(p)); } paint(); }); }); })();</script>
 
+
+<script src="../games/minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Dev launcher", "version": "b=14", "corner": "tr", "offX": "12px", "offY": "56px"});</script>
 </body></html>

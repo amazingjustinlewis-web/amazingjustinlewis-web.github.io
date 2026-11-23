@@ -12,4 +12,7 @@
   Kit.joinCard('SPLASH CLOWN', c, '<p>Flick the ball at the red target to dunk the clown.</p>');
   Kit.flick($('zone'), function (f) { if (-f.dy < 200) return; c.send({ t: 'flick', dx: f.dx, dy: f.dy, curve: f.curve, w: f.w, h: f.h }); $('ball').classList.add('gone'); if (navigator.vibrate) navigator.vibrate(15); });
 })();
-</script></body></html>
+</script>
+<script src="../minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Splash Clown", "version": "public", "corner": "br"});</script>
+</body></html>
