@@ -31,3 +31,22 @@ simulated person, so you can watch every phone screen side by side and study how
 - Double-tap any phone or the TV to zoom it to full screen (phone: the controller at the real screen size; desktop:
   as big as fits). Your seat is playable while zoomed; AI phones and the TV are watch-only. The gold tab at the top
   right (or Esc) zooms back out. Nothing is moved or paused: every iframe keeps running underneath.
+
+## v0.3 (panel_v03.html)
+New files only; v0.1 / v0.2 untouched. Uses `personas_v02.js` (curiosity stat), `games/rdr_v02.js` (adapter), and the TV board
+`rdr-phone/index_v074.html` (= v0.7.3 + `host_v074.js`, whose QR points at `controller_v074.html`).
+- **Phone sound:** header "All phone SFX" (default off; `&sfx=1`) plus a speaker per phone caption that overrides it. Only effects;
+  the band music plays once, from the TV. The speaker jumps in gold #E2B84A whenever that phone fires an effect (faint when muted).
+  Every panel tap or key re-unlocks the audio.
+- **Curious AIs:** after locking a pick they peek at the host options, swipe other characters, or turn the phone, weighted by
+  `curiosity` (editable in the people cards). They never press CHANGE PICK.
+- **Explore after pick (controller_v074):** after a pick the menu fades but stays swipeable ("✔ You picked X · just browsing").
+  CHANGE PICK snaps back to your pick; PICK or KEEP returns you to where you were browsing. `RDRC.lobby()` is the test hook.
+- **TV breakout:** ⛶ = full screen (Fullscreen API + zoom; the gold tab exits). ⧉ = its own window, using the TV viewer mode
+  (`index_v074.html?viewer=CODE`), synced to the same room.
+- **Host:** Auto (first in, handed on when they leave; the game drops a silent phone after about 15 s), Me (your seats join first,
+  the AIs never press START, use START GAME NOW or your phone), or First AI. `&host=auto|me|ai`.
+- **Leave / rejoin / late join:** ⏏ on a caption closes that phone; tap it again to walk back in with the same id, which restores the seat.
+  "Late join" adds a new AI; mid-game it takes a free seat or watches.
+- **Pace:** Relaxed (AI think ×1.8, TV timing ×1/0.72, catch window 8 s), Normal (×1.35, ×1/0.85, 5 s), Snappy (v0.2 pace). `&pace=`.
+- Unticking "Wait for me" starts the AIs right away.
