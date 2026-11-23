@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>RDR latency room · TV | Zero to Phi</title>
+<style>
+  html,body{margin:0;background:#14121b;color:#f4efe6;font-family:ui-sans-serif,system-ui,sans-serif;min-height:100%}
+  body{display:flex;flex-direction:column;align-items:center;padding:24px 20px 48px;box-sizing:border-box}
+  h1{font-size:28px;margin:0 0 4px;letter-spacing:.04em}
+  .sub{opacity:.7;margin-bottom:20px}
+  a{color:#ffd23f}
+  #room{font-size:42px;letter-spacing:.25em;font-weight:800;color:#ffd23f;margin:8px 0}
+  #status{margin:6px 0 16px;font-size:16px}
+  #go{font-size:120px;font-weight:800;line-height:1;min-height:140px;display:flex;align-items:center;justify-content:center}
+  #go.go{color:#5ef2c8}
+  table{border-collapse:collapse;min-width:560px;margin-top:16px}
+  th,td{border-bottom:1px solid rgba(255,255,255,.12);padding:8px 12px;text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  .sum{margin-top:18px;font-size:18px;line-height:1.5}
+  canvas{background:#fff;border-radius:12px;margin:8px 0}
+  button{background:#ffd23f;color:#111;border:0;border-radius:999px;padding:.55em 1.2em;font-weight:800;cursor:pointer;font-size:16px}
+  .row{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;justify-content:center}
+</style>
+</head>
+<body>
+  <h1>RDR latency room</h1>
+  <div class="sub">TV · v0.1 · open the phone page, then tap or shake on GO. <a href="../index.html">Dev launcher</a> · <a id="localLink" href="?local=1">same-browser test (?local=1)</a></div>
+  <div class="row">
+    <div>
+      <div>Room</div>
+      <div id="room">····</div>
+      <canvas id="qr" width="220" height="220"></canvas>
+      <div id="join" style="font-size:13px;max-width:260px;word-break:break-all"></div>
+    </div>
+    <div>
+      <div id="status">Opening room…</div>
+      <div id="go">—</div>
+      <button id="start" type="button">Start 5 rounds</button>
+      <div class="sum" id="sum">Waiting for a phone to join.</div>
+    </div>
+  </div>
+  <table id="tbl" hidden>
+    <thead><tr><th>Round</th><th>RTT ms</th><th>One-way ms</th><th>Tap offset ms</th><th>Input</th></tr></thead>
+    <tbody></tbody>
+  </table>
+<script src="../rdr-phone/js/vendor/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="../rdr-phone/js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="../rdr-phone/js/vendor/qrcode.js"></script>
+<script src="../rdr-phone/js/config.js"></script>
+<script src="../rdr-phone/js/net_v078.js"></script>
+<script>
+(function () {
+  var local = /(?:\?|&)local=1(?:&|$)/.test(location.search);
+  var rounds = [], N = 5, running = false, goAt = 0, roundN = 0, host, phone, rtts = [];
+  var $ = function (id) { return document.getElementById(id); };
+  function now() { return performance.now(); }
+  function phoneUrl(code) {
+    return location.href.replace(/index_v01\.html.*/, '') + 'phone_v01.html?room=' + code + (local ? '&local=1' : '');
+  }
+  function paintQr(url) {
+    var cv = $('qr'); if (!cv || !window.qrcode) return;
+    try {
+      var ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+      var qr = window.qrcode(0, 'M'); qr.addData(url); qr.make();
+      var n = qr.getModuleCount(), cell = Math.floor(cv.width / (n + 4)), off = Math.floor((cv.width - cell * n) / 2);
+      ctx.fillStyle = '#000';
+      for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (qr.isDark(r, c)) ctx.fillRect(off + c * cell, off + r * cell, cell, cell);
+    } catch (e) {}
+  }
+  function send(m) { if (phone && host) host.send(phone, m); }
+  function labelTransport(t, detail) {
+    if (t === 'relay' || detail === 'relay') return 'Firestore relay';
+    if (t === 'local' || local) return 'local (BroadcastChannel)';
+    if (t === 'turn') return 'PeerJS · TURN';
+    return 'PeerJS direct';
+  }
+  function mean(a) { return a.length ? a.reduce(function (s, x) { return s + x; }, 0) / a.length : 0; }
+  function jitter(a) {
+    if (a.length < 2) return 0;
+    var m = mean(a); return Math.sqrt(a.reduce(function (s, x) { return s + (x - m) * (x - m); }, 0) / (a.length - 1));
+  }
+  function summarize() {
+    var offs = rounds.map(function (r) { return r.offset; }).filter(function (x) { return x != null; });
+    var rt = rtts.length ? rtts : rounds.map(function (r) { return r.rtt; }).filter(Boolean);
+    var ow = rt.map(function (x) { return x / 2; });
+    var trans = (phone && phone._via) || (local ? 'local' : 'peer');
+    if (window._latTransport) trans = window._latTransport;
+    $('sum').innerHTML = 'Transport: <b>' + labelTransport(trans, window._latDetail) + '</b><br>' +
+      (rt.length ? ('RTT avg ' + mean(rt).toFixed(0) + ' ms · one-way ~' + mean(ow).toFixed(0) + ' ms · jitter ' + jitter(rt).toFixed(0) + ' ms') : 'Measuring RTT…') +
+      (offs.length ? ('<br>Tap offset avg ' + mean(offs).toFixed(0) + ' ms (negative = early)') : '');
+  }
+  function addRow(r) {
+    $('tbl').hidden = false;
+    var tb = $('tbl').tBodies[0];
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + r.n + '</td><td>' + (r.rtt != null ? r.rtt.toFixed(0) : '—') + '</td><td>' + (r.rtt != null ? (r.rtt / 2).toFixed(0) : '—') + '</td><td>' + (r.offset != null ? r.offset.toFixed(0) : '—') + '</td><td>' + (r.why || '—') + '</td>';
+    tb.appendChild(tr);
+    summarize();
+  }
+  function setGo(txt, cls) { $('go').textContent = txt; $('go').className = cls || ''; }
+  function beginRound() {
+    if (roundN >= N) { running = false; setGo('DONE'); summarize(); send({ t: 'done' }); return; }
+    roundN++;
+    goAt = now() + 3000;
+    send({ t: 'countdown', goAt: goAt, n: roundN, total: N, tTv: now() });
+    var left = 3;
+    function tick() {
+      var d = goAt - now();
+      if (d > 50) {
+        var s = Math.ceil(d / 1000);
+        if (s !== left) { left = s; setGo(String(Math.max(1, s))); }
+        requestAnimationFrame(tick);
+      } else {
+        setGo('GO', 'go');
+      }
+    }
+    tick();
+  }
+  function onMsg(conn, m) {
+    if (!m) return;
+    phone = conn;
+    if (m.t === 'hello') {
+      window._latTransport = m.transport;
+      window._latDetail = m.detail;
+      $('status').textContent = 'Phone joined · ' + labelTransport(m.transport, m.detail);
+      send({ t: 'welcome', tTv: now() });
+      summarize();
+    }
+    if (m.t === 'latPing' && m.tPhone != null) {
+      send({ t: 'latPong', tPhone: m.tPhone, tTv: now() });
+    }
+    if (m.t === 'latSample' && m.rtt != null) {
+      rtts.push(m.rtt);
+      if (m.transport) window._latTransport = m.transport;
+      summarize();
+    }
+    if (m.t === 'tap' && running) {
+      var off = (m.tTvEst != null ? m.tTvEst : (m.tPhone + (m.off || 0))) - goAt;
+      var rtt = rtts.length ? rtts[rtts.length - 1] : m.rtt;
+      var rec = { n: roundN, rtt: rtt, offset: off, why: m.why || 'tap' };
+      rounds.push(rec); addRow(rec);
+      running = false;
+      setTimeout(function () { running = true; beginRound(); }, 900);
+    }
+  }
+  var api = {
+    onStatus: function (s, code, detail) {
+      $('room').textContent = code || host.code;
+      $('status').textContent = s + (detail ? ' · ' + detail : '');
+      if (code) {
+        var url = phoneUrl(code);
+        $('join').textContent = url.replace(/^https?:\/\//, '');
+        $('join').dataset.url = url;
+        paintQr(url);
+        if (local) $('localLink').href = url;
+      }
+    },
+    onMessage: onMsg,
+    onClose: function () { $('status').textContent = 'Phone left'; }
+  };
+  host = local ? new RDRNet.LocalHost(api) : new RDRNet.Host(api);
+  $('start').addEventListener('click', function () {
+    if (!phone) { $('status').textContent = 'Wait for a phone to join first.'; return; }
+    rounds = []; rtts = rtts.slice(-8); roundN = 0; running = true;
+    $('tbl').tBodies[0].innerHTML = '';
+    beginRound();
+  });
+})();
+</script>
+</body>
+</html>

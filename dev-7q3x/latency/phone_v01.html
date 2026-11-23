@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="robots" content="noindex">
+<title>RDR latency room · phone | Zero to Phi</title>
+<style>
+  html,body{margin:0;background:#14121b;color:#f4efe6;font-family:ui-sans-serif,system-ui,sans-serif;height:100%;touch-action:manipulation}
+  body{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;text-align:center}
+  h1{font-size:22px;margin:0 0 8px}
+  #status{opacity:.75;margin-bottom:12px}
+  #go{font-size:96px;font-weight:800;min-height:120px;display:flex;align-items:center;justify-content:center}
+  #go.go{color:#5ef2c8}
+  #hint{margin-top:12px;opacity:.8}
+  #stats{margin-top:16px;font-size:15px;line-height:1.5}
+  button{background:#ffd23f;color:#111;border:0;border-radius:999px;padding:.6em 1.2em;font-weight:800;margin-top:12px}
+</style>
+</head>
+<body>
+  <h1>Tap or shake on GO</h1>
+  <div id="status">Connecting…</div>
+  <div id="go">—</div>
+  <div id="hint">First tap also enables shake (needed on iPhone).</div>
+  <div id="stats"></div>
+  <form id="joinForm" hidden><input name="room" placeholder="ROOM" maxlength="8" style="font-size:22px;letter-spacing:.2em;text-transform:uppercase;width:8em;text-align:center"><button type="submit">Join</button></form>
+<script src="../rdr-phone/js/vendor/peerjs.min.js"></script>
+<script>if (typeof Peer !== 'function') document.write('<script src="../rdr-phone/js/vendor/peerjs.legacy.min.js"><\/script>');</script>
+<script src="../rdr-phone/js/config.js"></script>
+<script src="../rdr-phone/js/net_v078.js"></script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var code = (q.get('room') || '').toUpperCase();
+  var local = q.get('local') === '1' || /(?:\?|&)local=1(?:&|$)/.test(location.search);
+  var $ = function (id) { return document.getElementById(id); };
+  var client, off = 0, rtt = 0, goAt = 0, armed = false, lastTap = 0, motionOn = false;
+  function now() { return performance.now(); }
+  function send(m) { if (client && client.sendFast) return client.sendFast(m); if (client) return client.send(m); }
+  function trans() { return client && client.transport ? client.transport() : (local ? 'local' : 'connecting'); }
+  function transLabel(t) {
+    if (t === 'relay') return 'Firestore relay';
+    if (t === 'local') return 'local (BroadcastChannel)';
+    if (t === 'turn') return 'PeerJS · TURN';
+    if (t === 'peer') return 'PeerJS direct';
+    return t || 'Connecting…';
+  }
+  function paintStats() {
+    $('stats').innerHTML = 'Transport: <b>' + transLabel(trans()) + '</b><br>' +
+      (rtt ? ('RTT ' + rtt.toFixed(0) + ' ms · one-way ~' + (rtt / 2).toFixed(0) + ' ms') : 'Measuring…');
+  }
+  function setGo(txt, cls) { $('go').textContent = txt; $('go').className = cls || ''; }
+  function fire(why) {
+    if (!armed) { enableMotion(); return; }
+    if (now() - lastTap < 80) return;
+    lastTap = now();
+    armed = false;
+    var tPhone = now();
+    send({ t: 'tap', tPhone: tPhone, tTvEst: tPhone + off, rtt: rtt, off: off, why: why });
+    setGo('SENT', '');
+    if (navigator.vibrate) try { navigator.vibrate(20); } catch (e) {}
+  }
+  function onMotion(e) {
+    var a = e.accelerationIncludingGravity || e.acceleration; if (!a) return;
+    var mag = Math.sqrt((a.x || 0) * (a.x || 0) + (a.y || 0) * (a.y || 0) + (a.z || 0) * (a.z || 0));
+    if (!onMotion.prev) { onMotion.prev = mag; return; }
+    var d = Math.abs(mag - onMotion.prev); onMotion.prev = mag * 0.5 + onMotion.prev * 0.5;
+    if (d > 18 && armed) fire('shake');
+  }
+  function enableMotion() {
+    if (motionOn) return;
+    function go() { motionOn = true; window.addEventListener('devicemotion', onMotion, { passive: true }); }
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+      DeviceMotionEvent.requestPermission().then(function (s) { if (s === 'granted') go(); }).catch(function () {});
+    } else go();
+  }
+  document.addEventListener('pointerdown', function () { fire('tap'); enableMotion(); });
+  function onMsg(m) {
+    if (!m) return;
+    if (m.t === 'welcome' && m.tTv != null) { /* first sync comes from pongs */ }
+    if (m.t === 'latPong' && m.tPhone != null) {
+      var t1 = now();
+      rtt = t1 - m.tPhone;
+      off = m.tTv - (m.tPhone + rtt / 2);
+      send({ t: 'latSample', rtt: rtt, off: off, transport: trans() });
+      paintStats();
+    }
+    if (m.t === 'countdown') {
+      goAt = m.goAt; armed = true;
+      function tick() {
+        var d = (goAt - off) - now(); /* goAt is TV time; phone time + off ≈ TV time, so remaining = goAt - (now+off) */
+        d = goAt - (now() + off);
+        if (d > 50) { setGo(String(Math.max(1, Math.ceil(d / 1000)))); requestAnimationFrame(tick); }
+        else setGo('GO', 'go');
+      }
+      tick();
+    }
+    if (m.t === 'done') { armed = false; setGo('DONE'); }
+  }
+  function start(code) {
+    $('status').textContent = 'Joining ' + code + '…';
+    var api = {
+      onStatus: function (s, d) { $('status').textContent = s + (d ? ' · ' + d : ''); paintStats(); },
+      onOpen: function () { $('status').textContent = 'Connected'; send({ t: 'hello', transport: trans() }); paintStats(); ping(); },
+      onMessage: onMsg
+    };
+    client = local ? new RDRNet.LocalClient(Object.assign({ code: code }, api)) : new RDRNet.Client(Object.assign({ code: code }, api));
+  }
+  function ping() {
+    setInterval(function () { send({ t: 'latPing', tPhone: now() }); }, 1500);
+    send({ t: 'latPing', tPhone: now() });
+  }
+  if (!code) { $('joinForm').hidden = false; $('joinForm').onsubmit = function (e) { e.preventDefault(); start(this.room.value.toUpperCase()); this.hidden = true; }; }
+  else start(code);
+})();
+</script>
+</body>
+</html>
