@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<link rel="icon" href="../assets/img/favicon.svg">
+<title>End-prompt test · Zero to Phi (dev)</title>
+<style>body{margin:0;background:#0a0e1c;color:#fff;font:16px system-ui,sans-serif;display:flex;justify-content:center}main{width:min(520px,94vw);padding:28px 0}h1{font-size:24px;margin:0 0 8px}button{font:inherit;padding:10px 16px;border-radius:9px;border:0;background:#5ef2c8;color:#012;font-weight:700;cursor:pointer;margin:6px 6px 0 0}.mut{opacity:.65;font-size:14px;line-height:1.45}#log{white-space:pre-wrap;background:#0006;border-radius:10px;padding:12px;margin-top:16px;font:13px ui-monospace,monospace}a{color:#5ef2c8}</style></head>
+<body><main>
+<h1>End-prompt test</h1>
+<p class="mut">Shows the v03 game-end card (popup-only Google sign-in): Exit, Leave arcade initials, or Make a profile. Google sign-in cannot be tested from this box; initials, Exit, and anonymous auth can.</p>
+<button id="show">Show end prompt</button>
+<div id="log">Waiting for account ready…</div>
+<p class="mut"><a href="profile_v03.html">Profile v03</a> · <a href="claim-founder-1.html">Claim Founder #1</a></p>
+<script src="minikit/ztp-account_v03.js?b=1"></script>
+<script>
+(function () {
+  var log = document.getElementById('log');
+  function line(s) { log.textContent += '\n' + s; }
+  Acct.ready.then(function (S) {
+    var u = Acct.user();
+    log.textContent = 'ready. online=' + !!S.online + ' why=' + (S.why || '') + ' anon=' + !!(u && u.anon) + ' uid=' + (u ? u.uid.slice(0, 8) : 'none') + ' initials=' + (Acct.initials() || '(none)');
+  });
+  document.getElementById('show').onclick = function () {
+    window.__ztpTest = { posted: null, exited: false };
+    Acct.endPrompt({
+      title: 'You made the board!',
+      sub: 'Leave your arcade initials, or make a profile to keep your history.',
+      fallback: 'TEST',
+      post: function (name) {
+        window.__ztpTest.posted = name;
+        line('posted as ' + name + ' (initials now ' + Acct.initials() + ')');
+        return Promise.resolve({ name: name, local: !Acct.state.online, test: true });
+      },
+      exit: function () { window.__ztpTest.exited = true; line('exited, no post'); }
+    });
+    line('prompt open');
+  };
+})();
+</script>
+</main></body></html>

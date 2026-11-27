@@ -2,30 +2,33 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <link rel="icon" href="../assets/img/favicon.svg">
 <title>Claim Founder #1 · Zero to Phi (dev)</title>
-<style>body{margin:0;background:#0a0e1c;color:#fff;font:16px system-ui,sans-serif;display:flex;justify-content:center}main{width:min(520px,94vw);padding:28px 0}h1{font-size:24px;margin:0 0 8px}.card{background:#ffffff10;border:1px solid #ffffff22;border-radius:14px;padding:16px;margin:14px 0}button{font:inherit;padding:10px 16px;border-radius:9px;border:0;background:#ffc83a;color:#211;font-weight:700;cursor:pointer}.mut{opacity:.65;font-size:14px;line-height:1.45}#msg{min-height:1.3em;margin-top:12px;color:#ffd27a}a{color:#5ef2c8}#fd{margin:10px 0}</style></head>
+<style>body{margin:0;background:#0a0e1c;color:#fff;font:16px system-ui,sans-serif;display:flex;justify-content:center}main{width:min(520px,94vw);padding:28px 0}h1{font-size:24px;margin:0 0 8px}.card{background:#ffffff10;border:1px solid #ffffff22;border-radius:14px;padding:16px;margin:14px 0}button{font:inherit;padding:10px 16px;border-radius:9px;border:0;background:#ffc83a;color:#211;font-weight:700;cursor:pointer}button[disabled]{opacity:.45;cursor:default}.mut{opacity:.65;font-size:14px;line-height:1.45}#msg{min-height:1.3em;margin-top:12px;color:#ffd27a}a{color:#5ef2c8}#fd{margin:10px 0}#retry{display:none;margin-top:10px}</style></head>
 <body><main>
 <h1>Claim Founder #1</h1>
 <p class="mut">Dev only. This is the one-time claim of Founder #1 for Justin, as Justy Wusty / JAL. Paste <code>firestore.rules_v07</code> into the Firebase console first, or the claim will be turned away.</p>
 <div class="card">
-  <div class="mut">Name and initials are already filled. Sign in with the Google account you want tied to Founder #1. Do this before saving a regular profile with that same Google account, or you may already have a later number.</div>
+  <div class="mut">Name and initials are already filled. Sign in with the Google account you want tied to Founder #1. Do this before saving a regular profile with that same Google account, or you may already have a later number. This opens a Google popup &mdash; if your browser blocks it, allow popups for this site and tap again.</div>
   <div id="fd"></div>
   <button id="go">Sign in with Google and claim Founder #1</button>
+  <button id="retry" type="button">Try sign-in again</button>
   <div id="msg"></div>
 </div>
-<p class="mut"><a href="profile_v02.html">Profile v02</a> · <a href="endprompt_v01.html">End-prompt test</a> · <a href="./">Dev launcher</a></p>
-<script src="minikit/ztp-account_v02.js?b=1"></script>
+<p class="mut"><a href="profile_v03.html">Profile v03</a> · <a href="endprompt_v02.html">End-prompt test</a> · <a href="./">Dev launcher</a></p>
+<script src="minikit/ztp-account_v03.js?b=1"></script>
 <script>
 (function () {
   var msg = document.getElementById('msg'), fd = document.getElementById('fd');
+  var go = document.getElementById('go'), retry = document.getElementById('retry');
   function show(p) {
     if (!p) return;
     fd.innerHTML = p.founder ? Acct.founderBadge(p.founder, { size: 'lg' }) + ' · ' + (p.name || '') + ' · ' + (p.initials || '') : '';
     if (p.founder === 1) msg.textContent = 'You have Founder #1. You are all set.';
     else if (p.founder > 1) msg.textContent = 'This Google account already has Founder #' + p.founder + '. #1 was not moved.';
   }
-  Acct.ready.then(function () { return Acct.profile(); }).then(show).catch(function () {});
-  document.getElementById('go').onclick = function () {
-    msg.textContent = 'Opening Google…';
+  function showRetry(on) { retry.style.display = on ? '' : 'none'; }
+  function claim() {
+    showRetry(false);
+    msg.textContent = 'Opening Google\u2026';
     Acct.claimFounder1({ name: 'Justy Wusty', initials: 'JAL' }).then(function (p) {
       show(p);
       if (p && p.founder === 1) msg.textContent = 'Claimed Founder #1 as Justy Wusty / JAL.';
@@ -33,12 +36,21 @@
       else if (p && p.founder > 1) msg.textContent = 'This Google account already has Founder #' + p.founder + '. #1 was not moved.';
       else msg.textContent = 'Signed in, but Founder #1 was not assigned. Paste rules v07 if you have not yet, then try again.';
     }).catch(function (e) {
+      var text = Acct.signInFailText(e);
       var w = (e && (e.code || e.message)) || 'failed';
-      msg.textContent = /permission|denied/i.test(w)
-        ? 'The new rules are not live yet. Paste firestore.rules_v07 into the Firebase console, publish, then try this page again.'
-        : (/popup-closed|cancelled/.test(w) ? 'Sign-in cancelled.' : 'Claim failed: ' + w);
+      if (Acct.isPopupBlocked(e) || (e && (e.code === 'ztp/not-ready' || e.code === 'ztp/offline'))) {
+        msg.textContent = text;
+        showRetry(true);
+      } else if (/permission|denied/i.test(w)) {
+        msg.textContent = 'The new rules are not live yet. Paste firestore.rules_v07 into the Firebase console, publish, then try this page again.';
+      } else {
+        msg.textContent = text;
+      }
     });
-  };
+  }
+  go.onclick = claim;
+  retry.onclick = claim;
+  Acct.ready.then(function () { return Acct.profile(); }).then(show).catch(function () {});
 })();
 </script>
 </main></body></html>
