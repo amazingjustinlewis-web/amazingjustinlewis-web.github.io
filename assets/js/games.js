@@ -432,11 +432,17 @@ window.GAMES = [
     ],
     versions: [
       {
-        id: "v0.9.72",
+        id: "v0.9.83",
         name: "Latest playable",
         current: true,
         play: 'games/bubble-hockey/index.html',
-        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+        notes: "Public freeze of the v0.9.82 game feel (body checks, disc puck, cameras) plus sponsor hooks, with board ads off by default. Early playable build: still being tuned, things will change and may break. Feedback welcome. Labelled In development."
+      },
+      {
+        id: "v0.9.72",
+        name: "Earlier playable",
+        play: 'games/bubble-hockey/index_prev_v0972.html',
+        notes: "Previous public freeze."
       }
     ]
   }

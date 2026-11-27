@@ -1,5 +1,8 @@
 {
   "game": "Bubble Hockey",
-  "ver": "v0.9.72",
-  "date": "2026-11-10"
+  "ver": "v0.9.83",
+  "date": "2026-11-27",
+  "label": "In development",
+  "frozenFrom": "dev-7q3x/bubble v0.9.83 (gameplay v0.9.82 + sponsor hooks; public board ads default off)",
+  "play": "v0.9.83/index.html"
 }

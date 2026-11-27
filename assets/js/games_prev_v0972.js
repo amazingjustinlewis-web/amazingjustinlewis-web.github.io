@@ -1,0 +1,704 @@
+/* =====================================================================
+   GAMES DATA  -  the whole site's game lists are rendered from here.
+   ---------------------------------------------------------------------
+   All paths are RELATIVE TO THE SITE ROOT (no leading slash).
+
+   SECTIONS (the three layered cards on the home page)
+     'soft-play'  front card: soft, bright, gentle. Kids + the One-Button Series
+     'family'     centre card: the main section, soft to intense, all family-appropriate
+     'deep-end'   back card: darker experiments (locked for now, no games listed)
+     'arcade'     in-progress arcade games (early playable builds, still being tuned)
+
+   ADD A GAME = add one object to GAMES:
+     id          short unique slug, e.g. 'charge-hop'
+     title       game name
+     pitch       one-line pitch
+     cover       16:9 card image (~640x360 .webp)
+     coverAlt    what the cover shows (screen readers)
+     details     the game's details page
+     status      small badge text ('Early prototype', 'New!', ...)
+     tags        a few short labels
+     accent      optional card colour
+     sections    which home-page sections list it, e.g. ['soft-play', 'family']
+     series      optional series id from SERIES below (e.g. 'one-button')
+     intensity   1-5 on the family scale (see INTENSITY below)
+     goodToKnow  short plain-language notes for parents / sensory-sensitive players
+     versions    playable builds, newest first. Exactly one should have current: true.
+                 Only list builds that really exist in the repo.
+
+   ADD A NEW VERSION of a game: copy the build into its own folder (for example
+   games/charge-hop/v4/), mark it current: true, set the old one to current: false
+   and keep it in the list so people can still play it.
+   ===================================================================== */
+
+window.INTENSITY = ['', 'Gentle', 'Playful', 'Lively', 'Intense', 'Full throttle'];
+
+window.SERIES = [
+  {
+    id: 'one-button',
+    title: 'The One-Button Series',
+    section: 'soft-play',
+    blurb: 'Experimental games you play with a single button. One simple input, lots of ways to use it.'
+  }
+];
+
+window.GAMES = [
+  {
+    id: 'charge-hop',
+    title: 'Charge Hop',
+    pitch: 'One button. Charge it. Don\u2019t blow it. A hop-and-launch race for 1\u20132 players.',
+    cover: 'assets/img/charge-hop/cover-card.webp',
+    coverAlt: 'Charge Hop title screen with the yellow toy robot and orange robot dog',
+    details: 'games/charge-hop.html',
+    status: 'Early prototype',
+    tags: ['1\u20132 players', 'Keyboard', 'Browser'],
+    accent: '#FFD700',
+    sections: ['soft-play', 'family'],
+    series: 'one-button',
+    intensity: 3,
+    goodToKnow: [
+      'Beeps and boops made by the game: press M to mute.',
+      'Press P to pause at any time.',
+      'Slow-motion zooms on close calls; the screen shakes on crashes and overloads.',
+      'Bright fireworks when someone wins.',
+      'Falling in water or lava is a silly gag: the robot pops right back out.'
+    ],
+    versions: [
+      {
+        id: 'v3',
+        name: 'The Lava Run',
+        current: true,
+        play: 'games/charge-hop/index.html',
+        notes: 'Lava chutes and open sprints. The earlier levels, Rush Hour Creek and The Long Way, are in its level select.'
+      }
+      // Older builds can be added here once they're in the repo, e.g.
+      // ,{ id: 'v2', name: 'The Long Way', current: false, play: 'games/charge-hop/v2/index.html', notes: '...' }
+    ]
+  },
+  {
+    id: 'zombie-tiles',
+    title: 'Zombie Tiles',          // WORKING TITLE (placeholder name)
+    pitch: 'Explore a zombie city tile by tile, fight with dice and race for the helipad. On your TV, with phones as controllers.',
+    cover: 'assets/img/zombie-tiles/cover-card.webp',
+    coverAlt: 'Zombie Tiles title art: a pixel-art city board with a fortified helipad, zombies and four stylised dice',
+    details: 'games/zombie-tiles.html',
+    status: 'Prototype',
+    tags: ['1\u20134 players', 'TV + phones', 'Working title'],
+    accent: '#b6ff7a',
+    sections: ['family'],
+    intensity: 4,
+    goodToKnow: [
+      'Cartoon zombies, no gore: fights are dice rolls with big result text.',
+      'Players can be knocked out and come back as a zombie (or just watch).',
+      'Trap boxes catch zombies in a cartoon rope snare, and dynamite goes off with a big cartoon boom and a screen shake.',
+      'A player down to their last heart leaves a few small cartoon red drops on the board as they walk; they fade away after a few seconds.',
+      'Each phone shows its own hearts and ammo, so a little secrecy is part of the fun.',
+      'Short, cartoony sound effects from the TV (war cries, little screams, a crunch when a fight goes wrong): press M to mute.',
+      'Optional teams (2\u20134, colour-coded): teammates never fight each other and can wait for each other on the helipad. While anyone waits there, zombies swarm the pad, so it gets tense.',
+      'Computer players (AI) can fill empty seats, each with its own personality and an Easy, Normal or Ruthless setting.',
+      'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi). No phones? Play hot-seat on one screen.',
+      'Optional Philips Hue lights: short colour flickers plus red, gold and orange flashes in fights, escapes and explosions. Leave them off if anyone is sensitive to flashing lights.'
+    ],
+    versions: [
+      {
+        id: 'v0.5',
+        name: 'Teams & Takeoff',
+        current: true,
+        play: 'games/zombie-tiles/index.html',
+        notes: 'Play in teams: the host turns on Teams in the lobby and puts players and AI into 2 to 4 colour-coded teams. Teammates never fight each other, and the results show the winning team. At the helipad you now choose TAKE OFF NOW or WAIT for the others: while anyone waits, zombies swarm the pad fence and attack, so you have to hold them off (weapons and thrown TNT help), then take off together. Plans can mix steps and drops: move 2, drop TNT, move 2 more, EXECUTE. AI players do all of this too. Fight balance unchanged.'
+      },
+      {
+        id: 'v0.4',
+        name: 'Traps & TNT',
+        current: false,
+        play: 'games/zombie-tiles/v0.4/index.html',
+        notes: 'Pick up trap boxes and dynamite and drop them from your phone. Zombies that step on a trap get caught in a cartoon rope snare; lit dynamite goes off at the end of the round (or when you press DETONATE) and clears the zombies around it, but it hurts players standing too close. New phone buttons: RESET MOVES and END TURN. Players and zombies are now little animated characters that walk square by square (you can draw your own). Computer players use traps and dynamite too. v0.4.1: weapons hit harder (pipe +2, pistol +3, machine gun +5; bare hands unchanged), and a player on their last heart leaves a few cartoon drops behind them. v0.4.2: phones can now join on older smart-TV browsers (such as Samsung TVs) that used to say "PeerJS did not load" (all versions got this fix).'
+      },
+      {
+        id: 'v0.3',
+        name: 'AI Crew',
+        current: false,
+        play: 'games/zombie-tiles/v0.3/index.html',
+        notes: 'Add computer players with personalities (cautious looter, reckless fighter, helipad sprinter, sneaky backstabber, loyal buddy) and Easy / Normal / Ruthless difficulty. They show their planned path, chat in speech bubbles, sometimes share ammo with a teammate (or leave them behind at the helipad), and cover for a phone that drops out. Optional coach hints on a phone. New sound effects and stronger light effects for everyone. v0.3.1: a helicopter celebration when someone escapes, a gentle "your turn" buzz on phones (switchable), and placing a tile now always ends your turn.'
+      },
+      {
+        id: 'v0.2',
+        name: 'Lights On',
+        current: false,
+        play: 'games/zombie-tiles/v0.2/index.html',
+        notes: 'Same game as v0.1, plus optional Philips Hue lights that react to turns, dice, fights and escapes (needs the Lights Helper on a PC). v0.2.1: the helper connects through a hidden Edge/Chrome, so it works even when Firefox is the default browser; rooms can be ticked on the helper page too.'
+      },
+      {
+        id: 'v0.1',
+        name: 'First playable',
+        current: false,
+        play: 'games/zombie-tiles/v0.1/index.html',
+        notes: 'Working title. Open it on a TV or big screen; phones join with the QR code. Hot-seat on one screen works too.'
+      }
+    ]
+  },
+  {
+    id: 'red-deer-rich',
+    title: 'Red Deer Rich',
+    pitch: 'Buy Red Deer, build Shops, make deals on your phone and hit PAY UP before they pass the dice. Play on your TV with phones as controllers, or solo on one phone.',
+    cover: 'assets/img/red-deer-rich/cover-card.webp',
+    coverAlt: 'Red Deer Rich TV board: Red Deer streets around a river, the Upper Level Youth Centre and player tokens',
+    details: 'games/red-deer-rich.html',
+    status: 'In development',
+    tags: ['2\u20138 players', 'TV + phones or solo', 'In development'],
+    accent: '#f2c230',
+    sections: ['family'],
+    intensity: 2,
+    goodToKnow: [
+      'Early playable build: still being tuned, things will change and may break. Feedback welcome.',
+      'Play solo on your phone against computer players, or open the TV board and join with phones. Those are two separate ways to play.',
+      'A friendly property trading game set in Red Deer, Alberta. Players can go bankrupt; the last one standing wins.',
+      'PAY UP is a reaction race: a big button pops up on the owner\u2019s phone, with a cartoon BOOM on the payer\u2019s phone when they get caught.',
+      'Phones carry private chat and deals between players (the TV never shows them).',
+      'A faint, made-up punk band plays from the Upper Level Youth Centre and gets louder as tokens get close. Press M on the TV to mute.',
+      'Computer players can fill empty seats (Easy, Normal or Ruthless), in the lobby or mid-game from the host phone.',
+      'Late arrivals can scan the small QR on the TV to watch, and ask to take over a computer player\u2019s seat.',
+      'Three game lengths: Regular (nothing pre-dealt), Medium (some deeds dealt, 45 min) and Quick (every deed dealt, 30 min).',
+      'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi).',
+      'Placeholder art, and some character perks are still marked coming soon.'
+    ],
+    versions: [
+      {
+        id: 'v0.11',
+        name: 'Solo phone + TV',
+        current: true,
+        play: 'games/red-deer-rich/v0.11/index.html',
+        notes: 'Early playable build: still being tuned, things will change and may break. Feedback welcome. The TV board is the v0.7.10 playtest pass: Recap no longer stalls a turn mid-move, session selfies sit as a circular face on the pawn, property pointers only appear when the tile is off the edge of a zoomed board, the dice banner clears on a new turn, dropped phones that the game is auto-playing say Away, auto-playing, and phone join falls over to the cloud relay sooner. You can shake or tap-anywhere to smack, and the Snowbank is a little snow pile with a softer slip sound. Solo phone mode is solo v0.11. Previous public copy (v0.10) is kept.'
+      },
+      {
+        id: 'v0.10',
+        name: 'Solo phone + TV',
+        current: false,
+        play: 'games/red-deer-rich/v0.10/index.html',
+        notes: 'Early playable build: still being tuned, things will change and may break. Feedback welcome. New solo phone mode: a dice pad in the thumb zone, a close-up that fills the board with a colour pointer to the runner, smack replays in the centre, a selfie bobblehead, and Randomness and Secret Finds cards that rise out of their space, flip and tuck back in. The TV board keeps the recap show, a lobby zoom, a sidebar that stays visible, a picture-in-picture follow camera, walking runners and phone dice with hop-and-smack reactions. Previous public copy (v0.8) is kept.'
+      },
+      {
+        id: 'v0.8',
+        name: 'Polish + front door',
+        current: false,
+        play: 'games/red-deer-rich/v0.8/index.html',
+        notes: 'Public freeze before v0.10. Pointed property tabs, shake-to-roll from any screen, dread hops, buy pulse, Live/Queued/Turn-only property management, rent locked at landing, AI takes dropped seats.'
+      },
+      {
+        id: 'v0.7',
+        name: 'Playtest polish',
+        current: false,
+        play: 'games/red-deer-rich/index.html',
+        notes: 'Fixes from a 10-person family playtest. Tap any property on your phone and it bounces on the TV. Clear VIEW SET and CLOSE SET buttons, a big PAID IN FULL that sweeps across the phone, and MY TURN always jumps straight to your turn. When passing the dice is the only move left, it passes by itself and says so. Pick a 3, 5 or 8 second PAY UP catch window. A new settings vote (gear button) lets anyone propose turning the timer off or on, adding 15 minutes, pausing, changing the catch window or switching the TV zoom, which applies at 85% yes. The TV zoom now zooms in on the action, glides back after about 5 seconds and shows arrows pointing to off-screen players. Deals get a List or Map toggle.'
+      },
+      {
+        id: 'v0.6',
+        name: 'Family party',
+        current: false,
+        play: 'games/red-deer-rich/v0.6/index.html',
+        notes: 'New Teams option (off unless you pick it): with 4 or more players, teams share one bank balance and own their deeds together. No rent between teammates, either teammate can build or hit PAY UP, and if the team can\u2019t pay, the whole team goes bust. When the game ends, every phone gets PLAY AGAIN and BACK TO GAMES LIST. Everything from v0.5 is unchanged.'
+      },
+      {
+        id: 'v0.5',
+        name: 'Weather and wear',
+        current: false,
+        play: 'games/red-deer-rich/v0.5/index.html',
+        notes: 'A new Disasters option (on in Chaos): now and then hail, a car through the window, a burst pipe, raccoons or one of 20 small day or night mishaps closes a business or halves its rent for 1 to 3 turns. The icon flies in on the TV, the tile wears a repair pill, and the owner\u2019s phone offers RUSH REPAIR. AUTO-RAISE now shows its plan first (\u201cMortgage X, sell 1 Shop on Y = $340\u201d) with OK or adjust by hand. Tap any deed on the phone\u2019s maps or history for a flip card with rents and every building cost. Mega-Plexes get built with saw and hammer, amounts are bold, drawn cards stay up 12 s, resting tokens are see-through, and the phone gets shake to roll, a keep-screen-awake switch, a game timer for any length, and cash that pops or crunches.'
+      },
+      {
+        id: 'v0.4',
+        name: 'Cards in hand',
+        current: false,
+        play: 'games/red-deer-rich/v0.4/index.html',
+        notes: 'My Stuff becomes a swipeable wheel of deed cards (or a plain list: the switch in the corner remembers your pick). The front card shows every rent, the next Shop and its price, with BUY (\u2212$) and SELL (+$) right on top and no confirm. Tap or pinch a card to unfold its whole colour set; MORTGAGE flips the card over to a Confirm, and a mortgaged card stays flipped with Unmortgage and its cost. Hawk is now called Mortgage everywhere. Owe money and sell or mortgage by hand: the debt pays itself the moment you have enough, with a big PAID IN FULL and a cha-ching. New Heckle option: if someone stalls, everyone else gets a little laughing button that floats faces up their phone. Every card drawn goes into the phone history, tap to read it again. Trades get a drag-and-drop map: drag deeds onto the two big pieces, slide cash across, and tap deeds to light them up on your own phone only. Board pieces now wear the same crowns and accessories everywhere, owned tiles get a crisp owner-colour outline instead of a tint, the TV picks its graphics level by itself, and the 4:3 podium is centred.'
+      },
+      {
+        id: 'v0.3',
+        name: 'Red Deer stories',
+        current: false,
+        play: 'games/red-deer-rich/v0.3/index.html',
+        notes: 'Two new card decks. Red Deer Randomness (the old Hailstone): chinooks, hail, orange cones on Gaetz, Westerner Days, skating at Bower Ponds, geese on the trail. Secret Finds (the old Potluck): every card is a short true story from Red Deer history, checked against real sources (a fort bought for $1, Laurier\u2019s sticky theatre seats, Francis the Pig, the official cookie), with a READ MORE on the phones. PAY UP catches now explode the money out of the caught token and stream it to the catcher, with a cha-ching on the catcher\u2019s phone and a coin-drain on the caught phone (the boom itself is half as loud). Tap a deed in My Stuff to bounce that tile on the TV. No more 3-second PASS DICE wait on your own or unowned deeds. Lighter tile names with a soft halo, an 8-player podium that fits 1080p and 4:3 screens, and the TV keeps its setup if the host phone reloads.'
+      },
+      {
+        id: 'v0.2.1',
+        name: 'Simple setup',
+        current: false,
+        play: 'games/red-deer-rich/v0.2.1/index.html',
+        notes: 'Setup made simple: Classic, Chaos and Chill presets at the top, every game option folded into one “Game options (3 on)” line that opens into a checklist with one-line descriptions (press and hold any option for the full explanation), one big START button with the game length and number of computer players right beside it, the host phone and the TV remember the last game’s setup, and the TV lobby shows the active options as icons so everyone knows the rules before the first roll. Also: owner-colour tile washes 20% lighter so the board colours show through, and a bigger “Scan to join the next game” QR on the podium for blurry projectors.'
+      },
+      {
+        id: 'v0.2',
+        name: 'Game feel',
+        current: false,
+        play: 'games/red-deer-rich/v0.2/index.html',
+        notes: 'Game feel pass: tokens hop tile by tile and stay put on the landing tile with a little firework in your colour, money pops (+$200 floats out of your total and counts up, $ signs and flying bills on the board, rent flies from token to token), board announcements that stay up for 6 seconds and shatter when the next one punches in, a 10-second countdown on the TV when a phone drops before an AI covers the seat, a bigger TV play-by-play, day/night lighting kept to the middle of the board, My Stuff in board order, a one-button “Go bust, pay what I can”, out-of-game plaques beside names, quick camera zoom-ins on big moments, and line-art buildings with a gentle overhead 3D lean.'
+      },
+      {
+        id: 'v0.1.2',
+        name: 'Projector night fixes',
+        current: false,
+        play: 'games/red-deer-rich/v0.1.2/index.html',
+        notes: 'Fixes from the first Chromecast and projector night: a much bigger, high-contrast watch QR in the corner that scans off a blurry wall projector, a sound engine rebuild that stops the "chunky blips" on slow TV sticks, a New Game button on the host phone (with an are-you-sure) that takes everyone back to setup without recasting, and the host phone no longer moves to someone else when the game starts.'
+      },
+      {
+        id: 'v0.1.1',
+        name: 'Auctions + living city',
+        current: false,
+        play: 'games/red-deer-rich/v0.1.1/index.html',
+        notes: 'Auctions on every passed deed (bid from any phone), Regular / Medium / Quick game lengths, AI players can fill empty seats mid-game, owner-colour tiles that drift slowly after private deals, a 3 s PASS DICE lock, a follow camera, tumbling dice, bigger tile names, a sun and moon arc, a first-pass mini city in the middle of the board, a zoomable phone board with player dots, AI stand-ins you can take back by rejoining, Leave Game (hand your seat to an AI, split your stuff, give it to one player or throw it in the pot), an Observer mode from a small QR on the TV (watch, then ask to take over an AI seat), an end-of-game podium with fun titles, fireworks and a Hue celebration, and phone play on older Samsung TV browsers.'
+      },
+      {
+        id: 'v0.1',
+        name: 'First playable',
+        play: 'games/red-deer-rich/v0.1/index.html',
+        notes: 'Present Day board, dice, buying, rent with the PAY UP race, Shops and Mega-Plexes, hocking, the Snowbank, bankruptcy, trades and chat on phones, AI players, house rules, Full or Quick mode. Placeholder art.'
+      }
+    ]
+  },
+  {
+    id: 'walker',
+    title: 'Walker',
+    pitch: 'A calm, soft 3D play world made for Walker. Six big picture buttons take you to a bouncy castle, a playground and a quiet path full of friendly little moments. No scores, no rush.',
+    cover: 'assets/img/walker/cover-card.webp',
+    coverAlt: 'Walker: a first-person view from a swing in a bright playground with a puppy buddy',
+    details: 'games/walker.html',
+    status: 'First prototype',
+    tags: ['1 player', 'TV + phone or iPad', 'Calm'],
+    accent: '#ff8fc7',
+    sections: ['family'],
+    intensity: 1,
+    goodToKnow: [
+      'Made for kids who love calm and predictable: big buttons, no failing, no text to read, quiet sounds.',
+      'Tap once to do a thing, tap again to go deeper (bounce higher, flip, swing higher). Tap a place fast to run there.',
+      'Optional buddy (monkey, dog or teddy bear) who pads along and points things out with your browser\u2019s voice. Chattiness: Off / Once in a while / Often / Everything.',
+      'On an iPad, Play here puts the six buttons along the bottom of the screen; no phone needed.',
+      'Philips Hue is a settings preview only (sunny warm, rainy blue, 2\u2013100% brightness cap); the lights hookup comes later.',
+      'First prototype: simple shapes and synthesized sounds. Tested with simulated phones so far.'
+    ],
+    versions: [
+      {
+        id: 'v0.4',
+        name: 'Sky and sound',
+        current: true,
+        play: 'games/walker/index.html',
+        notes: 'Every sound now comes from somewhere: the busker, birds, water, kids, the coaster and the zoo fade in and out with distance and pan left and right. Night skies with stars, shooting stars and a comet, more birds and passing flocks, rainbows. When something lovely is in the sky the top edge of the pad glows; tap it to look up. The sandbox builds one castle in front of you, a piece per tap.'
+      },
+      {
+        id: 'v0.3',
+        name: 'Playtest fixes',
+        play: 'games/walker/v0.3/index.html',
+        notes: 'Drawn swing, seesaw and water slide icons, swings and seesaw in sync, a seesaw buddy, a real dome climb, sandbox building, basketball that misses sometimes, a waving hand, bumper boat motors, the coaster lap bar.'
+      },
+      {
+        id: 'v0.2',
+        name: 'Big park',
+        play: 'games/walker/v0.2/index.html',
+        notes: 'Six categories, tap-to-run, a little car, a roller coaster, petting zoo, water park and bumper boats.'
+      },
+      {
+        id: 'v0.1',
+        name: 'First stroll',
+        play: 'games/walker/v0.1/index.html',
+        notes: 'A bouncy castle (bounce, flips, basketball hoop, inflatable slide, lie back and watch the sky, bounce with other kids), a playground (slide, swings, climbing dome, merry-go-round, seesaw, sandbox), a quiet path with moments to stop for (a busker, a fish in a puddle, a deer, chipmunks, people laughing, ducks), a rocket ride stub, a pond and a bench, an optional buddy, soft weather with rain and a rainbow, idle people-watching, phone or Play here mode.'
+      }
+    ]
+  },
+  {
+    id: 'space',
+    title: 'Drift Signal',
+    pitch: 'The chillest space sim: the TV is your ship\u2019s bridge window and every phone is a crew station. Warp between planets, probe a black hole, land on a creepy ocean world. 1 to 6 crew.',
+    cover: 'assets/img/space/cover-card.webp',
+    coverAlt: 'Drift Signal on the TV: the view from a starship bridge looking at a black hole with a glowing accretion disk, holographic readouts on the glass and a QR code etched into the bulkhead',
+    details: 'games/space.html',
+    status: 'First prototype',
+    tags: ['1\u20136 crew', 'TV + phones', 'Chill'],
+    accent: '#8fe6ff',
+    sections: ['family'],
+    intensity: 1,
+    goodToKnow: [
+      'Slow and calm by design: no shooting, no score. Strange things just happen out there (an alien that stares at you through the glass, a ship the size of a city).',
+      'The first phone aboard is the captain. Everyone after gets a station (Helm, Science, Tactical, Engineering, Comms); the captain can drag stations between people.',
+      'Default mode is the recommended pace. Change anything on the captain\u2019s phone (danger level, computer voice, cosmic drone) and it becomes Custom.',
+      'The ship computer talks using your browser\u2019s built-in voice (Off / Occasional / Detailed). Some TV browsers have no voice.',
+      'Philips Hue is a settings preview only for now (zones + a 2\u2013100% brightness range); the lights hookup comes later.',
+      'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi).',
+      'First prototype: simple shapes with layered glow. Tested with simulated phones so far.'
+    ],
+    versions: [
+      {
+        id: 'v0.1',
+        name: 'First voyage',
+        current: true,
+        play: 'games/space/index.html',
+        notes: 'The bridge: a bulkhead window with holographic heading, warp, shields, hull, power and contact markers, a view-screen zoom, and the room QR etched into the bulkhead. A sector with seeded planets, a nebula, an off-gassing comet (fly its tail and the shields light up), a black hole that pulls you in, three very different stations and a drifting freighter. Star map with drop-down scan categories, a warp slider with ship-time ETAs, an AI pilot, probes (planets swallow them, the black hole turns their readings to static), a water-planet landing with creepy watchers, node-based power routing, crew stations with drag-to-assign and captain requests, random events (meteor storms, a raider, a distress call you can tow clear, an alien envoy you can talk to from your phones) and a rare wild event in Default mode.'
+      }
+    ]
+  },
+  {
+    id: 'mech',
+    title: 'Iron Stride',
+    pitch: 'Pilot a walking mech from its cockpit on the TV. Swing your phone to turn, tilt to aim, draw a path on the map and the legs do the walking. 1 pilot + an optional gunner.',
+    cover: 'assets/img/mech/cover-card.webp',
+    coverAlt: 'Iron Stride on the TV: a mech cockpit looking out over a low-poly city, with a crosshair locked on a cartoon drone',
+    details: 'games/mech.html',
+    status: 'First prototype',
+    tags: ['1\u20132 players', 'TV + phones', 'Motion aiming'],
+    accent: '#ffb02e',
+    sections: ['family'],
+    intensity: 3,
+    goodToKnow: [
+      'Working title. Cartoon robots: drones and tanks pop apart in puffs of fire and smoke. No people.',
+      'First-person cockpit view with a walking bob and stomps. Some players may find the bobbing view a bit much on a big screen.',
+      'Aim and turn by pointing your phone at the TV (motion sensor). iPhones ask for permission first. No sensor? Use the touchpad, or play on a laptop with mouse + keys.',
+      'A 3-tap calibration before you play. Re-centre any time.',
+      'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi).',
+      'Cannon fire, rockets, explosions, stomps and cockpit beeps. Press M on the TV to mute.',
+      'First prototype: simple proxy art, no rounds or scores to chase yet.'
+    ],
+    versions: [
+      {
+        id: 'v0.3',
+        name: 'Trackpad + lock-on',
+        current: true,
+        play: 'games/mech/index.html',
+        notes: 'A second control mode, Trackpad: the whole phone screen moves the crosshair like a laptop trackpad, tap anywhere to fire, hold to keep firing or charge the rail, and lean the phone to walk (forward, back, and sideways to strafe). Rockets get a forgiving lock-on with flashing red brackets and a lock tone, lock up to three targets and fire a homing salvo. The thumb pad keeps its momentum after a swipe and slows down gradually, and the edge-turn zones are wider and softer.'
+      },
+      {
+        id: 'v0.2',
+        name: 'Thumb pad',
+        current: false,
+        play: 'games/mech/v0.2/index.html',
+        notes: 'Projector-night control pass: a thumb pad on the phone that walks the mech in the direction you drag (further = faster), a facing ring you can drag to swing the torso while you keep walking the same way, an arrow for travel direction and speed, a faint holographic mini-map inside the pad, tap the pad to fire, a second big intent reticle that smooths out hand jitter (shots go there, tighter when you hold steady), full look range straight up to the sky and down at your feet, and WASD movement with mouse aim on a laptop.'
+      },
+      {
+        id: 'v0.1',
+        name: 'First steps',
+        current: false,
+        play: 'games/mech/v0.1/index.html',
+        notes: 'Wraparound cockpit with heading, hull, radar and weapon readouts; phone motion steering and aiming with a 3-tap calibration; hidden aim assist that locks tight when you hold steady and loosely when you are shaky; autocannon, rockets and a charged rail shot with reload animations; a topographic map where you tap to walk or draw a path that becomes a smooth curve; autopilot, brace and eject; holographic hands on the controls (toggle); drones and tanks; exploding barrels; a mech bay that rearms and repairs; a co-pilot gunner phone; mouse + keys on a laptop; auto quality for slow TV sticks.'
+      }
+    ]
+  },
+  {
+    id: 'laser-range',
+    title: 'Laser Range',
+    pitch: 'Point your phone at the TV like a light gun. Pop cartoon targets, blow up barrels and don\u2019t shoot granny. 1 to 4 players, 90-second rounds.',
+    cover: 'assets/img/laser-range/cover-card.webp',
+    coverAlt: 'Laser Range on the TV: a desert shooting gallery with barrels, crates and brick walls, a pop-up target and a red crosshair firing a laser',
+    details: 'games/laser-range.html',
+    status: 'Early test',
+    tags: ['1\u20134 players', 'TV + phones', 'Motion aiming'],
+    accent: '#ff4fd8',
+    sections: ['family'],
+    intensity: 3,
+    goodToKnow: [
+      'Cartoon shooting gallery: round targets and silly bandits pop up from behind cover. Nothing gets hurt; targets just flip over.',
+      'There is a granny cut-out you should NOT shoot (it costs points).',
+      'Red barrels explode with a flash, a boom and a little screen shake (switched off in low-detail mode).',
+      'Aim by pointing your phone at the TV (motion sensor). iPhones ask for permission first. No sensor? Drag on the touchpad instead.',
+      'A quick 5-point calibration before you play: point at each target and tap. Re-centre any time if the cursor drifts.',
+      'Needs an internet connection for phones to join (the TV and phones should share the same Wi-Fi).',
+      'Optional: works with the Zombie Tiles Lights Helper to flash Hue lights when barrels explode.',
+      'Laser zaps, pops and booms. Press M on the TV to mute.',
+      'Early test: placeholder art, and motion aiming has not been tried on many real phones yet.'
+    ],
+    versions: [
+      {
+        id: 'v0.1',
+        name: 'First test',
+        current: true,
+        play: 'games/laser-range/index.html',
+        notes: 'Motion aiming with 5-point calibration and Re-centre, a touchpad fallback, a 90-second shooting gallery with pop-up targets, a rail of ducks and gold runners, exploding barrels with chain reactions, a charge-cannon balloon power-up, swipe blasts, scores, awards and a results screen. Auto low detail for Chromecast. Placeholder art.'
+      }
+    ]
+  }
+
+  ,{
+    id: "bubble-hockey",
+    title: "Bubble Hockey",
+    pitch: "Table-top rod hockey on your TV. Drag, dangle and flick to pass, with phones as the rods.",
+    cover: 'assets/img/bubble-hockey/cover-card.webp',
+    coverAlt: "Bubble Hockey: a table-top hockey rink under a glass dome, with skaters chasing a puck",
+    details: 'games/bubble-hockey.html',
+    status: 'In development',
+    tags: ["2 players", "TV + phones", "In development"],
+    accent: "#7ec8ff",
+    sections: ["family"],
+    intensity: 3,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Open this on a TV or big screen; phones join with the QR code (same Wi-Fi).",
+      "Cartoon table hockey. Sound comes from the TV; mute from the game if you need to."
+    ],
+    versions: [
+      {
+        id: "v0.9.72",
+        name: "Latest playable",
+        current: true,
+        play: 'games/bubble-hockey/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "orbit-brawl",
+    title: "Orbit Brawl",
+    pitch: "Phone-cockpit space dogfight. Two to twenty pilots, and the TV is the live cinematic camera.",
+    cover: 'assets/img/orbit-brawl/cover-card.webp',
+    coverAlt: "Orbit Brawl: small ships weaving through a field of rocks in open space",
+    details: 'games/orbit-brawl.html',
+    status: 'In development',
+    tags: ["2–20 players", "TV + phones", "In development"],
+    accent: "#c9a8ff",
+    sections: ["family"],
+    intensity: 4,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Open this on a TV or big screen; phones join with the QR code (same Wi-Fi). A controller on a computer also works.",
+      "Space dogfight with cartoon ships. Sound comes from the TV and phones."
+    ],
+    versions: [
+      {
+        id: "v0.17",
+        name: "Latest playable",
+        current: true,
+        play: 'games/orbit-brawl/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "swish-flick",
+    title: "Swish Flick",
+    pitch: "Flick-to-shoot arcade hoops. Drain it from mid-court or at the buzzer.",
+    cover: 'assets/img/swish-flick/cover-card.webp',
+    coverAlt: "Swish Flick: a basketball hoop and a ball mid-flick",
+    details: 'games/swish-flick.html',
+    status: 'In development',
+    tags: ["Arcade", "Phones or TV", "In development"],
+    accent: "#ff9a3c",
+    sections: ["arcade"],
+    intensity: 3,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Works on a phone, or on a TV with phones as controllers (same Wi-Fi)."
+    ],
+    versions: [
+      {
+        id: "v0.1.1",
+        name: "First arcade build",
+        current: true,
+        play: 'games/swish-flick/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "splash-clown",
+    title: "Splash Clown",
+    pitch: "Flick a ball at the target and dunk the clown. A carnival toss on your phone or TV.",
+    cover: 'assets/img/splash-clown/cover-card.webp',
+    coverAlt: "Splash Clown: a carnival dunk tank with a clown on the perch and a target",
+    details: 'games/splash-clown.html',
+    status: 'In development',
+    tags: ["Arcade", "Phones or TV", "In development"],
+    accent: "#ff5a8a",
+    sections: ["arcade"],
+    intensity: 2,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Works on a phone, or on a TV with phones as controllers (same Wi-Fi). A carnival ball-toss / clown-dunk game."
+    ],
+    versions: [
+      {
+        id: "v0.1.1",
+        name: "First arcade build",
+        current: true,
+        play: 'games/splash-clown/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "stack-attack",
+    title: "Stack Attack",
+    pitch: "Build a 3D tower against two bots, then ride out the disaster.",
+    cover: 'assets/img/stack-attack/cover-card.webp',
+    coverAlt: "Stack Attack: a colourful stack of blocks built into a tall tower",
+    details: 'games/stack-attack.html',
+    status: 'In development',
+    tags: ["Arcade", "TV + phones", "In development"],
+    accent: "#ffc93f",
+    sections: ["arcade"],
+    intensity: 3,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Open this on a TV or big screen; phones join with the QR code (same Wi-Fi)."
+    ],
+    versions: [
+      {
+        id: "v0.2.1",
+        name: "Arcade build",
+        current: true,
+        play: 'games/stack-attack/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "balloon-buddy",
+    title: "Balloon Buddy",
+    pitch: "A silly word-guessing game: pop the balloons and play with friends.",
+    cover: 'assets/img/balloon-buddy/cover-card.webp',
+    coverAlt: "Balloon Buddy: bright balloons ready to pop in a word-guessing game",
+    details: 'games/balloon-buddy.html',
+    status: 'In development',
+    tags: ["Arcade", "TV + phones", "In development"],
+    accent: "#7ad7ff",
+    sections: ["arcade"],
+    intensity: 2,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Open this on a TV or big screen; phones join with the QR code (same Wi-Fi)."
+    ],
+    versions: [
+      {
+        id: "v0.1.1",
+        name: "First arcade build",
+        current: true,
+        play: 'games/balloon-buddy/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "hop-top",
+    title: "Hop Top",
+    pitch: "A peg triangle puzzle you can play solo on a phone or a TV.",
+    cover: 'assets/img/hop-top/cover-card.webp',
+    coverAlt: "Hop Top: a triangle of pegs with one empty hole",
+    details: 'games/hop-top.html',
+    status: 'In development',
+    tags: ["Arcade", "Solo", "In development"],
+    accent: "#9d7cff",
+    sections: ["arcade"],
+    intensity: 1,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Works solo on a phone, or on a TV with a phone as the controller."
+    ],
+    versions: [
+      {
+        id: "v0.1",
+        name: "First arcade build",
+        current: true,
+        play: 'games/hop-top/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "marble-rush",
+    title: "Marble Rush",
+    pitch: "Tilt-to-steer marble racing with drops, jumps and a loop. Two to eight phones.",
+    cover: 'assets/img/marble-rush/cover-card.webp',
+    coverAlt: "Marble Rush: colourful marbles racing along a track with a loop",
+    details: 'games/marble-rush.html',
+    status: 'In development',
+    tags: ["Arcade", "2–8 phones", "In development"],
+    accent: "#5fdc7a",
+    sections: ["arcade"],
+    intensity: 3,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Open this on a TV or big screen; two to eight phones join with the QR code (same Wi-Fi). Uses the phone motion sensor."
+    ],
+    versions: [
+      {
+        id: "v0.2",
+        name: "Arcade build",
+        current: true,
+        play: 'games/marble-rush/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "stunt-smash",
+    title: "Stunt Smash",
+    pitch: "Draw your line, pick a bike, a car or a bus, and launch into the crates. Take turns.",
+    cover: 'assets/img/stunt-smash/cover-card.webp',
+    coverAlt: "Stunt Smash: a ramp and a pile of crates waiting for a launch",
+    details: 'games/stunt-smash.html',
+    status: 'In development',
+    tags: ["Arcade", "Take turns", "In development"],
+    accent: "#ff6b4a",
+    sections: ["arcade"],
+    intensity: 3,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Open this on a TV or big screen; phones join with the QR code (same Wi-Fi)."
+    ],
+    versions: [
+      {
+        id: "v0.2",
+        name: "Arcade build",
+        current: true,
+        play: 'games/stunt-smash/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "glide-puck",
+    title: "Glide Puck",
+    pitch: "Phone air hockey, with an optional TV mirror so everyone can watch.",
+    cover: 'assets/img/glide-puck/cover-card.webp',
+    coverAlt: "Glide Puck: an air-hockey table with a puck mid-slide",
+    details: 'games/glide-puck.html',
+    status: 'In development',
+    tags: ["Arcade", "Phones", "In development"],
+    accent: "#4ad2ff",
+    sections: ["arcade"],
+    intensity: 3,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Play on phones, with an optional TV mirror (same Wi-Fi)."
+    ],
+    versions: [
+      {
+        id: "v0.2.1",
+        name: "Arcade build",
+        current: true,
+        play: 'games/glide-puck/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+  ,{
+    id: "foosball",
+    title: "Foosball",
+    pitch: "Table foosball: slide and spin the rods, and drill the shots.",
+    cover: 'assets/img/foosball/cover-card.webp',
+    coverAlt: "Foosball: a table with rows of players on rods and a ball in play",
+    details: 'games/foosball.html',
+    status: 'In development',
+    tags: ["Arcade", "TV + phones", "In development"],
+    accent: "#e2b84a",
+    sections: ["arcade"],
+    intensity: 3,
+    goodToKnow: [
+      "Early playable build: still being tuned, things will change and may break. Feedback welcome.",
+      "Open this on a TV or big screen; phones join with the QR code (same Wi-Fi)."
+    ],
+    versions: [
+      {
+        id: "v0.2",
+        name: "Arcade build",
+        current: true,
+        play: 'games/foosball/index.html',
+        notes: "Early playable build: still being tuned, things will change and may break. Feedback welcome."
+      }
+    ]
+  }
+];

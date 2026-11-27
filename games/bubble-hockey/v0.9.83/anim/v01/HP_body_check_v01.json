@@ -1,0 +1,58 @@
+{
+ "name": "HP_body_check",
+ "source_action": "body_check_qp",
+ "fps": 30.0,
+ "src_range": [
+  1,
+  315
+ ],
+ "type": "oneshot",
+ "event": "lateral",
+ "tries": [
+  {
+   "frame": 114,
+   "peak": 0.832,
+   "jitter": 0.1313,
+   "score": 0.23
+  },
+  {
+   "frame": 152,
+   "peak": 0.649,
+   "jitter": 0.0479,
+   "score": 0.331
+  },
+  {
+   "frame": 254,
+   "peak": 1.455,
+   "jitter": 0.1184,
+   "score": 0.432
+  },
+  {
+   "frame": 282,
+   "peak": 0.814,
+   "jitter": 0.0871,
+   "score": 0.297
+  }
+ ],
+ "best": {
+  "frame": 254,
+  "peak": 1.455,
+  "jitter": 0.1184,
+  "score": 0.432
+ },
+ "hit_src": 254,
+ "clip_src": [
+  242,
+  266
+ ],
+ "frames": 25,
+ "seconds": 0.833,
+ "hit_frame": 13,
+ "hit_s": 0.4,
+ "loop": false,
+ "files": {
+  "blend": "D:\\AI\\Mocap\\Takes\\hockey\\HP_body_check_v01.blend",
+  "glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_body_check_v01.glb",
+  "full_glb": "D:\\AI\\Mocap\\Takes\\hockey\\HP_body_check_full_v01.glb"
+ }
+}
