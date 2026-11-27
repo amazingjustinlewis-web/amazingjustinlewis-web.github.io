@@ -1,0 +1,47 @@
+{
+  "version": "v05",
+  "rig": "HockeyPlayer_014_rig / ZTP_Rig (bind matches HP_idle_ready_v01.glb)",
+  "poses": [
+    "HP_idleGlide",
+    "HP_faceoffTense",
+    "HP_skateSlow",
+    "HP_skateFast",
+    "HP_tenseGlide",
+    "HP_bodyCheckFront"
+  ],
+  "files": {
+    "HP_idleGlide": "HP_idleGlide_v01.json",
+    "HP_faceoffTense": "HP_faceoffTense_v01.json",
+    "HP_skateFast": "HP_skateFast_v01.json",
+    "HP_skateSlow": "HP_skateSlow_v01.json",
+    "HP_tenseGlide": "HP_tenseGlide_v01.json",
+    "HP_bodyCheckFront": "HP_bodyCheckFront_v01.json"
+  },
+  "cycles": {
+    "HP_skateSlow": {
+      "frames": "0-18",
+      "period": 18,
+      "fps": 24
+    },
+    "HP_skateFast": {
+      "frames": "0-12",
+      "period": 12,
+      "fps": 24
+    }
+  },
+  "clips": {
+    "HP_bodyCheckFront": {
+      "frames": "1-16",
+      "impact": 5,
+      "fps": 24,
+      "loop": false,
+      "note": "frame 1 wound back, frame 5 impact, frames 5-16 scoop/blend to tense glide"
+    }
+  },
+  "stills": {
+    "HP_tenseGlide": {
+      "frame": 16,
+      "source": "Hockey_Pose_BodyCheckFront_v01.blend frame 16"
+    }
+  }
+}
