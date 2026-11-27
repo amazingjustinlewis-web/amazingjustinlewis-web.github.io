@@ -1,0 +1,321 @@
+<!doctype html>
+<!-- v02: adds an About link in the menu. v01 is unchanged. -->
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#030304">
+<title>Zero to Phi</title>
+<link rel="icon" href="../../assets/img/favicon.svg">
+<style>
+html,body{margin:0;height:100%;background:#030304;overflow:hidden}
+body{display:grid;place-items:center;font-family:Georgia,"Times New Roman",serif;color:#e8cf86}
+canvas#c{position:fixed;inset:0;width:100vw;height:100vh;display:block;z-index:1}
+.logo{position:fixed;top:calc(18px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:28px;opacity:.22;pointer-events:none;z-index:3}
+.play{position:fixed;left:50%;bottom:calc(7vh + env(safe-area-inset-bottom));transform:translateX(-50%);
+ font:500 clamp(15px,2.1vmin + 8px,30px)/1 Georgia,serif;letter-spacing:.42em;white-space:nowrap;padding:1.05em 1.6em 1.05em 2em;
+ color:#f3dc95;text-decoration:none;border:1px solid rgba(226,184,74,.55);border-radius:999px;
+ background:rgba(8,7,4,.55);box-shadow:0 0 30px rgba(226,184,74,.10),inset 0 0 18px rgba(226,184,74,.06);
+ transition:box-shadow .5s,border-color .5s,color .5s,opacity .4s;-webkit-tap-highlight-color:transparent;z-index:4}
+.play:hover,.play:focus-visible{outline:none;border-color:#f3dc95;color:#fff3cc;box-shadow:0 0 46px rgba(226,184,74,.32),inset 0 0 22px rgba(226,184,74,.12)}
+.shops{position:fixed;right:calc(14px + env(safe-area-inset-right));bottom:calc(10px + env(safe-area-inset-bottom));
+ font:11px/1 Georgia,serif;letter-spacing:.2em;color:rgba(200,170,90,.16);text-decoration:none;z-index:4;transition:opacity .4s}
+.shops:hover,.shops:focus-visible{color:rgba(226,184,74,.6);outline:none}
+/* retro gold-on-black game list — original, not a borrowed cabinet */
+#menu{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+ visibility:hidden;opacity:0;pointer-events:none;background:rgba(3,3,4,.78)}
+#menu .panel{width:min(560px,88vw);max-height:min(78vh,720px);overflow:auto;
+ padding:3.4vh 3.2vw 3vh;border:1px solid rgba(226,184,74,.38);background:rgba(6,5,3,.94);
+ box-shadow:0 0 60px rgba(0,0,0,.6),inset 0 0 40px rgba(226,184,74,.04)}
+#menu h1{margin:0 0 0.4em;font:400 clamp(13px,2vh,22px)/1 Georgia,serif;letter-spacing:.38em;color:#e2b84a;text-align:center}
+#menu .rule{height:1px;background:linear-gradient(90deg,transparent,#c08a22 20%,#fbe7a1 50%,#c08a22 80%,transparent);border:0;margin:0 0 1.6em}
+#menu ul{list-style:none;margin:0;padding:0}
+#menu li a,#menu li button{display:block;width:100%;text-align:left;background:none;border:0;cursor:pointer;
+ padding:.7em .9em;color:#e8d7a4;font:400 clamp(14px,2.2vh,22px)/1.2 Georgia,serif;letter-spacing:.08em;
+ text-decoration:none;border:1px solid transparent;box-sizing:border-box}
+#menu li a:hover,#menu li a:focus-visible,#menu li button:hover{outline:none;border-color:rgba(226,184,74,.55);color:#fff3cc;background:rgba(42,32,12,.55)}
+#menu .meta{display:block;margin-top:.25em;font-size:.62em;letter-spacing:.16em;color:#7d6c48;text-transform:lowercase}
+#menu .sec{margin:1.2em 0 .5em;font:11px/1 Georgia,serif;letter-spacing:.28em;color:#8a7340;text-transform:lowercase}
+#menu .back{margin-top:1.4em;text-align:center}
+#menu .back button{letter-spacing:.28em;text-transform:lowercase;color:#c9a24a;padding:.8em;width:100%;background:none;border:1px solid rgba(226,184,74,.25);cursor:pointer;font:12px/1 Georgia,serif}
+#menu .back button:hover{border-color:#e2b84a;color:#fff3cc}
+body.rezzed .play,body.rezzed .shops{opacity:0;pointer-events:none}
+</style></head><body>
+<canvas id="c" aria-hidden="true"></canvas>
+<img class="logo" src="../../assets/img/logo.svg" alt="">
+<a class="play" id="play" href="../../family.html">PLAY NOW</a>
+<a class="shops" id="shops" href="../../business.html">for shops</a>
+
+<nav id="menu" aria-label="Games">
+  <div class="panel">
+    <h1>ZERO TO PHI</h1>
+    <div class="rule"></div>
+    <div class="sec">on a screen</div>
+    <ul id="list"></ul>
+    <div class="sec" id="devlab" hidden>dev tables</div>
+    <ul id="devlist"></ul>
+    <div class="sec">the studio</div>
+    <ul id="studiolist">
+      <li><a id="aboutLink" href="../about_v01.html">About<span class="meta">Zero to Phi</span></a></li>
+    </ul>
+    <div class="back"><button type="button" id="back">back</button></div>
+  </div>
+</nav>
+
+<script src="../js/qrcode.js"></script>
+<script src="../js/ztp-tunnel_v01.js?b=102"></script>
+<script>
+(function(){
+var qs=new URLSearchParams(location.search),bare=qs.get('bare')==='1';
+var Q=qrcode(0,'H');Q.addData('https://amazingjustinlewis-web.github.io/');Q.make();var QN=Q.getModuleCount(),QZ=4;
+if(bare){document.body.classList.add('bare');var pl=document.querySelector('.play');if(pl)pl.parentNode.removeChild(pl);
+ window.__bare=1;}
+
+var c=document.getElementById('c'),x=c.getContext('2d'),W,H,D,PHI=(1+Math.sqrt(5))/2;
+var still=matchMedia('(prefers-reduced-motion: reduce)');if(qs.get('still')==='1')still={matches:true};
+var PULSE=qs.get('pulse')!=='0';
+// QR contrast: 0 = hidden in the black, 1 = level 3 (#5c4519). 8 s cycle.
+function qrLevel(T){if(still.matches||!PULSE)return 1;var u=T%8;
+ if(u<1.5){var t=u/1.5,c1=1.9,c3=c1+1;return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2)}
+ if(u<6.6)return 1+0.03*Math.sin((u-1.5)/5.1*Math.PI);
+ if(u<7.6){var d=(u-6.6);return 0.5+0.5*Math.cos(Math.PI*d)}
+ return 0}
+function mix(k){var a=[5,4,4],b=[92,69,25];return 'rgb('+a.map(function(v,i){return Math.max(0,Math.round(v+(b[i]-v)*k))}).join(',')+')'}
+
+var pts=[],paused=false,lastQR=null,hovering=false,qrArmed=false;
+function size(){D=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;c.width=W*D;c.height=H*D;x.setTransform(D,0,0,D,0,0);build()}
+function zero(){var rh=Math.min(H*0.39,W*0.6),rw=rh*0.72;return{cx:W/2,cy:H*0.43,rw:rw,rh:rh}}
+function build(){
+ var z=zero(),R=Math.min(z.rw,z.rh)*1.08,turns=4.25,th=turns*2*Math.PI,a=R/Math.pow(PHI,2*th/Math.PI),n=900;
+ pts=[];for(var i=0;i<=n;i++){var t=i/n,q=t*th,r=a*Math.pow(PHI,2*q/Math.PI);pts.push([q,r,t])}
+}
+function wid(t,R){
+ var s=Math.pow(t,6)*Math.pow(1-t,1.6);s/=Math.pow(6/7.6,6)*Math.pow(1.6/7.6,1.6);return 0.3+R*0.045*s}
+function draw(ms){
+ if(paused)return;
+ var T=still.matches?0:ms/1000,z=zero();
+ x.clearRect(0,0,W,H);
+ var g=x.createRadialGradient(z.cx,z.cy,0,z.cx,z.cy,Math.max(W,H)*0.7);
+ g.addColorStop(0,'#0a0906');g.addColorStop(1,'#020203');x.fillStyle=g;x.fillRect(0,0,W,H);
+ x.save();x.translate(z.cx,z.cy);
+ var ring=z.rw*0.30;
+ x.beginPath();x.ellipse(0,0,z.rw,z.rh,0,0,Math.PI*2);
+ x.lineWidth=ring;x.strokeStyle='#0d0c0a';x.stroke();
+ x.lineWidth=1;x.strokeStyle='rgba(226,184,74,0.05)';
+ x.beginPath();x.ellipse(0,0,z.rw+ring/2,z.rh+ring/2,0,0,Math.PI*2);x.stroke();
+ x.beginPath();x.ellipse(0,0,z.rw-ring/2,z.rh-ring/2,0,0,Math.PI*2);x.stroke();
+ var h=x.createRadialGradient(0,0,0,0,0,z.rw);h.addColorStop(0,'#000');h.addColorStop(1,'rgba(0,0,0,0)');
+ x.fillStyle=h;x.beginPath();x.ellipse(0,0,z.rw-ring/2,z.rh-ring/2,0,0,Math.PI*2);x.fill();
+ var inner=Math.min(z.rw-ring/2,z.rh-ring/2)*1.25,m=Math.max(2,Math.floor(inner/(QN+2*QZ))),S=m*(QN+2*QZ),o=-Math.round(S/2);
+ var qk_=qrLevel(T);x.fillStyle=mix(qk_);x.fillRect(o,o,S,S);x.fillStyle='#050404';
+ for(var qr=0;qr<QN;qr++)for(var qk=0;qk<QN;qk++)if(Q.isDark(qr,qk))x.fillRect(o+(qk+QZ)*m,o+(qr+QZ)*m,m,m);
+ var e=x.createRadialGradient(0,0,S*0.5,0,0,S*0.8);e.addColorStop(0,'rgba(0,0,0,0)');e.addColorStop(1,'rgba(0,0,0,1)');
+ x.fillStyle=e;x.beginPath();x.ellipse(0,0,z.rw-ring/2+1,z.rh-ring/2+1,0,0,7);x.rect(o-1,o-1,S+2,S+2);x.fill('evenodd');
+ var qa=Math.min(1,qk_);
+ var pulse=window.__bare&&!still.matches?0.5+0.5*Math.sin(T*1.3):0;
+ var rot=T*0.018,br=1+0.012*Math.sin(T*0.35),sx=br,sy=br*z.rh/z.rw;
+ var R=pts[pts.length-1][1],L=[],Rt=[];
+ for(var i=0;i<pts.length;i++){var p=pts[i],q=p[0]+rot,r=p[1];
+  var X=Math.cos(q)*r*sx,Y=Math.sin(q)*r*sy;
+  var p2=pts[Math.min(i+1,pts.length-1)],p1=pts[Math.max(i-1,0)];
+  var dx=Math.cos(p2[0]+rot)*p2[1]*sx-Math.cos(p1[0]+rot)*p1[1]*sx,dy=Math.sin(p2[0]+rot)*p2[1]*sy-Math.sin(p1[0]+rot)*p1[1]*sy,dl=Math.hypot(dx,dy)||1;
+  var w=wid(p[2],R)/2;L.push([X-dy/dl*w,Y+dx/dl*w]);Rt.push([X+dy/dl*w,Y-dx/dl*w])}
+ var gg=x.createRadialGradient(0,0,0,0,0,R*Math.max(sx,sy));
+ var sh=0.5+0.5*Math.sin(T*0.5);
+ gg.addColorStop(0,'rgba(255,240,190,0.95)');gg.addColorStop(0.45,'rgba(236,196,92,'+(0.85+0.1*sh)+')');
+ gg.addColorStop(0.8,'rgba(192,138,34,0.45)');gg.addColorStop(1,'rgba(150,105,25,0)');
+ var sp=new Path2D();sp.moveTo(L[0][0],L[0][1]);for(i=1;i<L.length;i++)sp.lineTo(L[i][0],L[i][1]);
+ for(i=Rt.length-1;i>=0;i--)sp.lineTo(Rt[i][0],Rt[i][1]);sp.closePath();
+ x.fillStyle=gg;x.shadowColor='rgba(226,184,74,'+(0.35+0.4*pulse)+')';x.shadowBlur=12+16*pulse;
+ x.save();x.beginPath();x.rect(-W*2,-H*2,W*4,H*4);x.rect(o,o,S,S);x.clip('evenodd');x.fill(sp);x.restore();
+ x.save();x.beginPath();x.rect(o,o,S,S);x.clip();x.globalAlpha=1-0.9*qa;x.shadowBlur=0;x.fill(sp);x.restore();
+ x.restore();
+ lastQR={cx:z.cx,cy:z.cy,s:S,x0:z.cx+o,y0:z.cy+o};
+ if(!still.matches&&!paused)requestAnimationFrame(draw);
+}
+function hitQR(px,py){var q=lastQR;if(!q)return false;var pad=10;return px>=q.x0-pad&&py>=q.y0-pad&&px<=q.x0+q.s+pad&&py<=q.y0+q.s+pad}
+
+addEventListener('resize',function(){size();if(still.matches||paused)draw(0)});
+still.addEventListener&&still.addEventListener('change',function(){if(!paused)requestAnimationFrame(draw)});
+size();requestAnimationFrame(draw);
+
+/* —— games (existing public + remembered dev entries) —— */
+var GAMES=[
+  ['bubble-hockey','Bubble Hockey','games/bubble-hockey/','15 min'],
+  ['orbit-brawl','Orbit Brawl','games/orbit-brawl/','15 min'],
+  ['swish-flick','Swish Flick','games/swish-flick/','10 min'],
+  ['splash-clown','Splash Clown','games/splash-clown/','10 min'],
+  ['stack-attack','Stack Attack','games/stack-attack/','10 min'],
+  ['balloon-buddy','Balloon Buddy','games/balloon-buddy/','10 min'],
+  ['hop-top','Hop Top','games/hop-top/','10 min'],
+  ['marble-rush','Marble Rush','games/marble-rush/','10 min'],
+  ['stunt-smash','Stunt Smash','games/stunt-smash/','10 min'],
+  ['glide-puck','Glide Puck','games/glide-puck/','10 min'],
+  ['foosball','Foosball','games/foosball/','10 min'],
+  ['red-deer-rich','Red Deer Rich','games/red-deer-rich/v0.10/','60 min'],
+  ['zombie-tiles','Zombie Tiles','games/zombie-tiles/','20 min'],
+  ['space','Drift Signal','games/space/','30 min'],
+  ['mech','Iron Stride','games/mech/','15 min'],
+  ['laser-range','Laser Range','games/laser-range/','10 min'],
+  ['walker','Walker','games/walker/','20 min']
+];
+var DEV=[
+  ['dev-bubble','Bubble Hockey','dev-7q3x/bubble/'],
+  ['dev-orbit','Orbit Brawl','dev-7q3x/orbit/index_v08.html?b=080'],
+  ['dev-showcase','Arcade Showcase','dev-7q3x/showcase/index_v09.html']
+];
+try{var dm=/[?&]dev=([01])/.exec(location.search);if(dm){if(dm[1]==='1')localStorage.setItem('ztp-dev','1');else localStorage.removeItem('ztp-dev')}}catch(e){}
+var showDev=false;try{showDev=localStorage.getItem('ztp-dev')==='1'}catch(e2){}
+
+function href(path){return '../../'+path}
+function fill(ul, rows){
+  ul.innerHTML='';
+  rows.forEach(function(g){
+    var li=document.createElement('li');
+    var a=document.createElement('a');
+    a.href=href(g[2]);
+    a.textContent=g[1];
+    if(g[3]){var m=document.createElement('span');m.className='meta';m.textContent=g[3];a.appendChild(m)}
+    a.addEventListener('click',function(ev){
+      ev.preventDefault();
+      var url=a.href;
+      diveTo(url);
+    });
+    li.appendChild(a);ul.appendChild(li);
+  });
+}
+fill(document.getElementById('list'), GAMES);
+if(showDev){document.getElementById('devlab').hidden=false;fill(document.getElementById('devlist'), DEV)}
+(function(){var a=document.getElementById('aboutLink');if(a)a.addEventListener('click',function(ev){ev.preventDefault();diveTo(a.href);});})();
+
+var menu=document.getElementById('menu');
+function opts(){
+  var z=zero();
+  return {
+    snapshot:c,
+    origin:{x:z.cx,y:z.cy},
+    reducedMotion:!!(still.matches)
+  };
+}
+function goMenu(){
+  document.body.classList.add('rezzed');
+  menu.style.visibility='visible';
+  menu.style.opacity='1';
+  menu.style.pointerEvents='auto';
+  paused=true;
+}
+function hideMenu(){
+  menu.style.visibility='hidden';
+  menu.style.opacity='0';
+  menu.style.pointerEvents='none';
+  menu.style.filter='';
+  document.body.classList.remove('rezzed');
+  paused=false;
+  requestAnimationFrame(draw);
+}
+function diveIn(){
+  if(window.ZTPTunnel&&ZTPTunnel.busy())return;
+  var o=opts();
+  o.reveal=menu;
+  o.onDone=function(){goMenu()};
+  paused=true;
+  if(window.ZTPTunnel)ZTPTunnel.enter(function(){goMenu()},o);
+  else goMenu();
+}
+function diveTo(url){
+  if(window.ZTPTunnel&&ZTPTunnel.busy())return;
+  var o=opts();
+  o.snapshot=function(){
+    // grab whatever is on screen (menu + logo underneath may be paused)
+    var s=document.createElement('canvas');s.width=c.width;s.height=c.height;
+    var g=s.getContext('2d');g.drawImage(c,0,0);return s;
+  };
+  if(window.ZTPTunnel)ZTPTunnel.enter(url,o);
+  else location.href=url;
+}
+function snapBack(){
+  if(window.ZTPTunnel&&ZTPTunnel.busy())return;
+  var o=opts();
+  o.onDone=function(){hideMenu()};
+  if(window.ZTPTunnel)ZTPTunnel.exit(o);
+  else hideMenu();
+}
+
+function qrCanvas(){
+  var q=lastQR;if(!q)return null;
+  var s=document.createElement('canvas'),n=q.s,g=s.getContext('2d');
+  s.width=n;s.height=n;
+  // redraw the QR tile at level 3 so the tumble is readable
+  var m=Math.max(2,Math.floor(n/(QN+2*QZ))),S=m*(QN+2*QZ),o=Math.round((n-S)/2);
+  g.fillStyle='#5c4519';g.fillRect(0,0,n,n);g.fillStyle='#050404';
+  for(var r=0;r<QN;r++)for(var k=0;k<QN;k++)if(Q.isDark(r,k))g.fillRect(o+(k+QZ)*m,o+(r+QZ)*m,m,m);
+  return {img:s,cx:q.cx,cy:q.cy,s:n};
+}
+function burstQR(){
+  if(qrArmed||(window.ZTPTunnel&&ZTPTunnel.busy()))return;
+  if(!lastQR)return;
+  qrArmed=true;
+  var o=opts();
+  o.qr=qrCanvas();
+  o.onDone=function(){qrArmed=false;paused=false;requestAnimationFrame(draw)};
+  if(window.ZTPTunnel)ZTPTunnel.qrBurst(o);
+  else qrArmed=false;
+}
+
+var play=document.getElementById('play');
+if(play){
+  play.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();diveIn()});
+}
+var shops=document.getElementById('shops');
+if(shops){
+  shops.addEventListener('click',function(e){
+    e.preventDefault();e.stopPropagation();
+    diveTo(shops.href);
+  });
+}
+document.getElementById('back').addEventListener('click',function(e){e.preventDefault();snapBack()});
+
+c.addEventListener('click',function(e){
+  if(document.body.classList.contains('rezzed'))return;
+  if(hitQR(e.clientX,e.clientY)){e.preventDefault();burstQR();return;}
+});
+var hoverT=0;
+c.addEventListener('mousemove',function(e){
+  if(document.body.classList.contains('rezzed')||qrArmed)return;
+  if(hitQR(e.clientX,e.clientY)){
+    if(!hovering){hovering=true;hoverT=setTimeout(burstQR,180)}
+  }else{hovering=false;clearTimeout(hoverT)}
+});
+c.addEventListener('mouseleave',function(){hovering=false;clearTimeout(hoverT)});
+
+/* stills for a headless capture: ?shot=dive|tunnel|menu|qr&t=0..1 */
+(function(){
+  var shot=qs.get('shot');if(!shot)return;
+  var t=qs.has('t')?+qs.get('t'):NaN;
+  function ready(fn){setTimeout(fn,480)}
+  ready(function(){
+    var o=opts();
+    if(shot==='dive'){paused=true;ZTPTunnel.seek('enter', isNaN(t)?0.22:t, o);document.title='SHOT_dive'}
+    else if(shot==='tunnel'){paused=true;ZTPTunnel.seek('enter', isNaN(t)?0.58:t, o);document.title='SHOT_tunnel'}
+    else if(shot==='menu'){
+      paused=true;
+      o.reveal=menu;
+      ZTPTunnel.seek('enter', isNaN(t)?0.88:t, Object.assign(o,{onDone:function(){}}));
+      goMenu();
+      if(window.ZTPTunnel){/* keep overlay at rez */}
+      document.title='SHOT_menu';
+    }
+    else if(shot==='qr'){
+      o.qr=qrCanvas();
+      ZTPTunnel.seek('qr', isNaN(t)?0.62:t, o);
+      document.title='SHOT_qr';
+    }
+    document.documentElement.dataset.ready='1';
+    window.__SHOT_READY=1;
+  });
+})();
+})();
+</script>
+<script src="../../games/minikit/feedback_v01.js?b=2"></script>
+<script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Zero to Phi (dev tunnel)", "version": "v0.1", "corner": "br"});</script>
+</body></html>

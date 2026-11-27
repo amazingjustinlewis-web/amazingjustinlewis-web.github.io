@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#030304">
+<title>About · Zero to Phi</title>
+<link rel="icon" href="../assets/img/favicon.svg">
+<style>
+html,body{margin:0;min-height:100%;background:#030304;color:#e8cf86;
+  font-family:Georgia,"Times New Roman",serif}
+body{padding:calc(28px + env(safe-area-inset-top)) 8vw calc(48px + env(safe-area-inset-bottom))}
+.wrap{max-width:38rem;margin:0 auto}
+.logo{display:block;width:32px;height:auto;opacity:.35;margin:0 auto 1.6em}
+h1{margin:0 0 .35em;font:400 clamp(16px,3.4vw,26px)/1.15 Georgia,serif;
+  letter-spacing:.34em;color:#e2b84a;text-align:center;text-transform:uppercase}
+.sub{margin:0 0 1.4em;text-align:center;font:12px/1.4 Georgia,serif;
+  letter-spacing:.22em;color:#8a7340;text-transform:lowercase}
+.rule{height:1px;border:0;margin:0 0 1.8em;
+  background:linear-gradient(90deg,transparent,#c08a22 20%,#fbe7a1 50%,#c08a22 80%,transparent)}
+p,li{font:400 17px/1.65 Georgia,serif;color:#e8d7a4}
+p{margin:0 0 1em}
+a{color:#e2b84a;text-decoration:none;border-bottom:1px solid rgba(226,184,74,.35)}
+a:hover,a:focus-visible{color:#fff3cc;border-bottom-color:#fbe7a1;outline:none}
+h2{margin:2.4em 0 .7em;font:400 13px/1 Georgia,serif;letter-spacing:.28em;
+  color:#c08a22;text-transform:lowercase}
+ul.spots{list-style:none;margin:0 0 1.2em;padding:0}
+ul.spots li{margin:0 0 .85em;padding:.85em 1em;
+  border:1px solid rgba(226,184,74,.22);background:rgba(8,7,4,.55)}
+ul.spots strong{display:block;margin-bottom:.2em;color:#f3dc95;
+  font-weight:400;letter-spacing:.06em}
+.mail{display:inline-block;margin-top:.4em;letter-spacing:.04em}
+.note{font-size:14px;color:#9a8558;line-height:1.55}
+.coffee-wrap{margin:2.8em 0 0;text-align:center}
+.coffee{display:inline-block;font:11px/1 Georgia,serif;letter-spacing:.2em;
+  color:rgba(226,184,74,.42);text-decoration:none;border:1px solid rgba(226,184,74,.22);
+  border-radius:999px;padding:.65em 1.1em;background:transparent}
+.coffee:hover,.coffee:focus-visible{color:#e2b84a;border-color:rgba(226,184,74,.55);outline:none}
+.soon{display:none;margin:.8em 0 0;font:13px/1.5 Georgia,serif;color:#8a7340;letter-spacing:.04em}
+.soon.on{display:block}
+.back{margin:3em 0 0;text-align:center}
+.back a{letter-spacing:.28em;text-transform:lowercase;font-size:12px;
+  color:#c9a24a;border:1px solid rgba(226,184,74,.25);padding:.8em 1.4em;display:inline-block;
+  text-decoration:none}
+.back a:hover{border-color:#e2b84a;color:#fff3cc}
+</style>
+</head><body>
+<div class="wrap">
+  <img class="logo" src="../assets/img/logo.svg" alt="">
+  <h1>Zero to Phi</h1>
+  <p class="sub">an indie game studio in Red Deer</p>
+  <div class="rule"></div>
+
+  <p><strong style="color:#f3dc95;font-weight:400">Zero to Phi</strong>, founded by Justin Lewis, makes emergent, connected, visceral games: one simple connection point, lots of freedom inside the system, and mathematically clean rails underneath. The name runs from 0 to &phi;, the golden ratio.</p>
+  <p>Justin is a character animator based in Red Deer, Alberta, and a punk rock drummer who makes music. This is where the studio&rsquo;s original games live &mdash; and where older versions stay up so you can visit a game as it has grown.</p>
+
+  <h2 id="advertise">Advertise with Zero to Phi</h2>
+  <p>A few tasteful spots sit inside the games and on the site. We keep them quiet, original, and on our own look &mdash; no borrowed brands. Payment is arranged privately; write and we will set it up together.</p>
+  <ul class="spots">
+    <li><strong>Bubble Hockey rink boards</strong> Premium dasher faces the broadcast camera shows off, plus short-end boards at either net.</li>
+    <li><strong>Red Deer Rich board properties</strong> Named spaces on the board, ready for a later hook into the game.</li>
+    <li><strong>Thanks to our sponsors</strong> A credits strip on a game or the studio pages.</li>
+    <li><strong>Named venues</strong> A hall, a shop, or a table credited as itself.</li>
+  </ul>
+  <p>To enquire, email
+    <a class="mail" href="mailto:amazingjustinlewis@gmail.com?subject=Advertise%20with%20Zero%20to%20Phi">amazingjustinlewis@gmail.com</a>.
+  </p>
+  <p class="note">We will arrange payment with you directly. This page does not take cards or transfers.</p>
+
+  <div class="coffee-wrap">
+    <a class="coffee" id="coffee" href="#coffee-coming-soon">Buy us a coffee</a>
+    <p class="soon" id="coffee-soon">The tip jar is not open yet &mdash; a link will land here soon. Thank you for wanting to.</p>
+  </div>
+
+  <p class="back"><a href="zero/index_v02.html">back</a></p>
+</div>
+<script>
+/* Paste a coffee-page URL here when you have one (the whole value of COFFEE_URL).
+   Until then the button shows a gentle coming-soon note and does not leave the page. */
+var COFFEE_URL = '#coffee-coming-soon';
+(function(){
+  var a = document.getElementById('coffee');
+  var note = document.getElementById('coffee-soon');
+  a.href = COFFEE_URL;
+  function pending(){
+    var u = (COFFEE_URL || '').trim();
+    return !u || u.charAt(0) === '#' || /coffee-coming-soon/i.test(u);
+  }
+  if (pending()) {
+    a.addEventListener('click', function(ev){
+      ev.preventDefault();
+      note.classList.add('on');
+    });
+  } else {
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+  }
+})();
+</script>
+</body></html>

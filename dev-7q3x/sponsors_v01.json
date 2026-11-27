@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "docs": {
+    "howToAdd": "Edit a slot below. Fill name, logo (https image URL), and link. start/end are optional ISO dates (YYYY-MM-DD); leave them null for no date limit. Set active to true. If name and logo are both empty, or the dates are outside today, or active is false, the slot stays a gold-on-black 'Your business here' placeholder. Games read this file through ZTPSponsors.get(game, slotType).",
+    "slotTypes": {
+      "rink-board": "Bubble Hockey dasher boards. The long-side mid-ice spots (long-near, long-far) are the premium faces the broadcast camera shows off. end-south and end-north sit on the short ends. place must be one of: long-near, long-far, end-south, end-north. Wired in Bubble Hockey v0.9.83. Pass ?sponsors=0 to hide them.",
+      "board-property": "Red Deer Rich board spaces. Hook only in this drop — do not edit Red Deer Rich sources yet. A later RDR build should call ZTPSponsors.get('red-deer-rich', 'board-property') and paint name/logo on the matching deed. Use propertyId for the space name (e.g. a street or venue on the board).",
+      "credits-strip": "A 'thanks to our sponsors' credits strip on a game or the site. Call ZTPSponsors.get(game or 'site', 'credits-strip'). Not painted automatically yet.",
+      "venue": "A named venue (a hall, shop, or table) credited on a game or the site. Call ZTPSponsors.get(game or 'site', 'venue')."
+    }
+  },
+  "slots": [
+    {
+      "id": "bh-board-long-near",
+      "game": "bubble-hockey",
+      "slotType": "rink-board",
+      "place": "long-near",
+      "name": "",
+      "logo": "",
+      "link": "",
+      "start": null,
+      "end": null,
+      "active": true
+    },
+    {
+      "id": "bh-board-long-far",
+      "game": "bubble-hockey",
+      "slotType": "rink-board",
+      "place": "long-far",
+      "name": "",
+      "logo": "",
+      "link": "",
+      "start": null,
+      "end": null,
+      "active": true
+    },
+    {
+      "id": "bh-board-end-south",
+      "game": "bubble-hockey",
+      "slotType": "rink-board",
+      "place": "end-south",
+      "name": "",
+      "logo": "",
+      "link": "",
+      "start": null,
+      "end": null,
+      "active": true
+    },
+    {
+      "id": "bh-board-end-north",
+      "game": "bubble-hockey",
+      "slotType": "rink-board",
+      "place": "end-north",
+      "name": "",
+      "logo": "",
+      "link": "",
+      "start": null,
+      "end": null,
+      "active": true
+    },
+    {
+      "id": "rdr-property-open-1",
+      "game": "red-deer-rich",
+      "slotType": "board-property",
+      "propertyId": "",
+      "name": "",
+      "logo": "",
+      "link": "",
+      "start": null,
+      "end": null,
+      "active": true
+    },
+    {
+      "id": "site-credits-1",
+      "game": "site",
+      "slotType": "credits-strip",
+      "name": "",
+      "logo": "",
+      "link": "",
+      "start": null,
+      "end": null,
+      "active": true
+    },
+    {
+      "id": "site-venue-1",
+      "game": "site",
+      "slotType": "venue",
+      "name": "",
+      "logo": "",
+      "link": "",
+      "start": null,
+      "end": null,
+      "active": true
+    }
+  ]
+}
