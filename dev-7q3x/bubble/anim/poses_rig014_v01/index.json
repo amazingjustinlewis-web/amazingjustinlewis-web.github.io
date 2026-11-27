@@ -4,11 +4,25 @@
   "poses": [
     "HP_idleGlide",
     "HP_faceoffTense",
+    "HP_skateSlow",
     "HP_skateFast"
   ],
   "files": {
     "HP_idleGlide": "HP_idleGlide_v01.json",
     "HP_faceoffTense": "HP_faceoffTense_v01.json",
-    "HP_skateFast": "HP_skateFast_v01.json"
+    "HP_skateFast": "HP_skateFast_v01.json",
+    "HP_skateSlow": "HP_skateSlow_v01.json"
+  },
+  "cycles": {
+    "HP_skateSlow": {
+      "frames": "0-18",
+      "period": 18,
+      "fps": 24
+    },
+    "HP_skateFast": {
+      "frames": "0-12",
+      "period": 12,
+      "fps": 24
+    }
   }
 }
