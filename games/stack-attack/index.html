@@ -32,4 +32,16 @@
 
 <script src="../minikit/feedback_v01.js?b=2"></script>
 <script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Stack Attack", "version": "public", "corner": "br"});</script>
+
+<script src="../minikit/ztp-account_v04.js?b=1"></script>
+<script src="../minikit/end_prompt_arcade_v01.js?b=1"></script>
+<script>
+if (window.EndPromptArcade) EndPromptArcade.mount({
+  game: 'stack-attack',
+  isOver: function () { return !!(window.SA && SA.G && SA.G.S && SA.G.S.phase === 'score' && SA.G.S.round >= 3); },
+  title: 'Final height!',
+  score: function () { return Math.round(((SA.G.S.h || 0) * 10)); },
+  label: function () { return (SA.G.S.h || 0).toFixed(1) + ' m'; }
+});
+</script>
 </body></html>

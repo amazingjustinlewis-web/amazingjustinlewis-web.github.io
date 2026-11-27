@@ -164,9 +164,16 @@ window.GAMES = [
     ],
     versions: [
       {
-        id: 'v0.11',
+        id: 'v0.13',
         name: 'Solo phone + TV',
         current: true,
+        play: 'games/red-deer-rich/v0.13/index.html',
+        notes: 'Early playable build: still being tuned, things will change and may break. Feedback welcome. Labelled In development. Frozen from dev solo v0.13 and TV v0.7.13. Optional end-of-game sign-up: initials with prefill, Post or Skip, Make a profile, Auto-post (off by default), and ocean-band bust scores. The picture-in-picture fills the board middle on turns, with a soft turn chime, and deeds stay grouped by colour set. Previous public copy (v0.11) is kept.'
+      },
+      {
+        id: 'v0.11',
+        name: 'Solo phone + TV',
+        current: false,
         play: 'games/red-deer-rich/v0.11/index.html',
         notes: 'Early playable build: still being tuned, things will change and may break. Feedback welcome. The TV board is the v0.7.10 playtest pass: Recap no longer stalls a turn mid-move, session selfies sit as a circular face on the pawn, property pointers only appear when the tile is off the edge of a zoomed board, the dice banner clears on a new turn, dropped phones that the game is auto-playing say Away, auto-playing, and phone join falls over to the cloud relay sooner. You can shake or tap-anywhere to smack, and the Snowbank is a little snow pile with a softer slip sound. Solo phone mode is solo v0.11. Previous public copy (v0.10) is kept.'
       },

@@ -32,4 +32,16 @@
 
 <script src="../minikit/feedback_v01.js?b=2"></script>
 <script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Foosball", "version": "public", "corner": "br"});</script>
+
+<script src="../minikit/ztp-account_v04.js?b=1"></script>
+<script src="../minikit/end_prompt_arcade_v01.js?b=1"></script>
+<script>
+if (window.EndPromptArcade) EndPromptArcade.mount({
+  game: 'foosball',
+  isOver: function () { var T = window.FT; if (!T || !T.sim || T.sim.over < 0) return false; if (T.players && T.players.length) return false; return true; },
+  title: function () { return 'Game over'; },
+  score: function () { var s = FT.sim.sc || [0, 0], w = FT.sim.over; return (s[w] || 0) - (s[1 - w] || 0); },
+  label: function () { var s = FT.sim.sc || [0, 0]; return s[0] + '\u2013' + s[1]; }
+});
+</script>
 </body></html>

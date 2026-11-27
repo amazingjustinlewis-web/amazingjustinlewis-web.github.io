@@ -72,4 +72,17 @@
 
 <script src="../minikit/feedback_v01.js?b=2"></script>
 <script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Swish Flick", "version": "public", "corner": "br"});</script>
+
+<script src="../minikit/ztp-account_v04.js?b=1"></script>
+<script src="../minikit/end_prompt_arcade_v01.js?b=1"></script>
+<script>
+if (window.EndPromptArcade) EndPromptArcade.mount({
+  game: 'swish-flick',
+  isOver: function () { return !!(window.SW && SW.S && SW.S.phase === 'over' && SW.localP); },
+  title: function () { return 'Time!'; },
+  score: function () { return (SW.localP.g && SW.localP.g.score) || 0; },
+  label: function () { return ((SW.localP.g && SW.localP.g.score) || 0) + ' pts'; },
+  fallback: function () { return (SW.localP.g && SW.localP.g.name) || ''; }
+});
+</script>
 </body></html>

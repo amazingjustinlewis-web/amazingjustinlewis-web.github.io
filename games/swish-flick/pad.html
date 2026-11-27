@@ -15,4 +15,16 @@
 </script>
 <script src="../minikit/feedback_v01.js?b=2"></script>
 <script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Swish Flick", "version": "public", "corner": "br"});</script>
+
+<script src="../minikit/ztp-account_v04.js?b=1"></script>
+<script src="../minikit/end_prompt_arcade_v01.js?b=1"></script>
+<script>
+if (window.EndPromptArcade) EndPromptArcade.mount({
+  game: 'swish-flick',
+  isOver: function () { var tm = document.getElementById('tm'); return !!(tm && /Time!/.test(tm.textContent || '')); },
+  title: 'Time!',
+  score: function () { return parseInt((document.getElementById('sc') || {}).textContent, 10) || 0; },
+  label: function () { return (parseInt((document.getElementById('sc') || {}).textContent, 10) || 0) + ' pts'; }
+});
+</script>
 </body></html>

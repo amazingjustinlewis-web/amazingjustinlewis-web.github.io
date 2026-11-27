@@ -1,0 +1,73 @@
+{
+  "game": "red-deer-rich",
+  "latest": "v0.11",
+  "latestUrl": "v0.11/index.html",
+  "versions": [
+    {
+      "v": "v0.11",
+      "name": "Solo phone + TV",
+      "url": "v0.11/index.html",
+      "solo": "v0.11/solo.html",
+      "stable": true
+    },
+    {
+      "v": "v0.10",
+      "name": "Solo phone + TV",
+      "url": "v0.10/index.html",
+      "solo": "v0.10/solo.html",
+      "stable": false
+    },
+    {
+      "v": "v0.8",
+      "name": "Polish + front door",
+      "url": "v0.8/index.html"
+    },
+    {
+      "v": "v0.6",
+      "name": "Family party",
+      "url": "v0.6/index.html"
+    },
+    {
+      "v": "v0.5",
+      "name": "Weather and wear",
+      "url": "v0.5/index.html"
+    },
+    {
+      "v": "v0.4",
+      "name": "Cards in hand",
+      "url": "v0.4/index.html"
+    },
+    {
+      "v": "v0.3",
+      "name": "Red Deer stories",
+      "url": "v0.3/index.html"
+    },
+    {
+      "v": "v0.2.1",
+      "name": "Simple setup",
+      "url": "v0.2.1/index.html"
+    },
+    {
+      "v": "v0.2",
+      "name": "Game feel",
+      "url": "v0.2/index.html"
+    },
+    {
+      "v": "v0.1.2",
+      "name": "Projector night fixes",
+      "url": "v0.1.2/index.html"
+    },
+    {
+      "v": "v0.1.1",
+      "name": "Auctions + living city",
+      "url": "v0.1.1/index.html"
+    },
+    {
+      "v": "v0.1",
+      "name": "First playable",
+      "url": "v0.1/index.html"
+    }
+  ],
+  "note": "Frozen copies live in vX.Y/ and never change. v0.11 is the current public copy (TV from dev v0.7.10 + solo v0.11) and lives only in v0.11/ so v0.10 and the previous root index.html are left untouched. To release a later version: copy the needed HTML, css, js, assets, data and minikit into a new vX.Y/, rewrite paths so they resolve from that folder (family.html is ../../../, shared feedback is ../../minikit/), add it here and on games/red-deer-rich.html, and point the public tiles at the new folder.",
+  "soloUrl": "v0.11/solo.html"
+}

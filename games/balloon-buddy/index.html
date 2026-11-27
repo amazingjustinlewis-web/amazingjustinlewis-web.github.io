@@ -26,4 +26,16 @@
 
 <script src="../minikit/feedback_v01.js?b=2"></script>
 <script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Balloon Buddy", "version": "public", "corner": "br"});</script>
+
+<script src="../minikit/ztp-account_v04.js?b=1"></script>
+<script src="../minikit/end_prompt_arcade_v01.js?b=1"></script>
+<script>
+if (window.EndPromptArcade) EndPromptArcade.mount({
+  game: 'balloon-buddy',
+  isOver: function () { return !!(window.BB && BB.G && (BB.G.phase === 'won' || BB.G.phase === 'lost')); },
+  title: function () { return BB.G.phase === 'won' ? 'Saved!' : 'Game over'; },
+  score: function () { var g = BB.G, pts = 0; (g.pl || g.players || []).forEach(function (p) { pts = Math.max(pts, p.pts || 0); }); return pts; },
+  label: function () { return BB.G.phase === 'won' ? 'word saved' : 'too many pops'; }
+});
+</script>
 </body></html>

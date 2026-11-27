@@ -81,5 +81,17 @@
 
 <script src="../minikit/feedback_v01.js?b=2"></script>
 <script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Charge Hop", "version": "v0.3", "corner": "br"});</script>
+
+<script src="../minikit/ztp-account_v04.js?b=1"></script>
+<script src="../minikit/end_prompt_arcade_v01.js?b=1"></script>
+<script>
+if (window.EndPromptArcade) EndPromptArcade.mount({
+  game: 'charge-hop',
+  isOver: function () { return !!(window.ChargeHop && ChargeHop.Game && ChargeHop.Game.state === 'won'); },
+  title: 'You win!',
+  score: function () { var t = ChargeHop.Game.raceTime || 0; return Math.max(0, 100000 - Math.round(t * 100)); },
+  label: function () { var t = ChargeHop.Game.raceTime || 0; return t ? (t.toFixed(2) + 's') : 'win'; }
+});
+</script>
 </body>
 </html>

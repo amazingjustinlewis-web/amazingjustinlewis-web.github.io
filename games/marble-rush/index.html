@@ -104,4 +104,26 @@
 
 <script src="../minikit/feedback_v01.js?b=2"></script>
 <script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Marble Rush", "version": "public", "corner": "br"});</script>
+
+<script src="../minikit/ztp-account_v04.js?b=1"></script>
+<script src="../minikit/end_prompt_arcade_v01.js?b=1"></script>
+<script>
+if (window.EndPromptArcade) EndPromptArcade.mount({
+  game: 'marble-rush',
+  isOver: function () { return !!(window.MRT && MRT.sim && MRT.sim.phase === 'results'); },
+  title: function () {
+    var sim = MRT.sim, id = sim.order && sim.order[0], m = (sim.m || []).filter(function (x) { return x.id === id; })[0];
+    return m ? ((m.name || 'Marble') + ' wins!') : 'Race over';
+  },
+  score: function () {
+    var sim = MRT.sim, id = sim.order && sim.order[0], m = (sim.m || []).filter(function (x) { return x.id === id; })[0];
+    if (!m || m.fin == null) return 0;
+    return Math.max(0, 100000 - Math.round(m.fin * 100));
+  },
+  label: function () {
+    var sim = MRT.sim, id = sim.order && sim.order[0], m = (sim.m || []).filter(function (x) { return x.id === id; })[0];
+    return m && m.fin != null ? (Number(m.fin).toFixed(2) + 's') : '';
+  }
+});
+</script>
 </body></html>

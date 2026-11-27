@@ -93,4 +93,17 @@
 
 <script src="../minikit/feedback_v01.js?b=2"></script>
 <script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Splash Clown", "version": "public", "corner": "br"});</script>
+
+<script src="../minikit/ztp-account_v04.js?b=1"></script>
+<script src="../minikit/end_prompt_arcade_v01.js?b=1"></script>
+<script>
+if (window.EndPromptArcade) EndPromptArcade.mount({
+  game: 'splash-clown',
+  isOver: function () { return !!(window.DK && DK.S && DK.S.phase === 'over'); },
+  title: 'Game over',
+  score: function () { var p = DK.localP && DK.localP(); return (p && p.g && p.g.dunks) || 0; },
+  label: function () { var p = DK.localP && DK.localP(); var n = (p && p.g && p.g.dunks) || 0; return n + ' dunks'; },
+  fallback: function () { var p = DK.localP && DK.localP(); return (p && p.name) || ''; }
+});
+</script>
 </body></html>

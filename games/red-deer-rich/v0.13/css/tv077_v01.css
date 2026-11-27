@@ -1,0 +1,139 @@
+/* v0.7.6 TV: lobby zoom vignette, slower card leave, PAY UP / CAUGHT stacking, sim-readable chrome. */
+#lobby.screen.tv075-overlay,
+#lobby.screen.tv076-overlay {
+  background: rgba(10, 8, 16, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6vh 4.5vw 8vh;
+  box-sizing: border-box;
+  pointer-events: none;
+  transition: opacity 0.7s ease;
+}
+#lobby.screen.tv076-overlay > .lobby-left,
+#lobby.screen.tv076-overlay > .lobby-right {
+  pointer-events: auto;
+  background: rgba(18, 16, 26, 0.86);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 230, 180, 0.14);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+}
+#lobby.screen.tv076-overlay > .lobby-left {
+  border-radius: 2.2vh 0 0 2.2vh;
+  padding: 2.4vh 2vw 2.6vh 2.4vw;
+  max-width: 42vw;
+  max-height: 84vh;
+  overflow: auto;
+}
+#lobby.screen.tv076-overlay > .lobby-right {
+  border-radius: 0 2.2vh 2.2vh 0;
+  padding: 2.4vh 2.4vw 2.6vh 2vw;
+  max-height: 84vh;
+  overflow: auto;
+}
+body.tv075-lobby #top,
+body.tv075-lobby #side,
+body.tv075-lobby #banner,
+body.tv075-lobby #payupBar,
+body.tv076-lobby #top,
+body.tv076-lobby #side,
+body.tv076-lobby #banner,
+body.tv076-lobby #payupBar { opacity: 0; pointer-events: none; }
+#lobby.tv075-leaving,
+#lobby.tv076-leaving { opacity: 0 !important; pointer-events: none !important; }
+
+/* card leave / disassemble takes twice as long */
+.nfade { transition: opacity 2.8s ease-in !important; }
+.shd .shard { animation-duration: 1s !important; }
+
+/* CAUGHT banner sits clear of a lingering PAY UP bar / deed pop */
+#payupBar.caught {
+  z-index: 14;
+  top: calc(var(--by) + var(--bs) * 0.46);
+  min-width: calc(var(--bs) * 0.42);
+  text-align: center;
+  box-shadow: 0 1.2vh 4vh rgba(0,0,0,.55);
+}
+body.rdr-caught #banner,
+body.rdr-caught #deedPop,
+body.rdr-caught #cardPop { opacity: 0; pointer-events: none; }
+body.rdr-caught #big { top: calc(var(--by) + var(--bs) * 0.22); }
+
+#tv076-voices {
+  position: fixed; z-index: 12; left: 14px; bottom: 70px;
+  background: rgba(20, 18, 27, 0.86); color: #f4ead6;
+  border: 1px solid rgba(255, 230, 180, 0.2); border-radius: 999px;
+  font: 600 12px/1.2 ui-sans-serif, system-ui, sans-serif;
+  padding: 8px 12px; cursor: pointer; letter-spacing: 0.04em;
+}
+#tv076-voices[aria-pressed="true"] { opacity: 0.7; }
+#tv076-voices:hover { border-color: rgba(255, 230, 180, 0.5); }
+
+/* recap keeps its soft fade; montage lives on the board under the caption */
+#rrecP { background: #0008 !important; }
+
+/* panel preview (?sim=1): bump sidebar type so scores can still be glanced at */
+html.sim #side { z-index: 8; }
+html.sim .pname { font-size: max(2.2vh, 22px); }
+html.sim .pcash { font-size: max(2.4vh, 24px); }
+html.sim .psub { font-size: max(1.55vh, 16px); }
+html.sim #log { font-size: max(2vh, 18px); }
+
+#turnPing {
+  position: fixed; z-index: 6; pointer-events: none;
+  width: 160px; height: 160px; display: none;
+}
+/* the "It's X's turn" pop-up is replaced by the side-panel ping arrow; action hints stay in #bWhat */
+#banner .who:empty { display: none; }
+
+/* extra screens */
+#screenList { margin: 1.4vh 0 0; padding: 1.2vh 1.2vw; background: rgba(255,230,180,0.06); border: 1px solid rgba(255,230,180,0.14); border-radius: 1vh; max-width: 42vw; color: #f3ead6; }
+#screenList .sl-title { font-weight: 700; font-size: 1.5vh; letter-spacing: 0.08em; text-transform: uppercase; color: #ffd23f; margin-bottom: 0.6vh; }
+#screenList .sl-row { font-size: 1.45vh; display: flex; gap: 0.7vw; align-items: baseline; padding: 0.25vh 0; }
+#screenList .sl-row em { color: #c9c0b0; font-style: normal; }
+#screenList .sl-hint { font-size: 1.3vh; color: #9a9286; margin-top: 0.5vh; }
+#screenJoin { margin: 1.4vh 0 0; padding: 1.2vh 1.2vw; background: rgba(255,230,180,0.06); border: 1px solid rgba(255,230,180,0.14); border-radius: 1vh; max-width: 42vw; color: #f3ead6; pointer-events: auto; }
+#screenJoin label { display: block; font-size: 1.4vh; margin-bottom: 0.6vh; }
+#screenJoin .sj-row { display: flex; gap: 0.6vw; }
+#screenJoin input { width: 8vw; min-width: 5.5rem; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 700; font-size: 2vh; text-align: center; background: #1a1822; color: #fff; border: 1px solid rgba(255,230,180,0.3); border-radius: 0.5vh; padding: 0.6vh 0.4vw; }
+#screenJoin button { font-weight: 700; background: #ffd23f; color: #1a1822; border: 0; border-radius: 0.5vh; padding: 0.6vh 1vw; cursor: pointer; }
+#screenBadge { position: fixed; top: 1.2vh; left: 1.2vw; z-index: 12; background: rgba(16,14,22,0.88); border: 1px solid rgba(255,230,180,0.28); border-radius: 1vh; padding: 1vh 1.1vw 1.1vh; color: #f3ead6; min-width: 16vw; box-shadow: 0 10px 30px rgba(0,0,0,0.4); pointer-events: auto; }
+#screenBadge .sb-n { font-weight: 800; font-size: 2.1vh; letter-spacing: 0.04em; color: #ffd23f; }
+#screenBadge .sb-role { font-size: 1.35vh; color: #c9c0b0; margin: 0.3vh 0 0.7vh; }
+#screenBadge .sb-tog { display: flex; flex-direction: column; gap: 0.4vh; }
+#screenBadge .sb-tog button { text-align: left; background: #241f2c; color: #f3ead6; border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5vh; padding: 0.55vh 0.7vw; cursor: pointer; font-size: 1.3vh; }
+#screenBadge .sb-tog button.on { background: #ffd23f; color: #1a1822; border-color: #ffd23f; font-weight: 700; }
+html.rdr-screen #lobby { display: none !important; }
+
+html.rdr-screen #lobby { display: none !important; }
+html.rdr-screen body.tv075-lobby #top,
+html.rdr-screen body.tv076-lobby #top,
+html.rdr-screen body.tv075-lobby #side,
+html.rdr-screen body.tv076-lobby #side { opacity: 1; pointer-events: auto; }
+
+
+/* v0.7.7: once the game is running, never leave the score sidebar / top bar invisible
+   (the lobby hide class can stick if Start bypasses the RDR.startGame wrap). */
+body.rdr-play #top,
+body.rdr-play #side,
+body.rdr-play #banner,
+body.rdr-play #payupBar {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+}
+
+#camMode {
+  position: fixed; left: 14px; bottom: 118px; z-index: 12;
+  display: none; gap: 0.35vw; align-items: center;
+  background: rgba(16,14,22,0.84); border: 1px solid rgba(255,230,180,0.22);
+  border-radius: 999px; padding: 0.45vh 0.7vw; color: #f3ead6;
+  font: 600 1.25vh/1 ui-sans-serif, system-ui, sans-serif;
+  pointer-events: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+}
+#camMode span { margin-right: 0.25vw; color: #c9c0b0; letter-spacing: 0.04em; }
+#camMode button { background: transparent; color: #f3ead6; border: 0; border-radius: 999px; padding: 0.4vh 0.75vw; cursor: pointer; font: inherit; }
+#camMode button.on { background: #ffd23f; color: #1a1822; font-weight: 700; }
+html.rdr-screen #camMode { display: none !important; }

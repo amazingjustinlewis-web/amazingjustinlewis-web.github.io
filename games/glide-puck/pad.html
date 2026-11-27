@@ -62,4 +62,16 @@
 
 <script src="../minikit/feedback_v01.js?b=2"></script>
 <script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Glide Puck", "version": "public", "corner": "br"});</script>
+
+<script src="../minikit/ztp-account_v04.js?b=1"></script>
+<script src="../minikit/end_prompt_arcade_v01.js?b=1"></script>
+<script>
+if (window.EndPromptArcade) EndPromptArcade.mount({
+  game: 'glide-puck',
+  isOver: function () { var st = window.GP && GP.st; st = st && (typeof st === 'function' ? st() : st); var sim = window.GP && GP.sim; sim = sim && (typeof sim === 'function' ? sim() : sim); return !!((st && st.over >= 0) || (sim && sim.over >= 0)); },
+  title: function () { var st = GP.st; st = typeof st === 'function' ? st() : st; var sim = GP.sim; sim = typeof sim === 'function' ? sim() : sim; var ov = (st && st.over >= 0) ? st.over : (sim && sim.over); return ov === GP.seat ? 'You win!' : 'Game over'; },
+  score: function () { var st = GP.st; st = typeof st === 'function' ? st() : st; var sim = GP.sim; sim = typeof sim === 'function' ? sim() : sim; var sc = (st && st.sc) || (sim && sim.sc); if (!sc) return 0; var t = GP.seat, o = 1 - t; return (sc[t] || 0) - (sc[o] || 0); },
+  label: function () { var st = GP.st; st = typeof st === 'function' ? st() : st; var sim = GP.sim; sim = typeof sim === 'function' ? sim() : sim; var sc = (st && st.sc) || (sim && sim.sc) || [0, 0]; return sc[0] + '\u2013' + sc[1]; }
+});
+</script>
 </body></html>

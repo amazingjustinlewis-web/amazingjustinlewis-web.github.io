@@ -52,5 +52,18 @@
 
 <script src="../minikit/feedback_v01.js?b=2"></script>
 <script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Laser Range", "version": "v0.1", "corner": "br"});</script>
+
+<script src="../minikit/ztp-account_v04.js?b=1"></script>
+<script src="../minikit/end_prompt_arcade_v01.js?b=1"></script>
+<script>
+if (window.EndPromptArcade) EndPromptArcade.mount({
+  game: 'laser-range',
+  isOver: function () { var s = window.LRPhone && LRPhone.state && LRPhone.state(); return !!(s && s.phase === 'over'); },
+  title: function () { var s = LRPhone.state(), me = s.me, pl = ['1st', '2nd', '3rd', '4th']; return (me && me.place) ? (pl[me.place - 1] + ' place!') : 'Round over'; },
+  score: function () { var s = LRPhone.state(); return (s.me && s.me.score) || 0; },
+  label: function () { var s = LRPhone.state(), me = s.me; return (me && me.score != null) ? (me.score + ' pts') : ''; },
+  fallback: function () { var s = LRPhone.state(); return (s.me && s.me.name) || ''; }
+});
+</script>
 </body>
 </html>

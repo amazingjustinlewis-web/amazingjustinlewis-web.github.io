@@ -15,4 +15,16 @@
 </script>
 <script src="../minikit/feedback_v01.js?b=2"></script>
 <script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Splash Clown", "version": "public", "corner": "br"});</script>
+
+<script src="../minikit/ztp-account_v04.js?b=1"></script>
+<script src="../minikit/end_prompt_arcade_v01.js?b=1"></script>
+<script>
+if (window.EndPromptArcade) EndPromptArcade.mount({
+  game: 'splash-clown',
+  isOver: function () { var tm = document.getElementById('tm'); return !!(tm && /Game over/.test(tm.textContent || '')); },
+  title: 'Game over',
+  score: function () { var t = (document.getElementById('sc') || {}).textContent || ''; var m = t.match(/(\d+)/); return m ? parseInt(m[1], 10) : 0; },
+  label: function () { var n = 0, t = (document.getElementById('sc') || {}).textContent || '', m = t.match(/(\d+)/); if (m) n = parseInt(m[1], 10); return n + ' dunks'; }
+});
+</script>
 </body></html>

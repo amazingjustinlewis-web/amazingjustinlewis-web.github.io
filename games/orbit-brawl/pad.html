@@ -305,4 +305,21 @@ body.sw #evm{right:auto;left:calc(14px + min(22vmin,120px) + 10px);transform:tra
 
 <script src="../minikit/feedback_v01.js?b=2"></script>
 <script>if(window.ZTPFeedback)ZTPFeedback.mount({"game": "Orbit Brawl", "version": "v0.17", "corner": "br"});</script>
+
+<script src="../minikit/ztp-account_v04.js?b=1"></script>
+<script src="../minikit/end_prompt_arcade_v01.js?b=1"></script>
+<script>
+if (window.EndPromptArcade) EndPromptArcade.mount({
+  game: 'orbit',
+  isOver: function () { return !!(window.OBP && OBP.G && OBP.G.sim && OBP.G.sim.over); },
+  title: function () {
+    var G = OBP.G, ships = (G.sim && G.sim.ships) || [], me = G.me || ships.filter(function (s) { return s.id === (G.me && G.me.id); })[0];
+    var top = ships.slice().sort(function (a, b) { return (b.k || 0) - (a.k || 0); })[0];
+    return (top && me && top.id === me.id) ? 'You win!' : 'Round over';
+  },
+  score: function () { var me = OBP.G.me; if (me && me.k != null) return me.k; var ships = (OBP.G.sim && OBP.G.sim.ships) || []; var m = ships.filter(function (s) { return OBP.G.me && s.id === OBP.G.me.id; })[0]; return m ? (m.k || 0) : 0; },
+  label: function () { var me = OBP.G.me; if (!me) return ''; return (me.k || 0) + ' KO / ' + (me.d || 0) + ' D'; },
+  fallback: function () { return (OBP.G.me && OBP.G.me.name) || ''; }
+});
+</script>
 </body></html>
